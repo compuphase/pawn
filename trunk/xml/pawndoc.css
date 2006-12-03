@@ -1,0 +1,256 @@
+/* Version: $Id$ */
+
+BODY
+{
+    FONT-FAMILY: "Verdana", sans-serif;
+    FONT-SIZE: x-small;
+}
+
+CODE
+{
+    FONT-SIZE: x-small;
+}
+
+DL
+{
+    MARGIN-LEFT: 4em;
+    DISPLAY: compact
+}
+
+DT
+{
+    FONT-WEIGHT: bold
+}
+
+A:link
+{
+    COLOR: #4e4887
+}
+
+A:visited
+{
+    COLOR: #8080c8
+}
+
+A:active
+{
+    COLOR: #f16043
+}
+
+A:hover
+{
+    COLOR: #f16043
+}
+
+P
+{
+    MARGIN-BOTTOM: 0.5em;
+    MARGIN-TOP: 0.5em;
+    MARGIN-LEFT: 4em
+}
+
+P.noindent
+{
+    MARGIN-LEFT: 0em
+}
+
+P.syntax
+{
+    FONT-WEIGHT: bold
+}
+
+HR.para
+{
+    HEIGHT: 0;
+    BORDER: 0;
+    COLOR: transparent;
+    BACKGROUND-COLOR: transparent;
+    MARGIN-TOP: 0.5em;
+    MARGIN-BOTTOM: 0;
+}
+
+XMP
+{
+    BACKGROUND-COLOR: #ddeeff;
+    FONT-SIZE: x-small;
+    MARGIN: 1em
+}
+
+PRE
+{
+    BACKGROUND-COLOR: #ddeeff;
+    FONT-SIZE: x-small;
+    MARGIN: 1em
+}
+
+TABLE
+{
+    BORDER-BOTTOM: medium none;
+    BORDER-LEFT: medium none;
+    BORDER-RIGHT: medium none;
+    BORDER-TOP: medium none
+}
+
+TABLE.param
+{
+    BACKGROUND-COLOR: #ddeeff;
+}
+
+TABLE.transition
+{
+    BACKGROUND-COLOR: #ddeeff;
+}
+
+TD
+{
+    BACKGROUND-COLOR: #ddeeff;
+    BORDER-BOTTOM: medium none;
+    BORDER-LEFT: medium none;
+    BORDER-RIGHT: medium none;
+    BORDER-TOP: medium none;
+    FONT-SIZE: x-small;
+    MARGIN: 2px;
+    PADDING-BOTTOM: 2px;
+    PADDING-LEFT: 2px;
+    PADDING-RIGHT: 2px;
+    PADDING-TOP: 2px;
+    TEXT-ALIGN: left
+}
+
+TD.header
+{
+    BACKGROUND-COLOR: transparent;
+    FONT-WEIGHT: bold;
+    COLOR: #4e4887;
+    WIDTH: 3.3em;
+    PADDING-LEFT: 0px;
+    MARGIN-BOTTOM: 0.5em
+}
+
+TD.inline
+{
+    BACKGROUND-COLOR: transparent
+}
+
+TD.param
+{
+    FONT-WEIGHT: bold;
+    FONT-STYLE: italic;
+    PADDING-RIGHT: 20px;
+}
+
+TD.transition
+{
+    PADDING-RIGHT: 10px;
+}
+
+TH
+{
+    BACKGROUND-COLOR: #336699;
+    COLOR: #ddeeff;
+    BORDER-BOTTOM: medium none;
+    BORDER-LEFT: medium none;
+    BORDER-RIGHT: medium none;
+    BORDER-TOP: medium none;
+    FONT-SIZE: x-small;
+    MARGIN: 2px;
+    PADDING-BOTTOM: 2px;
+    PADDING-LEFT: 4px;
+    PADDING-RIGHT: 4px;
+    PADDING-TOP: 2px;
+    TEXT-ALIGN: left
+}
+
+UL
+{
+    MARGIN-TOP: 0.5em;
+    /* MARGIN-LEFT: 4em */
+}
+
+LI.referrer
+{
+    DISPLAY: inline;
+    PADDING-RIGHT: 8px
+}
+
+LI.dependency
+{
+    DISPLAY: inline;
+    PADDING-RIGHT: 8px
+}
+
+LI.seealso
+{
+    DISPLAY: inline;
+    PADDING-RIGHT: 8px
+}
+
+LI.attribute
+{
+    DISPLAY: inline;
+    PADDING-RIGHT: 8px
+}
+
+OL
+{
+    MARGIN-TOP: 0.5em;
+    /* MARGIN-LEFT: 4em */
+}
+
+SPAN.paraminfo {
+    FONT-WEIGHT:Bold;
+    COLOR: #336699;
+}
+
+H1
+{
+    COLOR: #336699;
+    FONT-SIZE: x-large;
+    MARGIN-BOTTOM: 0.5em;
+    MARGIN-TOP: 1em;
+    PADDING-LEFT: 4px
+}
+
+H2
+{
+    BORDER-RIGHT: #4e4887 8px solid;
+    BORDER-TOP: #4e4887 2px solid;
+    COLOR: #4e4887;
+    MARGIN-BOTTOM: 0.5em;
+    MARGIN-TOP: 1em;
+}
+
+H2.general
+{
+    BORDER: none;
+}
+
+H3
+{
+    COLOR: #4e4887;
+    FONT-SIZE: x-small;
+    MARGIN-BOTTOM: 0.5em
+}
+
+H4
+{
+    COLOR: #4e4887;
+    FONT-SIZE: x-small;
+    FONT-STYLE: italic;
+    MARGIN-BOTTOM: 0.5em
+}
+
+H5
+{
+    COLOR: #4e4887;
+    FONT-SIZE: xx-small;
+    MARGIN-BOTTOM: 0.5em
+}
+
+H6
+{
+    COLOR: #4e4887;
+    FONT-SIZE: xx-small;
+    FONT-STYLE: italic;
+    MARGIN-BOTTOM: 0.5em
+}
