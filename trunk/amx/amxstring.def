@@ -1,0 +1,6 @@
+NAME          amxString
+DESCRIPTION   'Pawn AMX: string manipulation routines'
+
+EXPORTS
+        amx_StringInit
+        amx_StringCleanup

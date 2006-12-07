@@ -1,0 +1,6 @@
+NAME          amxProcess
+DESCRIPTION   'Pawn AMX: process control and foreign function interface'
+
+EXPORTS
+        amx_ProcessInit
+        amx_ProcessCleanup

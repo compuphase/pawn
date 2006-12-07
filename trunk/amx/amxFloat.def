@@ -1,0 +1,6 @@
+NAME          amxFloat
+DESCRIPTION   'Pawn AMX: floating-point arithmetic'
+
+EXPORTS
+        amx_FloatInit
+        amx_FloatCleanup
