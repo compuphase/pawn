@@ -1,0 +1,54 @@
+#include <windows.h>
+#if defined WIN32 || defined _WIN32 || defined __WIN32__
+#  include <winver.h>
+#else
+#  include <ver.h>
+#endif
+
+/*  Version information
+ *
+ *  All strings MUST have an explicit \0. See the Windows SDK documentation
+ *  for details on version information and the VERSIONINFO structure.
+ */
+#define VERSION              1
+#define REVISION             1
+#define BUILD                0
+#define VERSIONSTR           "1.1.0\0"
+#define VERSIONNAME          "amxString.dll\0"
+#define VERSIONDESCRIPTION   "Pawn AMX: String manipulation routines\0"
+#define VERSIONCOMPANYNAME   "ITB CompuPhase\0"
+#define VERSIONPRODUCTNAME   "amxString\0"
+#define VERSIONCOPYRIGHT     "Copyright \251 2005-2006 ITB CompuPhase\0"
+
+VS_VERSION_INFO VERSIONINFO
+FILEVERSION    VERSION, REVISION, BUILD, 0
+PRODUCTVERSION VERSION, REVISION, BUILD, 0
+FILEFLAGSMASK  0x0000003FL
+FILEFLAGS      0
+#if defined(WIN32)
+  FILEOS       VOS__WINDOWS32
+#else
+  FILEOS       VOS__WINDOWS16
+#endif
+FILETYPE       VFT_DLL
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "040904E4"
+        BEGIN
+            VALUE "CompanyName",      VERSIONCOMPANYNAME
+            VALUE "FileDescription",  VERSIONDESCRIPTION
+            VALUE "FileVersion",      VERSIONSTR
+            VALUE "InternalName",     VERSIONNAME
+            VALUE "LegalCopyright",   VERSIONCOPYRIGHT
+            VALUE "OriginalFilename", VERSIONNAME
+            VALUE "ProductName",      VERSIONPRODUCTNAME
+            VALUE "ProductVersion",   VERSIONSTR
+        END
+    END
+
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x409, 1252
+    END
+END

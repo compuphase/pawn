@@ -1,0 +1,6 @@
+NAME          amxTime
+DESCRIPTION   'Pawn AMX: time routines'
+
+EXPORTS
+        amx_TimeInit
+        amx_TimeCleanup

@@ -1,0 +1,6 @@
+NAME          amxArgs
+DESCRIPTION   'Pawn AMX: Script Arguments support'
+
+EXPORTS
+        amx_ArgsInit
+        amx_ArgsCleanup

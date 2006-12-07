@@ -1,0 +1,6 @@
+NAME          amxDGram
+DESCRIPTION   'Pawn AMX: network datagram'
+
+EXPORTS
+        amx_DGramInit
+        amx_DGramCleanup
