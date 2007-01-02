@@ -25,7 +25,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: sc.h 3660 2006-11-05 13:05:09Z thiadmer $
+ *  Version: $Id: sc.h 3684 2006-12-10 16:16:47Z thiadmer $
  */
 #ifndef SC_H_INCLUDED
 #define SC_H_INCLUDED
@@ -643,6 +643,9 @@ SC_FUNC void os_le(void);   /* less or equal (signed) */
 SC_FUNC void os_ge(void);   /* greater or equal (signed) */
 SC_FUNC void os_lt(void);   /* less (signed) */
 SC_FUNC void os_gt(void);   /* greater (signed) */
+
+SC_FUNC void oa_eq(cell size);  /* equal, array operator */
+SC_FUNC void oa_ne(cell size);  /* not equal, array operator */
 
 SC_FUNC void lneg(void);
 SC_FUNC void neg(void);

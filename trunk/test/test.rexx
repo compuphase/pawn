@@ -1448,4 +1448,22 @@ test113:
   pawnrun ' test2.amx'
   return
 
+test114:
+  say '114. The following test should compile successfully; when run, it should print'
+  say ''
+  say '         queue: 15%'
+  say '         queue:'
+  say ''
+  say '    before dropping into run-time error 10 (native function failed)'
+  say ''
+  say '    The native printf function did not support %% correctly. The run-time error'
+  say '    in this script is correct because the second printf lacks the parameter.'
+  say ''
+  say 'Symptoms of detected bug: heap underflow, because heap was restored for either.'
+  say 'branch, while only one branch is taken.'
+  say '-----'
+  pawncc ' PRINTF_PCT= test2'
+  pawnrun ' test2.amx'
+  return
+
 /* ??? global variable set to a negative floating point value */

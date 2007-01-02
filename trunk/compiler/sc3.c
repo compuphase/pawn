@@ -18,7 +18,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: sc3.c 3660 2006-11-05 13:05:09Z thiadmer $
+ *  Version: $Id: sc3.c 3684 2006-12-10 16:16:47Z thiadmer $
  */
 #include <assert.h>
 #include <stdio.h>
@@ -29,13 +29,13 @@
 #endif
 #include "sc.h"
 
-static int skim(int *opstr,void (*testfunc)(int),int dropval,int endval,
+static int skim(const int *opstr,void (*testfunc)(int),int dropval,int endval,
                 int (*hier)(value*),value *lval);
 static void dropout(int lvalue,void (*testfunc)(int val),int exit1,value *lval);
-static int plnge(int *opstr,int opoff,int (*hier)(value *lval),value *lval,
+static int plnge(const int *opstr,int opoff,int (*hier)(value *lval),value *lval,
                  char *forcetag,int chkbitwise);
 static int plnge1(int (*hier)(value *lval),value *lval);
-static void plnge2(void (*oper)(void),
+static void plnge2(void (*oper)(void),void (*arrayoper)(cell),
                    int (*hier)(value *lval),
                    value *lval1,value *lval2);
 static cell calc(cell left,void (*oper)(),cell right,char *boolresult);
@@ -65,7 +65,7 @@ static int bitwise_opercount;   /* count of bitwise operators in an expression *
 static int decl_heap=0;
 
 /* Function addresses of binary operators for signed operations */
-static void (*op1[17])(void) = {
+static void (* const op1[17])(void) = {
   os_mult,os_div,os_mod,        /* hier3, index 0 */
   ob_add,ob_sub,                /* hier4, index 3 */
   ob_sal,os_sar,ou_sar,         /* hier5, index 5 */
@@ -74,6 +74,16 @@ static void (*op1[17])(void) = {
   ob_or,                        /* hier8, index 10 */
   os_le,os_ge,os_lt,os_gt,      /* hier9, index 11 */
   ob_eq,ob_ne,                  /* hier10, index 15 */
+};
+static void (* const op2[17])(cell size) = {
+  NULL,NULL,NULL,               /* hier3, index 0 */
+  NULL,NULL,                    /* hier4, index 3 */
+  NULL,NULL,NULL,               /* hier5, index 5 */
+  NULL,                         /* hier6, index 8 */
+  NULL,                         /* hier7, index 9 */
+  NULL,                         /* hier8, index 10 */
+  NULL,NULL,NULL,NULL,          /* hier9, index 11 */
+  oa_eq,oa_ne,                  /* hier10, index 15 */
 };
 /* These two functions are defined because the functions inc() and dec() in
  * SC4.C have a different prototype than the other code generation functions.
@@ -84,6 +94,11 @@ static void (*op1[17])(void) = {
  */
 static void user_inc(void) {}
 static void user_dec(void) {}
+
+#define IS_STD_ARRAY(lval)    ( (lval).ident==iARRAY || (lval).ident==iREFARRAY )
+#define IS_ENUM_ARRAY(lval)   ( ((lval).ident==iARRAYCELL || (lval).ident==iARRAYCHAR) \
+                                 && (lval).constval>1 && (lval).sym->dim.array.level==0 )
+
 
 /*
  *  Searches for a binary operator a list of operators. The list is stored in
@@ -97,7 +112,7 @@ static void user_dec(void) {}
  *
  *  Global references: sc_allowproccall   (modified)
  */
-static int nextop(int *opidx,int *list)
+static int nextop(int *opidx,const int *list)
 {
   *opidx=0;
   while (*list){
@@ -338,7 +353,7 @@ SC_FUNC int matchtag(int formaltag,int actualtag,int allowcoerce)
  *            "or" expression, this happens when both the left hand and the
  *            right hand are FALSE, so endval must be 0 for "or" expressions.
  */
-static int skim(int *opstr,void (*testfunc)(int),int dropval,int endval,
+static int skim(const int *opstr,void (*testfunc)(int),int dropval,int endval,
                 int (*hier)(value*),value *lval)
 {
   int lvalue,hits,droplab,endlab,opidx;
@@ -422,6 +437,93 @@ static void dropout(int lvalue,void (*testfunc)(int val),int exit1,value *lval)
   (*testfunc)(exit1);
 }
 
+static cell checkarrays(value *lval1,value *lval2)
+{
+  /* If the left operand is an array, right operand should be an array variable
+   * of the same size and the same dimension, an array literal (of the same
+   * size) or a literal string. For single-dimensional arrays without tag for
+   * the index, it is permitted to assign a smaller array into a larger one
+   * (without warning) and to compare a large array to a smaller one. This is
+   * to make it easier to work with strings.
+   */
+  int exactmatch=TRUE;
+  int idxtag=0;
+  int level;
+  cell ltlength,length;
+
+  assert(lval1!=NULL);
+  assert(lval2!=NULL);
+  assert(IS_STD_ARRAY(*lval1) || IS_ENUM_ARRAY(*lval1));
+  assert(lval1->sym->name!=NULL);
+
+  ltlength=(int)lval1->sym->dim.array.length;
+  if (IS_ENUM_ARRAY(*lval1))
+    ltlength=(int)lval1->constval;
+  if (!IS_STD_ARRAY(*lval2) && !IS_ENUM_ARRAY(*lval2))
+    error(33,lval1->sym->name);         /* array must be indexed */
+  if (lval2->sym!=NULL) {
+    if (lval2->constval==0) {
+      length=lval2->sym->dim.array.length;/* array variable */
+    } else {
+      length=lval2->constval;
+      if (lval2->sym->dim.array.level!=0)
+        error(28,lval2->sym->name);
+    } /* if */
+    level=lval2->sym->dim.array.level;
+    idxtag=lval2->sym->x.tags.index;
+    if (level==0 && idxtag==0 && lval1->sym->x.tags.index==0)
+      exactmatch=FALSE;
+  } else {
+    length=lval2->constval;             /* literal array */
+    level=0;
+    /* If length is negative, it means that lval2 is a literal string.
+     * The string array size may be smaller than the destination
+     * array, provided that the destination array does not have an
+     * index tag.
+     */
+    if (length<0) {
+      length=-length;
+      if (lval1->sym->x.tags.index==0)
+        exactmatch=FALSE;
+    } /* if */
+  } /* if */
+  if (lval1->sym->dim.array.level!=level)
+    return error(48);           /* array dimensions must match */
+  else if (ltlength<length || exactmatch && ltlength>length || length==0)
+    return error(47);           /* array sizes must match */
+  else if (lval1->ident!=iARRAYCELL && !matchtag(lval1->sym->x.tags.index,idxtag,TRUE))
+    error(229,(lval2->sym!=NULL) ? lval2->sym->name : lval1->sym->name); /* index tag mismatch */
+  if (level>0) {
+    /* check the sizes of all sublevels too */
+    symbol *sym1 = lval1->sym;
+    symbol *sym2 = lval2->sym;
+    int i;
+    assert(sym1!=NULL && sym2!=NULL);
+    /* ^^^ sym2 must be valid, because only variables can be
+     *     multi-dimensional (there are no multi-dimensional literals),
+     *     sym1 must be valid because it must be an lvalue
+     */
+    assert(exactmatch);
+    for (i=0; i<level; i++) {
+      sym1=finddepend(sym1);
+      sym2=finddepend(sym2);
+      assert(sym1!=NULL && sym2!=NULL);
+      /* ^^^ both arrays have the same dimensions (this was checked
+       *     earlier) so the dependend should always be found
+       */
+      if (sym1->dim.array.length!=sym2->dim.array.length)
+        error(47);              /* array sizes must match */
+      else if (!matchtag(sym1->x.tags.index,sym2->x.tags.index,TRUE))
+        error(229,sym2->name);  /* index tag mismatch */
+    } /* for */
+    /* get the total size in cells of the multi-dimensional array */
+    length=array_totalsize(lval1->sym);
+    assert(length>0);           /* already checked */
+  } /* if */
+
+  return length;
+}
+
 static void checkfunction(value *lval)
 {
   symbol *sym=lval->sym;
@@ -448,7 +550,7 @@ static void checkfunction(value *lval)
 /*
  *  Plunge to a lower level
  */
-static int plnge(int *opstr,int opoff,int (*hier)(value *lval),value *lval,
+static int plnge(const int *opstr,int opoff,int (*hier)(value *lval),value *lval,
                  char *forcetag,int chkbitwise)
 {
   int lvalue,opidx;
@@ -465,7 +567,7 @@ static int plnge(int *opstr,int opoff,int (*hier)(value *lval),value *lval,
     if (chkbitwise && count++>0 && bitwise_opercount!=0)
       error(212);
     opidx+=opoff;               /* add offset to index returned by nextop() */
-    plnge2(op1[opidx],hier,lval,&lval2);
+    plnge2(op1[opidx],op2[opidx],hier,lval,&lval2);
     if (op1[opidx]==ob_and || op1[opidx]==ob_or)
       bitwise_opercount++;
     if (forcetag!=NULL)
@@ -479,7 +581,7 @@ static int plnge(int *opstr,int opoff,int (*hier)(value *lval),value *lval,
  *  Binary plunge to lower level; this is very simular to plnge, but
  *  it has special code generation sequences for chained operations.
  */
-static int plnge_rel(int *opstr,int opoff,int (*hier)(value *lval),value *lval)
+static int plnge_rel(const int *opstr,int opoff,int (*hier)(value *lval),value *lval)
 {
   int lvalue,opidx;
   value lval2={0};
@@ -503,7 +605,7 @@ static int plnge_rel(int *opstr,int opoff,int (*hier)(value *lval),value *lval)
       *lval=lval2;      /* copy right hand expression of the previous iteration */
     } /* if */
     opidx+=opoff;
-    plnge2(op1[opidx],hier,lval,&lval2);
+    plnge2(op1[opidx],op2[opidx],hier,lval,&lval2);
     if (count++>0)
       relop_suffix();
   } while (nextop(&opidx,opstr)); /* enddo */
@@ -534,12 +636,13 @@ static int plnge1(int (*hier)(value *lval),value *lval)
  *  Binary plunge to lower level
  *  Called by: plnge(), plnge_rel(), hier14() and hier1()
  */
-static void plnge2(void (*oper)(void),
+static void plnge2(void (*oper)(void),void (*arrayoper)(cell),
                    int (*hier)(value *lval),
                    value *lval1,value *lval2)
 {
   int index;
   cell cidx;
+  cell arraylength=0;
 
   stgget(&index,&cidx);             /* mark position in code generator */
   if (lval1->ident==iCONSTEXPR) {   /* constant on left side; it is not yet loaded */
@@ -595,7 +698,15 @@ static void plnge2(void (*oper)(void),
     if (lval1->sym!=NULL && (lval1->sym->ident==iFUNCTN || lval1->sym->ident==iREFFUNC)
         || lval2->sym!=NULL && (lval2->sym->ident==iFUNCTN || lval2->sym->ident==iREFFUNC))
       pc_sideeffect=FALSE;
-    if (lval1->ident==iARRAY || lval1->ident==iREFARRAY) {
+    if (arrayoper!=NULL
+        && (IS_STD_ARRAY(*lval1) || IS_ENUM_ARRAY(*lval1))
+        && (IS_STD_ARRAY(*lval2) || IS_ENUM_ARRAY(*lval2)))
+    {
+      /* there is an array operator and both sides are an array; test the
+       * dimensions first
+       */
+      arraylength=checkarrays(lval1,lval2);
+    } else if (lval1->ident==iARRAY || lval1->ident==iREFARRAY) {
       char *ptr=(lval1->sym!=NULL) ? lval1->sym->name : "-unknown-";
       error(33,ptr);                    /* array must be indexed */
     } else if (lval2->ident==iARRAY || lval2->ident==iREFARRAY) {
@@ -619,7 +730,10 @@ static void plnge2(void (*oper)(void),
     } else {
       if (!matchtag(lval1->tag,lval2->tag,FALSE))
         error(213);             /* tagname mismatch */
-      (*oper)();                /* do the (signed) operation */
+      if (arraylength>0)
+        arrayoper(arraylength*sizeof(cell)); /* do the array operation */
+      else
+        oper();                 /* do the (signed) operation */
       lval1->ident=iEXPRESSION;
     } /* if */
   } /* if */
@@ -805,7 +919,7 @@ static int hier14(value *lval1)
   int lvalue;
   value lval2={0},lval3={0};
   void (*oper)(void);
-  int tok,level,i;
+  int tok,i;
   cell val;
   char *st;
   int bwcount,leftarray;
@@ -911,7 +1025,7 @@ static int hier14(value *lval1)
       rvalue(lval1);
     } /* if */
     lval2.arrayidx=arrayidx2;
-    plnge2(oper,hier14,lval1,&lval2);
+    plnge2(oper,NULL,hier14,lval1,&lval2);
     if (lval2.ident!=iARRAYCELL && lval2.ident!=iARRAYCHAR)
       lval2.arrayidx=NULL;
     if (oper)
@@ -929,12 +1043,12 @@ static int hier14(value *lval1)
   } else {
     if (oper){
       rvalue(lval1);
-      plnge2(oper,hier14,lval1,&lval2);
+      plnge2(oper,NULL,hier14,lval1,&lval2);
     } else {
       /* if direct fetch and simple assignment: no "push"
        * and "pop" needed -> call hier14() directly, */
       if (hier14(&lval2))
-        rvalue(&lval2);         /* instead of plnge2(). */
+        rvalue(&lval2);         /* instead of plnge2() */
       else if (lval2.ident==iVARIABLE)
         lval2.ident=iEXPRESSION;/* mark as "rvalue" if it is not an "lvalue" */
       checkfunction(&lval2);
@@ -950,88 +1064,18 @@ static int hier14(value *lval1)
    * than 1. If the expression on the right side of the assignment is a cell,
    * or if an operation is in effect, this does not apply.
    */
-  leftarray= lval3.ident==iARRAY || lval3.ident==iREFARRAY
-             || ((lval3.ident==iARRAYCELL || lval3.ident==iARRAYCHAR)
-                 && lval3.constval>1 && lval3.sym->dim.array.level==0
-                 && !oper && (lval2.ident==iARRAY || lval2.ident==iREFARRAY));
+  leftarray= IS_STD_ARRAY(lval3)
+             || (IS_ENUM_ARRAY(lval3) && !oper
+                 && (lval2.ident==iARRAY || lval2.ident==iREFARRAY));
   if (leftarray) {
     /* Left operand is an array, right operand should be an array variable
      * of the same size and the same dimension, an array literal (of the
      * same size) or a literal string. For single-dimensional arrays without
      * tag for the index, it is permitted to assign a smaller array into a
      * larger one (without warning). This is to make it easier to work with
-     * strings.
+     * strings. Function checkarrays() verifies all this.
      */
-    int exactmatch=TRUE;
-    int idxtag=0;
-    int ltlength=(int)lval3.sym->dim.array.length;
-    if ((lval3.ident==iARRAYCELL || lval3.ident==iARRAYCHAR)
-        && lval3.constval>0 && lval3.sym->dim.array.level==0)
-    {
-      ltlength=(int)lval3.constval;
-    } /* if */
-    if (lval2.ident!=iARRAY && lval2.ident!=iREFARRAY
-        && (lval2.sym==NULL || lval2.constval<=0))
-      error(33,lval3.sym->name);        /* array must be indexed */
-    if (lval2.sym!=NULL) {
-      if (lval2.constval==0) {
-        val=lval2.sym->dim.array.length;/* array variable */
-      } else {
-        val=lval2.constval;
-        if (lval2.sym->dim.array.level!=0)
-          error(28,lval2.sym->name);
-      } /* if */
-      level=lval2.sym->dim.array.level;
-      idxtag=lval2.sym->x.tags.index;
-      if (level==0 && idxtag==0 && lval3.sym->x.tags.index==0)
-        exactmatch=FALSE;
-    } else {
-      val=lval2.constval;               /* literal array */
-      level=0;
-      /* If val is negative, it means that lval2 is a literal string.
-       * The string array size may be smaller than the destination
-       * array, provided that the destination array does not have an
-       * index tag.
-       */
-      if (val<0) {
-        val=-val;
-        if (lval3.sym->x.tags.index==0)
-          exactmatch=FALSE;
-      } /* if */
-    } /* if */
-    if (lval3.sym->dim.array.level!=level)
-      return error(48); /* array dimensions must match */
-    else if (ltlength<val || exactmatch && ltlength>val || val==0)
-      return error(47); /* array sizes must match */
-    else if (lval3.ident!=iARRAYCELL && !matchtag(lval3.sym->x.tags.index,idxtag,TRUE))
-      error(229,(lval2.sym!=NULL) ? lval2.sym->name : lval3.sym->name); /* index tag mismatch */
-    if (level>0) {
-      /* check the sizes of all sublevels too */
-      symbol *sym1 = lval3.sym;
-      symbol *sym2 = lval2.sym;
-      int i;
-      assert(sym1!=NULL && sym2!=NULL);
-      /* ^^^ sym2 must be valid, because only variables can be
-       *     multi-dimensional (there are no multi-dimensional literals),
-       *     sym1 must be valid because it must be an lvalue
-       */
-      assert(exactmatch);
-      for (i=0; i<level; i++) {
-        sym1=finddepend(sym1);
-        sym2=finddepend(sym2);
-        assert(sym1!=NULL && sym2!=NULL);
-        /* ^^^ both arrays have the same dimensions (this was checked
-         *     earlier) so the dependend should always be found
-         */
-        if (sym1->dim.array.length!=sym2->dim.array.length)
-          error(47);    /* array sizes must match */
-        else if (!matchtag(sym1->x.tags.index,sym2->x.tags.index,TRUE))
-          error(229,sym2->name);  /* index tag mismatch */
-      } /* for */
-      /* get the total size in cells of the multi-dimensional array */
-      val=array_totalsize(lval3.sym);
-      assert(val>0);    /* already checked */
-    } /* if */
+    val=checkarrays(&lval3,&lval2);
   } else {
     /* left operand is not an array, right operand should then not be either */
     if (lval2.ident==iARRAY || lval2.ident==iREFARRAY)
@@ -1147,18 +1191,20 @@ static int hier13(value *lval)
 }
 
 /* the order of the operators in these lists is important and must be
- * the same as the order of the operators in the array "op1"
+ * the same as the order of the operators in the array "op1" (with the
+ * exception of list11 and list12, because these "early-exit" operators
+ * are a special case anyway)
  */
-static int list3[]  = {'*','/','%',0};
-static int list4[]  = {'+','-',0};
-static int list5[]  = {tSHL,tSHR,tSHRU,0};
-static int list6[]  = {'&',0};
-static int list7[]  = {'^',0};
-static int list8[]  = {'|',0};
-static int list9[]  = {tlLE,tlGE,'<','>',0};
-static int list10[] = {tlEQ,tlNE,0};
-static int list11[] = {tlAND,0};
-static int list12[] = {tlOR,0};
+static const int list3[]  = {'*','/','%',0};
+static const int list4[]  = {'+','-',0};
+static const int list5[]  = {tSHL,tSHR,tSHRU,0};
+static const int list6[]  = {'&',0};
+static const int list7[]  = {'^',0};
+static const int list8[]  = {'|',0};
+static const int list9[]  = {tlLE,tlGE,'<','>',0};
+static const int list10[] = {tlEQ,tlNE,0};
+static const int list11[] = {tlAND,0};
+static const int list12[] = {tlOR,0};
 
 static int hier12(value *lval)
 {

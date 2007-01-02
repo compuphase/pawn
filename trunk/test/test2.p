@@ -267,4 +267,10 @@ main()
         b=1
         printf "result=%s\n", b ? return_array(1) : other
     #endif
+
+    #if defined PRINTF_PCT
+        new result = 15
+        printf "queue: %d%%\n", result
+        printf "queue: %d\n"
+    #endif
     }

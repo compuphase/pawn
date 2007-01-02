@@ -20,7 +20,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: sc1.c 3664 2006-11-08 12:09:25Z thiadmer $
+ *  Version: $Id: sc1.c 3692 2007-01-01 20:11:19Z thiadmer $
  */
 #include <assert.h>
 #include <ctype.h>
@@ -4580,7 +4580,8 @@ static int testsymbols(symbol *root,int level,int testlabs,int testconst)
       if ((sym->usage & uPUBLIC)!=0 || strcmp(sym->name,uMAINFUNC)==0)
         entry=TRUE;                 /* there is an entry point */
       /* also mark the function to the debug information */
-      if (((sym->usage & uREAD)!=0 || (sym->usage & uPUBLIC)!=0) && (sym->usage & uNATIVE)==0)
+      if (((sym->usage & uREAD)!=0 || (sym->usage & uPUBLIC)!=0 && (sym->usage & uDEFINE)!=0)
+          && (sym->usage & uNATIVE)==0)
         insert_dbgsymbol(sym);
       break;
     case iCONSTEXPR:

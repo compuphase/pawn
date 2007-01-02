@@ -22,7 +22,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: amxcons.c 3681 2006-12-01 10:20:23Z thiadmer $
+ *  Version: $Id: amxcons.c 3693 2007-01-02 13:36:50Z thiadmer $
  */
 
 #if defined _UNICODE || defined __UNICODE__ || defined UNICODE
@@ -94,13 +94,15 @@
   void amx_wherexy(int *x,int *y);
   unsigned int amx_setattr(int foregr,int backgr,int highlight);
   void amx_console(int columns, int lines, int flags);
+  int amx_kbhit(void);
 #elif defined VT100 || defined LINUX || defined ANSITERM
   /* ANSI/VT100 terminal, or shell emulating "xterm" */
-  #define amx_putstr(s)   printf("%s",(s))
-  #define amx_putchar(c)  putchar(c)
-  #define amx_fflush()    fflush(stdout)
-  #define amx_getch()     getch()
-  #define amx_gets(s,n)   fgets(s,n,stdin)
+  #define amx_putstr(s)       printf("%s",(s))
+  #define amx_putchar(c)      putchar(c)
+  #define amx_fflush()        fflush(stdout)
+  #define amx_getch()         getch()
+  #define amx_gets(s,n)       fgets(s,n,stdin)
+  #define amx_kbhit()         kbhit()
 
   int amx_termctl(int code,int value)
   {
@@ -219,11 +221,12 @@
   }
 #elif defined __WIN32__ || defined _WIN32 || defined WIN32
   /* Win32 console */
-  #define amx_putstr(s)   _tprintf("%s",(s))
-  #define amx_putchar(c)  _puttchar(c)
-  #define amx_fflush()    fflush(stdout)
-  #define amx_getch()     getch()
-  #define amx_gets(s,n)   _fgetts(s,n,stdin)
+  #define amx_putstr(s)       _tprintf("%s",(s))
+  #define amx_putchar(c)      _puttchar(c)
+  #define amx_fflush()        fflush(stdout)
+  #define amx_getch()         getch()
+  #define amx_gets(s,n)       _fgetts(s,n,stdin)
+  #define amx_kbhit()         kbhit()
 
   int amx_termctl(int code,int value)
   {
@@ -350,6 +353,7 @@
   #define amx_setattr(c,b,h)  (0)
   #define amx_termctl(c,v)    (0)
   #define amx_console(c,l,f)  (void)(0)
+  #define amx_kbhit()         kbhit()
 #else
   /* assume a streaming terminal; limited features (no colour, no cursor
    * control)
@@ -366,6 +370,7 @@
   #define amx_setattr(c,b,h)  ((void)(c),(void)(b),(void)(h),(0))
   #define amx_termctl(c,v)    ((void)(c),(void)(v),(0))
   #define amx_console(c,l,f)  ((void)(c),(void)(l),(void)(f))
+  #define amx_kbhit()         kbhit()
 #endif
 
 #if !defined AMX_TERMINAL && (defined __WIN32__ || defined _WIN32 || defined WIN32)
@@ -573,10 +578,6 @@ static int dochar(AMX *amx,TCHAR ch,cell param,TCHAR sign,TCHAR decpoint,int wid
   assert(f_putchar!=NULL);
 
   switch (ch) {
-  case __T('%'):
-    f_putchar(user,ch);
-    return 0;
-
   case __T('c'):
     amx_GetAddr(amx,param,&cptr);
     width--;            /* single character itself has a with of 1 */
@@ -701,7 +702,7 @@ static int dochar(AMX *amx,TCHAR ch,cell param,TCHAR sign,TCHAR decpoint,int wid
 
 enum {
   FMT_NONE,   /* not in format state; accept '%' */
-  FMT_START,  /* found '%', accept '+', '-' (START), '0' (filler; START), digit (WIDTH), '.' (DECIM) or format letter (done) */
+  FMT_START,  /* found '%', accept '+', '-' (START), '0' (filler; START), digit (WIDTH), '.' (DECIM), or '%' or format letter (done) */
   FMT_WIDTH,  /* found digit after '%' or sign, accept digit (WIDTH), '.' (DECIM) or format letter (done) */
   FMT_DECIM,  /* found digit after '.', accept accept digit (DECIM) or format letter (done) */
 };
@@ -734,8 +735,11 @@ static int formatstate(TCHAR c,int *state,TCHAR *sign,TCHAR *decpoint,int *width
       *decpoint=c;
       *digits=0;
       *state=FMT_DECIM;
+    } else if (c==__T('%')) {
+      *state=FMT_NONE;
+      return -1;  /* print literal '%' */
     } else {
-      return 1; /* print formatted character */
+      return 1;   /* print formatted character */
     } /* if */
     break;
   case FMT_WIDTH:
@@ -746,14 +750,14 @@ static int formatstate(TCHAR c,int *state,TCHAR *sign,TCHAR *decpoint,int *width
       *digits=0;
       *state=FMT_DECIM;
     } else {
-      return 1; /* print formatted character */
+      return 1;   /* print formatted character */
     } /* if */
     break;
   case FMT_DECIM:
     if (c>=__T('0') && c<=__T('9')) {
       *digits=*digits*10+(int)(c-__T('0'));
     } else {
-      return 1; /* print formatted character */
+      return 1;   /* print formatted character */
     } /* if */
     break;
   } /* switch */
@@ -860,17 +864,19 @@ int amx_printstring(AMX *amx,cell *cstr,AMX_FMTINFO *info)
         case -1:
           f_putchar(user,c);
           break;
-        case 1:
-          assert(info!=NULL && info->params!=NULL);
-          paramidx+=dochar(amx,c,info->params[paramidx],sign,decpoint,width,digits,filler,
-                           f_putstr,f_putchar,user);
-          fmtstate=FMT_NONE;
-          break;
         case 0:
+          break;
+        case 1:
           assert(info!=NULL && info->params!=NULL);
           if (paramidx>=info->numparams)  /* insufficient parameters passed */
             amx_RaiseError(amx, AMX_ERR_NATIVE);
+          else
+            paramidx+=dochar(amx,c,info->params[paramidx],sign,decpoint,width,digits,filler,
+                             f_putstr,f_putchar,user);
+          fmtstate=FMT_NONE;
           break;
+        default:
+          assert(0);
         } /* switch */
         if (j==0)
           i++;
@@ -883,17 +889,19 @@ int amx_printstring(AMX *amx,cell *cstr,AMX_FMTINFO *info)
         case -1:
           f_putchar(user,(TCHAR)cstr[i]);
           break;
-        case 1:
-          assert(info!=NULL && info->params!=NULL);
-          paramidx+=dochar(amx,(TCHAR)cstr[i],info->params[paramidx],sign,decpoint,width,digits,filler,
-                           f_putstr,f_putchar,user);
-          fmtstate=FMT_NONE;
-          break;
         case 0:
+          break;
+        case 1:
           assert(info!=NULL && info->params!=NULL);
           if (paramidx>=info->numparams)  /* insufficient parameters passed */
             amx_RaiseError(amx, AMX_ERR_NATIVE);
+          else
+            paramidx+=dochar(amx,(TCHAR)cstr[i],info->params[paramidx],sign,decpoint,width,digits,filler,
+                             f_putstr,f_putchar,user);
+          fmtstate=FMT_NONE;
           break;
+        default:
+          assert(0);
         } /* switch */
       } /* for */
     } /* if */
@@ -1212,8 +1220,8 @@ static int AMXAPI amx_ConsoleIdle(AMX *amx, int AMXAPI Exec(AMX *, cell *, int))
   if (PrevIdle != NULL)
     PrevIdle(amx, Exec);
 
-  if (kbhit()) {
-    key = getch();
+  if (amx_kbhit()) {
+    key = amx_getch();
     amx_Push(amx, key);
     err = Exec(amx, NULL, idxKeyPressed);
     while (err == AMX_ERR_SLEEP)
