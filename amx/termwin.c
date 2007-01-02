@@ -18,7 +18,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: termwin.c 3648 2006-10-12 11:24:50Z thiadmer $
+ *  Version: $Id: termwin.c 3693 2007-01-02 13:36:50Z thiadmer $
  */
 
 #if defined _UNICODE || defined __UNICODE__ || defined UNICODE
@@ -355,7 +355,7 @@ static void RefreshScreen(CONSOLE *con,int startline,int endline)
   GetClientRect(con->hwnd,&rect);
   rect.top=startline*con->cheight;
   rect.bottom=endline*con->cheight;
-  InvalidateRect(con->hwnd,&rect,FALSE);
+  InvalidateRect(con->hwnd,NULL/*&rect*/,FALSE);
   RefreshCaretPos(con);
 }
 
@@ -788,6 +788,7 @@ int amx_putstr(const TCHAR *string)
   CONSOLE *con;
   if ((con=ActiveConsole())!=NULL) {
     int pos, i;
+    int top=con->csry;
 
     pos=(con->csry*con->columns+con->csrx)*2;
     assert(con->buffer!=NULL);
@@ -824,7 +825,7 @@ int amx_putstr(const TCHAR *string)
         } /* if */
       } /* if */
     } /* for */
-    RefreshScreen(con,con->csry,con->csry+1);
+    RefreshScreen(con,top,con->csry+1);
   } /* if */
   return 0;
 }
@@ -882,13 +883,27 @@ int amx_putchar(int c)
 
 int amx_fflush(void)
 {
+  CONSOLE *con;
+  if ((con=ActiveConsole())!=NULL && IsWindow(con->hwnd))
+    UpdateWindow(con->hwnd);
   return 1;
+}
+
+static void ProcessMessages(void)
+{
+  MSG msg;
+
+  while (PeekMessage(&msg,NULL,0,0,PM_REMOVE)) {
+    TranslateMessage(&msg);
+    DispatchMessage(&msg);
+  } /* while */
 }
 
 int amx_kbhit(void)
 {
   CONSOLE *con;
 
+  ProcessMessages();
   if ((con=ActiveConsole())!=NULL)
     return con->keyq_start!=con->keyq_end;
   return 0;
@@ -900,13 +915,8 @@ int amx_getch(void)
   int c=-1;
 
   if ((con=ActiveConsole())!=NULL) {
-    MSG msg;
-    while (con->keyq_start==con->keyq_end) {
-      while (PeekMessage(&msg,NULL,0,0,PM_REMOVE)) {
-        TranslateMessage(&msg);
-        DispatchMessage(&msg);
-      } /* while */
-    } /* while */
+    while (con->keyq_start==con->keyq_end)
+      ProcessMessages();
     c=con->keyqueue[con->keyq_start];
     con->keyq_start=(con->keyq_start+1)%KEYQUEUE_SIZE;
   } /* if */

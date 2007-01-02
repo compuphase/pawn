@@ -32,4 +32,4 @@ native uuencode(dest[], const source[], numbytes, maxlength=sizeof dest);
 native memcpy(dest[], const source[], index=0, numbytes, maxlength=sizeof dest);
 
 stock bool: strequal(const string1[], const string2[], bool:ignorecase=false, length=cellmax)
-    return strcmp(string1, string2, ignorecase, length) == 0
+    return strcmp(string1, string2, ignorecase, length) == 0;

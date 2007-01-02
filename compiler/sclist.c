@@ -24,7 +24,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: sclist.c 3660 2006-11-05 13:05:09Z thiadmer $
+ *  Version: $Id: sclist.c 3692 2007-01-01 20:11:19Z thiadmer $
  */
 #include <assert.h>
 #include <limits.h>
@@ -467,7 +467,7 @@ static stringlist dbgstrings = {NULL, NULL};
 SC_FUNC stringlist *insert_dbgfile(const char *filename)
 {
 
-  if (sc_status==statWRITE && (sc_debug & sSYMBOLIC)!=0) {
+  if (sc_status!=statFIRST && (sc_debug & sSYMBOLIC)!=0) {
     char string[_MAX_PATH+40];
     assert(filename!=NULL);
     assert(strlen(filename)+40<sizeof string);

@@ -18,7 +18,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: sc2.c 3655 2006-10-23 20:17:52Z thiadmer $
+ *  Version: $Id: sc2.c 3692 2007-01-01 20:11:19Z thiadmer $
  */
 #include <assert.h>
 #include <stdio.h>
@@ -333,6 +333,7 @@ static void readline(unsigned char *line)
       free(inpfname);           /* return memory allocated for the include file name */
       inpfname=(char *)POPSTK_P();
       inpf=(FILE *)POPSTK_P();
+      //??? if sc_status==statSKIP, we should first finish the function to reset code_idx
       insert_dbgfile(inpfname);
       setfiledirect(inpfname);
       listline=-1;              /* force a #line directive when changing the file */
@@ -796,6 +797,7 @@ static int preproc_expr(cell *val,int *tag)
   int result;
   int index;
   cell code_index;
+  int cur_lit;
   char *term;
 
   /* Disable staging; it should be disabled already because
@@ -808,6 +810,8 @@ static int preproc_expr(cell *val,int *tag)
     stgdel(0,code_index);
     stgset(FALSE);
   } /* if */
+  /* save the position in the literal queue too */
+  cur_lit=litidx;
   assert((lptr-pline)<(int)strlen((char*)pline));   /* lptr must point inside the string */
   #if !defined NO_DEFINE
     /* preprocess the string */
@@ -825,6 +829,7 @@ static int preproc_expr(cell *val,int *tag)
   result=constexpr(val,tag,NULL);       /* get value (or 0 on error) */
   *term='\0';                           /* erase the token (if still present) */
   lexclr(FALSE);                        /* clear any "pushed" tokens */
+  litidx=cur_lit;                       /* reset literal pool */
   return result;
 }
 

@@ -18,7 +18,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: sc4.c 3633 2006-08-11 16:20:18Z thiadmer $
+ *  Version: $Id: sc4.c 3684 2006-12-10 16:16:47Z thiadmer $
  */
 #include <assert.h>
 #include <ctype.h>
@@ -1071,6 +1071,14 @@ SC_FUNC void ob_eq(void)
   code_idx+=opcodes(1);
 }
 
+SC_FUNC void oa_eq(cell size)
+{
+  stgwrite("\tcmps ");
+  outval(size, TRUE);
+  stgwrite("\tnot\n");  /* CMPS results in zero if both arrays match, change it to 1 */
+  code_idx+=opcodes(2)+opargs(1);
+}
+
 /*
  *  test ALT!=PRI
  */
@@ -1078,6 +1086,15 @@ SC_FUNC void ob_ne(void)
 {
   stgwrite("\tneq\n");
   code_idx+=opcodes(1);
+}
+
+SC_FUNC void oa_ne(cell size)
+{
+  stgwrite("\tcmps ");
+  outval(size, TRUE);
+  stgwrite("\teq.c.pri 0\n");
+  stgwrite("\tnot\n");
+  code_idx+=opcodes(3)+opargs(2);
 }
 
 /* The abstract machine defines the relational instructions so that PRI is
