@@ -1,6 +1,6 @@
 <?xml version="1.0" ?>
 <xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="1.0">
-<!-- Version: $Id$ -->
+<!-- Version: $Id: pawndoc.xsl 7 2006-12-03 15:18:02Z thiadmer.riemersma $ -->
 
 <xsl:template match="/">
 <HTML>
