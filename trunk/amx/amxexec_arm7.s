@@ -33,7 +33,7 @@
 ;       misrepresented as being the original software.
 ;   3.  This notice may not be removed or altered from any source distribution.
 ;
-;   Version: $Id: amxexec_arm7.s 3692 2007-01-01 20:11:19Z thiadmer $
+;   Version: $Id: amxexec_arm7.s 3701 2007-01-21 17:01:21Z thiadmer $
 
 
 AMX_ERR_NONE      EQU      0

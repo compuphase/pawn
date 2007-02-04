@@ -19,7 +19,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: sc5.c 3579 2006-06-06 13:35:29Z thiadmer $
+ *  Version: $Id: sc5.c 3707 2007-02-04 12:51:45Z thiadmer $
  */
 #include <assert.h>
 #if defined	__WIN32__ || defined _WIN32 || defined __MSDOS__
@@ -109,7 +109,7 @@ static short lastfile;
 
   strexpand(string,(unsigned char *)msg,sizeof string,SCPACK_TABLE);
 
-  assert(errstart<=fline);
+  assert(errstart<=fline || errline>=0);
   if (errline>0)
     errstart=errline;
   else
@@ -182,6 +182,7 @@ SC_FUNC void errorset(int code,int line)
     errline=-1;
     break;
   case sSETPOS:
+    errstart=-1;        /* force error line number, forget start line */
     errline=line;
     break;
   } /* switch */
