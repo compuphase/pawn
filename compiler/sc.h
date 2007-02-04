@@ -25,7 +25,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: sc.h 3684 2006-12-10 16:16:47Z thiadmer $
+ *  Version: $Id: sc.h 3706 2007-01-29 07:30:10Z thiadmer $
  */
 #ifndef SC_H_INCLUDED
 #define SC_H_INCLUDED
@@ -566,7 +566,7 @@ SC_FUNC int check_userop(void (*oper)(void),int tag1,int tag2,int numparam,
                          value *lval,int *resulttag);
 SC_FUNC int matchtag(int formaltag,int actualtag,int allowcoerce);
 SC_FUNC int expression(cell *val,int *tag,symbol **symptr,int chkfuncresult);
-SC_FUNC int sc_getstateid(constvalue **automaton,constvalue **state);
+SC_FUNC int sc_getstateid(constvalue **automaton,constvalue **state,char *statename);
 SC_FUNC cell array_totalsize(symbol *sym);
 
 /* function prototypes in SC4.C */

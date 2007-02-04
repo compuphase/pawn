@@ -20,7 +20,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: sc1.c 3692 2007-01-01 20:11:19Z thiadmer $
+ *  Version: $Id: sc1.c 3707 2007-02-04 12:51:45Z thiadmer $
  */
 #include <assert.h>
 #include <ctype.h>
@@ -3466,9 +3466,10 @@ static int newfunc(char *firstname,int firsttag,int fpublic,int fstatic,int stoc
     sc_reparse=TRUE;      /* must add another pass to "initial scan" phase */
   } /* if */
   /* we want public functions to be explicitly prototyped, as they are called
-   * from the outside
+   * from the outside (the exception is main(), which is implicitly forward
+   * declared)
    */
-  if (fpublic && (sym->usage & uFORWARD)==0)
+  if (fpublic && (sym->usage & uFORWARD)==0 && strcmp(symbolname,uMAINFUNC)!=0)
     error(235,symbolname);
   /* declare all arguments */
   argcnt=declargs(sym,TRUE);
@@ -5802,11 +5803,12 @@ static void dostate(void)
   constvalue *automaton;
   constvalue *state;
   constvalue *stlist;
-  int flabel;
+  int flabel,result;
   symbol *sym;
   #if !defined SC_LIGHT
     int length,index,listid,listindex,stateindex;
     char *doc;
+    constvalue dummystate;
   #endif
 
   /* check for an optional condition */
@@ -5820,11 +5822,27 @@ static void dostate(void)
     flabel=-1;
   } /* if */
 
-  if (!sc_getstateid(&automaton,&state)) {
-    delete_autolisttable();
-    return;
-  } /* if */
+  result=sc_getstateid(&automaton,&state,name);
   needtoken(tTERM);
+  if (!result) {
+    /* create a dummy state, so that the transition table can be built in the
+     * report
+     */
+    #if !defined SC_LIGHT
+      if (sc_status==statFIRST) {
+        memset(&dummystate,0,sizeof dummystate);
+        assert(strlen(name)<=sNAMEMAX);
+        strcpy(dummystate.name,name);
+        state=&dummystate;
+      } else {
+        delete_autolisttable();
+        return;
+      } /* if */
+    #else
+      delete_autolisttable();
+      return;
+    #endif
+  } /* if */
 
   /* store the new state id */
   assert(state!=NULL);
@@ -5866,11 +5884,13 @@ static void dostate(void)
       } else {
         listid=-1;
       } /* if */
-      listindex=0;
+      assert(state!=NULL && state->name!=NULL && strlen(state->name)>0 && strlen(state->name)<=sNAMEMAX);
+      strcpy(name,state->name);
       length=strlen(name)+70; /* +70 for the fixed part "<transition ... />\n" */
       /* see if there are any condition strings to attach */
       for (index=0; (str=get_autolist(index))!=NULL; index++)
         length+=strlen(str);
+      listindex=0;
       if ((doc=(char*)malloc(length*sizeof(char)))!=NULL) {
         do {
           sprintf(doc,"<transition target=\"%s\"",name);

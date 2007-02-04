@@ -18,7 +18,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: sc3.c 3684 2006-12-10 16:16:47Z thiadmer $
+ *  Version: $Id: sc3.c 3706 2007-01-29 07:30:10Z thiadmer $
  */
 #include <assert.h>
 #include <stdio.h>
@@ -825,7 +825,7 @@ SC_FUNC int expression(cell *val,int *tag,symbol **symptr,int chkfuncresult)
   return lval.ident;
 }
 
-SC_FUNC int sc_getstateid(constvalue **automaton,constvalue **state)
+SC_FUNC int sc_getstateid(constvalue **automaton,constvalue **state,char *statename)
 {
   char name[sNAMEMAX+1];
   cell val;
@@ -865,7 +865,9 @@ SC_FUNC int sc_getstateid(constvalue **automaton,constvalue **state)
   assert(*automaton!=NULL);
   fsa=(*automaton)->index;
 
-  assert(*automaton!=NULL);
+  if (statename!=NULL)
+    strcpy(statename,name);
+
   *state=state_find(name,fsa);
   if (*state==NULL) {
     char *fsaname=(*automaton)->name;
@@ -1473,7 +1475,7 @@ static int hier2(value *lval)
   case tSTATE: {
     constvalue *automaton;
     constvalue *state;
-    if (sc_getstateid(&automaton,&state)) {
+    if (sc_getstateid(&automaton,&state,NULL)) {
       assert(automaton!=NULL);
       assert(automaton->index==0 && automaton->name[0]=='\0' || automaton->index>0);
       loadreg(automaton->value,sALT);
