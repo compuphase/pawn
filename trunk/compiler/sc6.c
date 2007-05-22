@@ -18,7 +18,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: sc6.c 3648 2006-10-12 11:24:50Z thiadmer $
+ *  Version: $Id: sc6.c 3763 2007-05-22 07:23:30Z thiadmer $
  */
 #include <assert.h>
 #include <stdio.h>
@@ -40,7 +40,7 @@
 static void append_dbginfo(FILE *fout);
 
 
-typedef cell (*OPCODE_PROC)(FILE *fbin,char *params,cell opcode);
+typedef cell (*OPCODE_PROC)(FILE *fbin,const char *params,cell opcode,cell cip);
 
 typedef struct {
   cell opcode;
@@ -49,15 +49,13 @@ typedef struct {
   OPCODE_PROC func;
 } OPCODE;
 
-static cell codeindex;  /* similar to "code_idx" */
 static cell *lbltab;    /* label table */
 static int writeerror;
 static int bytes_in, bytes_out;
 static jmp_buf compact_err;
 
-/* apparently, strtol() does not work correctly on very large (unsigned)
- * hexadecimal values */
-static ucell hex2long(const char *s,char **n)
+/* apparently, strtol() does not work correctly on very large hexadecimal values */
+SC_FUNC ucell hex2ucell(const char *s,const char **n)
 {
   ucell result=0L;
   int negate=FALSE;
@@ -93,11 +91,11 @@ static ucell hex2long(const char *s,char **n)
   return (ucell)result;
 }
 
-static ucell getparam(const char *s,char **n)
+static ucell getparam(const char *s,const char **n)
 {
   ucell result=0;
   for ( ;; ) {
-    result+=hex2long(s,(char**)&s);
+    result+=hex2ucell(s,&s);
     if (*s!='+')
       break;
     s++;
@@ -175,11 +173,11 @@ static uint64_t *align64(uint64_t *v)
   #define aligncell(v)  (v)
 #endif
 
-static char *skipwhitespace(char *str)
+static char *skipwhitespace(const char *str)
 {
   while (isspace(*str))
     str++;
-  return str;
+  return (char*)str;
 }
 
 static char *stripcomment(char *str)
@@ -243,36 +241,37 @@ static void write_encoded(FILE *fbin,ucell *c,int num)
   } /* while */
 }
 
-#if defined __BORLANDC__ || defined __WATCOMC__
-  #pragma argsused
-#endif
-static cell noop(FILE *fbin,char *params,cell opcode)
+static cell noop(FILE *fbin,const char *params,cell opcode,cell cip)
 {
+  (void)fbin;
+  (void)params;
+  (void)opcode;
+  (void)cip;
   return 0;
 }
 
-#if defined __BORLANDC__ || defined __WATCOMC__
-  #pragma argsused
-#endif
-static cell set_currentfile(FILE *fbin,char *params,cell opcode)
+static cell set_currentfile(FILE *fbin,const char *params,cell opcode,cell cip)
 {
+  (void)fbin;
+  (void)opcode;
+  (void)cip;
   fcurrent=(short)getparam(params,NULL);
   return 0;
 }
 
-#if defined __BORLANDC__ || defined __WATCOMC__
-  #pragma argsused
-#endif
-static cell parm0(FILE *fbin,char *params,cell opcode)
+static cell parm0(FILE *fbin,const char *params,cell opcode,cell cip)
 {
+  (void)params;
+  (void)cip;
   if (fbin!=NULL)
     write_encoded(fbin,(ucell*)&opcode,1);
   return opcodes(1);
 }
 
-static cell parm1(FILE *fbin,char *params,cell opcode)
+static cell parm1(FILE *fbin,const char *params,cell opcode,cell cip)
 {
   ucell p=getparam(params,NULL);
+  (void)cip;
   if (fbin!=NULL) {
     write_encoded(fbin,(ucell*)&opcode,1);
     write_encoded(fbin,&p,1);
@@ -280,10 +279,24 @@ static cell parm1(FILE *fbin,char *params,cell opcode)
   return opcodes(1)+opargs(1);
 }
 
-static cell parm2(FILE *fbin,char *params,cell opcode)
+static cell parm1_p(FILE *fbin,const char *params,cell opcode,cell cip)
+{
+  ucell p=getparam(params,NULL);
+  (void)cip;
+  assert(p<(1<<(sizeof(cell)*4)));
+  assert(opcode>=0 && opcode<=255);
+  if (fbin!=NULL) {
+    p=(p<<sizeof(cell)/2) | opcode;
+    write_encoded(fbin,&p,1);
+  } /* if */
+  return opcodes(1);
+}
+
+static cell parm2(FILE *fbin,const char *params,cell opcode,cell cip)
 {
   ucell p1=getparam(params,&params);
   ucell p2=getparam(params,NULL);
+  (void)cip;
   if (fbin!=NULL) {
     write_encoded(fbin,(ucell*)&opcode,1);
     write_encoded(fbin,&p1,1);
@@ -292,11 +305,12 @@ static cell parm2(FILE *fbin,char *params,cell opcode)
   return opcodes(1)+opargs(2);
 }
 
-static cell parm3(FILE *fbin,char *params,cell opcode)
+static cell parm3(FILE *fbin,const char *params,cell opcode,cell cip)
 {
   ucell p1=getparam(params,&params);
   ucell p2=getparam(params,&params);
   ucell p3=getparam(params,NULL);
+  (void)cip;
   if (fbin!=NULL) {
     write_encoded(fbin,(ucell*)&opcode,1);
     write_encoded(fbin,&p1,1);
@@ -306,12 +320,13 @@ static cell parm3(FILE *fbin,char *params,cell opcode)
   return opcodes(1)+opargs(3);
 }
 
-static cell parm4(FILE *fbin,char *params,cell opcode)
+static cell parm4(FILE *fbin,const char *params,cell opcode,cell cip)
 {
   ucell p1=getparam(params,&params);
   ucell p2=getparam(params,&params);
   ucell p3=getparam(params,&params);
   ucell p4=getparam(params,NULL);
+  (void)cip;
   if (fbin!=NULL) {
     write_encoded(fbin,(ucell*)&opcode,1);
     write_encoded(fbin,&p1,1);
@@ -322,13 +337,14 @@ static cell parm4(FILE *fbin,char *params,cell opcode)
   return opcodes(1)+opargs(4);
 }
 
-static cell parm5(FILE *fbin,char *params,cell opcode)
+static cell parm5(FILE *fbin,const char *params,cell opcode,cell cip)
 {
   ucell p1=getparam(params,&params);
   ucell p2=getparam(params,&params);
   ucell p3=getparam(params,&params);
   ucell p4=getparam(params,&params);
   ucell p5=getparam(params,NULL);
+  (void)cip;
   if (fbin!=NULL) {
     write_encoded(fbin,(ucell*)&opcode,1);
     write_encoded(fbin,&p1,1);
@@ -340,14 +356,13 @@ static cell parm5(FILE *fbin,char *params,cell opcode)
   return opcodes(1)+opargs(5);
 }
 
-#if defined __BORLANDC__ || defined __WATCOMC__
-  #pragma argsused
-#endif
-static cell do_dump(FILE *fbin,char *params,cell opcode)
+static cell do_dump(FILE *fbin,const char *params,cell opcode,cell cip)
 {
   ucell p;
   int num = 0;
 
+  (void)opcode;
+  (void)cip;
   while (*params!='\0') {
     p=getparam(params,&params);
     if (fbin!=NULL)
@@ -359,7 +374,7 @@ static cell do_dump(FILE *fbin,char *params,cell opcode)
   return num*sizeof(cell);
 }
 
-static cell do_call(FILE *fbin,char *params,cell opcode)
+static cell do_call(FILE *fbin,const char *params,cell opcode,cell cip)
 {
   char name[sNAMEMAX+1];
   int i;
@@ -375,11 +390,11 @@ static cell do_call(FILE *fbin,char *params,cell opcode)
 
   if (name[0]=='l' && name[1]=='.') {
     /* this is a label, not a function symbol */
-    i=(int)hex2long(name+2,NULL);
+    i=(int)hex2ucell(name+2,NULL);
     assert(i>=0 && i<sc_labnum);
     if (fbin!=NULL) {
       assert(lbltab!=NULL);
-      p=lbltab[i];
+      p=lbltab[i]-cip;          /* make relative address */
     } /* if */
   } else {
     /* look up the function address; note that the correct file number must
@@ -389,7 +404,7 @@ static cell do_call(FILE *fbin,char *params,cell opcode)
     assert(sym!=NULL);
     assert(sym->ident==iFUNCTN || sym->ident==iREFFUNC);
     assert(sym->vclass==sGLOBAL);
-    p=sym->addr;
+    p=sym->addr-cip;            /* make relative address */
   } /* if */
 
   if (fbin!=NULL) {
@@ -399,55 +414,53 @@ static cell do_call(FILE *fbin,char *params,cell opcode)
   return opcodes(1)+opargs(1);
 }
 
-static cell do_jump(FILE *fbin,char *params,cell opcode)
+static cell do_jump(FILE *fbin,const char *params,cell opcode,cell cip)
 {
   int i;
   ucell p;
 
-  i=(int)hex2long(params,NULL);
+  i=(int)hex2ucell(params,NULL);
   assert(i>=0 && i<sc_labnum);
 
   if (fbin!=NULL) {
     assert(lbltab!=NULL);
-    p=lbltab[i];
+    p=lbltab[i]-cip;            /* make relative address */
     write_encoded(fbin,(ucell*)&opcode,1);
     write_encoded(fbin,&p,1);
   } /* if */
   return opcodes(1)+opargs(1);
 }
 
-static cell do_switch(FILE *fbin,char *params,cell opcode)
+static cell do_switch(FILE *fbin,const char *params,cell opcode,cell cip)
 {
   int i;
   ucell p;
 
-  i=(int)hex2long(params,NULL);
+  i=(int)hex2ucell(params,NULL);
   assert(i>=0 && i<sc_labnum);
 
   if (fbin!=NULL) {
     assert(lbltab!=NULL);
-    p=lbltab[i];
+    p=lbltab[i]-cip;
     write_encoded(fbin,(ucell*)&opcode,1);
     write_encoded(fbin,&p,1);
   } /* if */
   return opcodes(1)+opargs(1);
 }
 
-#if defined __BORLANDC__ || defined __WATCOMC__
-  #pragma argsused
-#endif
-static cell do_case(FILE *fbin,char *params,cell opcode)
+static cell do_case(FILE *fbin,const char *params,cell opcode,cell cip)
 {
   int i;
   ucell p,v;
 
-  v=hex2long(params,&params);
-  i=(int)hex2long(params,NULL);
+  (void)opcode;
+  v=hex2ucell(params,&params);
+  i=(int)hex2ucell(params,NULL);
   assert(i>=0 && i<sc_labnum);
 
   if (fbin!=NULL) {
     assert(lbltab!=NULL);
-    p=lbltab[i];
+    p=lbltab[i]-cip;
     write_encoded(fbin,&v,1);
     write_encoded(fbin,&p,1);
   } /* if */
@@ -460,44 +473,63 @@ static OPCODE opcodelist[] = {
   /* opcodes in sorted order */
   { 78, "add",        sIN_CSEG, parm0 },
   { 87, "add.c",      sIN_CSEG, parm1 },
+  {193, "add.p.c",    sIN_CSEG, parm1_p },
   { 14, "addr.alt",   sIN_CSEG, parm1 },
+  {170, "addr.p.alt", sIN_CSEG, parm1_p },
+  {169, "addr.p.pri", sIN_CSEG, parm1_p },
   { 13, "addr.pri",   sIN_CSEG, parm1 },
   { 30, "align.alt",  sIN_CSEG, parm1 },
+  {183, "align.p.alt",sIN_CSEG, parm1_p },
+  {182, "align.p.pri",sIN_CSEG, parm1_p },
   { 29, "align.pri",  sIN_CSEG, parm1 },
   { 81, "and",        sIN_CSEG, parm0 },
   {121, "bounds",     sIN_CSEG, parm1 },
+  {207, "bounds.p",   sIN_CSEG, parm1_p },
   {137, "break",      sIN_CSEG, parm0 },  /* version 8 */
   { 49, "call",       sIN_CSEG, do_call },
   { 50, "call.pri",   sIN_CSEG, parm0 },
   {  0, "case",       sIN_CSEG, do_case },
   {130, "casetbl",    sIN_CSEG, parm0 },  /* version 1 */
   {118, "cmps",       sIN_CSEG, parm1 },
+  {204, "cmps.p",     sIN_CSEG, parm1_p },
   {  0, "code",       sIN_CSEG, set_currentfile },
   {156, "const",      sIN_CSEG, parm2 },  /* version 9 */
   { 12, "const.alt",  sIN_CSEG, parm1 },
+  {168, "const.p.alt",sIN_CSEG, parm1_p },
+  {167, "const.p.pri",sIN_CSEG, parm1_p },
   { 11, "const.pri",  sIN_CSEG, parm1 },
   {157, "const.s",    sIN_CSEG, parm2 },  /* version 9 */
   {  0, "data",       sIN_DSEG, set_currentfile },
   {114, "dec",        sIN_CSEG, parm1 },
   {113, "dec.alt",    sIN_CSEG, parm0 },
   {116, "dec.i",      sIN_CSEG, parm0 },
+  {201, "dec.p",      sIN_CSEG, parm1_p },
+  {202, "dec.p.s",    sIN_CSEG, parm1_p },
   {112, "dec.pri",    sIN_CSEG, parm0 },
   {115, "dec.s",      sIN_CSEG, parm1 },
   {  0, "dump",       sIN_DSEG, do_dump },
   { 95, "eq",         sIN_CSEG, parm0 },
   {106, "eq.c.alt",   sIN_CSEG, parm1 },
   {105, "eq.c.pri",   sIN_CSEG, parm1 },
+  {198, "eq.p.c.alt", sIN_CSEG, parm1_p },
+  {197, "eq.p.c.pri", sIN_CSEG, parm1_p },
 /*{124, "file",       sIN_CSEG, do_file }, */
   {119, "fill",       sIN_CSEG, parm1 },
+  {205, "fill.p",     sIN_CSEG, parm1_p },
   {100, "geq",        sIN_CSEG, parm0 },
   { 99, "grtr",       sIN_CSEG, parm0 },
   {120, "halt",       sIN_CSEG, parm1 },
+  {206, "halt.p",     sIN_CSEG, parm1_p },
   { 45, "heap",       sIN_CSEG, parm1 },
+  {188, "heap.p",     sIN_CSEG, parm1_p },
   { 27, "idxaddr",    sIN_CSEG, parm0 },
   { 28, "idxaddr.b",  sIN_CSEG, parm1 },
+  {181, "idxaddr.p.b",sIN_CSEG, parm1_p },
   {109, "inc",        sIN_CSEG, parm1 },
   {108, "inc.alt",    sIN_CSEG, parm0 },
   {111, "inc.i",      sIN_CSEG, parm0 },
+  {199, "inc.p",      sIN_CSEG, parm1_p },
+  {200, "inc.p.s",    sIN_CSEG, parm1_p },
   {107, "inc.pri",    sIN_CSEG, parm0 },
   {110, "inc.s",      sIN_CSEG, parm1 },
   { 86, "invert",     sIN_CSEG, parm0 },
@@ -508,7 +540,7 @@ static OPCODE opcodelist[] = {
   { 57, "jless",      sIN_CSEG, do_jump },
   { 56, "jneq",       sIN_CSEG, do_jump },
   { 54, "jnz",        sIN_CSEG, do_jump },
-  { 52, "jrel",       sIN_CSEG, parm1 },  /* always a number */
+/*{ 52, "jrel",       sIN_CSEG, parm1 },  same as jump, since version 10 */
   { 64, "jsgeq",      sIN_CSEG, do_jump },
   { 63, "jsgrtr",     sIN_CSEG, do_jump },
   { 62, "jsleq",      sIN_CSEG, do_jump },
@@ -521,22 +553,33 @@ static OPCODE opcodelist[] = {
   { 97, "less",       sIN_CSEG, parm0 },
   { 25, "lidx",       sIN_CSEG, parm0 },
   { 26, "lidx.b",     sIN_CSEG, parm1 },
+  {180, "lidx.p.b",   sIN_CSEG, parm1_p },
 /*{125, "line",       sIN_CSEG, parm2 }, */
   {  2, "load.alt",   sIN_CSEG, parm1 },
   {154, "load.both",  sIN_CSEG, parm2 },  /* version 9 */
   {  9, "load.i",     sIN_CSEG, parm0 },
+  {159, "load.p.alt", sIN_CSEG, parm1_p },
+  {158, "load.p.pri", sIN_CSEG, parm1_p },
+  {161, "load.p.s.alt",sIN_CSEG,parm1_p },
+  {160, "load.p.s.pri",sIN_CSEG,parm1_p },
   {  1, "load.pri",   sIN_CSEG, parm1 },
   {  4, "load.s.alt", sIN_CSEG, parm1 },
   {155, "load.s.both",sIN_CSEG, parm2 },  /* version 9 */
   {  3, "load.s.pri", sIN_CSEG, parm1 },
   { 10, "lodb.i",     sIN_CSEG, parm1 },
+  {166, "lodb.p.i",   sIN_CSEG, parm1_p },
   {  6, "lref.alt",   sIN_CSEG, parm1 },
+  {163, "lref.p.alt", sIN_CSEG, parm1_p },
+  {162, "lref.p.pri", sIN_CSEG, parm1_p },
+  {165, "lref.p.s.alt",sIN_CSEG,parm1_p },
+  {164, "lref.p.s.pri",sIN_CSEG,parm1_p },
   {  5, "lref.pri",   sIN_CSEG, parm1 },
   {  8, "lref.s.alt", sIN_CSEG, parm1 },
   {  7, "lref.s.pri", sIN_CSEG, parm1 },
   { 34, "move.alt",   sIN_CSEG, parm0 },
   { 33, "move.pri",   sIN_CSEG, parm0 },
   {117, "movs",       sIN_CSEG, parm1 },
+  {203, "movs.p",     sIN_CSEG, parm1_p },
   { 85, "neg",        sIN_CSEG, parm0 },
   { 96, "neq",        sIN_CSEG, parm0 },
   {134, "nop",        sIN_CSEG, parm0 },  /* version 6 */
@@ -549,8 +592,12 @@ static OPCODE opcodelist[] = {
   {133, "push.adr",   sIN_CSEG, parm1 },  /* version 4 */
   { 37, "push.alt",   sIN_CSEG, parm0 },
   { 39, "push.c",     sIN_CSEG, parm1 },
+  {185, "push.p",     sIN_CSEG, parm1_p },
+  {208, "push.p.adr", sIN_CSEG, parm1_p },
+  {184, "push.p.c",   sIN_CSEG, parm1_p },
+  {186, "push.p.s",   sIN_CSEG, parm1_p },
   { 36, "push.pri",   sIN_CSEG, parm0 },
-  { 38, "push.r",     sIN_CSEG, parm1 },  /* obsolete (never generated) */
+/*{ 38, "push.r",     sIN_CSEG, parm1 },  obsolete (never generated) */
   { 41, "push.s",     sIN_CSEG, parm1 },
   {139, "push2",      sIN_CSEG, parm2 },  /* version 9 */
   {141, "push2.adr",  sIN_CSEG, parm2 },  /* version 9 */
@@ -578,29 +625,44 @@ static OPCODE opcodelist[] = {
   { 65, "shl",        sIN_CSEG, parm0 },
   { 69, "shl.c.alt",  sIN_CSEG, parm1 },
   { 68, "shl.c.pri",  sIN_CSEG, parm1 },
+  {190, "shl.p.c.alt",sIN_CSEG, parm1_p },
+  {189, "shl.p.c.pri",sIN_CSEG, parm1_p },
   { 66, "shr",        sIN_CSEG, parm0 },
   { 71, "shr.c.alt",  sIN_CSEG, parm1 },
   { 70, "shr.c.pri",  sIN_CSEG, parm1 },
+  {192, "shr.p.c.alt",sIN_CSEG, parm1_p },
+  {191, "shr.p.c.pri",sIN_CSEG, parm1_p },
   { 94, "sign.alt",   sIN_CSEG, parm0 },
   { 93, "sign.pri",   sIN_CSEG, parm0 },
   {102, "sleq",       sIN_CSEG, parm0 },
   {101, "sless",      sIN_CSEG, parm0 },
   { 72, "smul",       sIN_CSEG, parm0 },
   { 88, "smul.c",     sIN_CSEG, parm1 },
+  {194, "smul.p.c",   sIN_CSEG, parm1_p },
 /*{127, "srange",     sIN_CSEG, parm2 }, -- version 1 */
   { 20, "sref.alt",   sIN_CSEG, parm1 },
+  {176, "sref.p.alt", sIN_CSEG, parm1_p },
+  {175, "sref.p.pri", sIN_CSEG, parm1_p },
+  {178, "sref.p.s.alt",sIN_CSEG,parm1_p },
+  {177, "sref.p.s.pri",sIN_CSEG,parm1_p },
   { 19, "sref.pri",   sIN_CSEG, parm1 },
   { 22, "sref.s.alt", sIN_CSEG, parm1 },
   { 21, "sref.s.pri", sIN_CSEG, parm1 },
   { 67, "sshr",       sIN_CSEG, parm0 },
   { 44, "stack",      sIN_CSEG, parm1 },
+  {187, "stack.p",    sIN_CSEG, parm1_p },
   {  0, "stksize",    0,        noop },
   { 16, "stor.alt",   sIN_CSEG, parm1 },
   { 23, "stor.i",     sIN_CSEG, parm0 },
+  {172, "stor.p.alt", sIN_CSEG, parm1_p },
+  {171, "stor.p.pri", sIN_CSEG, parm1_p },
+  {174, "stor.p.s.alt",sIN_CSEG,parm1_p },
+  {173, "stor.p.s.pri",sIN_CSEG,parm1_p },
   { 15, "stor.pri",   sIN_CSEG, parm1 },
   { 18, "stor.s.alt", sIN_CSEG, parm1 },
   { 17, "stor.s.pri", sIN_CSEG, parm1 },
   { 24, "strb.i",     sIN_CSEG, parm1 },
+  {179, "strb.p.i",   sIN_CSEG, parm1_p },
   { 79, "sub",        sIN_CSEG, parm0 },
   { 80, "sub.alt",    sIN_CSEG, parm0 },
   {132, "swap.alt",   sIN_CSEG, parm0 },  /* version 4 */
@@ -618,6 +680,8 @@ static OPCODE opcodelist[] = {
   { 83, "xor",        sIN_CSEG, parm0 },
   { 91, "zero",       sIN_CSEG, parm1 },
   { 90, "zero.alt",   sIN_CSEG, parm0 },
+  {195, "zero.p",     sIN_CSEG, parm1_p },
+  {196, "zero.p.s",   sIN_CSEG, parm1_p },
   { 89, "zero.pri",   sIN_CSEG, parm0 },
   { 92, "zero.s",     sIN_CSEG, parm1 },
 };
@@ -942,12 +1006,12 @@ SC_FUNC int assemble(FILE *fout,FILE *fin)
    */
   lbltab=NULL;
   if (sc_labnum>0) {
+    cell codeindex=0; /* address of the current opcode similar to "code_idx" */
     /* only very short programs have zero labels; no first pass is needed
      * if there are no labels */
     lbltab=(cell *)malloc(sc_labnum*sizeof(cell));
     if (lbltab==NULL)
       error(103);               /* insufficient memory */
-    codeindex=0;
     pc_resetasm(fin);
     while (pc_readasm(fin,line,sizeof line)!=NULL) {
       stripcomment(line);
@@ -956,7 +1020,7 @@ SC_FUNC int assemble(FILE *fout,FILE *fin)
       if (*instr=='\0')
         continue;
       if (tolower(*instr)=='l' && *(instr+1)=='.') {
-        int lindex=(int)hex2long(instr+2,NULL);
+        int lindex=(int)hex2ucell(instr+2,NULL);
         assert(lindex>=0 && lindex<sc_labnum);
         lbltab[lindex]=codeindex;
       } else {
@@ -972,7 +1036,7 @@ SC_FUNC int assemble(FILE *fout,FILE *fin)
           error(104,instr);     /* invalid assembler instruction */
         } /* if */
         if (opcodelist[i].segment==sIN_CSEG)
-          codeindex+=opcodelist[i].func(NULL,skipwhitespace(params),opcodelist[i].opcode);
+          codeindex+=opcodelist[i].func(NULL,skipwhitespace(params),opcodelist[i].opcode,codeindex);
       } /* if */
     } /* while */
   } /* if */
@@ -981,6 +1045,7 @@ SC_FUNC int assemble(FILE *fout,FILE *fin)
   bytes_in=0;
   bytes_out=0;
   for (pass=sIN_CSEG; pass<=sIN_DSEG; pass++) {
+    cell codeindex=0; /* address of the current opcode similar to "code_idx" */
     pc_resetasm(fin);
     while (pc_readasm(fin,line,sizeof line)!=NULL) {
       stripcomment(line);
@@ -998,7 +1063,7 @@ SC_FUNC int assemble(FILE *fout,FILE *fin)
       i=findopcode(instr,(int)(params-instr));
       assert(opcodelist[i].name!=NULL);
       if (opcodelist[i].segment==pass)
-        opcodelist[i].func(fout,skipwhitespace(params),opcodelist[i].opcode);
+        codeindex+=opcodelist[i].func(fout,skipwhitespace(params),opcodelist[i].opcode,codeindex);
     } /* while */
   } /* for */
   if (bytes_out-bytes_in>0)
@@ -1054,7 +1119,7 @@ static void append_dbginfo(FILE *fout)
   AMX_DBG_SYMBOL dbgsym;
   AMX_DBG_SYMDIM dbgidxtag[sDIMEN_MAX];
   int index,dim,dbgsymdim;
-  char *str,*prevstr,*name,*prevname;
+  const char *str,*prevstr,*name,*prevname;
   ucell codeidx,previdx;
   constvalue *constptr;
   char symname[2*sNAMEMAX+16];
@@ -1078,7 +1143,7 @@ static void append_dbginfo(FILE *fout)
     assert(str!=NULL);
     assert(str[0]!='\0' && str[1]==':');
     if (str[0]=='F') {
-      codeidx=hex2long(str+2,&name);
+      codeidx=hex2ucell(str+2,&name);
       if (codeidx!=previdx) {
         if (prevstr!=NULL) {
           assert(prevname!=NULL);
@@ -1166,7 +1231,7 @@ static void append_dbginfo(FILE *fout)
     assert(str!=NULL);
     assert(str[0]!='\0' && str[1]==':');
     if (str[0]=='F') {
-      codeidx=hex2long(str+2,&name);
+      codeidx=hex2ucell(str+2,&name);
       if (codeidx!=previdx) {
         if (prevstr!=NULL) {
           assert(prevname!=NULL);
@@ -1196,8 +1261,8 @@ static void append_dbginfo(FILE *fout)
     assert(str!=NULL);
     assert(str[0]!='\0' && str[1]==':');
     if (str[0]=='L') {
-      dbgline.address=hex2long(str+2,&str);
-      dbgline.line=(int32_t)hex2long(str,NULL);
+      dbgline.address=hex2ucell(str+2,&str);
+      dbgline.line=(int32_t)hex2ucell(str,NULL);
       #if BYTE_ORDER==BIG_ENDIAN
         aligncell(&dbgline.address);
         align32(&dbgline.line);
@@ -1211,8 +1276,8 @@ static void append_dbginfo(FILE *fout)
     assert(str!=NULL);
     assert(str[0]!='\0' && str[1]==':');
     if (str[0]=='S') {
-      dbgsym.address=hex2long(str+2,&str);
-      dbgsym.tag=(int16_t)hex2long(str,&str);
+      dbgsym.address=hex2ucell(str+2,&str);
+      dbgsym.tag=(int16_t)hex2ucell(str,&str);
       str=skipwhitespace(str);
       assert(*str==':');
       name=skipwhitespace(str+1);
@@ -1220,18 +1285,18 @@ static void append_dbginfo(FILE *fout)
       assert(str!=NULL);
       assert((int)(str-name)<sizeof symname);
       strlcpy(symname,name,(int)(str-name)+1);
-      dbgsym.codestart=hex2long(str,&str);
-      dbgsym.codeend=hex2long(str,&str);
-      dbgsym.ident=(char)hex2long(str,&str);
-      dbgsym.vclass=(char)hex2long(str,&str);
+      dbgsym.codestart=hex2ucell(str,&str);
+      dbgsym.codeend=hex2ucell(str,&str);
+      dbgsym.ident=(char)hex2ucell(str,&str);
+      dbgsym.vclass=(char)hex2ucell(str,&str);
       dbgsym.dim=0;
       str=skipwhitespace(str);
       if (*str=='[') {
         while (*(str=skipwhitespace(str+1))!=']') {
-          dbgidxtag[dbgsym.dim].tag=(int16_t)hex2long(str,&str);
+          dbgidxtag[dbgsym.dim].tag=(int16_t)hex2ucell(str,&str);
           str=skipwhitespace(str);
           assert(*str==':');
-          dbgidxtag[dbgsym.dim].size=hex2long(str+1,&str);
+          dbgidxtag[dbgsym.dim].size=hex2ucell(str+1,&str);
           dbgsym.dim++;
         } /* while */
       } /* if */

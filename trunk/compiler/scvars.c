@@ -20,7 +20,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: scvars.c 3655 2006-10-23 20:17:52Z thiadmer $
+ *  Version: $Id: scvars.c 3763 2007-05-22 07:23:30Z thiadmer $
  */
 #include <stdio.h>
 #include <stdlib.h>     /* for _MAX_PATH */
@@ -100,7 +100,7 @@ SC_VDEFINE FILE *outf    = NULL;   /* (intermediate) text file written to */
 
 SC_VDEFINE jmp_buf errbuf;
 
-#if !defined SC_LIGHT
+#if !defined PAWN_LIGHT
   SC_VDEFINE int sc_makereport=FALSE; /* generate a cross-reference report */
 #endif
 

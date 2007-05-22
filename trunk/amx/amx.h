@@ -18,7 +18,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: amx.h 3648 2006-10-12 11:24:50Z thiadmer $
+ *  Version: $Id: amx.h 3744 2007-04-30 12:01:59Z thiadmer $
  */
 
 #ifndef AMX_H_INCLUDED
@@ -148,6 +148,7 @@ extern  "C" {
  *   7 (name table, opcodes SYMTAG & SYSREQ.D)
  *   8 (opcode STMT, renewed debug interface)
  *   9 (macro opcodes)
+ *  10 (position-independent code)
  * MIN_FILE_VERSION is the lowest file version number that the current AMX
  * implementation supports. If the AMX file header gets new fields, this number
  * often needs to be incremented. MAX_AMX_VERSION is the lowest AMX version that
@@ -156,11 +157,11 @@ extern  "C" {
  * The file version supported by the JIT may run behind MIN_AMX_VERSION. So
  * there is an extra constant for it: MAX_FILE_VER_JIT.
  */
-#define CUR_FILE_VERSION  9     /* current file version; also the current AMX version */
-#define MIN_FILE_VERSION  6     /* lowest supported file format version for the current AMX version */
-#define MIN_AMX_VERSION   9     /* minimum AMX version needed to support the current file format */
-#define MAX_FILE_VER_JIT  8     /* file version supported by the JIT */
-#define MIN_AMX_VER_JIT   8     /* AMX version supported by the JIT */
+#define CUR_FILE_VERSION  10    /* current file version; also the current AMX version */
+#define MIN_FILE_VERSION  10    /* lowest supported file format version for the current AMX version */
+#define MIN_AMX_VERSION   10    /* minimum AMX version needed to support the current file format */
+#define MAX_FILE_VER_JIT  10    /* file version supported by the JIT */
+#define MIN_AMX_VER_JIT   10    /* AMX version supported by the JIT */
 
 #if !defined PAWN_CELL_SIZE
   #define PAWN_CELL_SIZE 32     /* by default, use 32-bit cells */
@@ -351,11 +352,12 @@ enum {
 #define AMX_FLAG_COMPACT  0x04  /* compact encoding */
 #define AMX_FLAG_SLEEP    0x08  /* script uses the sleep instruction (possible re-entry or power-down mode) */
 #define AMX_FLAG_NOCHECKS 0x10  /* no array bounds checking; no BREAK opcodes */
-#define AMX_FLAG_SYSREQN 0x800  /* script new (optimized) version of SYSREQ opcode */
+#define AMX_FLAG_MACRO   0x400  /* script uses macro instructions (incompatible with JIT) */
+#define AMX_FLAG_SYSREQN 0x800  /* script uses new (optimized) version of SYSREQ opcode */
 #define AMX_FLAG_NTVREG 0x1000  /* all native functions are registered */
 #define AMX_FLAG_JITC   0x2000  /* abstract machine is JIT compiled */
-#define AMX_FLAG_BROWSE 0x4000  /* busy browsing */
-#define AMX_FLAG_RELOC  0x8000  /* jump/call addresses relocated */
+#define AMX_FLAG_VERIFY 0x4000  /* busy verifying P-code */
+#define AMX_FLAG_INIT   0x8000  /* AMX has been initialized */
 
 #define AMX_EXEC_MAIN   (-1)    /* start at program entry point */
 #define AMX_EXEC_CONT   (-2)    /* continue from last address */

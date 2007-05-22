@@ -25,7 +25,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: sc.h 3706 2007-01-29 07:30:10Z thiadmer $
+ *  Version: $Id: sc.h 3763 2007-05-22 07:23:30Z thiadmer $
  */
 #ifndef SC_H_INCLUDED
 #define SC_H_INCLUDED
@@ -284,6 +284,11 @@ typedef struct s_valuepair {
 #define opcodes(n)      ((n)*sizeof(cell))      /* opcode size */
 #define opargs(n)       ((n)*sizeof(cell))      /* size of typical argument */
 
+/* general purpose macros */
+#if !defined sizearray
+  #define sizearray(a)  (sizeof(a) / sizeof((a)[0]))
+#endif
+
 /*  Tokens recognized by lex()
  *  Some of these constants are assigned as well to the variable "lastst" (see SC1.C)
  */
@@ -474,7 +479,7 @@ void *pc_createsrc(char *filename);
 void pc_closesrc(void *handle);   /* never delete */
 void pc_resetsrc(void *handle,void *position);  /* reset to a position marked earlier */
 char *pc_readsrc(void *handle,unsigned char *target,int maxchars);
-int pc_writesrc(void *handle,unsigned char *source);
+int pc_writesrc(void *handle,const unsigned char *source);
 void *pc_getpossrc(void *handle); /* mark the current position */
 int  pc_eofsrc(void *handle);
 
@@ -482,14 +487,14 @@ int  pc_eofsrc(void *handle);
 void *pc_openasm(char *filename); /* read/write */
 void pc_closeasm(void *handle,int deletefile);
 void pc_resetasm(void *handle);
-int  pc_writeasm(void *handle,char *str);
+int  pc_writeasm(void *handle,const char *str);
 char *pc_readasm(void *handle,char *target,int maxchars);
 
 /* output to binary (.AMX) file */
 void *pc_openbin(char *filename);
 void pc_closebin(void *handle,int deletefile);
 void pc_resetbin(void *handle,long offset);
-int  pc_writebin(void *handle,void *buffer,int size);
+int  pc_writebin(void *handle,const void *buffer,int size);
 long pc_lengthbin(void *handle); /* return the length of the file */
 
 #if defined __cplusplus
@@ -665,6 +670,8 @@ SC_FUNC void errorset(int code,int line);
 SC_FUNC int assemble(FILE *fout,FILE *fin);
 
 /* function prototypes in SC7.C */
+SC_FUNC ucell hex2ucell(const char *s,const char **n);
+#define hex2cell(s,n)  (cell)hex2ucell((s),(n))
 SC_FUNC void stgbuffer_cleanup(void);
 SC_FUNC void stgmark(char mark);
 SC_FUNC void stgwrite(const char *st);
@@ -692,7 +699,7 @@ SC_FUNC void delete_substtable(void);
 SC_FUNC stringlist *insert_sourcefile(char *string);
 SC_FUNC char *get_sourcefile(int index);
 SC_FUNC void delete_sourcefiletable(void);
-SC_FUNC stringlist *insert_docstring(char *string);
+SC_FUNC stringlist *insert_docstring(char *string,int append);
 SC_FUNC char *get_docstring(int index);
 SC_FUNC void delete_docstring(int index);
 SC_FUNC void delete_docstringtable(void);
@@ -819,7 +826,7 @@ SC_VDECL FILE *outf;          /* file written to */
 
 SC_VDECL jmp_buf errbuf;      /* target of longjmp() on a fatal error */
 
-#if !defined SC_LIGHT
+#if !defined PAWN_LIGHT
   SC_VDECL int sc_makereport; /* generate a cross-reference report */
 #endif
 

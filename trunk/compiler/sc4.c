@@ -18,7 +18,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: sc4.c 3684 2006-12-10 16:16:47Z thiadmer $
+ *  Version: $Id: sc4.c 3763 2007-05-22 07:23:30Z thiadmer $
  */
 #include <assert.h>
 #include <ctype.h>
@@ -734,7 +734,7 @@ SC_FUNC void ffcall(symbol *sym,const char *label,int numargs)
       stgwrite(symname);
     } /* if */
     stgwrite("\n"); /* write on a separate line, to mark a sequence point for the peephole optimizer */
-    stgwrite("\tstack ");
+    stgwrite("\tstack "); //??? generate stack.p if possible
     outval((numargs+1)*sizeof(cell), TRUE);
     code_idx+=opcodes(2)+opargs(2);
   } else {
@@ -811,7 +811,7 @@ SC_FUNC void defstorage(void)
 SC_FUNC void modstk(int delta)
 {
   if (delta) {
-    stgwrite("\tstack ");
+    stgwrite("\tstack "); //??? generate stack.p if possible
     outval(delta, TRUE);
     code_idx+=opcodes(1)+opargs(1);
   } /* if */
@@ -838,7 +838,7 @@ SC_FUNC void setstk(cell value)
 SC_FUNC void modheap(int delta)
 {
   if (delta) {
-    stgwrite("\theap ");
+    stgwrite("\theap ");  //??? generate heap.p if possible
     outval(delta, TRUE);
     code_idx+=opcodes(1)+opargs(1);
   } /* if */
@@ -846,7 +846,7 @@ SC_FUNC void modheap(int delta)
 
 SC_FUNC void setheap_pri(void)
 {
-  stgwrite("\theap ");          /* ALT = HEA++ */
+  stgwrite("\theap ");          /* ALT = HEA++ */ //??? generate stack.p if possible
   outval(sizeof(cell), TRUE);
   stgwrite("\tstor.i\n");       /* store PRI (default value) at address ALT */
   stgwrite("\tmove.pri\n");     /* move ALT to PRI: PRI contains the address */
@@ -947,7 +947,7 @@ SC_FUNC void charalign(void)
 SC_FUNC void addconst(cell value)
 {
   if (value!=0) {
-    stgwrite("\tadd.c ");
+    stgwrite("\tadd.c "); //??? generate add.p.c if possible
     outval(value,TRUE);
     code_idx+=opcodes(1)+opargs(1);
   } /* if */

@@ -24,7 +24,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: sclist.c 3692 2007-01-01 20:11:19Z thiadmer $
+ *  Version: $Id: sclist.c 3763 2007-05-22 07:23:30Z thiadmer $
  */
 #include <assert.h>
 #include <limits.h>
@@ -135,7 +135,7 @@ static int delete_stringpair(stringpair *root,stringpair *item)
 }
 
 /* ----- string list functions ----------------------------------- */
-static stringlist *insert_string(stringlist *root,char *string)
+static stringlist *insert_string(stringlist *root,char *string,int append)
 {
   stringlist *cur;
 
@@ -144,10 +144,13 @@ static stringlist *insert_string(stringlist *root,char *string)
     error(103);       /* insufficient memory (fatal error) */
   if ((cur->line=duplicatestring(string))==NULL)
     error(103);       /* insufficient memory (fatal error) */
-  /* insert as "last" */
-  assert(root!=NULL);
-  while (root->next!=NULL)
-    root=root->next;
+  if (append) {
+    /* insert as "last" (append mode) */
+    assert(root!=NULL);
+    while (root->next!=NULL)
+      root=root->next;
+  } /* if */
+  /* if not appending, the string is inserted at the beginning */
   cur->next=root->next;
   root->next=cur;
   return cur;
@@ -239,7 +242,7 @@ static stringlist includepaths = {NULL, NULL};  /* directory list for include fi
 
 SC_FUNC stringlist *insert_path(char *path)
 {
-  return insert_string(&includepaths,path);
+  return insert_string(&includepaths,path,1);
 }
 
 SC_FUNC char *get_path(int index)
@@ -327,7 +330,7 @@ static stringlist sourcefiles = {NULL, NULL};
 
 SC_FUNC stringlist *insert_sourcefile(char *string)
 {
-  return insert_string(&sourcefiles,string);
+  return insert_string(&sourcefiles,string,1);
 }
 
 SC_FUNC char *get_sourcefile(int index)
@@ -343,12 +346,12 @@ SC_FUNC void delete_sourcefiletable(void)
 
 
 /* ----- documentation tags -------------------------------------- */
-#if !defined SC_LIGHT
+#if !defined PAWN_LIGHT
 static stringlist docstrings = {NULL, NULL};
 
-SC_FUNC stringlist *insert_docstring(char *string)
+SC_FUNC stringlist *insert_docstring(char *string,int append)
 {
-  return insert_string(&docstrings,string);
+  return insert_string(&docstrings,string,append);
 }
 
 SC_FUNC char *get_docstring(int index)
@@ -366,7 +369,7 @@ SC_FUNC void delete_docstringtable(void)
   delete_stringtable(&docstrings);
   assert(docstrings.next==NULL);
 }
-#endif /* !defined SC_LIGHT */
+#endif /* !defined PAWN_LIGHT */
 
 
 /* ----- autolisting --------------------------------------------- */
@@ -374,7 +377,7 @@ static stringlist autolist = {NULL, NULL};
 
 SC_FUNC stringlist *insert_autolist(char *string)
 {
-  return insert_string(&autolist,string);
+  return insert_string(&autolist,string,1);
 }
 
 SC_FUNC char *get_autolist(int index)
@@ -472,7 +475,7 @@ SC_FUNC stringlist *insert_dbgfile(const char *filename)
     assert(filename!=NULL);
     assert(strlen(filename)+40<sizeof string);
     sprintf(string,"F:%" PRIxC " %s",code_idx,filename);
-    return insert_string(&dbgstrings,string);
+    return insert_string(&dbgstrings,string,1);
   } /* if */
   return NULL;
 }
@@ -484,7 +487,7 @@ SC_FUNC stringlist *insert_dbgline(int linenr)
     if (linenr>0)
       linenr--;         /* line numbers are zero-based in the debug information */
     sprintf(string,"L:%" PRIxC " %x",code_idx,linenr);
-    return insert_string(&dbgstrings,string);
+    return insert_string(&dbgstrings,string,1);
   } /* if */
   return NULL;
 }
@@ -517,7 +520,7 @@ SC_FUNC stringlist *insert_dbgsymbol(symbol *sym)
       strcat(string,"]");
     } /* if */
 
-    return insert_string(&dbgstrings,string);
+    return insert_string(&dbgstrings,string,1);
   } /* if */
   return NULL;
 }
