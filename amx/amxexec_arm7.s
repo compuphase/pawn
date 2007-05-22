@@ -15,7 +15,7 @@
 ;   machine.
 ;
 ;
-;   Copyright (c) ITB CompuPhase, 2006
+;   Copyright (c) ITB CompuPhase, 2006-2007
 ;
 ;   This software is provided "as-is", without any express or implied warranty.
 ;   In no event will the authors be held liable for any damages arising from
@@ -33,8 +33,14 @@
 ;       misrepresented as being the original software.
 ;   3.  This notice may not be removed or altered from any source distribution.
 ;
-;   Version: $Id: amxexec_arm7.s 3701 2007-01-21 17:01:21Z thiadmer $
+;   Version: $Id: amxexec_arm7.s 3763 2007-05-22 07:23:30Z thiadmer $
 
+
+IF :LNOT::DEF:AMX_NO_OPCODE_PACKING
+  IF :LNOT::DEF:AMX_TOKENTHREADING
+    AMX_TOKENTHREADING EQU 1   ; packed opcodes require token threading
+  ENDIF
+ENDIF
 
 AMX_ERR_NONE      EQU      0
 AMX_ERR_EXIT      EQU      1   ; forced exit
@@ -131,7 +137,7 @@ amx_opcodelist
     DCD     OP_CALL
     DCD     OP_CALL_PRI
     DCD     OP_JUMP
-    DCD     OP_JREL
+    DCD     OP_JREL             ; obsolete
     DCD     OP_JZER
     DCD     OP_JNZ
     DCD     OP_JEQ
@@ -239,16 +245,94 @@ amx_opcodelist
     DCD     OP_CONST_S
     DCD     OP_SYSREQ_D
     DCD     OP_SYSREQ_ND
+IF :LNOT::DEF:AMX_NO_OPCODE_PACKING
+    DCD     OP_LOAD_P_PRI
+    DCD     OP_LOAD_P_ALT
+    DCD     OP_LOAD_P_S_PRI
+    DCD     OP_LOAD_P_S_ALT
+    DCD     OP_LREF_P_PRI
+    DCD     OP_LREF_P_ALT
+    DCD     OP_LREF_P_S_PRI
+    DCD     OP_LREF_P_S_ALT
+    DCD     OP_LODB_P_I
+    DCD     OP_CONST_P_PRI
+    DCD     OP_CONST_P_ALT
+    DCD     OP_ADDR_P_PRI
+    DCD     OP_ADDR_P_ALT
+    DCD     OP_STOR_P_PRI
+    DCD     OP_STOR_P_ALT
+    DCD     OP_STOR_P_S_PRI
+    DCD     OP_STOR_P_S_ALT
+    DCD     OP_SREF_P_PRI
+    DCD     OP_SREF_P_ALT
+    DCD     OP_SREF_P_S_PRI
+    DCD     OP_SREF_P_S_ALT
+    DCD     OP_STRB_P_I
+    DCD     OP_LIDX_P_B
+    DCD     OP_IDXADDR_P_B
+    DCD     OP_ALIGN_P_PRI
+    DCD     OP_ALIGN_P_ALT
+    DCD     OP_PUSH_P_C
+    DCD     OP_PUSH_P
+    DCD     OP_PUSH_P_S
+    DCD     OP_STACK_P
+    DCD     OP_HEAP_P
+    DCD     OP_SHL_P_C_PRI
+    DCD     OP_SHL_P_C_ALT
+    DCD     OP_SHR_P_C_PRI
+    DCD     OP_SHR_P_C_ALT
+    DCD     OP_ADD_P_C
+    DCD     OP_SMUL_P_C
+    DCD     OP_ZERO_P
+    DCD     OP_ZERO_P_S
+    DCD     OP_EQ_P_C_PRI
+    DCD     OP_EQ_P_C_ALT
+    DCD     OP_INC_P
+    DCD     OP_INC_P_S
+    DCD     OP_DEC_P
+    DCD     OP_DEC_P_S
+    DCD     OP_MOVS_P
+    DCD     OP_CMPS_P
+    DCD     OP_FILL_P
+    DCD     OP_HALT_P
+    DCD     OP_BOUNDS_P
+    DCD     OP_PUSH_ADR_P
+ENDIF   ; AMX_NO_OPCODE_PACKING
 
 
     MACRO
     NEXT
-    ldr pc, [r4], #4            ; indirect register jump
+      IF :DEF:AMX_TOKENTHREADING
+
+        IF :DEF:AMX_NO_OPCODE_PACKING
+          ldr r11, [r4], #4     ; get opcode, increment CIP
+        ELSE
+          ldr r12, [r4], #4     ; get opcode + parameter, increment CIP
+          and r11, r12, #0xff   ; keep only the opcode in r11, r12 holds the parameter
+        ENDIF
+        ldr pc, [r14, r11, LSL #2]
+      ELSE
+        IF :LNOT::DEF:AMX_NO_OPCODE_PACKING
+          INFO 1, "opcode packing requires token threading"
+        ENDIF
+        ldr pc, [r4], #4        ; indirect register jump
+      ENDIF
     MEND
 
     MACRO
     GETPARAM $rx
     ldr $rx, [r4], #4           ; $rx = [CIP], CIP += 4
+    MEND
+
+    MACRO
+    GETPARAM_P $rx              ; the opcode/parameter pack should be in r12
+    mov $rx, r12, ASR #16       ; $rx = r12 >> 16 (signed)
+    MEND
+
+    MACRO
+    JUMPREL $cc, $rtmp          ; $cc = condition code, $rtmp = temp register to use
+    ldr$cc $rtmp, [r4], #-4     ; $rtmp = [CIP], CIP -= 4 (restore CIP to start of instruction)
+    add$cc r4, r4, $rtmp        ; CIP = CIP + [CIP] - 4
     MEND
 
     MACRO
@@ -305,6 +389,10 @@ amx_opcodelist
     AREA    amxexec_code, CODE, READONLY
     CODE32
     ALIGN   2
+
+amx_opcodelist_addr
+    DCD   amx_opcodelist
+
     EXPORT  amx_exec_asm
 amx_exec_asm
     ; save non-scratch registers
@@ -327,7 +415,9 @@ amx_exec_asm
     ; r8  = code_start = (unsigned char*)parms[7]
     ; r9  = code_end = code_start + (ucell)parms[8]
     ; r10 = amx base = (AMX*)parms[6]
-    ; r11, r12 and r14 are scratch
+    ; r14 = opcode list address (for token threading)
+    ; r11 and r12 are scratch; r11 is used in the macro to fetch the next opcode
+    ; and r12 is also used there in the case that packed opcodes are supported
 
     ldr r1, [r0, #4]
     ldr r4, [r0, #8]
@@ -344,6 +434,8 @@ amx_exec_asm
     add r6, r6, r5              ; relocate STK
     add r7, r7, r5              ; relocate FRM
     add r9, r9, r8              ; make r9 point behind last valid code address
+
+    ldr r14, amx_opcodelist_addr
 
     ; start running
     NEXT
@@ -522,8 +614,7 @@ OP_IDXADDR_B
 
 OP_ALIGN_PRI                    ; tested
     GETPARAM r11
-  IF :DEF:BIG_ENDIAN
-  ELSE
+  IF :LNOT::DEF:BIG_ENDIAN
     rsbs r11, r11, #4           ; rsb = reverse subtract; r11 = #4 - param
     eorhi r0, r0, r11           ; PRI ^= (#4 - param), but only if (#4 - param) > 0
   ENDIF
@@ -531,8 +622,7 @@ OP_ALIGN_PRI                    ; tested
 
 OP_ALIGN_ALT
     GETPARAM r11
-  IF :DEF:BIG_ENDIAN
-  ELSE
+  IF :LNOT::DEF:BIG_ENDIAN
     rsbs r11, r11, #4           ; rsb = reverse subtract; r11 = #4 - param
     eorhi r1, r1, r11           ; ALT ^= (#4 - param), but only if (#4 - param) > 0
   ENDIF
@@ -666,9 +756,9 @@ err_memaccess
     b   amx_exit
 
 OP_CALL                         ; tested
-    GETPARAM r11                ; get call address
-    VPUSH r4                    ; r4 points to the next instruction
-    mov r4, r11
+    add r11, r4, #4             ; r11 = address of next instruction
+    VPUSH r11
+    JUMPREL al, r11             ; cc = always
     NEXT
 
 OP_CALL_PRI                     ; not generated by pawncc
@@ -677,83 +767,79 @@ OP_CALL_PRI                     ; not generated by pawncc
     NEXT
 
 OP_JUMP                         ; tested
-    ldr r4, [r4]                ; CIP = [CIP]
-    NEXT
-
-OP_JREL                         ; not generated by pawncc
-    GETPARAM r11                ; get offset, increment CIP by 4
-    add r4, r4, r11             ; add offset too
+OP_JREL                         ; obsolete
+    JUMPREL al, r11             ; cc = always
     NEXT
 
 OP_JZER                         ; tested
     cmp r0, #0
-    ldreq r4, [r4]              ; if PRI == 0, CIP = [CIP]
+    JUMPREL eq, r11             ; if PRI == 0, jump
     addne r4, r4, #4            ; otherwise skip param
     NEXT
 
 OP_JNZ                          ; tested
     cmp r0, #0
-    ldrne r4, [r4]              ; if PRI != 0, CIP = [CIP]
+    JUMPREL ne, r11             ; if PRI != 0, jump
     addeq r4, r4, #4            ; otherwise skip param
     NEXT
 
 OP_JEQ                          ; tested
     cmp r0, r1
-    ldreq r4, [r4]              ; if PRI == ALT, CIP = [CIP]
+    JUMPREL eq, r11             ; if PRI == ALT, jump
     addne r4, r4, #4            ; otherwise skip param
     NEXT
 
 OP_JNEQ                         ; tested
     cmp r0, r1
-    ldrne r4, [r4]              ; if PRI != ALT, CIP = [CIP]
+    JUMPREL ne, r11             ; if PRI != ALT, jump
     addeq r4, r4, #4            ; otherwise skip param
     NEXT
 
 OP_JLESS                        ; not generated by pawncc
     cmp r0, r1
-    ldrlo r4, [r4]              ; if PRI < ALT (unsigned), CIP = [CIP]
+    JUMPREL lo, r11             ; if PRI < ALT (unsigned), jump
     addhs r4, r4, #4            ; otherwise skip param
     NEXT
 
 OP_JLEQ                         ; not generated by pawncc
     cmp r0, r1
-    ldrls r4, [r4]              ; if PRI <= ALT (unsigned), CIP = [CIP]
+    JUMPREL ls, r11             ; if PRI <= ALT (unsigned), jump
     addhi r4, r4, #4            ; otherwise skip param
     NEXT
 
 OP_JGRTR                        ; not generated by pawncc
     cmp r0, r1
-    ldrhi r4, [r4]              ; if PRI > ALT (unsigned), CIP = [CIP]
+    JUMPREL hi, r11             ; if PRI > ALT (unsigned), jump
     addls r4, r4, #4            ; otherwise skip param
     NEXT
 
 OP_JGEQ                         ; not generated by pawncc
     cmp r0, r1
-    ldrhs r4, [r4]              ; if PRI >= ALT (unsigned), CIP = [CIP]
+    JUMPREL hs, r11             ; if PRI >= ALT (unsigned), jump
     addlo r4, r4, #4            ; otherwise skip param
     NEXT
 
 OP_JSLESS                       ; tested
     cmp r0, r1
-    ldrlt r4, [r4]              ; if PRI < ALT (signed), CIP = [CIP]
+    JUMPREL lt, r11             ; if PRI < ALT (signed), jump
     addge r4, r4, #4            ; otherwise skip param
     NEXT
 
 OP_JSLEQ                        ; tested
     cmp r0, r1
-    ldrle r4, [r4]              ; if PRI <= ALT (signed), CIP = [CIP]
+    JUMPREL le, r11             ; if PRI <= ALT (signed), jump
     addgt r4, r4, #4            ; otherwise skip param
     NEXT
 
 OP_JSGRTR                       ; tested
     cmp r0, r1
-    ldrgt r4, [r4]              ; if PRI > ALT (signed), CIP = [CIP]
+    JUMPREL gt, r11             ; if PRI > ALT (signed), jump
     addle r4, r4, #4            ; otherwise skip param
     NEXT
 
 OP_JSGEQ                        ; tested
     cmp r0, r1
-    ldrge r4, [r4]              ; if PRI >= ALT (signed), CIP = [CIP]
+    JUMPREL ge, r11             ; if PRI >= ALT (signed), jump
     addlt r4, r4, #4            ; otherwise skip param
     NEXT
 
@@ -1056,6 +1142,7 @@ OP_DEC_I                        ; tested
 
 OP_MOVS                         ; tested
     GETPARAM r11
+movsentry
     sub r11, r11, #1            ; decrement, for address verification
     add r12, r0, r5             ; r12 = relocated PRI
     VERIFYADDRESS r12           ; verify PRI (after relocation)
@@ -1088,6 +1175,7 @@ movs1loop
 
 OP_CMPS 			; not generated by  pawncc ???
     GETPARAM r11
+cmpsentry
     sub r11, r11, #1            ; decrement, for address verification
     add r12, r0, r5             ; r12 = relocated PRI
     VERIFYADDRESS r12           ; verify PRI
@@ -1098,6 +1186,7 @@ OP_CMPS 			; not generated by  pawncc ???
     add r12, r12, r11
     VERIFYADDRESS r12           ; verify ALT + size - 1
     ; dropped through tests
+    str r14, [sp, #-4]!         ; need extra register
     add r11, r11, #1            ; restore r11
     str r1, [sp, #-4]!          ; save ALT
     add r0, r0, r5              ; relocate r0 and r1
@@ -1122,10 +1211,12 @@ cmps1loop
 cmpsdone
     ldr r1, [sp], #4            ; restore ALT (PRI is changed by this routine)
     mov r0, r14
+    ldr r14, [sp], #4           ; restore r14
     NEXT
 
 OP_FILL                         ; tested
     GETPARAM r11
+fillentry
     add r12, r1, r5             ; r12 = relocated ALT
     VERIFYADDRESS r12           ; verify ALT
     add r12, r12, r11
@@ -1282,9 +1373,12 @@ OP_JUMP_PRI                     ; not generated by pawncc
     NEXT
 
 OP_SWITCH                       ; tested
-    ldr r11, [r4]               ; r11 = [CIP], offset to case-table
-    ldr r12, [r11, #4]!         ; r12 = number of case-table records, skip OP_CASETBL opcode
-    ldr r4, [r11, #4]           ; preset CIP to "default" case (none-matched)
+    str r14, [sp, #-4]!         ; need extra register
+    ldr r11, [r4]               ; r11 = [CIP], relative offset to case-table
+    add r11, r11, r4            ; r11 = direct address, OP_CASETBL opcode already skipped
+    ldr r12, [r11]              ; r12 = number of case-table records
+    ldr r14, [r11, #4]          ; preset CIP to "default" case (none-matched)
+    add r4, r11, r14
 op_switch_loop
     subs r12, r12, #1           ; decrement number to do; any left?
     bmi op_switch_done          ; no, quit (CIP already set to the default value)
@@ -1292,8 +1386,10 @@ op_switch_loop
     ldr r14, [r11]              ; get the case value
     cmp r0, r14                 ; case value identical to PRI ?
     bne op_switch_loop          ; no, continue
-    ldr r4, [r11, #4]           ; yes, load matching CIP and exit loop
+    ldr r14, [r11, #4]          ; yes, load matching CIP and exit loop
+    add r4, r11, r14            ; r4 = address of case record + offset
 op_switch_done
+    ldr r14, [sp], #4           ; restore r14
     NEXT
 
 OP_SWAP_PRI                     ; tested
@@ -1463,6 +1559,310 @@ OP_CONST_S                      ; tested
     GETPARAM r12
     str r12, [r7, r11]
     NEXT
+
+; --------------------------------------------------------
+; packed opcodes
+; --------------------------------------------------------
+IF :LNOT::DEF:AMX_NO_OPCODE_PACKING
+
+OP_LOAD_P_PRI:
+    ldr r0, [r5, r12, ASR #16]
+    NEXT
+
+OP_LOAD_P_ALT:
+    ldr r1, [r5, r12, ASR #16]
+    NEXT
+
+OP_LOAD_P_S_PRI:
+    ldr r0, [r7, r12, ASR #16]
+    NEXT
+
+OP_LOAD_P_S_ALT:
+    ldr r1, [r7, r12, ASR #16]
+    NEXT
+
+OP_LREF_P_PRI:
+    ldr r11, [r5, r12, ASR #16]
+    ldr r0, [r5, r11]
+    NEXT
+
+OP_LREF_P_ALT:
+    ldr r11, [r5, r12, ASR #16]
+    ldr r1, [r5, r11]
+    NEXT
+
+OP_LREF_P_S_PRI:
+    ldr r11, [r7, r12, ASR #16]
+    ldr r0, [r5, r11]
+    NEXT
+
+OP_LREF_P_S_ALT:
+    ldr r11, [r7, r12, ASR #16]
+    ldr r1, [r5, r11]
+    NEXT
+
+OP_LODB_P_I:
+    GETPARAM_P r11
+    add r12, r0, r5             ; relocate PRI to absolute address
+    VERIFYADDRESS r12
+    teq r11, #1
+    ldreqb r0, [r12]
+    teq r11, #2
+    ldreqh r0, [r12]
+    teq r11, #4
+    ldreq r0, [r12]
+    NEXT
+
+OP_CONST_P_PRI:
+    GETPARAM_P r0
+    NEXT
+
+OP_CONST_P_ALT:
+    GETPARAM_P r1
+    NEXT
+
+OP_ADDR_P_PRI:
+    GETPARAM_P r0
+    add r0, r0, r7              ; add FRM
+    sub r0, r0, r5              ; reverse relocate
+    NEXT
+
+OP_ADDR_P_ALT:
+    GETPARAM_P r1
+    add r1, r1, r7              ; add FRM
+    sub r1, r1, r5              ; reverse relocate
+    NEXT
+
+OP_STOR_P_PRI:
+    str r0, [r5, r12, ASR #16]
+    NEXT
+
+OP_STOR_P_ALT:
+    str r1, [r5, r12, ASR #16]
+    NEXT
+
+OP_STOR_P_S_PRI:
+    str r0, [r7, r12, ASR #16]
+    NEXT
+
+OP_STOR_P_S_ALT:
+    str r1, [r7, r12, ASR #16]
+    NEXT
+
+OP_SREF_P_PRI:
+    ldr r11, [r5, r12, ASR #16]
+    str r0, [r5, r11]
+    NEXT
+
+OP_SREF_P_ALT:
+    ldr r11, [r5, r12, ASR #16]
+    str r1, [r5, r11]
+    NEXT
+
+OP_SREF_P_S_PRI:
+    ldr r11, [r7, r12, ASR #16]
+    str r0, [r5, r11]
+    NEXT
+
+OP_SREF_P_S_ALT:
+    ldr r11, [r7, r12, ASR #16]
+    str r1, [r5, r11]
+    NEXT
+
+OP_STRB_P_I:
+    GETPARAM_P r11
+    add r12, r1, r5             ; relocate ALT to absolute address
+    VERIFYADDRESS r12
+    teq r11, #1
+    streqb r0, [r12]
+    teq r11, #2
+    streqh r0, [r12]
+    teq r11, #4
+    streq r0, [r12]
+    NEXT
+
+OP_LIDX_P_B:
+    GETPARAM_P r11
+    add r12, r1, r0, LSL r11    ; r12 = ALT + (PRI << param)
+    add r12, r12, r5            ; relocate to absolute address
+    VERIFYADDRESS r12
+    ldr r0, [r12]
+    NEXT
+
+OP_IDXADDR_P_B:
+    GETPARAM_P r11
+    add r0, r1, r0, LSL r11     ; PRI = ALT + (PRI << param)
+    NEXT
+
+OP_ALIGN_P_PRI:
+    GETPARAM_P r11
+  IF :LNOT::DEF:BIG_ENDIAN
+    rsbs r11, r11, #4           ; rsb = reverse subtract; r11 = #4 - param
+    eorhi r0, r0, r11           ; PRI ^= (#4 - param), but only if (#4 - param) > 0
+  ENDIF
+    NEXT
+
+OP_ALIGN_P_ALT:
+    GETPARAM_P r11
+  IF :LNOT::DEF:BIG_ENDIAN
+    rsbs r11, r11, #4           ; rsb = reverse subtract; r11 = #4 - param
+    eorhi r1, r1, r11           ; ALT ^= (#4 - param), but only if (#4 - param) > 0
+  ENDIF
+    NEXT
+
+OP_PUSH_P_C:
+    GETPARAM_P r11
+    PUSH r11
+    NEXT
+
+OP_PUSH_P:
+    ldr r11, [r5, r12, ASR #16]
+    PUSH r11
+    NEXT
+
+OP_PUSH_P_S:
+    ldr r11, [r7, r12, ASR #16]
+    PUSH r11
+    NEXT
+
+OP_STACK_P:
+    GETPARAM_P r11
+    sub r1, r6, r5              ; ALT = STK, reverse-relocated
+    add r6, r6, r11             ; STK += param
+    CHKMARGIN r12
+    CHKSTACK
+    NEXT
+
+OP_HEAP_P:
+    GETPARAM_P r11
+    sub r1, r3, r5              ; ALT = HEA, reverse-relocated
+    add r3, r3, r11
+    CHKMARGIN r12
+    CHKHEAP r12
+    NEXT
+
+OP_SHL_P_C_PRI:
+    GETPARAM_P r11
+    mov r0, r0, LSL r11         ; PRI = PRI << param
+    NEXT
+
+OP_SHL_P_C_ALT:
+    GETPARAM_P r11
+    mov r1, r1, LSL r11         ; ALT = ALT << param
+    NEXT
+
+OP_SHR_P_C_PRI:
+    GETPARAM_P r11
+    cmp r11, #0
+    movhi r0, r0, LSR r11       ; PRI = PRI >> param (but check that param > 0)
+    NEXT
+
+OP_SHR_P_C_ALT:
+    GETPARAM_P r11
+    cmp r11, #0
+    movhi r1, r1, LSR r11       ; ALT = ALT >> param (but check that param > 0)
+    NEXT
+
+OP_ADD_P_C:
+    GETPARAM_P r11
+    add r0, r0, r11             ; PRI += param
+    NEXT
+
+OP_SMUL_P_C:
+    GETPARAM_P r11
+    mov r12, r0
+    mul r0, r11, r12            ; PRI *= param
+    NEXT
+
+OP_ZERO_P:
+    GETPARAM_P r11
+    mov r12, #0
+    str r12, [r5, r11]
+    NEXT
+
+OP_ZERO_P_S:
+    GETPARAM_P r11
+    mov r12, #0
+    str r12, [r7, r11]
+    NEXT
+
+OP_EQ_P_C_PRI:
+    GETPARAM_P r11
+    cmp r0, r11
+    moveq r0, #1
+    movne r0, #0
+    NEXT
+
+OP_EQ_P_C_ALT:
+    GETPARAM_P r11
+    cmp r1, r11
+    moveq r0, #1
+    movne r0, #0
+    NEXT
+
+OP_INC_P:
+    GETPARAM_P r11
+    ldr r12, [r5, r11]
+    add r12, r12, #1
+    str r12, [r5, r11]
+    NEXT
+
+OP_INC_P_S:
+    GETPARAM_P r11
+    ldr r12, [r7, r11]
+    add r12, r12, #1
+    str r12, [r7, r11]
+    NEXT
+
+OP_DEC_P:
+    GETPARAM_P r11
+    ldr r12, [r5, r11]
+    sub r12, r12, #1
+    str r12, [r5, r11]
+    NEXT
+
+OP_DEC_P_S:
+    GETPARAM_P r11
+    ldr r12, [r7, r11]
+    sub r12, r12, #1
+    str r12, [r7, r11]
+    NEXT
+
+OP_MOVS_P:
+    GETPARAM_P r11
+    b movsentry
+
+OP_CMPS_P:
+    GETPARAM_P r11
+    b cmpsentry
+
+OP_FILL_P:
+    GETPARAM_P r11
+    b fillentry
+
+OP_HALT_P:
+    ldr r11, [sp]               ; get "retval" pointer
+    teq r11, #0
+    strne r0, [r11]             ; store PRI, but only if r11 != 0
+    GETPARAM_P r0               ; parameter = return code from function
+    b   amx_exit
+
+OP_BOUNDS_P:
+    GETPARAM_P r11
+    cmp r0, r11
+    movhi r0, #AMX_ERR_BOUNDS
+    bhi amx_exit
+    NEXT
+
+OP_PUSH_ADR_P:
+    GETPARAM_P r11
+    add r11, r11, r7            ; relocate to FRM
+    sub r11, r11, r5            ; but relative to start of data section
+    PUSH r11
+    NEXT
+
+ENDIF   ; AMX_NO_OPCODE_PACKING
+
 
 amx_exit                        ; assume r0 already set
     ; reverse relocate registers

@@ -30,7 +30,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: sci18n.c 3612 2006-07-22 09:59:46Z thiadmer $
+ *  Version: $Id: sci18n.c 3763 2007-05-22 07:23:30Z thiadmer $
  */
 #include <assert.h>
 #include <stdio.h>
@@ -60,7 +60,7 @@
   #define ELEMENTS(array)       (sizeof(array) / sizeof(array[0]))
 #endif
 
-#if !defined NO_CODEPAGE
+#if !defined PAWN_NO_CODEPAGE
 
 #if !defined MAXCODEPAGE
   #define MAXCODEPAGE   12      /* typically "cp" + 4 digits + ".txt" */
@@ -309,9 +309,9 @@ SC_FUNC cell cp_translate(const unsigned char *string,const unsigned char **endp
   return (cell)result;
 }
 
-#endif  /* NO_CODEPAGE */
+#endif  /* !defined PAWN_NO_CODEPAGE */
 
-#if !defined NO_UTF8
+#if !defined PAWN_NO_UTF8
 SC_FUNC cell get_utf8_char(const unsigned char *string,const unsigned char **endptr)
 {
   int follow=0;
@@ -393,7 +393,7 @@ SC_FUNC cell get_utf8_char(const unsigned char *string,const unsigned char **end
 
 SC_FUNC int scan_utf8(FILE *fp,const char *filename)
 {
-  #if defined NO_UTF8
+  #if defined PAWN_NO_UTF8
     return 0;
   #else
     void *resetpos=pc_getpossrc(fp);
@@ -424,5 +424,5 @@ SC_FUNC int scan_utf8(FILE *fp,const char *filename)
       assert(bom[0]==0xef && bom[1]==0xbb && bom[2]==0xbf);
     } /* if */
     return utf8;
-  #endif  /* NO_UTF8 */
+  #endif  /* !defined PAWN_NO_UTF8 */
 }

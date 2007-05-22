@@ -43,7 +43,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: scstate.c 3579 2006-06-06 13:35:29Z thiadmer $
+ *  Version: $Id: scstate.c 3763 2007-05-22 07:23:30Z thiadmer $
  */
 #include <assert.h>
 #include <limits.h>

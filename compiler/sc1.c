@@ -20,7 +20,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: sc1.c 3707 2007-02-04 12:51:45Z thiadmer $
+ *  Version: $Id: sc1.c 3763 2007-05-22 07:23:30Z thiadmer $
  */
 #include <assert.h>
 #include <ctype.h>
@@ -64,8 +64,8 @@
 #include "lstring.h"
 #include "sc.h"
 #include "svnrev.h"
-#define VERSION_STR "3.2." SVN_REVSTR
-#define VERSION_INT 0x0302
+#define VERSION_STR "3.3." SVN_REVSTR
+#define VERSION_INT 0x0303
 
 static void resetglobals(void);
 static void initglobals(void);
@@ -148,7 +148,7 @@ static int sc_reparse = 0;      /* needs 3th parse because of changed prototypes
 static int sc_parsenum = 0;     /* number of the extra parses */
 static int wq[wqTABSZ];         /* "while queue", internal stack for nested loops */
 static int *wqptr;              /* pointer to next entry */
-#if !defined SC_LIGHT
+#if !defined PAWN_LIGHT
   static char sc_rootpath[_MAX_PATH];
   static char *sc_documentation=NULL;/* main documentation */
 #endif
@@ -283,7 +283,7 @@ char *pc_readsrc(void *handle,unsigned char *target,int maxchars)
  * Writes to to the source file. There is no automatic line ending; to end a
  * line, write a "\n".
  */
-int pc_writesrc(void *handle,unsigned char *source)
+int pc_writesrc(void *handle,const unsigned char *source)
 {
   return fputs((char*)source,(FILE*)handle) >= 0;
 }
@@ -306,7 +306,7 @@ int pc_eofsrc(void *handle)
  */
 void *pc_openasm(char *filename)
 {
-  #if defined __MSDOS__ || defined SC_LIGHT
+  #if defined __MSDOS__ || defined PAWN_LIGHT
     return fopen(filename,"w+");
   #else
     return mfcreate(filename);
@@ -315,7 +315,7 @@ void *pc_openasm(char *filename)
 
 void pc_closeasm(void *handle, int deletefile)
 {
-  #if defined __MSDOS__ || defined SC_LIGHT
+  #if defined __MSDOS__ || defined PAWN_LIGHT
     if (handle!=NULL)
       fclose((FILE*)handle);
     if (deletefile)
@@ -332,7 +332,7 @@ void pc_closeasm(void *handle, int deletefile)
 void pc_resetasm(void *handle)
 {
   assert(handle!=NULL);
-  #if defined __MSDOS__ || defined SC_LIGHT
+  #if defined __MSDOS__ || defined PAWN_LIGHT
     fflush((FILE*)handle);
     fseek((FILE*)handle,0,SEEK_SET);
   #else
@@ -340,9 +340,9 @@ void pc_resetasm(void *handle)
   #endif
 }
 
-int pc_writeasm(void *handle,char *string)
+int pc_writeasm(void *handle,const char *string)
 {
-  #if defined __MSDOS__ || defined SC_LIGHT
+  #if defined __MSDOS__ || defined PAWN_LIGHT
     return fputs(string,(FILE*)handle) >= 0;
   #else
     return mfputs((MEMFILE*)handle,string);
@@ -351,7 +351,7 @@ int pc_writeasm(void *handle,char *string)
 
 char *pc_readasm(void *handle, char *string, int maxchars)
 {
-  #if defined __MSDOS__ || defined SC_LIGHT
+  #if defined __MSDOS__ || defined PAWN_LIGHT
     return fgets(string,maxchars,(FILE*)handle);
   #else
     return mfgets((MEMFILE*)handle,string,maxchars);
@@ -383,7 +383,7 @@ void pc_resetbin(void *handle,long offset)
   fseek((FILE*)handle,offset,SEEK_SET);
 }
 
-int pc_writebin(void *handle,void *buffer,int size)
+int pc_writebin(void *handle,const void *buffer,int size)
 {
   return (int)fwrite(buffer,1,size,(FILE*)handle) == size;
 }
@@ -408,10 +408,11 @@ int pc_compile(int argc, char *argv[])
   char incfname[_MAX_PATH];
   char reportname[_MAX_PATH];
   char codepage[MAXCODEPAGE+1];
+  char *tmpname;  /* temporary input file name */
   FILE *binf;
   void *inpfmark;
   int lcl_packstr,lcl_needsemicolon,lcl_tabsize;
-  #if !defined SC_LIGHT
+  #if !defined PAWN_LIGHT
     int hdrsize=0;
   #endif
   char *ptr;
@@ -459,7 +460,7 @@ int pc_compile(int argc, char *argv[])
   lcl_packstr=sc_packstr;
   lcl_needsemicolon=sc_needsemicolon;
   lcl_tabsize=sc_tabsize;
-  #if !defined NO_CODEPAGE
+  #if !defined PAWN_NO_CODEPAGE
     if (!cp_set(codepage))      /* set codepage */
       error(108);               /* codepage mapping file not found */
   #endif
@@ -469,42 +470,42 @@ int pc_compile(int argc, char *argv[])
   assert(get_sourcefile(0)!=NULL);  /* there must be at least one source file */
   if (get_sourcefile(1)!=NULL) {
     /* there are at least two or more source files */
-    char *tname,*sname;
+    char *sname;
     FILE *ftmp,*fsrc;
     int fidx;
     #if defined	__WIN32__ || defined _WIN32
-      tname=_tempnam(NULL,"pawn");
+      tmpname=_tempnam(NULL,"pawn");
     #elif defined __MSDOS__ || defined _Windows
-      tname=tempnam(NULL,"pawn");
+      tmpname=tempnam(NULL,"pawn");
     #elif defined(MACOS) && !defined(__MACH__)
       /* tempnam is not supported for the Macintosh CFM build. */
       error(104,get_sourcefile(1));
-      tname=NULL;
+      tmpname=NULL;
       sname=NULL;
     #else
-      tname=tempnam(NULL,"pawn");
+      tmpname=tempnam(NULL,"pawn");
     #endif
-    ftmp=(FILE*)pc_createsrc(tname);
+    ftmp=(FILE*)pc_createsrc(tmpname);
     for (fidx=0; (sname=get_sourcefile(fidx))!=NULL; fidx++) {
       unsigned char tstring[128];
       fsrc=(FILE*)pc_opensrc(sname);
       if (fsrc==NULL) {
+        pc_closesrc(ftmp);
+        remove(tmpname);
         strcpy(inpfname,sname); /* avoid invalid filename */
-        error(100,sname);
+        error(100,sname);       /* fatal error, aborts program */
       } /* if */
-      pc_writesrc(ftmp,(unsigned char*)"#file ");
+      pc_writesrc(ftmp,(unsigned char*)"#file \"");
       pc_writesrc(ftmp,(unsigned char*)sname);
-      pc_writesrc(ftmp,(unsigned char*)"\n");
-      while (!pc_eofsrc(fsrc)) {
-        pc_readsrc(fsrc,tstring,sizeof tstring);
+      pc_writesrc(ftmp,(unsigned char*)"\"\n#line 0\n");
+      while (pc_readsrc(fsrc,tstring,sizeof tstring))
         pc_writesrc(ftmp,tstring);
-      } /* while */
       pc_closesrc(fsrc);
     } /* for */
     pc_closesrc(ftmp);
-    strcpy(inpfname,tname);
-    free(tname);
+    strcpy(inpfname,tmpname);
   } else {
+    tmpname=NULL;
     strcpy(inpfname,get_sourcefile(0));
   } /* if */
   inpf_org=(FILE*)pc_opensrc(inpfname);
@@ -585,7 +586,7 @@ int pc_compile(int argc, char *argv[])
   state_conflict(&glbtab);
 
   /* write a report, if requested */
-  #if !defined SC_LIGHT
+  #if !defined PAWN_LIGHT
     if (sc_makereport) {
       FILE *frep=stdout;
       if (strlen(reportname)>0)
@@ -655,7 +656,7 @@ cleanup:
   if (!(sc_asmfile || sc_listing) && errnum==0 && jmpcode==0) {
     assert(binf!=NULL);
     pc_resetasm(outf);          /* flush and loop back, for reading */
-    #if !defined SC_LIGHT
+    #if !defined PAWN_LIGHT
       hdrsize=
     #endif
     assemble(binf,outf);        /* assembler file is now input */
@@ -669,7 +670,7 @@ cleanup:
     binf=NULL;
   } /* if */
 
-  #if !defined SC_LIGHT
+  #if !defined PAWN_LIGHT
     if (errnum==0 && strlen(errfname)==0) {
       int recursion;
       long stacksize=max_stacksize(&glbtab,&recursion);
@@ -684,15 +685,17 @@ cleanup:
       if (pc_amxram>0 && (glb_declared+pc_stksize)*sizeof(cell)>=(unsigned long)pc_amxram)
         flag_exceed=1;
       if ((sc_debug & sSYMBOLIC)!=0 || verbosity>=2 || stacksize+32>=(long)pc_stksize || flag_exceed) {
+        if (errnum>0 || warnnum>0)
+          pc_printf("\n");
         pc_printf("Header size:       %8ld bytes\n", (long)hdrsize);
         pc_printf("Code size:         %8ld bytes\n", (long)code_idx);
         pc_printf("Data size:         %8ld bytes\n", (long)glb_declared*sizeof(cell));
         pc_printf("Stack/heap size:   %8ld bytes; ", (long)pc_stksize*sizeof(cell));
-        pc_printf("estimated max. usage");
+        pc_printf("estimated max. use");
         if (recursion)
           pc_printf(": unknown, due to recursion\n");
         else if ((pc_memflags & suSLEEP_INSTR)!=0)
-          pc_printf(": unknown, due to the \"sleep\" instruction\n");
+          pc_printf(": unknown, due to \"sleep\" instruction\n");
         else
           pc_printf("=%ld cells (%ld bytes)\n",stacksize,stacksize*sizeof(cell));
         pc_printf("Total requirements:%8ld bytes\n", (long)hdrsize+(long)code_idx+(long)glb_declared*sizeof(cell)+(long)pc_stksize*sizeof(cell));
@@ -702,11 +705,12 @@ cleanup:
     } /* if */
   #endif
 
-  if (inpfname!=NULL) {
-    if (get_sourcefile(1)!=NULL)
-      remove(inpfname);         /* the "input file" was in fact a temporary file */
-    free(inpfname);
+  if (tmpname!=NULL) {
+    remove(tmpname);
+    free(tmpname);
   } /* if */
+  if (inpfname!=NULL)
+    free(inpfname);
   if (litq!=NULL)
     free(litq);
   phopt_cleanup();
@@ -729,7 +733,7 @@ cleanup:
   #if !defined NO_DEFINE
     delete_substtable();
   #endif
-  #if !defined SC_LIGHT
+  #if !defined PAWN_LIGHT
     delete_docstringtable();
     if (sc_documentation!=NULL)
       free(sc_documentation);
@@ -891,7 +895,7 @@ static void initglobals(void)
 
   wqptr=wq;             /* initialize while queue pointer */
 
-#if !defined SC_LIGHT
+#if !defined PAWN_LIGHT
   sc_documentation=NULL;
   sc_makereport=FALSE;  /* do not generate a cross-reference report */
 #endif
@@ -1064,7 +1068,7 @@ static void parseoptions(int argc,char **argv,char *oname,char *ename,char *pnam
       case 'p':
         strlcpy(pname,option_value(ptr),_MAX_PATH); /* set name of implicit include file */
         break;
-#if !defined SC_LIGHT
+#if !defined PAWN_LIGHT
       case 'r':
         strlcpy(rname,option_value(ptr),_MAX_PATH); /* set name of report file */
         sc_makereport=TRUE;
@@ -1141,7 +1145,7 @@ static void parseoptions(int argc,char **argv,char *oname,char *ename,char *pnam
         about();
       } /* switch */
     } else if (argv[arg][0]=='@') {
-      #if !defined SC_LIGHT
+      #if !defined PAWN_LIGHT
         parserespf(&argv[arg][1],oname,ename,pname,rname,codepage);
       #endif
     } else if ((ptr=strchr(argv[arg],'='))!=NULL) {
@@ -1169,7 +1173,7 @@ static void parseoptions(int argc,char **argv,char *oname,char *ename,char *pnam
         strcpy(oname,ptr);
       } /* if */
       set_extension(oname,".asm",TRUE);
-#if !defined SC_LIGHT
+#if !defined PAWN_LIGHT
       if (sc_makereport && strlen(rname)==0) {
         if ((ptr=strrchr(str,DIRSEP_CHAR))!=NULL)
           ptr++;          /* strip path */
@@ -1184,7 +1188,7 @@ static void parseoptions(int argc,char **argv,char *oname,char *ename,char *pnam
   } /* for */
 }
 
-#if !defined SC_LIGHT
+#if !defined PAWN_LIGHT
 static void parserespf(char *filename,char *oname,char *ename,char *pname,
                        char *rname,char *codepage)
 {
@@ -1246,7 +1250,7 @@ static void setopt(int argc,char **argv,char *oname,char *ename,char *pname,
     strcpy(oname,"test.asm");
   #endif
 
-  #if !defined SC_LIGHT
+  #if !defined PWANC_LIGHT
     /* first parse a "config" file with default options */
     if (argv[0]!=NULL) {
       char cfgfile[_MAX_PATH];
@@ -1327,13 +1331,13 @@ static void setconfig(char *root)
       } /* if */
       insert_path(path);
       /* same for the codepage root */
-      #if !defined NO_CODEPAGE
+      #if !defined PAWN_NO_CODEPAGE
         *ptr='\0';
         if (!cp_path(path,"codepage"))
           error(109,path);        /* codepage path */
       #endif
       /* also copy the root path (for the XML documentation) */
-      #if !defined SC_LIGHT
+      #if !defined PAWN_LIGHT
         *ptr='\0';
         strcpy(sc_rootpath,path);
       #endif
@@ -1378,7 +1382,7 @@ static void about(void)
     pc_printf("             1    JIT-compatible optimizations only\n");
     pc_printf("             2    full optimizations\n");
     pc_printf("         -p<name> set name of \"prefix\" file\n");
-#if !defined SC_LIGHT
+#if !defined PAWN_LIGHT
     pc_printf("         -r[name] write cross reference report to console or to specified file\n");
 #endif
     pc_printf("         -S<num>  stack/heap size in cells (default=%d)\n",(int)pc_stksize);
@@ -1690,7 +1694,7 @@ static void aligndata(int numbytes)
 
 }
 
-#if !defined SC_LIGHT
+#if !defined PAWN_LIGHT
 /* sc_attachdocumentation()
  * appends documentation comments to the passed-in symbol, or to a global
  * string if "sym" is NULL.
@@ -1774,7 +1778,7 @@ void sc_attachdocumentation(symbol *sym)
 static void insert_docstring_separator(void)
 {
   char sep[2]={sDOCSEP,'\0'};
-  insert_docstring(sep);
+  insert_docstring(sep,1);
 }
 #else
   #define sc_attachdocumentation(s)      (void)(s)
@@ -3533,7 +3537,7 @@ static int newfunc(char *firstname,int firsttag,int fpublic,int fstatic,int stoc
   rettype=(sym->usage & uRETVALUE);      /* set "return type" variable */
   curfunc=sym;
   define_args();        /* add the symbolic info for the function arguments */
-  #if !defined SC_LIGHT
+  #if !defined PAWN_LIGHT
     if (matchtoken('{')) {
       lexpush();
     } else {
@@ -3964,7 +3968,7 @@ static int count_referrers(symbol *entry)
   return count;
 }
 
-#if !defined SC_LIGHT
+#if !defined PAWN_LIGHT
 static int find_xmltag(char *source,char *xmltag,char *xmlparam,char *xmlvalue,
                        char **outer_start,int *outer_length,
                        char **inner_start,int *inner_length)
@@ -4429,7 +4433,7 @@ static void reduce_referrers(symbol *root)
   } while (restart>0);
 }
 
-#if !defined SC_LIGHT
+#if !defined PAWN_LIGHT
 static long max_stacksize_recurse(symbol **sourcesym,symbol *sym,long basesize,int *pubfuncparams,int *recursion)
 {
   long size,maxsize;
@@ -4448,6 +4452,12 @@ static long max_stacksize_recurse(symbol **sourcesym,symbol *sym,long basesize,i
       assert((sym->refer[i]->usage & uNATIVE)==0); /* a native function cannot refer to a user-function */
       for (stkpos=0; sourcesym[stkpos]!=NULL; stkpos++) {
         if (sym->refer[i]==sourcesym[stkpos]) {   /* recursion detection */
+          if ((sc_debug & sSYMBOLIC)!=0 || verbosity>=2) {
+            char symname[2*sNAMEMAX+16];/* allow space for user defined operators */
+            funcdisplayname(symname,sym->name);
+            errorset(sSETPOS,sym->lnumber);
+            error(237,symname);         /* recursive function */
+          } /* if */
           *recursion=1;
           goto break_recursion;         /* recursion was detected, quit loop */
         } /* if */
@@ -4575,8 +4585,10 @@ static int testsymbols(symbol *root,int level,int testlabs,int testconst)
     case iFUNCTN:
       if ((sym->usage & (uDEFINE | uREAD | uNATIVE | uSTOCK | uPUBLIC))==uDEFINE) {
         funcdisplayname(symname,sym->name);
-        if (strlen(symname)>0)
+        if (strlen(symname)>0) {
+          errorset(sSETPOS,sym->lnumber);
           error(203,symname);       /* symbol isn't used ... (and not public/native/stock) */
+        } /* if */
       } /* if */
       if ((sym->usage & uPUBLIC)!=0 || strcmp(sym->name,uMAINFUNC)==0)
         entry=TRUE;                 /* there is an entry point */
@@ -5805,7 +5817,7 @@ static void dostate(void)
   constvalue *stlist;
   int flabel,result;
   symbol *sym;
-  #if !defined SC_LIGHT
+  #if !defined PAWN_LIGHT
     int length,index,listid,listindex,stateindex;
     char *doc;
     constvalue dummystate;
@@ -5828,7 +5840,7 @@ static void dostate(void)
     /* create a dummy state, so that the transition table can be built in the
      * report
      */
-    #if !defined SC_LIGHT
+    #if !defined PAWN_LIGHT
       if (sc_status==statFIRST) {
         memset(&dummystate,0,sizeof dummystate);
         assert(strlen(name)<=sNAMEMAX);
@@ -5869,7 +5881,7 @@ static void dostate(void)
   if (flabel>=0)
     setlabel(flabel);           /* condition was false, jump around the state switch */
 
-  #if !defined SC_LIGHT
+  #if !defined PAWN_LIGHT
     /* mark for documentation */
     if (sc_status==statFIRST) {
       char *str;
@@ -5912,7 +5924,7 @@ static void dostate(void)
             strcat(doc,"\"");
           } /* if */
           strcat(doc,"/>\n");
-          insert_docstring(doc);
+          insert_docstring(doc,0);  /* prefix the state information */
         } while (listid>=0 && ++listindex<state_count(listid));
         free(doc);
       } /* if */

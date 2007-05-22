@@ -20,7 +20,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: libpawnc.c 3612 2006-07-22 09:59:46Z thiadmer $
+ *  Version: $Id: libpawnc.c 3763 2007-05-22 07:23:30Z thiadmer $
  */
 #include <assert.h>
 #include <stdio.h>
@@ -211,7 +211,7 @@ char *pc_readsrc(void *handle,unsigned char *target,int maxchars)
  * Writes to to the source file. There is no automatic line ending; to end a
  * line, write a "\n".
  */
-int pc_writesrc(void *handle,unsigned char *source)
+int pc_writesrc(void *handle,const unsigned char *source)
 {
   return fputs((char*)source,(FILE*)handle) >= 0;
 }
@@ -234,7 +234,7 @@ int pc_eofsrc(void *handle)
  */
 void *pc_openasm(char *filename)
 {
-  #if defined __MSDOS__ || defined SC_LIGHT
+  #if defined __MSDOS__ || defined PAWN_LIGHT
     return fopen(filename,"w+t");
   #else
     return mfcreate(filename);
@@ -243,7 +243,7 @@ void *pc_openasm(char *filename)
 
 void pc_closeasm(void *handle, int deletefile)
 {
-  #if defined __MSDOS__ || defined SC_LIGHT
+  #if defined __MSDOS__ || defined PAWN_LIGHT
     if (handle!=NULL)
       fclose((FILE*)handle);
     if (deletefile)
@@ -260,7 +260,7 @@ void pc_closeasm(void *handle, int deletefile)
 void pc_resetasm(void *handle)
 {
   assert(handle!=NULL);
-  #if defined __MSDOS__ || defined SC_LIGHT
+  #if defined __MSDOS__ || defined PAWN_LIGHT
     fflush((FILE*)handle);
     fseek((FILE*)handle,0,SEEK_SET);
   #else
@@ -268,9 +268,9 @@ void pc_resetasm(void *handle)
   #endif
 }
 
-int pc_writeasm(void *handle,char *string)
+int pc_writeasm(void *handle,const char *string)
 {
-  #if defined __MSDOS__ || defined SC_LIGHT
+  #if defined __MSDOS__ || defined PAWN_LIGHT
     return fputs(string,(FILE*)handle) >= 0;
   #else
     return mfputs((MEMFILE*)handle,string);
@@ -279,7 +279,7 @@ int pc_writeasm(void *handle,char *string)
 
 char *pc_readasm(void *handle, char *string, int maxchars)
 {
-  #if defined __MSDOS__ || defined SC_LIGHT
+  #if defined __MSDOS__ || defined PAWN_LIGHT
     return fgets(string,maxchars,(FILE*)handle);
   #else
     return mfgets((MEMFILE*)handle,string,maxchars);
@@ -311,7 +311,7 @@ void pc_resetbin(void *handle,long offset)
   fseek((FILE*)handle,offset,SEEK_SET);
 }
 
-int pc_writebin(void *handle,void *buffer,int size)
+int pc_writebin(void *handle,const void *buffer,int size)
 {
   return (int)fwrite(buffer,1,size,(FILE*)handle) == size;
 }

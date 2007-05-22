@@ -56,6 +56,10 @@
 ;
 ;History (list of changes)
 ;-------------------------
+; 30 april 2007  by Thiadmer Riemersma (TR)
+;       Move to position-independent code (no more relocation needed for
+;       branches).
+;       Removed cases for obsolete instructions.
 ; 14 december 2005  by Thiadmer Riemersma (TR)
 ;       Addition of macro instructions, to speed up instruction decoding
 ; 17 february 2005  by Thiadmer Riemersma (TR)
@@ -114,11 +118,20 @@
         add     ecx,4
 %endmacro
 
-%macro  GO_ON   0
+%macro  NEXT    0
+    %ifdef AMX_TOKENTHREADING
+        mov     ebp, [esi]
+        jmp     DWORD [_amx_opcodelist + 4*ebp]
+    %else
+        ; direct threading
         jmp     DWORD [esi]
+    %endif
 ;       ALIGN   4
 %endmacro
 
+%macro  JUMPREL 0
+        add     esi,[esi+4]
+%endmacro
 
 %macro  _CHKSTACK 0
         cmp     ecx,stp
@@ -224,40 +237,40 @@ _amx_exec_asm: ;PROC
         mov     eax,[eax]       ; get PRI
         add     ebx,edi         ; relocate frame
 
-        GO_ON                   ; start interpreting
+        NEXT                    ; start interpreting
 
 
 OP_LOAD_PRI:
         mov     eax,[esi+4]
         add     esi,8
         mov     eax,[edi+eax]
-        GO_ON
+        NEXT
 
 OP_LOAD_ALT:
         mov     edx,[esi+4]
         add     esi,8
         mov     edx,[edi+edx]
-        GO_ON
+        NEXT
 
 ;good
 OP_LOAD_S_PRI:
         mov     eax,[esi+4]
         add     esi,8
         mov     eax,[ebx+eax]
-        GO_ON
+        NEXT
 
 ;good
 OP_LOAD_S_ALT:
         mov     edx,[esi+4]
         add     esi,8
         mov     edx,[ebx+edx]
-        GO_ON
+        NEXT
 
 OP_LOAD_I:
         add     esi,4
         _VERIFYADDRESS  eax
         mov     eax,[edi+eax]
-        GO_ON
+        NEXT
 
 OP_LODB_I:
         _VERIFYADDRESS  eax
@@ -265,94 +278,94 @@ OP_LODB_I:
         mov     eax,[edi+eax]           ;subject to misalignment stalls
         add     esi,8
         and     eax,DWORD [(lodb_and-4)+ebp*4]
-        GO_ON
+        NEXT
 
 OP_LREF_PRI:
         mov     eax,[esi+4]
         add     esi,8
         mov     eax,[edi+eax]
         mov     eax,[edi+eax]
-        GO_ON
+        NEXT
 
 OP_LREF_ALT:
         mov     edx,[esi+4]
         add     esi,8
         mov     edx,[edi+edx]
         mov     edx,[edi+edx]
-        GO_ON
+        NEXT
 
 OP_LREF_S_PRI:
         mov     eax,[esi+4]
         add     esi,8
         mov     eax,[ebx+eax]
         mov     eax,[edi+eax]
-        GO_ON
+        NEXT
 
 OP_LREF_S_ALT:
         mov     edx,[esi+4]
         add     esi,8
         mov     edx,[ebx+edx]
         mov     edx,[edi+edx]
-        GO_ON
+        NEXT
 
 ;good
 OP_CONST_PRI:
         mov     eax,[esi+4]
         add     esi,8
-        GO_ON
+        NEXT
 
 ;good
 OP_CONST_ALT:
         mov     edx,[esi+4]
         add     esi,8
-        GO_ON
+        NEXT
 
 ;good
 OP_ADDR_PRI:
         mov     eax,[esi+4]
         add     esi,8
         add     eax,frm
-        GO_ON
+        NEXT
 
 ;good
 OP_ADDR_ALT:
         mov     edx,[esi+4]
         add     esi,8
         add     edx,frm
-        GO_ON
+        NEXT
 
 OP_STOR_PRI:
         mov     ebp,[esi+4]
         add     esi,8
         mov     [ebp+edi],eax
-        GO_ON
+        NEXT
 
 OP_STOR_ALT:
         mov     ebp,[esi+4]
         add     esi,8
         mov     [ebp+edi],edx
-        GO_ON
+        NEXT
 
 ;good
 OP_STOR_S_PRI:
         mov     ebp,[esi+4]
         add     esi,8
         mov     [ebp+ebx],eax
-        GO_ON
+        NEXT
 
 ;good
 OP_STOR_S_ALT:
         mov     ebp,[esi+4]
         add     esi,8
         mov     [ebp+ebx],edx
-        GO_ON
+        NEXT
 
 ;good
 OP_STOR_I:
         add     esi,4
         _VERIFYADDRESS  edx
         mov     [edi+edx],eax
-        GO_ON
+        NEXT
 
 OP_STRB_I:
         _VERIFYADDRESS  edx
@@ -361,43 +374,43 @@ OP_STRB_I:
         cmp     ebp,1
         jne     short strb_not1byte
         mov     [edi+edx],al
-        GO_ON
+        NEXT
     strb_not1byte:
         cmp     ebp,4
         je      short strb_4byte
         mov     [edi+edx],ax
-        GO_ON
+        NEXT
     strb_4byte:
         mov     [edi+edx],eax
-        GO_ON
+        NEXT
 
 OP_SREF_PRI:
         mov     ebp,[esi+4]
         add     esi,8
         mov     ebp,[edi+ebp]
         mov     [edi+ebp],eax
-        GO_ON
+        NEXT
 
 OP_SREF_ALT:
         mov     ebp,[esi+4]
         add     esi,8
         mov     ebp,[edi+ebp]
         mov     [edi+ebp],edx
-        GO_ON
+        NEXT
 
 OP_SREF_S_PRI:
         mov     ebp,[esi+4]
         add     esi,8
         mov     ebp,[ebx+ebp]
         mov     [edi+ebp],eax
-        GO_ON
+        NEXT
 
 OP_SREF_S_ALT:
         mov     ebp,[esi+4]
         add     esi,8
         mov     ebp,[ebx+ebp]
         mov     [edi+ebp],edx
-        GO_ON
+        NEXT
 
 ;good
 OP_LIDX:
@@ -405,7 +418,7 @@ OP_LIDX:
         add     esi,4
         _VERIFYADDRESS  eax
         mov     eax,[edi+eax]
-        GO_ON
+        NEXT
 
 OP_LIDX_B:
         push    ecx
@@ -416,13 +429,13 @@ OP_LIDX_B:
         pop     ecx
         _VERIFYADDRESS  eax
         mov     eax,[edi+eax]
-        GO_ON
+        NEXT
 
 ;good
 OP_IDXADDR:
         add     esi,4
         lea     eax,[edx+4*eax]
-        GO_ON
+        NEXT
 
 OP_IDXADDR_B:
         push    ecx
@@ -431,21 +444,21 @@ OP_IDXADDR_B:
         shl     eax,cl
         pop     ecx
         add     eax,edx
-        GO_ON
+        NEXT
 
 OP_ALIGN_PRI:
         mov     ebp,4   ; ??? one operation too many?
         sub     ebp,[esi+4]
         add     esi,8
         xor     eax,ebp
-        GO_ON
+        NEXT
 
 OP_ALIGN_ALT:
         mov     ebp,4
         sub     ebp,[esi+4]
         add     esi,8
         xor     edx,ebp
-        GO_ON
+        NEXT
 
 OP_LCTRL:
         mov     ebp,[esi+4]
@@ -453,37 +466,37 @@ OP_LCTRL:
         cmp     ebp,0
         jne     short lctrl_1
         mov     eax,code ; COD
-        GO_ON
+        NEXT
     lctrl_1:
         cmp     ebp,1
         jne     short lctrl_2
         mov     eax,edi  ; DAT
-        GO_ON
+        NEXT
     lctrl_2:
         cmp     ebp,2
         jne     short lctrl_3
         mov     eax,hea  ; 2=HEA
-        GO_ON
+        NEXT
     lctrl_3:
         cmp     ebp,3
         jne     short lctrl_4
         mov     ebp,amx
         mov     eax,stp
-        GO_ON
+        NEXT
     lctrl_4:
         cmp     ebp,4
         jne     short lctrl_5
         mov     eax,ecx  ; 4=STK
-        GO_ON
+        NEXT
     lctrl_5:
         cmp     ebp,5
         jne     short lctrl_6
         mov     eax,frm  ; 5=FRM
-        GO_ON
+        NEXT
     lctrl_6:
         mov     eax,esi  ; 6=CIP
         sub     eax,code
-        GO_ON
+        NEXT
 
 OP_SCTRL:
         mov     ebp,[esi+4]
@@ -491,12 +504,12 @@ OP_SCTRL:
         cmp     ebp,2
         jne     short sctrl_4
         mov     hea,eax  ; 2=HEA
-        GO_ON
+        NEXT
     sctrl_4:
         cmp     ebp,4
         jne     short sctrl_5
         mov     ecx,eax  ; 4=STK
-        GO_ON
+        NEXT
     sctrl_5:
         cmp     ebp,5
         jne     short sctrl_6
@@ -504,35 +517,35 @@ OP_SCTRL:
         mov     frm,eax
         add     ebx,edi  ; relocate FRM
     sctrl_6:
-        GO_ON
+        NEXT
 
 OP_MOVE_PRI:
         add     esi,4
         mov     eax,edx
-        GO_ON
+        NEXT
 
 ;good
 OP_MOVE_ALT:
         add     esi,4
         mov     edx,eax
-        GO_ON
+        NEXT
 
 OP_XCHG:
         add     esi,4
         xchg    eax,edx
-        GO_ON
+        NEXT
 
 ;good
 OP_PUSH_PRI:
         add     esi,4
         _PUSH   eax
-        GO_ON
+        NEXT
 
 ;good
 OP_PUSH_ALT:
         add     esi,4
         _PUSH   edx
-        GO_ON
+        NEXT
 
 OP_PUSH_R_PRI:
         mov     ebp,[esi+4]
@@ -541,21 +554,21 @@ OP_PUSH_R_PRI:
         _PUSH   eax
         dec     ebp
         jnz     short push_loop
-        GO_ON
+        NEXT
 
 ;good
 OP_PUSH_C:
         mov     ebp,[esi+4]
         add     esi,8
         _PUSH   ebp
-        GO_ON
+        NEXT
 
 OP_PUSH:
         mov     ebp,[esi+4]
         add     esi,8
         mov     ebp,[ebp+edi]
         _PUSH   ebp
-        GO_ON
+        NEXT
 
 ;good
 OP_PUSH_S:
@@ -563,18 +576,18 @@ OP_PUSH_S:
         add     esi,8
         mov     ebp,[ebp+ebx]
         _PUSH   ebp
-        GO_ON
+        NEXT
 
 OP_POP_PRI:
         add     esi,4
         _POP    eax
-        GO_ON
+        NEXT
 
 ;good
 OP_POP_ALT:
         add     esi,4
         _POP    edx
-        GO_ON
+        NEXT
 
 ;good
 OP_STACK:
@@ -583,7 +596,7 @@ OP_STACK:
         _CHKMARGIN
         _CHKSTACK
         add     esi,8
-        GO_ON
+        NEXT
 
 ;good
 OP_HEAP:
@@ -593,7 +606,7 @@ OP_HEAP:
         add     hea,ebp
         _CHKMARGIN
         _CHKHEAP
-        GO_ON
+        NEXT
 
 ;good
 OP_PROC:
@@ -604,7 +617,7 @@ OP_PROC:
         mov     frm,ecx
         add     ebx,ecx
         _CHKMARGIN
-        GO_ON
+        NEXT
 
 OP_RET:
         _POP    ebx
@@ -615,7 +628,7 @@ OP_RET:
         jae     err_memaccess
         mov     frm,ebx
         add     ebx,edi
-        GO_ON
+        NEXT
 
 ;good
 OP_RETN:
@@ -629,110 +642,106 @@ OP_RETN:
         add     ebx,edi
         mov     ebp,[edi+ecx]
         lea     ecx,[ecx+ebp+4]
-        GO_ON
+        NEXT
 
 OP_CALL:
         lea     ebp,[esi+8]
-        mov     esi,[esi+4]
+        JUMPREL ; add esi,[esi+4]
         _PUSH   ebp
-        GO_ON
+        NEXT
 
 OP_CALL_PRI:
         lea     ebp,[esi+4]
         mov     esi,eax
         add     esi,code        ; cip = PRI + code
         _PUSH   ebp
-        GO_ON
+        NEXT
 
 ;good
 OP_JUMP:
-        mov     esi,[esi+4]
-        GO_ON
-
-OP_JREL:
-        add     esi,[esi+4]
-        add     esi,8
-        GO_ON
+OP_JREL:                        ; JREL is now obsolete
+        JUMPREL ; add esi,[esi+4]
+        NEXT
 
 ;good
 OP_JZER:
         or      eax,eax
         jz      short jump_taken
         add     esi,8
-        GO_ON
+        NEXT
 
     jump_taken:
-        mov     esi,[esi+4]
-        GO_ON
+        JUMPREL ; add esi,[esi+4]
+        NEXT
 
 ;good
 OP_JNZ:
         or      eax,eax
         jnz     short jump_taken
         add     esi,8
-        GO_ON
+        NEXT
 
 ;good
 OP_JEQ:
         cmp     eax,edx
         je      short jump_taken
         add     esi,8
-        GO_ON
+        NEXT
 
 OP_JNEQ:
         cmp     eax,edx
         jne     short jump_taken
         add     esi,8
-        GO_ON
+        NEXT
 
 OP_JLESS:
         cmp     eax,edx
         jb      short jump_taken
         add     esi,8
-        GO_ON
+        NEXT
 
 OP_JLEQ:
         cmp     eax,edx
         jbe     short jump_taken
         add     esi,8
-        GO_ON
+        NEXT
 
 OP_JGRTR:
         cmp     eax,edx
         ja      short jump_taken
         add     esi,8
-        GO_ON
+        NEXT
 
 OP_JGEQ:
         cmp     eax,edx
-        jae     short jump_taken    ; unsigned comparison
+        jae     short jump_taken
         add     esi,8
-        GO_ON
+        NEXT
 
 OP_JSLESS:
         cmp     eax,edx
         jl      short jump_taken
         add     esi,8
-        GO_ON
+        NEXT
 
 ;good
 OP_JSLEQ:
         cmp     eax,edx
         jle     near jump_taken
         add     esi,8
-        GO_ON
+        NEXT
 
 OP_JSGRTR:
         cmp     eax,edx
         jg      near jump_taken
         add     esi,8
-        GO_ON
+        NEXT
 
 OP_JSGEQ:
         cmp     eax,edx
-        jge     near jump_taken    ; signed comparison
+        jge     near jump_taken
         add     esi,8
-        GO_ON
+        NEXT
 
 OP_SHL:
         push    ecx
@@ -740,7 +749,7 @@ OP_SHL:
         add     esi,4
         shl     eax,cl
         pop     ecx
-        GO_ON
+        NEXT
 
 OP_SHR:
         push    ecx
@@ -748,7 +757,7 @@ OP_SHR:
         add     esi,4
         shr     eax,cl
         pop     ecx
-        GO_ON
+        NEXT
 
 OP_SSHR:
         push    ecx
@@ -756,7 +765,7 @@ OP_SSHR:
         add     esi,4
         sar     eax,cl
         pop     ecx
-        GO_ON
+        NEXT
 
 OP_SHL_C_PRI:
         push    ecx
@@ -764,7 +773,7 @@ OP_SHL_C_PRI:
         add     esi,8
         shl     eax,cl
         pop     ecx
-        GO_ON
+        NEXT
 
 OP_SHL_C_ALT:
         push    ecx
@@ -772,7 +781,7 @@ OP_SHL_C_ALT:
         add     esi,8
         shl     edx,cl
         pop     ecx
-        GO_ON
+        NEXT
 
 OP_SHR_C_PRI:
         push    ecx
@@ -780,7 +789,7 @@ OP_SHR_C_PRI:
         add     esi,8
         shr     eax,cl
         pop     ecx
-        GO_ON
+        NEXT
 
 OP_SHR_C_ALT:
         push    ecx
@@ -788,14 +797,14 @@ OP_SHR_C_ALT:
         add     esi,8
         shr     edx,cl
         pop     ecx
-        GO_ON
+        NEXT
 
 OP_SMUL:
         add     esi,4
         push    edx
         imul    edx
         pop     edx
-        GO_ON
+        NEXT
 
 ;good
 OP_SDIV_ALT:
@@ -812,7 +821,7 @@ OP_SDIV:
         _CHKDIVIDEZERO
         add     esi,4           ; default behavior is right in the other cases
         idiv    ebp
-        GO_ON
+        NEXT
 
     sdiv_fiddle:
         _CHKDIVIDEZERO
@@ -823,14 +832,14 @@ OP_SDIV:
         add     edx,ebp         ; else fix the result values.
         dec     eax             ; Amazing, how simple this is...
     sdiv_goon:
-        GO_ON
+        NEXT
 
 OP_UMUL:
         add     esi,4
         push    edx
         mul     edx
         pop     edx
-        GO_ON
+        NEXT
 
 OP_UDIV:
         mov     ebp,edx
@@ -838,7 +847,7 @@ OP_UDIV:
         _CHKDIVIDEZERO
         add     esi,4
         div     ebp
-        GO_ON
+        NEXT
 
 OP_UDIV_ALT:
         mov     ebp,eax
@@ -847,64 +856,64 @@ OP_UDIV_ALT:
         _CHKDIVIDEZERO
         add     esi,4
         div     ebp
-        GO_ON
+        NEXT
 
 ;good
 OP_ADD:
         add     esi,4
         add     eax,edx
-        GO_ON
+        NEXT
 
 ;good
 OP_SUB:
         add     esi,4
         sub     eax,edx
-        GO_ON
+        NEXT
 
 ;good
 OP_SUB_ALT:
         neg     eax
         add     esi,4
         add     eax,edx
-        GO_ON
+        NEXT
 
 OP_AND:
         add     esi,4
         and     eax,edx
-        GO_ON
+        NEXT
 
 OP_OR:
         add     esi,4
         or      eax,edx
-        GO_ON
+        NEXT
 
 OP_XOR:
         add     esi,4
         xor     eax,edx
-        GO_ON
+        NEXT
 
 OP_NOT:
         add     esi,4
         neg     eax             ; sets CF iff EAX != 0
         sbb     eax,eax         ; EAX == -1 iff CF set (zero otherwise)
         inc     eax             ; -1 => 0 and 0 => 1
-        GO_ON
+        NEXT
 
 OP_NEG:
         add     esi,4
         neg     eax
-        GO_ON
+        NEXT
 
 OP_INVERT:
         add     esi,4
         not     eax
-        GO_ON
+        NEXT
 
 ;good
 OP_ADD_C:
         add     eax,[esi+4]
         add     esi,8
-        GO_ON
+        NEXT
 
 ;good
 OP_SMUL_C:
@@ -913,85 +922,85 @@ OP_SMUL_C:
         imul    ebp
         pop     edx
         add     esi,8
-        GO_ON
+        NEXT
 
 ;good
 OP_ZERO_PRI:
         add     esi,4
         sub     eax,eax
-        GO_ON
+        NEXT
 
 ;good
 OP_ZERO_ALT:
         add     esi,4
         sub     edx,edx
-        GO_ON
+        NEXT
 
 OP_ZERO:
         mov     ebp,[esi+4]
         add     esi,8
         mov     DWORD [edi+ebp],0
-        GO_ON
+        NEXT
 
 OP_ZERO_S:
         mov     ebp,[esi+4]
         add     esi,8
         mov     DWORD [ebx+ebp],0
-        GO_ON
+        NEXT
 
 OP_SIGN_PRI:
         shl     eax,24
         add     esi,4
         sar     eax,24
-        GO_ON
+        NEXT
 
 OP_SIGN_ALT:
         shl     edx,24
         add     esi,4
         sar     edx,24
-        GO_ON
+        NEXT
 
 OP_EQ:
         add     esi,4
         cmp     eax,edx         ; PRI == ALT ?
         mov     eax,0
         sete    al
-        GO_ON
+        NEXT
 
 OP_NEQ:
         add     esi,4
         cmp     eax,edx         ; PRI != ALT ?
         mov     eax,0
         setne   al
-        GO_ON
+        NEXT
 
 OP_LESS:
         add     esi,4
         cmp     eax,edx         ; PRI < ALT ? (unsigned)
         mov     eax,0
         setb    al
-        GO_ON
+        NEXT
 
 OP_LEQ:
         add     esi,4
         cmp     eax,edx         ; PRI <= ALT ? (unsigned)
         mov     eax,0
         setbe   al
-        GO_ON
+        NEXT
 
 OP_GRTR:
         add     esi,4
         cmp     eax,edx         ; PRI > ALT ? (unsigned)
         mov     eax,0
         seta    al
-        GO_ON
+        NEXT
 
 OP_GEQ:
         add     esi,4
         cmp     eax,edx         ; PRI >= ALT ? (unsigned)
         mov     eax,0
         setae   al
-        GO_ON
+        NEXT
 
 ;good
 OP_SLESS:
@@ -999,97 +1008,97 @@ OP_SLESS:
         cmp     eax,edx         ; PRI < ALT ? (signed)
         mov     eax,0
         setl    al
-        GO_ON
+        NEXT
 
 OP_SLEQ:
         add     esi,4
         cmp     eax,edx         ; PRI <= ALT ? (signed)
         mov     eax,0
         setle   al
-        GO_ON
+        NEXT
 
 OP_SGRTR:
         add     esi,4
         cmp     eax,edx         ; PRI > ALT ? (signed)
         mov     eax,0
         setg    al
-        GO_ON
+        NEXT
 
 OP_SGEQ:
         add     esi,4
         cmp     eax,edx         ; PRI >= ALT ? (signed)
         mov     eax,0
         setge   al
-        GO_ON
+        NEXT
 
 OP_EQ_C_PRI:
         cmp     eax,[esi+4]     ; PRI == value ?
         lea     esi,[esi+8]
         mov     eax,0
         sete    al
-        GO_ON
+        NEXT
 
 OP_EQ_C_ALT:
         xor     eax,eax
         cmp     edx,[esi+4]     ; ALT == value ?
         lea     esi,[esi+8]
         sete    al
-        GO_ON
+        NEXT
 
 OP_INC_PRI:
         add     esi,4
         inc     eax
-        GO_ON
+        NEXT
 
 OP_INC_ALT:
         add     esi,4
         inc     edx
-        GO_ON
+        NEXT
 
 OP_INC:
         mov     ebp,[esi+4]
         add     esi,8
         inc     DWORD [edi+ebp]
-        GO_ON
+        NEXT
 
 ;good
 OP_INC_S:
         mov     ebp,[esi+4]
         add     esi,8
         inc     DWORD [ebx+ebp]
-        GO_ON
+        NEXT
 
 OP_INC_I:
         add     esi,4
         inc     DWORD [edi+eax]
-        GO_ON
+        NEXT
 
 OP_DEC_PRI:
         add     esi,4
         dec     eax
-        GO_ON
+        NEXT
 
 OP_DEC_ALT:
         add     esi,4
         dec     edx
-        GO_ON
+        NEXT
 
 OP_DEC:
         mov     ebp,[esi+4]
         add     esi,8
         dec     DWORD [edi+ebp]
-        GO_ON
+        NEXT
 
 OP_DEC_S:
         mov     ebp,[esi+4]
         add     esi,8
         dec     DWORD [ebx+ebp]
-        GO_ON
+        NEXT
 
 OP_DEC_I:
         add     esi,4
         sub     DWORD [edi+eax],1
-        GO_ON
+        NEXT
 
 OP_MOVS:
         _VERIFYADDRESS  eax             ; PRI
@@ -1121,7 +1130,7 @@ OP_MOVS:
         pop     esi
         pop     edi
         pop     ecx
-        GO_ON
+        NEXT
 
 OP_CMPS:
         _VERIFYADDRESS  eax             ; PRI
@@ -1151,7 +1160,7 @@ OP_CMPS:
         pop     esi
         pop     edi
         pop     ecx
-        GO_ON
+        NEXT
 
 
 OP_FILL:
@@ -1175,7 +1184,7 @@ OP_FILL:
         pop     edi
         pop     ecx
     fill_ready:
-        GO_ON
+        NEXT
 
 
 OP_HALT:
@@ -1207,7 +1216,7 @@ OP_BOUNDS:
         add     esi,8
         cmp     eax,ebp
         ja      near err_bounds ; use unsigned comparison, so <0 is >bounds
-        GO_ON
+        NEXT
 
 
 OP_SYSREQ_C:
@@ -1261,7 +1270,7 @@ OP_SYSREQ_PRI:
         mov     ebx,frm
         mov     ecx,stk         ; restore STK
         add     ebx,edi         ; restore FRM
-        GO_ON
+        NEXT
 
 
 OP_SYSREQ_N:
@@ -1316,7 +1325,7 @@ OP_SYSREQ_N:
         cmp     eax,AMX_ERR_NONE
         jne     near _return    ; return error code, if any
         mov     eax,pri         ; get retval into eax (PRI)
-        GO_ON
+        NEXT
 
 
 OP_SYSREQ_D:
@@ -1358,7 +1367,7 @@ OP_SYSREQ_D:
         mov     ebx,frm
         mov     ecx,stk         ; restore STK
         add     ebx,edi         ; restore FRM
-        GO_ON
+        NEXT
 
 
 OP_SYSREQ_ND:
@@ -1405,45 +1414,30 @@ OP_SYSREQ_ND:
 
         cmp     DWORD [ebp+_error],AMX_ERR_NONE
         jne     near _return    ; return error code, if any
-        GO_ON
+        NEXT
 
 
 OP_FILE:
-        jmp     OP_INVALID
-
-
 OP_LINE:
-        add     esi,12
-        GO_ON
-
-
 OP_SYMBOL:
-        add     esi,[esi+4]
-        add     esi,8           ; skip "fixed" part
-        GO_ON
-
-
 OP_SRANGE:
-        add     esi,12
-        GO_ON
-
-
 OP_SYMTAG:
-        add     esi,8
-        GO_ON
+        jmp     OP_INVALID
 
 
 OP_JUMP_PRI:
         mov     esi,eax
-        GO_ON
+        NEXT
 
 
 OP_SWITCH:
         push    ecx
-        mov     ebp,[esi+4]     ; get offset of the switch table
+        mov     ebp,esi         ; EBP = CIP
+        add     ebp,[esi+4]     ; EBP = offset of the switch table
         add     ebp,4           ; skip the "OP_CASETBL" opcode
         mov     ecx,[ebp]       ; ECX = number of records
-        mov     esi,[ebp+4]     ; preset ESI to "none-matched" case
+        mov     esi,ebp         ; ESI = address of first record
+        add     esi,[ebp+4]     ; preset ESI to "none-matched" case
     op_switch_loop:
         or      ecx, ecx        ; number of records == 0?
         jz      short op_switch_end ; yes, no more records, exit loop
@@ -1451,10 +1445,11 @@ OP_SWITCH:
         dec     ecx             ; already decrement cases to do
         cmp     eax,[ebp]       ; PRI == case label?
         jne     short op_switch_loop ; no, continue loop
-        mov     esi,[ebp+4]     ; yes, get jump address and exit loop
+        mov     esi,ebp         ; yes, get jump address and exit loop
+        add     esi,[ebp+4]
     op_switch_end:
         pop     ecx
-        GO_ON
+        NEXT
 
 
 OP_CASETBL:
@@ -1466,7 +1461,7 @@ OP_SWAP_PRI:
         add     esi,4
         mov     [edi+ecx],eax
         mov     eax,ebp
-        GO_ON
+        NEXT
 
 
 OP_SWAP_ALT:
@@ -1474,7 +1469,7 @@ OP_SWAP_ALT:
         add     esi,4
         mov     [edi+ecx],edx
         mov     edx,ebp
-        GO_ON
+        NEXT
 
 
 OP_PUSH_ADR:
@@ -1482,12 +1477,12 @@ OP_PUSH_ADR:
         add     esi,8
         add     ebp,frm
         _PUSH   ebp
-        GO_ON
+        NEXT
 
 
 OP_NOP:
         add     esi,4
-        GO_ON
+        NEXT
 
 
 OP_BREAK:
@@ -1495,7 +1490,7 @@ OP_BREAK:
         add     esi,4
         cmp     DWORD [ebp+_debug], 0
         jnz     break_calldebug
-        GO_ON                   ; debug hook not active, ignore
+        NEXT                    ; debug hook not active, ignore
 
     break_calldebug:
         ; store the status in the AMX (FRM, STK, HEA, CIP, and PRI + ALT)
@@ -1525,7 +1520,7 @@ OP_BREAK:
         _RESTOREREGS
         mov     eax,[ebp+_pri]  ; restore PRI and ALT
         mov     edx,[ebp+_alt]
-        GO_ON
+        NEXT
 
 
 OP_PUSH2_C:
@@ -1534,7 +1529,7 @@ OP_PUSH2_C:
         _PUSH   ebp
         mov     ebp,[esi-4]
         _PUSH   ebp
-        GO_ON
+        NEXT
 
 OP_PUSH2:
         add     esi,12
@@ -1544,7 +1539,7 @@ OP_PUSH2:
         mov     ebp,[esi-4]
         mov     ebp,[ebp+edi]
         _PUSH   ebp
-        GO_ON
+        NEXT
 
 OP_PUSH2_S:
         add     esi,12
@@ -1554,7 +1549,7 @@ OP_PUSH2_S:
         mov     ebp,[esi-4]
         mov     ebp,[ebp+ebx]
         _PUSH   ebp
-        GO_ON
+        NEXT
 
 OP_PUSH2_ADR:
         add     esi,12
@@ -1564,7 +1559,7 @@ OP_PUSH2_ADR:
         mov     ebp,[esi-4]
         add     ebp,frm
         _PUSH   ebp
-        GO_ON
+        NEXT
 
 
 OP_PUSH3_C:
@@ -1575,7 +1570,7 @@ OP_PUSH3_C:
         _PUSH   ebp
         mov     ebp,[esi-4]
         _PUSH   ebp
-        GO_ON
+        NEXT
 
 OP_PUSH3:
         add     esi,16
@@ -1588,7 +1583,7 @@ OP_PUSH3:
         mov     ebp,[esi-4]
         mov     ebp,[ebp+edi]
         _PUSH   ebp
-        GO_ON
+        NEXT
 
 OP_PUSH3_S:
         add     esi,16
@@ -1601,7 +1596,7 @@ OP_PUSH3_S:
         mov     ebp,[esi-4]
         mov     ebp,[ebp+ebx]
         _PUSH   ebp
-        GO_ON
+        NEXT
 
 OP_PUSH3_ADR:
         add     esi,16
@@ -1614,7 +1609,7 @@ OP_PUSH3_ADR:
         mov     ebp,[esi-4]
         add     ebp,frm
         _PUSH   ebp
-        GO_ON
+        NEXT
 
 
 OP_PUSH4_C:
@@ -1627,7 +1622,7 @@ OP_PUSH4_C:
         _PUSH   ebp
         mov     ebp,[esi-4]
         _PUSH   ebp
-        GO_ON
+        NEXT
 
 OP_PUSH4:
         add     esi,20
@@ -1643,7 +1638,7 @@ OP_PUSH4:
         mov     ebp,[esi-4]
         mov     ebp,[ebp+edi]
         _PUSH   ebp
-        GO_ON
+        NEXT
 
 OP_PUSH4_S:
         add     esi,20
@@ -1659,7 +1654,7 @@ OP_PUSH4_S:
         mov     ebp,[esi-4]
         mov     ebp,[ebp+ebx]
         _PUSH   ebp
-        GO_ON
+        NEXT
 
 OP_PUSH4_ADR:
         add     esi,20
@@ -1675,7 +1670,7 @@ OP_PUSH4_ADR:
         mov     ebp,[esi-4]
         add     ebp,frm
         _PUSH   ebp
-        GO_ON
+        NEXT
 
 
 OP_PUSH5_C:
@@ -1690,7 +1685,7 @@ OP_PUSH5_C:
         _PUSH   ebp
         mov     ebp,[esi-4]
         _PUSH   ebp
-        GO_ON
+        NEXT
 
 OP_PUSH5:
         add     esi,24
@@ -1709,7 +1704,7 @@ OP_PUSH5:
         mov     ebp,[esi-4]
         mov     ebp,[ebp+edi]
         _PUSH   ebp
-        GO_ON
+        NEXT
 
 OP_PUSH5_S:
         add     esi,24
@@ -1728,7 +1723,7 @@ OP_PUSH5_S:
         mov     ebp,[esi-4]
         mov     ebp,[ebp+ebx]
         _PUSH   ebp
-        GO_ON
+        NEXT
 
 OP_PUSH5_ADR:
         add     esi,24
@@ -1747,7 +1742,7 @@ OP_PUSH5_ADR:
         mov     ebp,[esi-4]
         add     ebp,frm
         _PUSH   ebp
-        GO_ON
+        NEXT
 
 
 OP_LOAD_BOTH:
@@ -1756,7 +1751,7 @@ OP_LOAD_BOTH:
         add     esi,12
         mov     eax,[edi+eax]
         mov     edx,[edi+edx]
-        GO_ON
+        NEXT
 
 
 OP_LOAD_S_BOTH:
@@ -1765,7 +1760,7 @@ OP_LOAD_S_BOTH:
         add     esi,12
         mov     eax,[ebx+eax]
         mov     edx,[ebx+edx]
-        GO_ON
+        NEXT
 
 
 OP_CONST:
@@ -1775,7 +1770,7 @@ OP_CONST:
         add     esi,12
         mov     [ebp+edi],eax
         pop     eax
-        GO_ON
+        NEXT
 
 
 OP_CONST_S:
@@ -1785,7 +1780,7 @@ OP_CONST_S:
         add     esi,12
         mov     [ebp+ebx],eax
         pop     eax
-        GO_ON
+        NEXT
 
 
 OP_INVALID:

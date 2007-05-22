@@ -22,7 +22,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: amxcons.c 3693 2007-01-02 13:36:50Z thiadmer $
+ *  Version: $Id: amxcons.c 3745 2007-04-30 16:32:33Z thiadmer $
  */
 
 #if defined _UNICODE || defined __UNICODE__ || defined UNICODE

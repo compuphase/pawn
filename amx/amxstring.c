@@ -18,7 +18,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: amxstring.c 3656 2006-10-24 07:20:26Z thiadmer $
+ *  Version: $Id: amxstring.c 3763 2007-05-22 07:23:30Z thiadmer $
  */
 #include <limits.h>
 #include <string.h>

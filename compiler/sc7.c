@@ -45,7 +45,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: sc7.c 3579 2006-06-06 13:35:29Z thiadmer $
+ *  Version: $Id: sc7.c 3763 2007-05-22 07:23:30Z thiadmer $
  */
 #include <assert.h>
 #include <stdio.h>
@@ -62,6 +62,14 @@
   #pragma warning(disable:4125)  /* decimal digit terminates octal escape sequence */
 #endif
 
+#if defined PAWN_LIGHT
+  #if !defined AMX_NO_OPCODE_PACKING
+    #define AMX_NO_OPCODE_PACKING
+  #endif
+  #if !defined AMX_NO_MACRO_INSTR
+    #define AMX_NO_MACRO_INSTR
+  #endif
+#endif
 #include "sc7.scp"
 
 #if defined _MSC_VER
@@ -466,8 +474,8 @@ SC_FUNC int phopt_cleanup(void)
   #define MAX_ALIAS       (PAWN_CELL_SIZE/4) * MAX_OPT_CAT
 #endif
 
-static int matchsequence(char *start,char *end,char *pattern,
-                         char symbols[MAX_OPT_VARS][MAX_ALIAS+1],
+static int matchsequence(char *start,char *end,const char *pattern,
+                         char symbols[MAX_OPT_VARS+1][MAX_ALIAS+1],
                          int *match_length)
 {
   int var,i;
@@ -477,7 +485,7 @@ static int matchsequence(char *start,char *end,char *pattern,
   char *ptr;
 
   *match_length=0;
-  for (var=0; var<MAX_OPT_VARS; var++)
+  for (var=0; var<=MAX_OPT_VARS; var++)
     symbols[var][0]='\0';
 
   while (*start=='\t' || *start==' ')
@@ -489,14 +497,31 @@ static int matchsequence(char *start,char *end,char *pattern,
     case '%':   /* new "symbol" */
       pattern++;
       assert(isdigit(*pattern));
-      var=atoi(pattern) - 1;
-      assert(var>=0 && var<MAX_OPT_VARS);
+      var=atoi(pattern);
+      assert(var>=0 && var<=MAX_OPT_VARS);
       assert(*start=='-' || alphanum(*start));
       for (i=0; start<end && (*start=='-' || *start=='+' || alphanum(*start)); i++,start++) {
         assert(i<=MAX_ALIAS);
         str[i]=*start;
       } /* for */
       str[i]='\0';
+      if (var==0) {
+        /* match only if the parameter is numeric and in the range of a half cell */
+        const char *ptr;
+        value=hex2cell(str,&ptr);
+        if (*ptr>' ' || value<-(1<<sizeof(cell)*4) || value>=(1<<sizeof(cell)*4))
+          return FALSE;
+        /* strip the leading digits from the string */
+        assert((str[0]=='0' || str[0]=='f') && (str[1]=='0' || str[1]=='f'));
+        #if PAWN_CELL_SIZE>=32
+          assert((str[2]=='0' || str[2]=='f') && (str[3]=='0' || str[3]=='f'));
+        #endif
+        #if PAWN_CELL_SIZE>=64
+          assert((str[4]=='0' || str[4]=='f') && (str[5]=='0' || str[5]=='f'));
+          assert((str[6]=='0' || str[6]=='f') && (str[7]=='0' || str[7]=='f'));
+        #endif
+        memmove(str,str+sizeof(cell),sizeof(cell)+1);
+      } /* if */
       if (symbols[var][0]!='\0') {
         if (strcmp(symbols[var],str)!=0)
           return FALSE; /* symbols should be identical */
@@ -505,7 +530,7 @@ static int matchsequence(char *start,char *end,char *pattern,
       } /* if */
       break;
     case '-':
-      value=-strtol(pattern+1,&pattern,16);
+      value=-hex2cell(pattern+1,&pattern);
       ptr=itoh((ucell)value);
       while (*ptr!='\0') {
         if (tolower(*start) != tolower(*ptr))
@@ -547,7 +572,7 @@ static int matchsequence(char *start,char *end,char *pattern,
   return TRUE;
 }
 
-static char *replacesequence(char *pattern,char symbols[MAX_OPT_VARS][MAX_ALIAS+1],int *repl_length)
+static char *replacesequence(char *pattern,char symbols[MAX_OPT_VARS+1][MAX_ALIAS+1],int *repl_length)
 {
   char *lptr;
   int var;
@@ -566,9 +591,10 @@ static char *replacesequence(char *pattern,char symbols[MAX_OPT_VARS][MAX_ALIAS+
     case '%':
       lptr++;           /* skip '%' */
       assert(isdigit(*lptr));
-      var=atoi(lptr) - 1;
-      assert(var>=0 && var<MAX_OPT_VARS);
+      var=atoi(lptr);
+      assert(var>=0 && var<=MAX_OPT_VARS);
       assert(symbols[var][0]!='\0');    /* variable should be defined */
+      assert(var!=0 || strlen(symbols[var])==sizeof(cell));
       *repl_length+=strlen(symbols[var]);
       break;
     case '!':
@@ -594,8 +620,8 @@ static char *replacesequence(char *pattern,char symbols[MAX_OPT_VARS][MAX_ALIAS+
       /* write out the symbol */
       pattern++;
       assert(isdigit(*pattern));
-      var=atoi(pattern) - 1;
-      assert(var>=0 && var<MAX_OPT_VARS);
+      var=atoi(pattern);
+      assert(var>=0 && var<=MAX_OPT_VARS);
       assert(symbols[var][0]!='\0');    /* variable should be defined */
       strcpy(lptr,symbols[var]);
       lptr+=strlen(symbols[var]);
@@ -640,7 +666,7 @@ static void strreplace(char *dest,char *replace,int sub_length,int repl_length,i
 
 static void stgopt(char *start,char *end,int (*outputfunc)(char *str))
 {
-  char symbols[MAX_OPT_VARS][MAX_ALIAS+1];
+  char symbols[MAX_OPT_VARS+1][MAX_ALIAS+1];
   int seq,match_length,repl_length;
   int matches;
   char *debut=start;  /* save original start of the buffer */

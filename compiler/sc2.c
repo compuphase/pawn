@@ -18,7 +18,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: sc2.c 3692 2007-01-01 20:11:19Z thiadmer $
+ *  Version: $Id: sc2.c 3763 2007-05-22 07:23:30Z thiadmer $
  */
 #include <assert.h>
 #include <stdio.h>
@@ -224,7 +224,6 @@ static void check_empty(const unsigned char *lptr)
  *
  *  Global references: inpf     (altered)
  *                     inpfname (altered)
- *                     fline    (altered)
  *                     lptr     (altered)
  */
 static void doinclude(int silent)
@@ -394,7 +393,7 @@ static void readline(unsigned char *line)
 static void stripcom(unsigned char *line)
 {
   char c;
-  #if !defined SC_LIGHT
+  #if !defined PAWN_LIGHT
     #define COMMENT_LIMIT 100
     #define COMMENT_MARGIN 40   /* length of the longest word */
     char comment[COMMENT_LIMIT+COMMENT_MARGIN];
@@ -409,12 +408,12 @@ static void stripcom(unsigned char *line)
   while (*line){
     if (icomment!=0) {
       if (*line=='*' && *(line+1)=='/') {
-        #if !defined SC_LIGHT
+        #if !defined PAWN_LIGHT
           if (icomment==2) {
             assert(commentidx<COMMENT_LIMIT+COMMENT_MARGIN);
             comment[commentidx]='\0';
             if (strlen(comment)>0)
-              insert_docstring(comment);
+              insert_docstring(comment,1);
           } /* if */
         #endif
         icomment=0;     /* comment has ended */
@@ -424,7 +423,7 @@ static void stripcom(unsigned char *line)
       } else {
         if (*line=='/' && *(line+1)=='*')
           error(216);   /* nested comment */
-        #if !defined SC_LIGHT
+        #if !defined PAWN_LIGHT
           /* collect the comment characters in a string */
           if (icomment==2) {
             if (skipstar && (*line!='\0' && *line<=' ' || *line=='*')) {
@@ -433,7 +432,7 @@ static void stripcom(unsigned char *line)
               comment[commentidx++]=(char)((*line!='\n') ? *line : ' ');
               if (commentidx>COMMENT_LIMIT && *line!='\0' && *line<=' ') {
                 comment[commentidx]='\0';
-                insert_docstring(comment);
+                insert_docstring(comment,1);
                 commentidx=0;
               } /* if */
               skipstar=FALSE;
@@ -446,7 +445,7 @@ static void stripcom(unsigned char *line)
     } else {
       if (*line=='/' && *(line+1)=='*'){
         icomment=1;     /* start comment */
-        #if !defined SC_LIGHT
+        #if !defined PAWN_LIGHT
           /* there must be two "*" behind the slash and then white space */
           if (*(line+2)=='*' && *(line+3)<=' ') {
             /* if we are not in a function, we must attach the previous block
@@ -467,7 +466,7 @@ static void stripcom(unsigned char *line)
       } else if (*line=='/' && *(line+1)=='/'){  /* comment to end of line */
         if (strchr((char*)line,'\a')!=NULL)
           error(49);    /* invalid line continuation */
-        #if !defined SC_LIGHT
+        #if !defined PAWN_LIGHT
           if (*(line+2)=='/' && *(line+3)<=' ') {
             /* documentation comment */
             char *str=(char*)line+3;
@@ -481,7 +480,7 @@ static void stripcom(unsigned char *line)
              */
             if (!singleline && curfunc==NULL && get_docstring(0)!=NULL)
               sc_attachdocumentation(NULL);
-            insert_docstring(str);
+            insert_docstring(str,1);
             prev_singleline=TRUE;
           } /* if */
         #endif
@@ -500,12 +499,12 @@ static void stripcom(unsigned char *line)
       } /* if */
     } /* if */
   } /* while */
-  #if !defined SC_LIGHT
+  #if !defined PAWN_LIGHT
     if (icomment==2) {
       assert(commentidx<COMMENT_LIMIT+COMMENT_MARGIN);
       comment[commentidx]='\0';
       if (strlen(comment)>0)
-        insert_docstring(comment);
+        insert_docstring(comment,1);
     } /* if */
   #endif
 }
@@ -2220,19 +2219,19 @@ static cell litchar(const unsigned char **lptr,int flags)
 
   cptr=*lptr;
   if ((flags & RAWMODE)!=0 || *cptr!=sc_ctrlchar) {  /* no escape character */
-    #if !defined NO_UTF8
+    #if !defined PAWN_NO_UTF8
       if (sc_is_utf8 && (flags & UTF8MODE)!=0) {
         c=get_utf8_char(cptr,&cptr);
         assert(c>=0);   /* file was already scanned for conformance to UTF-8 */
       } else {
     #endif
-      #if !defined NO_CODEPAGE
+      #if !defined PAWN_NO_CODEPAGE
         c=cp_translate(cptr,&cptr);
       #else
         c=*cptr;
         cptr+=1;
       #endif
-    #if !defined NO_UTF8
+    #if !defined PAWN_NO_UTF8
       } /* if */
     #endif
   } else {
@@ -2807,14 +2806,15 @@ static char itohstr[30];
   #else
     #error Unsupported cell size
   #endif
+  assert(max<=sizearray(nibble));
+  assert(max<sizeof itohstr);
   ptr=itohstr;
   for (i=0; i<max; i+=1){
     nibble[i]=(int)(val & 0x0f);        /* nibble 0 is lowest nibble */
     val>>=4;
   } /* endfor */
   i=max-1;
-  while (nibble[i]==0 && i>0)   /* search for highest non-zero nibble */
-    i-=1;
+  /* reverse the nibbles in the string */
   while (i>=0){
     if (nibble[i]>=10)
       *ptr++=(char)('a'+(nibble[i]-10));
