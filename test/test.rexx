@@ -1466,4 +1466,10 @@ test114:
   pawnrun ' test2.amx'
   return
 
-/* ??? global variable set to a negative floating point value */
+test115:
+  say '115. The following test should issue warning 237 THREE times'
+  say ''
+  say '    Detection and notification of recursion (both direct and indirect).'
+  say '-----'
+  pawncc ' RECURSION_DETECTION= -v test1'
+  return

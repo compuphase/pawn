@@ -6,7 +6,7 @@
  *  o  Documentation tags and automatic listings
  *  o  Debug strings
  *
- *  Copyright (c) ITB CompuPhase, 2001-2006
+ *  Copyright (c) ITB CompuPhase, 2001-2007
  *
  *  This software is provided "as-is", without any express or implied warranty.
  *  In no event will the authors be held liable for any damages arising from
@@ -24,7 +24,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: sclist.c 3763 2007-05-22 07:23:30Z thiadmer $
+ *  Version: $Id: sclist.c 3708 2007-02-04 17:16:01Z thiadmer $
  */
 #include <assert.h>
 #include <limits.h>
@@ -392,7 +392,7 @@ SC_FUNC void delete_autolisttable(void)
 }
 
 
-/* ----- value pair list ----------------------------------------- */
+/* ----- heap usage list ----------------------------------------- */
 static valuepair heaplist = {NULL, 0, 0};
 
 SC_FUNC valuepair *push_heaplist(long first, long second)

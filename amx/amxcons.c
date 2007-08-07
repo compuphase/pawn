@@ -4,7 +4,7 @@
  *  cannot always be implemented with portable C functions. In other words,
  *  these routines must be ported to other environments.
  *
- *  Copyright (c) ITB CompuPhase, 1997-2006
+ *  Copyright (c) ITB CompuPhase, 1997-2007
  *
  *  This software is provided "as-is", without any express or implied warranty.
  *  In no event will the authors be held liable for any damages arising from
@@ -90,7 +90,7 @@
   int amx_termctl(int,int);
   void amx_clrscr(void);
   void amx_clreol(void);
-  void amx_gotoxy(int x,int y);
+  int amx_gotoxy(int x,int y);
   void amx_wherexy(int *x,int *y);
   unsigned int amx_setattr(int foregr,int backgr,int highlight);
   void amx_console(int columns, int lines, int flags);
@@ -149,12 +149,13 @@
     amx_putstr("\033[K");
     amx_fflush();        /* pump through the terminal codes */
   }
-  void amx_gotoxy(int x,int y)
+  int amx_gotoxy(int x,int y)
   {
     char str[30];
     _stprintf(str,"\033[%d;%dH",y,x);
     amx_putstr(str);
     amx_fflush();        /* pump through the terminal codes */
+    return 1;
   }
   void amx_wherexy(int *x,int *y)
   {
@@ -279,7 +280,7 @@
     FillConsoleOutputCharacter(hConsole,' ',dwConSize,csbi.dwCursorPosition,&cCharsWritten);
     FillConsoleOutputAttribute(hConsole,csbi.wAttributes,dwConSize,csbi.dwCursorPosition,&cCharsWritten);
   }
-  void amx_gotoxy(int x,int y)
+  int amx_gotoxy(int x,int y)
   {
     COORD point;
     CONSOLE_SCREEN_BUFFER_INFO csbi;
@@ -287,11 +288,12 @@
 
     GetConsoleScreenBufferInfo(hConsole, &csbi);
     if (x<=0 || x>csbi.dwSize.X || y<=0 || y>csbi.dwSize.Y)
-      return;
+      return 0;
     amx_fflush();       /* make sure all output is written */
     point.X=(short)(x-1);
     point.Y=(short)(y-1);
     SetConsoleCursorPosition(hConsole,point);
+    return 1;
   }
   void amx_wherexy(int *x,int *y)
   {
@@ -348,7 +350,7 @@
   #define amx_gets(s,n)       getnstr(s,n)
   #define amx_clrscr()        clear()
   #define amx_clreol()        clrtoeol()
-  #define amx_gotoxy(x,y)     (void)(0)
+  #define amx_gotoxy(x,y)     (0)
   #define amx_wherexy(x,y)    (*(x)=*(y)=0)
   #define amx_setattr(c,b,h)  (0)
   #define amx_termctl(c,v)    (0)
@@ -365,7 +367,7 @@
   #define amx_gets(s,n)       fgets(s,n,stdin)
   #define amx_clrscr()        (void)(0)
   #define amx_clreol()        (void)(0)
-  #define amx_gotoxy(x,y)     ((void)(x),(void)(y))
+  #define amx_gotoxy(x,y)     ((void)(x),(void)(y),(0))
   #define amx_wherexy(x,y)    (*(x)=*(y)=0)
   #define amx_setattr(c,b,h)  ((void)(c),(void)(b),(void)(h),(0))
   #define amx_termctl(c,v)    ((void)(c),(void)(v),(0))
@@ -1164,8 +1166,7 @@ static cell AMX_NATIVE_CALL n_gotoxy(AMX *amx,const cell *params)
 {
   (void)amx;
   CreateConsole();
-  amx_gotoxy((int)params[1],(int)params[2]);
-  return 0;
+  return amx_gotoxy((int)params[1],(int)params[2]);
 }
 
 static cell AMX_NATIVE_CALL n_wherexy(AMX *amx,const cell *params)

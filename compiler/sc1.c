@@ -2,7 +2,7 @@
  *
  *  Function and variable definition and declaration, statement parser.
  *
- *  Copyright (c) ITB CompuPhase, 1997-2006
+ *  Copyright (c) ITB CompuPhase, 1997-2007
  *
  *  This software is provided "as-is", without any express or implied warranty.
  *  In no event will the authors be held liable for any damages arising from
@@ -20,7 +20,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: sc1.c 3763 2007-05-22 07:23:30Z thiadmer $
+ *  Version: $Id: sc1.c 3764 2007-05-22 10:29:16Z thiadmer $
  */
 #include <assert.h>
 #include <ctype.h>
@@ -103,7 +103,9 @@ static void doarg(char *name,int ident,int offset,int tags[],int numtags,
                   int fpublic,int fconst,int chkshadow,arginfo *arg);
 static void make_report(symbol *root,FILE *log,char *sourcefile);
 static void reduce_referrers(symbol *root);
+static void gen_ovlinfo(symbol *root);
 static long max_stacksize(symbol *root,int *recursion);
+static long max_overlaysize(symbol *root);
 static int testsymbols(symbol *root,int level,int testlabs,int testconst);
 static void destructsymbols(symbol *root,int level);
 static constvalue *find_constval_byval(constvalue *table,cell val);
@@ -584,6 +586,7 @@ int pc_compile(int argc, char *argv[])
   /* second (or third) pass */
   sc_status=statWRITE;                  /* set, to enable warnings */
   state_conflict(&glbtab);
+  gen_ovlinfo(&glbtab);
 
   /* write a report, if requested */
   #if !defined PAWN_LIGHT
@@ -675,13 +678,18 @@ cleanup:
       int recursion;
       long stacksize=max_stacksize(&glbtab,&recursion);
       int flag_exceed=0;
+      long max_ovlsize=(pc_overlays>0) ? max_overlaysize(&glbtab) : 0;
       if (pc_amxlimit>0) {
-        long totalsize=hdrsize+code_idx;
+        long totalsize=hdrsize;
+        if (pc_overlays==0)
+          totalsize+=code_idx;
         if (pc_amxram==0)
           totalsize+=(glb_declared+pc_stksize)*sizeof(cell);
         if (totalsize>=pc_amxlimit)
           flag_exceed=1;
       } /* if */
+      if (pc_overlays>0 && max_ovlsize>pc_overlays)
+        flag_exceed=1;
       if (pc_amxram>0 && (glb_declared+pc_stksize)*sizeof(cell)>=(unsigned long)pc_amxram)
         flag_exceed=1;
       if ((sc_debug & sSYMBOLIC)!=0 || verbosity>=2 || stacksize+32>=(long)pc_stksize || flag_exceed) {
@@ -689,6 +697,8 @@ cleanup:
           pc_printf("\n");
         pc_printf("Header size:       %8ld bytes\n", (long)hdrsize);
         pc_printf("Code size:         %8ld bytes\n", (long)code_idx);
+        if (pc_overlays>0)
+          pc_printf("Max. overlay size: %8ld bytes\n", max_ovlsize);
         pc_printf("Data size:         %8ld bytes\n", (long)glb_declared*sizeof(cell));
         pc_printf("Stack/heap size:   %8ld bytes; ", (long)pc_stksize*sizeof(cell));
         pc_printf("estimated max. use");
@@ -702,6 +712,7 @@ cleanup:
       } /* if */
       if (flag_exceed)
         error(106,pc_amxlimit+pc_amxram); /* this causes a jump back to label "cleanup" */
+        //??? should flag exceeding overlay size separately
     } /* if */
   #endif
 
@@ -770,7 +781,7 @@ int pc_addconstant(char *name,cell value,int tag)
 {
   errorset(sFORCESET,0);        /* make sure error engine is silenced */
   sc_status=statIDLE;
-  add_constant(name,value,sGLOBAL,tag);
+  add_constant(name,value,sGLOBAL,tag,FALSE);
   return 1;
 }
 
@@ -864,15 +875,16 @@ static void initglobals(void)
   pc_optimize=sOPTIMIZE_NOMACRO;
   sc_packstr=FALSE;     /* strings are unpacked by default */
   #if AMX_COMPACTMARGIN > 2
-    sc_compress=TRUE;   /* compress output bytecodes */
+    pc_compress=TRUE;   /* compress output bytecodes */
   #else
-    sc_compress=FALSE;
+    pc_compress=FALSE;
   #endif
   sc_needsemicolon=FALSE;/* semicolon required to terminate expressions? */
   sc_dataalign=sizeof(cell);
   pc_stksize=sDEF_AMXSTACK;/* default stack size */
   pc_amxlimit=0;        /* no limit on size of the abstract machine */
   pc_amxram=0;          /* no limit on data size of the abstract machine */
+  pc_overlays=0;        /* do not generate for overlays */
   sc_tabsize=8;         /* assume a TAB is 8 spaces */
   sc_rationaltag=0;     /* assume no support for rational numbers */
   rational_digits=0;    /* number of fractional digits */
@@ -995,7 +1007,7 @@ static void parseoptions(int argc,char **argv,char *oname,char *ename,char *pnam
         break;
       case 'C':
         #if AMX_COMPACTMARGIN > 2
-          sc_compress=toggle_option(ptr,sc_compress);
+          pc_compress=toggle_option(ptr,pc_compress);
         #else
           about();
         #endif
@@ -1100,6 +1112,9 @@ static void parseoptions(int argc,char **argv,char *oname,char *ename,char *pnam
       case 't':
         sc_tabsize=atoi(option_value(ptr));
         break;
+      case 'V':
+        pc_overlays=atoi(option_value(ptr));
+        break;
       case 'v':
         verbosity= isdigit(*option_value(ptr)) ? atoi(option_value(ptr)) : 2;
         if (sc_asmfile && verbosity>1)
@@ -1156,7 +1171,7 @@ static void parseoptions(int argc,char **argv,char *oname,char *ename,char *pnam
       } /* if */
       strlcpy(str,argv[arg],i+1);       /* str holds symbol name */
       i=atoi(ptr+1);
-      add_constant(str,i,sGLOBAL,0);
+      add_constant(str,i,sGLOBAL,0,FALSE);
     } else {
       strlcpy(str,argv[arg],sizeof(str)-2); /* -2 because default extension is ".p" */
       set_extension(str,".p",FALSE);
@@ -1347,7 +1362,7 @@ static void setconfig(char *root)
 
 static void setcaption(void)
 {
-  pc_printf("Pawn compiler " VERSION_STR "\t \t \tCopyright (c) 1997-2006, ITB CompuPhase\n\n");
+  pc_printf("Pawn compiler " VERSION_STR "\t \t \tCopyright (c) 1997-2007, ITB CompuPhase\n\n");
 }
 
 static void about(void)
@@ -1359,7 +1374,7 @@ static void about(void)
     pc_printf("         -A<num>  alignment in bytes of the data segment and the stack\n");
     pc_printf("         -a       output assembler code\n");
 #if AMX_COMPACTMARGIN > 2
-    pc_printf("         -C[+/-]  compact encoding for output file (default=%c)\n", sc_compress ? '+' : '-');
+    pc_printf("         -C[+/-]  compact encoding for output file (default=%c)\n", pc_compress ? '+' : '-');
 #endif
     pc_printf("         -c<name> codepage name or number; e.g. 1252 for Windows Latin-1\n");
 #if defined dos_setdrive
@@ -1388,6 +1403,7 @@ static void about(void)
     pc_printf("         -S<num>  stack/heap size in cells (default=%d)\n",(int)pc_stksize);
     pc_printf("         -s<num>  skip lines from the input file\n");
     pc_printf("         -t<num>  TAB indent size (in character positions, default=%d)\n",sc_tabsize);
+    pc_printf("         -V<num>  generate overlay code and instructions; set buffer size\n");
     pc_printf("         -v<num>  verbosity level; 0=quiet, 1=normal, 2=verbose (default=%d)\n",verbosity);
     pc_printf("         -w<num>  disable a specific warning by its number\n");
     pc_printf("         -X<num>  abstract machine size limit in bytes\n");
@@ -1414,54 +1430,54 @@ static void setconstants(void)
   int debug;
 
   assert(sc_status==statIDLE);
-  append_constval(&tagname_tab,"_",0,0);/* "untagged" */
+  append_constval(&tagname_tab,"_",0,0);  /* "untagged" */
   append_constval(&tagname_tab,"bool",1,0);
 
-  add_constant("true",1,sGLOBAL,1);     /* boolean flags */
-  add_constant("false",0,sGLOBAL,1);
-  add_constant("EOS",0,sGLOBAL,0);      /* End Of String, or '\0' */
+  add_constant("true",1,sGLOBAL,1,FALSE); /* boolean flags */
+  add_constant("false",0,sGLOBAL,1,FALSE);
+  add_constant("EOS",0,sGLOBAL,0,FALSE);  /* End Of String, or '\0' */
   #if PAWN_CELL_SIZE==16
-    add_constant("cellbits",16,sGLOBAL,0);
+    add_constant("cellbits",16,sGLOBAL,0,FALSE);
     #if defined _I16_MAX
-      add_constant("cellmax",_I16_MAX,sGLOBAL,0);
-      add_constant("cellmin",_I16_MIN,sGLOBAL,0);
+      add_constant("cellmax",_I16_MAX,sGLOBAL,0,FALSE);
+      add_constant("cellmin",_I16_MIN,sGLOBAL,0,FALSE);
     #else
-      add_constant("cellmax",SHRT_MAX,sGLOBAL,0);
-      add_constant("cellmin",SHRT_MIN,sGLOBAL,0);
+      add_constant("cellmax",SHRT_MAX,sGLOBAL,0,FALSE);
+      add_constant("cellmin",SHRT_MIN,sGLOBAL,0,FALSE);
     #endif
   #elif PAWN_CELL_SIZE==32
-    add_constant("cellbits",32,sGLOBAL,0);
+    add_constant("cellbits",32,sGLOBAL,0,FALSE);
     #if defined _I32_MAX
-      add_constant("cellmax",_I32_MAX,sGLOBAL,0);
-      add_constant("cellmin",_I32_MIN,sGLOBAL,0);
+      add_constant("cellmax",_I32_MAX,sGLOBAL,0,FALSE);
+      add_constant("cellmin",_I32_MIN,sGLOBAL,0,FALSE);
     #else
-      add_constant("cellmax",LONG_MAX,sGLOBAL,0);
-      add_constant("cellmin",LONG_MIN,sGLOBAL,0);
+      add_constant("cellmax",LONG_MAX,sGLOBAL,0,FALSE);
+      add_constant("cellmin",LONG_MIN,sGLOBAL,0,FALSE);
     #endif
   #elif PAWN_CELL_SIZE==64
     #if !defined _I64_MIN
       #define _I64_MIN  (-9223372036854775807ULL - 1)
       #define _I64_MAX    9223372036854775807ULL
     #endif
-    add_constant("cellbits",64,sGLOBAL,0);
-    add_constant("cellmax",_I64_MAX,sGLOBAL,0);
-    add_constant("cellmin",_I64_MIN,sGLOBAL,0);
+    add_constant("cellbits",64,sGLOBAL,0,FALSE);
+    add_constant("cellmax",_I64_MAX,sGLOBAL,0,FALSE);
+    add_constant("cellmin",_I64_MIN,sGLOBAL,0,FALSE);
   #else
     #error Unsupported cell size
   #endif
-  add_constant("charbits",sCHARBITS,sGLOBAL,0);
-  add_constant("charmin",0,sGLOBAL,0);
-  add_constant("charmax",~(-1 << sCHARBITS) - 1,sGLOBAL,0);
-  add_constant("ucharmax",(1 << (sizeof(cell)-1)*8)-1,sGLOBAL,0);
+  add_constant("charbits",sCHARBITS,sGLOBAL,0,FALSE);
+  add_constant("charmin",0,sGLOBAL,0,FALSE);
+  add_constant("charmax",~(-1 << sCHARBITS) - 1,sGLOBAL,0,FALSE);
+  add_constant("ucharmax",(1 << (sizeof(cell)-1)*8)-1,sGLOBAL,0,FALSE);
 
-  add_constant("__Pawn",VERSION_INT,sGLOBAL,0);
+  add_constant("__Pawn",VERSION_INT,sGLOBAL,0,FALSE);
 
   debug=0;
   if ((sc_debug & (sCHKBOUNDS | sSYMBOLIC))==(sCHKBOUNDS | sSYMBOLIC))
     debug=2;
   else if ((sc_debug & sCHKBOUNDS)==sCHKBOUNDS)
     debug=1;
-  add_constant("debug",debug,sGLOBAL,0);
+  add_constant("debug",debug,sGLOBAL,0,FALSE);
 
   append_constval(&sc_automaton_tab,"",0,0);    /* anonymous automaton */
 }
@@ -1645,7 +1661,7 @@ static void dumplits(void)
     defstorage();
     j=16;       /* 16 values per line */
     while (j && k<litidx){
-      outval(litq[k], FALSE);
+      outval(litq[k],TRUE,FALSE);
       stgwrite(" ");
       k++;
       j--;
@@ -1673,7 +1689,7 @@ static void dumpzero(int count)
   defstorage();
   i=0;
   while (count-- > 0) {
-    outval(0, FALSE);
+    outval(0,TRUE,FALSE);
     i=(i+1) % 16;
     stgwrite((i==0 || count==0) ? "\n" : " ");
     if (i==0 && count>0)
@@ -2695,7 +2711,7 @@ static void decl_const(int vclass)
       error(213);                       /* tagname mismatch */
       fline=orgfline;
     } /* if */
-    sym=add_constant(constname,val,vclass,tag);
+    sym=add_constant(constname,val,vclass,tag,FALSE);
     if (sym!=NULL)
       sc_attachdocumentation(sym);/* attach any documenation to the constant */
   } while (matchtoken(',')); /* enddo */   /* more? */
@@ -2756,7 +2772,7 @@ static void decl_enum(int vclass)
 
   if (strlen(enumname)>0) {
     /* already create the root symbol, so the fields can have it as their "parent" */
-    enumsym=add_constant(enumname,0,vclass,tag);
+    enumsym=add_constant(enumname,0,vclass,tag,FALSE);
     if (enumsym!=NULL)
       enumsym->usage |= uENUMROOT;
     /* start a new list for the element names */
@@ -2796,7 +2812,7 @@ static void decl_enum(int vclass)
     /* add_constant() checks whether a variable (global or local) or
      * a constant with the same name already exists
      */
-    sym=add_constant(constname,value,vclass,tag);
+    sym=add_constant(constname,value,vclass,tag,FALSE);
     if (sym==NULL)
       continue;                         /* error message already given */
     /* set the item tag and the item size, for use in indexing arrays */
@@ -4433,6 +4449,23 @@ static void reduce_referrers(symbol *root)
   } while (restart>0);
 }
 
+/* Generate the overlay information; this can be done once the first passes
+ * have completed, and we know which functions are actually called. The overlay
+ * information is always generated; it depends on the compiler options and
+ * configuration whether it is actually used.
+ */
+static void gen_ovlinfo(symbol *root)
+{
+  int idx=0;
+  symbol *sym;
+
+  for (sym=root->next; sym!=NULL; sym=sym->next) {
+    if (sym->ident==iFUNCTN && sym->parent==NULL
+        && (sym->usage & uNATIVE)==0 && (sym->usage & uREAD)!=0)
+      sym->ovl_index=idx++;
+  } /* for */
+}
+
 #if !defined PAWN_LIGHT
 static long max_stacksize_recurse(symbol **sourcesym,symbol *sym,long basesize,int *pubfuncparams,int *recursion)
 {
@@ -4548,6 +4581,22 @@ static long max_stacksize(symbol *root,int *recursion)
   maxsize++;                  /* +1 because a zero cell is always pushed on top
                                * of the stack to catch stack overwrites */
   return maxsize+(maxparams+1);/* +1 because # of parameters is always pushed on entry */
+}
+
+static long max_overlaysize(symbol *root)
+{
+  symbol *sym;
+  long max=0;
+
+  assert(root!=NULL);
+  assert(pc_overlays>0);
+  for (sym=root->next; sym!=NULL; sym=sym->next) {
+    if (sym->ident==iFUNCTN && (sym->usage & uNATIVE)==0 && (sym->usage & uREAD)!=0) {
+      if (max<(sym->codeaddr - sym->addr))
+        max=sym->codeaddr - sym->addr;
+    } /* if */
+  } /* if */
+  return max;
 }
 #endif
 
@@ -4792,7 +4841,7 @@ SC_FUNC void delete_consttable(constvalue *table)
  *
  *  Adds a symbol to the symbol table. Returns NULL on failure.
  */
-SC_FUNC symbol *add_constant(char *name,cell val,int vclass,int tag)
+SC_FUNC symbol *add_constant(char *name,cell val,int vclass,int tag,int allow_redef)
 {
   symbol *sym;
 
@@ -4833,7 +4882,8 @@ SC_FUNC symbol *add_constant(char *name,cell val,int vclass,int tag)
       error(21,name);           /* symbol already defined */
       return NULL;
     } else if (sym->addr!=val) {
-      error(201,name);          /* redefinition of constant (different value) */
+      if (!allow_redef)
+        error(201,name);        /* redefinition of constant (different value) */
       sym->addr=val;            /* set new value */
     } /* if */
     /* silently ignore redefinitions of constants with the same value & tag */

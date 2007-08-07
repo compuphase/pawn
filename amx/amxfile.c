@@ -1,6 +1,6 @@
 /* Text file I/O module for the Pawn Abstract Machine
  *
- *  Copyright (c) ITB CompuPhase, 2003-2006
+ *  Copyright (c) ITB CompuPhase, 2003-2007
  *
  *  This software is provided "as-is", without any express or implied warranty.
  *  In no event will the authors be held liable for any damages arising from
@@ -18,7 +18,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: amxfile.c 3660 2006-11-05 13:05:09Z thiadmer $
+ *  Version: $Id: amxfile.c 3764 2007-05-22 10:29:16Z thiadmer $
  */
 #if defined _UNICODE || defined __UNICODE__ || defined UNICODE
 # if !defined UNICODE   /* for Windows */
@@ -29,11 +29,12 @@
 # endif
 #endif
 
+#include <assert.h>
 #include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <assert.h>
+#include <sys/stat.h>
 #if defined __WIN32__ || defined _WIN32 || defined WIN32 || defined __MSDOS__
   #include <io.h>
   #include <malloc.h>
@@ -55,14 +56,15 @@
   #undef AMXFILE_VAR
 #endif
 
+#if !defined sizearray
+  #define sizearray(a)  (sizeof(a)/sizeof((a)[0]))
+#endif
+
 #if defined _UNICODE
 # include <tchar.h>
 #elif !defined __T
   typedef char          TCHAR;
 # define __T(string)    string
-# define _tfopen        fopen
-# define _tgetenv       getenv
-# define _tfputs        fputs
 # define _tcscat        strcat
 # define _tcschr        strchr
 # define _tcscpy        strcpy
@@ -71,6 +73,12 @@
 # define _tcsncpy       strncpy
 # define _tcspbrk       strpbrk
 # define _tcsrchr       strrchr
+# define _tfopen        fopen
+# define _tfputs        fputs
+# define _tgetenv       getenv
+# define _tremove       remove
+# define _trename       rename
+# define _tstat         _stat
 #endif
 
 #if !defined UNUSED_PARAM
@@ -309,7 +317,7 @@ wchar_t *_wgetenv(wchar_t *name)
 {
 static wchar_t buffer[_MAX_PATH];
   buffer[0]=L'\0';
-  GetEnvironmentVariable(name,buffer,sizeof buffer/sizeof(wchar_t));
+  GetEnvironmentVariable(name,buffer,sizearray(buffer));
   return buffer[0]!=L'\0' ? buffer : NULL;
 }
 #else
@@ -317,7 +325,7 @@ char *getenv(const char *name)
 {
 static char buffer[_MAX_PATH];
   buffer[0]='\0';
-  GetEnvironmentVariable(name,buffer,sizeof buffer);
+  GetEnvironmentVariable(name,buffer,sizearray(buffer));
   return buffer[0]!='\0' ? buffer : NULL;
 }
 #endif
@@ -449,7 +457,7 @@ static cell AMX_NATIVE_CALL n_fopen(AMX *amx, const cell *params)
 
   /* get the filename */
   amx_StrParam(amx,params[1],name);
-  if (name!=NULL && completename(fullname,name,sizeof fullname)!=NULL) {
+  if (name!=NULL && completename(fullname,name,sizearray(fullname))!=NULL) {
     f=_tfopen(fullname,attrib);
     if (f==NULL && altattrib!=NULL)
       f=_tfopen(fullname,altattrib);
@@ -648,8 +656,23 @@ static cell AMX_NATIVE_CALL n_fremove(AMX *amx, const cell *params)
   TCHAR *name,fullname[_MAX_PATH];
 
   amx_StrParam(amx,params[1],name);
-  if (name!=NULL && completename(fullname,name,sizeof fullname)!=NULL)
-    r=remove(fullname);
+  if (name!=NULL && completename(fullname,name,sizearray(fullname))!=NULL)
+    r=_tremove(fullname);
+  return r==0;
+}
+
+/* bool: frename(const oldname[], const newname[]) */
+static cell AMX_NATIVE_CALL n_fremove(AMX *amx, const cell *params)
+{
+  int r=1;
+  TCHAR *name,oldname[_MAX_PATH],newname[_MAX_PATH];
+
+  amx_StrParam(amx,params[1],name);
+  if (name!=NULL && completename(oldname,name,sizearray(oldname))!=NULL) {
+    amx_StrParam(amx,params[2],name);
+    if (name!=NULL && completename(newname,name,sizearray(newname))!=NULL) {
+      r=_trename(oldname,newname);
+  } /* if */
   return r==0;
 }
 
@@ -738,7 +761,7 @@ static cell AMX_NATIVE_CALL n_fexist(AMX *amx, const cell *params)
   TCHAR *name,fullname[_MAX_PATH];
 
   amx_StrParam(amx,params[1],name);
-  if (name!=NULL && completename(fullname,name,sizeof fullname)!=NULL)
+  if (name!=NULL && completename(fullname,name,sizearray(fullname))!=NULL)
     r=matchfiles(fullname,0,NULL,0);
   return r;
 }
@@ -750,8 +773,8 @@ static cell AMX_NATIVE_CALL n_fmatch(AMX *amx, const cell *params)
   cell *cptr;
 
   amx_StrParam(amx,params[2],name);
-  if (name!=NULL && completename(fullname,name,sizeof fullname)!=NULL) {
-    if (!matchfiles(fullname,params[3],fullname,sizeof fullname)) {
+  if (name!=NULL && completename(fullname,name,sizearray(fullname))!=NULL) {
+    if (!matchfiles(fullname,params[3],fullname,sizearray(fullname))) {
       fullname[0]='\0';
     } else {
       /* copy the string into the destination */
@@ -760,6 +783,30 @@ static cell AMX_NATIVE_CALL n_fmatch(AMX *amx, const cell *params)
     } /* if */
   } /* if */
   return fullname[0]!='\0';
+}
+
+/* bool: fstat(const name[], &size = 0, &timestamp = 0) */
+static cell AMX_NATIVE_CALL n_fstat(AMX *amx, const cell *params)
+{
+  #if !(defined __WIN32__ || defined _WIN32 || defined WIN32)
+    #define _stat(n,b)  stat(n,b)
+  #endif
+  TCHAR *name,fullname[_MAX_PATH]="";
+  cell *cptr;
+  int result=0;
+
+  amx_StrParam(amx,params[1],name);
+  if (name!=NULL && completename(fullname,name,sizearray(fullname))!=NULL) {
+    struct stat stbuf;
+    if (_tstat(name, &stbuf) == 0) {
+      amx_GetAddr(amx,params[2],&cptr);
+      *cptr=stbuf.st_size;
+      amx_GetAddr(amx,params[3],&cptr);
+      *cptr=stbuf.st_mtime;
+      result=1;
+    } /* if */
+  } /* if */
+  return result;
 }
 
 
@@ -779,8 +826,10 @@ AMX_NATIVE_INFO file_Natives[] = {
   { "fseek",       n_fseek },
   { "flength",     n_flength },
   { "fremove",     n_fremove },
+  { "frename",     n_frename },
   { "fexist",      n_fexist },
   { "fmatch",      n_fmatch },
+  { "fstat",       n_fstat },
   { NULL, NULL }        /* terminator */
 };
 

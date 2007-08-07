@@ -2,7 +2,7 @@
  *
  *  Global (cross-module) variables.
  *
- *  Copyright (c) ITB CompuPhase, 1997-2006
+ *  Copyright (c) ITB CompuPhase, 1997-2007
  *
  *  This software is provided "as-is", without any express or implied warranty.
  *  In no event will the authors be held liable for any damages arising from
@@ -20,7 +20,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: scvars.c 3763 2007-05-22 07:23:30Z thiadmer $
+ *  Version: $Id: scvars.c 3655 2006-10-23 20:17:52Z thiadmer $
  */
 #include <stdio.h>
 #include <stdlib.h>     /* for _MAX_PATH */
@@ -62,7 +62,7 @@ SC_VDEFINE int sc_debug  = sCHKBOUNDS; /* by default: bounds checking+assertions
 SC_VDEFINE int sc_packstr= FALSE;  /* strings are packed by default? */
 SC_VDEFINE int sc_asmfile= FALSE;  /* create .ASM file? */
 SC_VDEFINE int sc_listing= FALSE;  /* create .LST file? */
-SC_VDEFINE int sc_compress=TRUE;   /* compress bytecode? */
+SC_VDEFINE int pc_compress=TRUE;   /* compress bytecode? */
 SC_VDEFINE int sc_needsemicolon=TRUE;/* semicolon required to terminate expressions? */
 SC_VDEFINE int sc_dataalign=sizeof(cell);/* data alignment value */
 SC_VDEFINE int sc_alignnext=FALSE; /* must frame of the next function be aligned? */
@@ -90,6 +90,7 @@ SC_VDEFINE char *pc_deprecate=NULL;/* if non-null, mark next declaration as depr
 SC_VDEFINE int sc_curstates=0;     /* ID of the current state list */
 SC_VDEFINE int pc_optimize=sOPTIMIZE_NOMACRO; /* (peephole) optimization level */
 SC_VDEFINE int pc_memflags=0;      /* special flags for the stack/heap usage */
+SC_VDEFINE int pc_overlays=0;      /* generate overlay table + instructions? */
 
 SC_VDEFINE constvalue sc_automaton_tab = { NULL, "", 0, 0}; /* automaton table */
 SC_VDEFINE constvalue sc_state_tab = { NULL, "", 0, 0};   /* state table */

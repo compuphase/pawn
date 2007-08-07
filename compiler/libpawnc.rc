@@ -14,9 +14,9 @@ AppIcon ICON "../bin/pawn.ico"
  *  for details on version information and the VERSIONINFO structure.
  */
 #define VERSION              3
-#define REVISION             2
+#define REVISION             3
 #define BUILD                SVN_REV
-#define VERSIONSTR           "3.2." SVN_REVSTR "\0"
+#define VERSIONSTR           "3.3." SVN_REVSTR "\0"
 #if defined STAND_ALONE
 #define VERSIONNAME          "pawncc.exe\0"
 #define VERSIONDESCRIPTION   "Pawn Compiler\0"
@@ -27,7 +27,7 @@ AppIcon ICON "../bin/pawn.ico"
 #define VERSIONPRODUCTNAME   "libpawnc\0"
 #endif
 #define VERSIONCOMPANYNAME   "ITB CompuPhase\0"
-#define VERSIONCOPYRIGHT     "Copyright \251 1998-2006 ITB CompuPhase\0"
+#define VERSIONCOPYRIGHT     "Copyright \251 1998-2007 ITB CompuPhase\0"
 
 VS_VERSION_INFO VERSIONINFO
 FILEVERSION    VERSION, REVISION, BUILD, 0

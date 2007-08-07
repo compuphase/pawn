@@ -1,6 +1,6 @@
 /*  Pawn Abstract Machine (for the Pawn language)
  *
- *  Copyright (c) ITB CompuPhase, 1997-2006
+ *  Copyright (c) ITB CompuPhase, 1997-2007
  *
  *  This software is provided "as-is", without any express or implied warranty.
  *  In no event will the authors be held liable for any damages arising from
@@ -129,7 +129,7 @@
 #if defined JIT && !defined AMX_NO_MACRO_INSTR
   #define AMX_NO_MACRO_INSTR    /* JIT is incompatible with macro instructions */
 #endif
-#if !defined AMX_NO_OPCODE_PACKING && !defined AMX_TOKENTHREADING
+#if !defined AMX_NO_PACKED_OPC && !defined AMX_TOKENTHREADING
   #define AMX_TOKENTHREADING    /* packed opcodes require token threading */
 #endif
 
@@ -293,8 +293,11 @@ typedef enum {
   OP_LOAD_S_BOTH,
   OP_CONST,
   OP_CONST_S,
+  /* overlay instructions */
+  OP_ICALL,
+  OP_IRETN,
   /* packed instructions */
-#if !defined AMX_NO_OPCODE_PACKING
+#if !defined AMX_NO_PACKED_OPC
   OP_LOAD_P_PRI,
   OP_LOAD_P_ALT,
   OP_LOAD_P_S_PRI,
@@ -546,6 +549,7 @@ int AMXAPI amx_Callback(AMX *amx, cell index, cell *result, const cell *params)
     /* at the point of the call, the CIP pseudo-register points directly
      * behind the SYSREQ instruction and its parameter(s)
      */
+    //??? this is different for overlays
     unsigned char *code=amx->base+(int)hdr->cod+(int)amx->cip-sizeof(cell);
     assert(amx->cip >= 4 && amx->cip < (hdr->dat - hdr->cod));
     assert_static(sizeof(f)<=sizeof(cell)); /* function pointer must fit in a cell */
@@ -580,8 +584,8 @@ int AMXAPI amx_Callback(AMX *amx, cell index, cell *result, const cell *params)
   extern int AMXAPI getMaxCodeSize(void);
   extern int AMXAPI asm_runJIT(void *sourceAMXbase, void *jumparray, void *compiledAMXbase);
 
-  /* convert from relative addresses to absolute addresses */
-  #define RELOC_ABS(base,off)   (*(ucell *)((base)+(int)(off)) += (ucell)(base)+(int)(off))
+  /* convert from relative addresses to absolute physical addresses */
+  #define RELOC_ABS(base,off)   (*(ucell *)((base)+(int)(off)) += (ucell)(base)+(int)(off)+sizeof(cell))
 #else
   #define JUMPREL(ip)           ((cell*)((unsigned long)(ip)+*(cell*)(ip)-sizeof(cell)))
 #endif
@@ -590,6 +594,9 @@ int AMXAPI amx_Callback(AMX *amx, cell index, cell *result, const cell *params)
 #else
   #define RELOCATE_ADDR(base,v) (v)
 #endif
+
+/* convert from absolute virtual addresses to relative addresses */
+#define RELOC_PIC(base,off)   (*(ucell *)((base)+(int)(off)) -= (ucell)(off)-sizeof(cell))
 
 #define DBGPARAM(v)     ( (v)=*(cell *)(code+(int)cip), cip+=sizeof(cell) )
 
@@ -639,7 +646,7 @@ static int VerifyPcode(AMX *amx)
   /* start browsing code */
   for (cip=0; cip<codesize; ) {
     op=*(cell *)(code+(int)cip);
-    #if !defined AMX_NO_OPCODE_PACKING
+    #if !defined AMX_NO_PACKED_OPC
       op &= (1 << sizeof(cell)*4)-1;
     #endif
     if ((unsigned)op>=OP_NUM_OPCODES) {
@@ -696,7 +703,7 @@ static int VerifyPcode(AMX *amx)
       break;
 #endif /* !defined AMX_NO_MACRO_INSTR */
 
-#if !defined AMX_NO_OPCODE_PACKING
+#if !defined AMX_NO_PACKED_OPC
     case OP_LOAD_P_PRI: /* instructions with 1 parameter packed inside the same cell */
     case OP_LOAD_P_ALT:
     case OP_LOAD_P_S_PRI:
@@ -749,7 +756,7 @@ static int VerifyPcode(AMX *amx)
     case OP_BOUNDS_P:
     case OP_PUSH_P_ADR:
       break;
-#endif /* !defined AMX_NO_OPCODE_PACKING */
+#endif /* !defined AMX_NO_PACKED_OPC */
 
     case OP_LOAD_PRI:   /* instructions with 1 parameter (not packed) */
     case OP_LOAD_ALT:
@@ -870,7 +877,7 @@ static int VerifyPcode(AMX *amx)
     case OP_BREAK:
       break;
 
-    case OP_CALL:       /* opcodes that need relocation (JIT only) */
+    case OP_CALL:       /* opcodes that need relocation (JIT only), or conversion to position-independent code */
     case OP_JUMP:
     case OP_JZER:
     case OP_JNZ:
@@ -885,6 +892,12 @@ static int VerifyPcode(AMX *amx)
     case OP_JSGRTR:
     case OP_JSGEQ:
     case OP_SWITCH:
+      /* if this file is an older version (absolute references instead of the
+       * current use of position-independent code), convert the parameter
+       * to position-independent code first
+       */
+      if (hdr->file_version<10)
+        RELOC_PIC(code,cip);
       tgt=*(cell*)(code+(int)cip)+cip-sizeof(cell);
       if (tgt<0 || tgt>codesize) {
         amx->flags &= ~AMX_FLAG_VERIFY;
@@ -892,9 +905,23 @@ static int VerifyPcode(AMX *amx)
       } /* if */
       #if defined JIT
         reloc_count++;
-        RELOC_ABS(code, cip);
+        RELOC_ABS(code, cip); /* change to absolute physical address */
       #endif
       cip+=sizeof(cell);
+      break;
+
+    /* overlay opcodes (overlays must be enabled) */
+    case OP_ICALL:
+      cip+=sizeof(cell);
+      /* drop through */
+    case OP_IRETN:
+      assert(hdr->overlays!=0 && hdr->overlays!=hdr->nametable);
+      #if defined JIT
+        if ((amx->flags & AMX_FLAG_JITC)!=0)
+          return AMX_ERR_OVERLAY;     /* JIT does not support overlays */
+      #endif
+      if (amx->overlay==NULL)
+        return AMX_ERR_OVERLAY;       /* no overlay callback */
       break;
 
     case OP_SYSREQ_C:
@@ -1076,6 +1103,8 @@ int AMXAPI amx_Init(AMX *amx,void *program)
     amx_Align32((uint32_t*)&hdr->libraries);
     amx_Align32((uint32_t*)&hdr->pubvars);
     amx_Align32((uint32_t*)&hdr->tags);
+    if (hdr->file_version>=10)
+      amx_Align32((uint32_t*)&hdr->overlays);
   #endif
 
   if (hdr->magic!=AMX_MAGIC)
@@ -1179,7 +1208,7 @@ int AMXAPI amx_Init(AMX *amx,void *program)
     } /* for */
 
     fs=GETENTRY(hdr,tags,0);
-    if (hdr->file_version<7) {
+    if (hdr->file_version<7) {  /* file version 7 introduced the name table */
       assert(hdr->tags<=hdr->cod);
       num=NUMENTRIES(hdr,tags,cod);
     } else {
@@ -1284,7 +1313,7 @@ int AMXAPI amx_Init(AMX *amx,void *program)
 
   #else
 
-    // TODO: Add cases for Linux, Unix, OS/2, ...
+    // TODO: Add cases for Mac OS/X and other operating systems
 
     /* DOS32 has no imposed limits on its segments */
     #define ALIGN(addr)     (addr)
@@ -1301,6 +1330,7 @@ int AMXAPI amx_InitJIT(AMX *amx, void *reloc_table, void *native_code)
     return AMX_ERR_INIT_JIT;    /* flag not set, this AMX is not prepared for JIT */
   if (hdr->file_version>MAX_FILE_VER_JIT)
     return AMX_ERR_VERSION;     /* JIT may not support the newest file version(s) */
+  /* the JIT does not support overlays, but this is already checked in VerifyPcode() */
 
   /* Patching SYSREQ.C opcodes to SYSREQ.D cannot work in the JIT, because the
    * program would need to be re-JIT-compiled after patching a P-code
@@ -1661,7 +1691,7 @@ int AMXAPI amx_NumTags(AMX *amx, int *number)
     *number=0;
     return AMX_ERR_VERSION;
   } /* if */
-  if (hdr->file_version<7) {
+  if (hdr->file_version<7) {    /* file version 7 introduced the name table */
     assert(hdr->tags<=hdr->cod);
     *number=NUMENTRIES(hdr,tags,cod);
   } else {
@@ -1685,7 +1715,7 @@ int AMXAPI amx_GetTag(AMX *amx, int index, char *tagname, cell *tag_id)
     return AMX_ERR_VERSION;
   } /* if */
 
-  if (hdr->file_version<7) {
+  if (hdr->file_version<7) {    /* file version 7 introduced the name table */
     assert(hdr->tags<=hdr->cod);
     if (index>=(cell)NUMENTRIES(hdr,tags,cod))
       return AMX_ERR_INDEX;
@@ -1947,7 +1977,7 @@ int AMXAPI amx_PushString(AMX *amx, cell *amx_addr, cell **phys_addr, const char
   #define SKIPPARAM(n)  ( cip=(cell *)cip+(n) ) /* for obsolete opcodes */
 #endif
 #if !defined GETOPCODE
-  #if defined AMX_NO_OPCODE_PACKING
+  #if defined AMX_NO_PACKED_OPC
     #define GETOPCODE(c)  (OPCODE)(c)
   #else
     #define GETOPCODE(c)  (OPCODE)((c) & ((1 << sizeof(cell)*4)-1))
@@ -1974,13 +2004,13 @@ int AMXAPI amx_PushString(AMX *amx, cell *amx_addr, cell **phys_addr, const char
      */
 
 #if defined AMX_TOKENTHREADING
-  #if defined AMX_NO_OPCODE_PACKING
+  #if defined AMX_NO_PACKED_OPC
     #define NEXT(cip)   goto amx_opcodelist[*cip++]
   #else
     #define NEXT(cip)   goto amx_opcodelist[*cip++ & ((1 << sizeof(cell)*4)-1)]
   #endif
 #else
-  #if !defined AMX_NO_OPCODE_PACKING
+  #if !defined AMX_NO_PACKED_OPC
     #error Opcode packing requires token threading
   #endif
   #define NEXT(cip)     goto **cip++
@@ -2029,20 +2059,20 @@ static const void * const amx_opcodelist[] = {
         &&op_push4_s,   &&op_push4_adr, &&op_push5_c,   &&op_push5,
         &&op_push5_s,   &&op_push5_adr, &&op_load_both, &&op_load_s_both,
         &&op_const,     &&op_const_s,
-#if !defined AMX_NO_OPCODE_PACKING
+#if !defined AMX_NO_PACKED_OPC
         &&op_load_p_pri,  &&op_load_p_alt, &&op_load_p_s_pri,&&op_load_p_s_alt,
         &&op_lref_p_pri,  &&op_lref_p_alt, &&op_lref_p_s_pri,&&op_lref_p_s_alt,
         &&op_lodb_p_i,    &&op_const_p_pri,&&op_const_p_alt, &&op_addr_p_pri,
         &&op_addr_p_alt,  &&op_stor_p_pri, &&op_stor_p_alt,  &&op_stor_p_s_pri,
         &&op_stor_p_s_alt,&&op_sref_p_pri, &&op_sref_p_alt,  &&op_sref_p_s_pri,
-        &&op_sref_p_s_alt,&&op_strb_i,     &&op_lidx_p_b,    &&op_idxaddr_p_b,
+        &&op_sref_p_s_alt,&&op_strb_p_i,   &&op_lidx_p_b,    &&op_idxaddr_p_b,
         &&op_align_p_pri, &&op_align_p_alt,&&op_push_p_c,    &&op_push_p,
         &&op_push_p_s,    &&op_stack_p,    &&op_heap_p,      &&op_shl_p_c_pri,
         &&op_shl_p_c_alt, &&op_shr_p_c_pri,&&op_shr_p_c_alt, &&op_add_p_c,
         &&op_smul_p_c,    &&op_zero_p,     &&op_zero_p_s,    &&op_eq_p_c_pri,
         &&op_eq_p_c_alt,  &&op_inc_p,      &&op_inc_p_s,     &&op_dec_p,
         &&op_dec_p_s,     &&op_movs_p,     &&op_cmps_p,      &&op_fill_p,
-        &&op_halt_p,      &&op_bounds_p,   &&op_push_adr_p,
+        &&op_halt_p,      &&op_bounds_p,   &&op_push_p_adr,
 #endif
         &&op_sysreq_d,  &&op_sysreq_nd };
   AMX_HEADER *hdr;
@@ -2119,24 +2149,27 @@ static const void * const amx_opcodelist[] = {
   assert(check_endian());
 
   /* sanity checks */
-  assert(OP_PUSH_PRI==36);
-  assert(OP_PROC==46);
-  assert(OP_SHL==65);
-  assert(OP_SMUL==72);
-  assert(OP_EQ==95);
-  assert(OP_INC_PRI==107);
-  assert(OP_MOVS==117);
-  assert(OP_SYMBOL==126);
-  assert(OP_PUSH2_C==138);
-  assert(OP_LOAD_BOTH==154);
-  assert(OP_LOAD_P_PRI==158);
-  assert(OP_PUSH_P_ADR==208);
+  assert_static(OP_PUSH_PRI==36);
+  assert_static(OP_PROC==46);
+  assert_static(OP_SHL==65);
+  assert_static(OP_SMUL==72);
+  assert_static(OP_EQ==95);
+  assert_static(OP_INC_PRI==107);
+  assert_static(OP_MOVS==117);
+  assert_static(OP_SYMBOL==126);
+  assert_static(OP_PUSH2_C==138);
+  assert_static(OP_LOAD_BOTH==154);
+  assert_static(OP_ICALL==158);
+  #if !defined AMX_NO_PACKED_OPC
+    assert_static(OP_LOAD_P_PRI==160);
+    assert_static(OP_PUSH_P_ADR==210);
+  #endif
   #if PAWN_CELL_SIZE==16
-    assert(sizeof(cell)==2);
+    assert_static(sizeof(cell)==2);
   #elif PAWN_CELL_SIZE==32
-    assert(sizeof(cell)==4);
+    assert_static(sizeof(cell)==4);
   #elif PAWN_CELL_SIZE==64
-    assert(sizeof(cell)==8);
+    assert_static(sizeof(cell)==8);
   #else
     #error Unsupported cell size
   #endif
@@ -3094,7 +3127,7 @@ static const void * const amx_opcodelist[] = {
     _W(data,frm+offs,val);
     NEXT(cip);
 #endif
-#if !defined AMX_NO_OPCODE_PACKING
+#if !defined AMX_NO_PACKED_OPC
   op_load_p_pri:
     GETPARAM_P(offs,op);
     pri=_R(data,offs);
@@ -3104,91 +3137,91 @@ static const void * const amx_opcodelist[] = {
     pri=_R(data,offs);
     NEXT(cip);
   op_load_p_s_pri:
-    GETPARAM_P(op,offs);
+    GETPARAM_P(offs,op);
     pri=_R(data,frm+offs);
     NEXT(cip);
   op_load_p_s_alt:
-    GETPARAM_P(op,offs);
+    GETPARAM_P(offs,op);
     alt=_R(data,frm+offs);
     NEXT(cip);
   op_lref_p_pri:
-    GETPARAM_P(op,offs);
+    GETPARAM_P(offs,op);
     offs=_R(data,offs);
     pri=_R(data,offs);
     NEXT(cip);
   op_lref_p_alt:
-    GETPARAM_P(op,offs);
+    GETPARAM_P(offs,op);
     offs=_R(data,offs);
     alt=_R(data,offs);
     NEXT(cip);
   op_lref_p_s_pri:
-    GETPARAM_P(op,offs);
+    GETPARAM_P(offs,op);
     offs=_R(data,frm+offs);
     pri=_R(data,offs);
     NEXT(cip);
   op_lref_p_s_alt:
-    GETPARAM_P(op,offs);
+    GETPARAM_P(offs,op);
     offs=_R(data,frm+offs);
     alt=_R(data,offs);
     NEXT(cip);
   op_lodb_p_i:
-    GETPARAM_P(op,offs);
+    GETPARAM_P(offs,op);
     goto __lodb_i;
   op_const_p_pri:
-    GETPARAM_P(op,pri);
+    GETPARAM_P(pri,op);
     NEXT(cip);
   op_const_p_alt:
-    GETPARAM_P(op,alt);
+    GETPARAM_P(alt,op);
     NEXT(cip);
   op_addr_p_pri:
-    GETPARAM_P(op,pri);
+    GETPARAM_P(pri,op);
     pri+=frm;
     NEXT(cip);
   op_addr_p_alt:
-    GETPARAM_P(op,alt);
+    GETPARAM_P(alt,op);
     alt+=frm;
     NEXT(cip);
   op_stor_p_pri:
-    GETPARAM_P(op,offs);
+    GETPARAM_P(offs,op);
     _W(data,offs,pri);
     NEXT(cip);
   op_stor_p_alt:
-    GETPARAM_P(op,offs);
+    GETPARAM_P(offs,op);
     _W(data,offs,alt);
     NEXT(cip);
   op_stor_p_s_pri:
-    GETPARAM_P(op,offs);
+    GETPARAM_P(offs,op);
     _W(data,frm+offs,pri);
     NEXT(cip);
   op_stor_p_s_alt:
-    GETPARAM_P(op,offs);
+    GETPARAM_P(offs,op);
     _W(data,frm+offs,alt);
     NEXT(cip);
   op_sref_p_pri:
-    GETPARAM_P(op,offs);
+    GETPARAM_P(offs,op);
     offs=_R(data,offs);
     _W(data,offs,pri);
     NEXT(cip);
   op_sref_p_alt:
-    GETPARAM_P(op,offs);
+    GETPARAM_P(offs,op);
     offs=_R(data,offs);
     _W(data,offs,alt);
     NEXT(cip);
   op_sref_p_s_pri:
-    GETPARAM_P(op,offs);
+    GETPARAM_P(offs,op);
     offs=_R(data,frm+offs);
     _W(data,offs,pri);
     NEXT(cip);
   op_sref_p_s_alt:
-    GETPARAM_P(op,offs);
+    GETPARAM_P(offs,op);
     offs=_R(data,frm+offs);
     _W(data,offs,alt);
     NEXT(cip);
-  op_strb_i:
-    GETPARAM_P(op,offs);
+  op_strb_p_i:
+    GETPARAM_P(offs,op);
     goto __strb_i;
   op_lidx_p_b:
-    GETPARAM_P(op,offs);
+    GETPARAM_P(offs,op);
     offs=(pri << (int)offs)+alt;
     /* verify address */
     if (offs>=hea && offs<stk || (ucell)offs>=(ucell)amx->stp)
@@ -3196,91 +3229,91 @@ static const void * const amx_opcodelist[] = {
     pri=_R(data,offs);
     NEXT(cip);
   op_idxaddr_p_b:
-    GETPARAM_P(op,offs);
+    GETPARAM_P(offs,op);
     pri=(pri << (int)offs)+alt;
     NEXT(cip);
   op_align_p_pri:
-    GETPARAM_P(op,offs);
+    GETPARAM_P(offs,op);
     #if BYTE_ORDER==LITTLE_ENDIAN
       if ((size_t)offs<sizeof(cell))
         pri ^= sizeof(cell)-offs;
     #endif
     NEXT(cip);
   op_align_p_alt:
-    GETPARAM_P(op,offs);
+    GETPARAM_P(offs,op);
     #if BYTE_ORDER==LITTLE_ENDIAN
       if ((size_t)offs<sizeof(cell))
         alt ^= sizeof(cell)-offs;
     #endif
     NEXT(cip);
   op_push_p_c:
-    GETPARAM_P(op,offs);
+    GETPARAM_P(offs,op);
     PUSH(offs);
     NEXT(cip);
   op_push_p:
-    GETPARAM_P(op,offs);
+    GETPARAM_P(offs,op);
     PUSH(_R(data,offs));
     NEXT(cip);
   op_push_p_s:
-    GETPARAM_P(op,offs);
+    GETPARAM_P(offs,op);
     PUSH(_R(data,frm+offs));
     NEXT(cip);
   op_stack_p:
-    GETPARAM_P(op,offs);
+    GETPARAM_P(offs,op);
     alt=stk;
     stk+=offs;
     CHKMARGIN();
     CHKSTACK();
     NEXT(cip);
   op_heap_p:
-    GETPARAM_P(op,offs);
+    GETPARAM_P(offs,op);
     alt=hea;
     hea+=offs;
     CHKMARGIN();
     CHKHEAP();
     NEXT(cip);
   op_shl_p_c_pri:
-    GETPARAM_P(op,offs);
+    GETPARAM_P(offs,op);
     pri<<=offs;
     NEXT(cip);
   op_shl_p_c_alt:
-    GETPARAM_P(op,offs);
+    GETPARAM_P(offs,op);
     alt<<=offs;
     NEXT(cip);
   op_shr_p_c_pri:
-    GETPARAM_P(op,offs);
+    GETPARAM_P(offs,op);
     pri=(ucell)pri >> (int)offs;
     NEXT(cip);
   op_shr_p_c_alt:
-    GETPARAM_P(op,offs);
+    GETPARAM_P(offs,op);
     alt=(ucell)alt >> (int)offs;
     NEXT(cip);
   op_add_p_c:
-    GETPARAM_P(op,offs);
+    GETPARAM_P(offs,op);
     pri+=offs;
     NEXT(cip);
   op_smul_p_c:
-    GETPARAM_P(op,offs);
+    GETPARAM_P(offs,op);
     pri*=offs;
     NEXT(cip);
   op_zero_p:
-    GETPARAM_P(op,offs);
+    GETPARAM_P(offs,op);
     _W(data,offs,0);
     NEXT(cip);
   op_zero_p_s:
-    GETPARAM_P(op,offs);
+    GETPARAM_P(offs,op);
     _W(data,frm+offs,0);
     NEXT(cip);
   op_eq_p_c_pri:
-    GETPARAM_P(op,offs);
+    GETPARAM_P(offs,op);
     pri= pri==offs ? 1 : 0;
     NEXT(cip);
   op_eq_p_c_alt:
-    GETPARAM_P(op,offs);
+    GETPARAM_P(offs,op);
     pri= alt==offs ? 1 : 0;
     NEXT(cip);
   op_inc_p:
-    GETPARAM_P(op,offs);
+    GETPARAM_P(offs,op);
     #if defined _R_DEFAULT
       *(cell *)(data+(int)offs) += 1;
     #else
@@ -3289,7 +3322,7 @@ static const void * const amx_opcodelist[] = {
     #endif
     NEXT(cip);
   op_inc_p_s:
-    GETPARAM_P(op,offs);
+    GETPARAM_P(offs,op);
     #if defined _R_DEFAULT
       *(cell *)(data+(int)(frm+offs)) += 1;
     #else
@@ -3298,7 +3331,7 @@ static const void * const amx_opcodelist[] = {
     #endif
     NEXT(cip);
   op_dec_p:
-    GETPARAM_P(op,offs);
+    GETPARAM_P(offs,op);
     #if defined _R_DEFAULT
       *(cell *)(data+(int)offs) -= 1;
     #else
@@ -3307,7 +3340,7 @@ static const void * const amx_opcodelist[] = {
     #endif
     NEXT(cip);
   op_dec_p_s:
-    GETPARAM_P(op,offs);
+    GETPARAM_P(offs,op);
     #if defined _R_DEFAULT
       *(cell *)(data+(int)(frm+offs)) -= 1;
     #else
@@ -3316,26 +3349,26 @@ static const void * const amx_opcodelist[] = {
     #endif
     NEXT(cip);
   op_movs_p:
-    GETPARAM_P(op,offs);
+    GETPARAM_P(offs,op);
     goto __movs;
   op_cmps_p:
-    GETPARAM_P(op,offs);
+    GETPARAM_P(offs,op);
     goto __cmps;
   op_fill_p:
-    GETPARAM_P(op,offs);
+    GETPARAM_P(offs,op);
     goto __fill;
   op_halt_p:
-    GETPARAM_P(op,offs);
+    GETPARAM_P(offs,op);
     goto __halt;
   op_bounds_p:
-    GETPARAM_P(op,offs);
+    GETPARAM_P(offs,op);
     if ((ucell)pri>(ucell)offs) {
       amx->cip=(cell)((unsigned char *)cip-code);
       ABORT(amx,AMX_ERR_BOUNDS);
     } /* if */
     NEXT(cip);
-  op_push_adr_p:
-    GETPARAM_P(op,offs);
+  op_push_p_adr:
+    GETPARAM_P(offs,op);
     PUSH(frm+offs);
     NEXT(cip);
 #endif
@@ -3431,6 +3464,7 @@ int AMXAPI amx_Exec(AMX *amx, cell *retval, int index)
   unsigned char *code, *data;
   cell pri,alt,stk,frm,hea;
   cell reset_stk, reset_hea, *cip;
+  cell *ovl_base, ovl_index;
   ucell codesize;
   int i;
   #if defined ASM32 || defined JIT
@@ -3475,7 +3509,7 @@ int AMXAPI amx_Exec(AMX *amx, cell *retval, int index)
   #endif
 
   if ((amx->flags & AMX_FLAG_INIT)==0)
-      return AMX_ERR_INIT;
+    return AMX_ERR_INIT;
   if (amx->callback==NULL)
     return AMX_ERR_CALLBACK;
   if ((amx->flags & AMX_FLAG_NTVREG)==0) {
@@ -3497,10 +3531,20 @@ int AMXAPI amx_Exec(AMX *amx, cell *retval, int index)
   alt=frm=pri=0;/* just to avoid compiler warnings */
 
   /* get the start address */
+  ovl_base=NULL;
+  ovl_index=0;
   if (index==AMX_EXEC_MAIN) {
     if (hdr->cip<0)
       return AMX_ERR_INDEX;
     cip=(cell *)(code + (int)hdr->cip);
+    if (hdr->file_version>=10 && hdr->overlays!=hdr->nametable) {
+      assert(hdr->overlays!=0);
+      ovl_index=hdr->cip;
+      num=amx->overlay(amx,ovl_index,&ovl_base);
+      if (num!=AMX_ERR_NONE)
+        return 0;
+      cip=ovl_base;
+    } /* if */
   } else if (index==AMX_EXEC_CONT) {
     /* all registers: pri, alt, frm, cip, hea, stk, reset_stk, reset_hea */
     frm=amx->frm;
@@ -3518,6 +3562,14 @@ int AMXAPI amx_Exec(AMX *amx, cell *retval, int index)
       return AMX_ERR_INDEX;
     func=GETENTRY(hdr,publics,index);
     cip=(cell *)(code + (int)func->address);
+    if (hdr->file_version>=10 && hdr->overlays!=hdr->nametable) {
+      assert(hdr->overlays!=0);
+      ovl_index=index;
+      num=amx->overlay(amx,ovl_index,&cip,&ovl_base);
+      if (num!=AMX_ERR_NONE)
+        return 0;
+      cip=ovl_base;
+    } /* if */
   } /* if */
   /* check values just copied */
   CHKSTACK();
@@ -3535,8 +3587,11 @@ int AMXAPI amx_Exec(AMX *amx, cell *retval, int index)
   assert_static(OP_SYMBOL==126);
   assert_static(OP_PUSH2_C==138);
   assert_static(OP_LOAD_BOTH==154);
-  assert_static(OP_LOAD_P_PRI==158);
-  assert_static(OP_PUSH_P_ADR==208);
+  assert_static(OP_ICALL==158);
+  #if !defined AMX_NO_PACKED_OPC
+    assert_static(OP_LOAD_P_PRI==160);
+    assert_static(OP_PUSH_P_ADR==210);
+  #endif
   #if PAWN_CELL_SIZE==16
     assert_static(sizeof(cell)==2);
   #elif PAWN_CELL_SIZE==32
@@ -3900,6 +3955,30 @@ int AMXAPI amx_Exec(AMX *amx, cell *retval, int index)
     case OP_CALL_PRI:
       PUSH((unsigned char *)cip-code);
       cip=(cell *)(code+(int)pri);
+      break;
+    case OP_ICALL:
+      PUSH((unsigned char *)cip-(unsigned char *)ovl_base);
+      PUSH(ovl_index);
+      ovl_index=*cip;
+      assert(amx->overlay!=NULL);
+      num=amx->overlay(amx, ovl_index, &ovl_base);
+      if (num!=AMX_ERR_NONE)
+        ABORT(amx,num);
+      cip=ovl_base;
+      break;
+    case OP_IRETN:
+      assert(amx->overlay!=NULL);
+      POP(frm);
+      POP(ovl_index);
+      POP(offs);
+      /* verify the index */
+      if (offs<0)  //??? should verify against overlay size
+        ABORT(amx,AMX_ERR_MEMACCESS);
+      stk+=_R(data,stk)+sizeof(cell);   /* remove parameters from the stack */
+      amx->stk=stk;
+      amx->overlay(amx, ovl_index, &ovl_base);  /* reload overlay */
+      //??? check error of the above call
+      cip=(cell *)((unsigned char*)ovl_base+(int)offs);
       break;
     case OP_JUMP:
       /* since the GETPARAM() macro modifies cip, you cannot
@@ -4531,7 +4610,7 @@ int AMXAPI amx_Exec(AMX *amx, cell *retval, int index)
       _W32(data,frm+offs,val);
       break;
 #endif
-#if !defined AMX_NO_OPCODE_PACKING
+#if !defined AMX_NO_PACKED_OPC
     case OP_LOAD_P_PRI:
       GETPARAM_P(offs,op);
       pri=_R(data,offs);
@@ -4541,91 +4620,91 @@ int AMXAPI amx_Exec(AMX *amx, cell *retval, int index)
       pri=_R(data,offs);
       break;
     case OP_LOAD_P_S_PRI:
-      GETPARAM_P(op,offs);
+      GETPARAM_P(offs,op);
       pri=_R(data,frm+offs);
       break;
     case OP_LOAD_P_S_ALT:
-      GETPARAM_P(op,offs);
+      GETPARAM_P(offs,op);
       alt=_R(data,frm+offs);
       break;
     case OP_LREF_P_PRI:
-      GETPARAM_P(op,offs);
+      GETPARAM_P(offs,op);
       offs=_R(data,offs);
       pri=_R(data,offs);
       break;
     case OP_LREF_P_ALT:
-      GETPARAM_P(op,offs);
+      GETPARAM_P(offs,op);
       offs=_R(data,offs);
       alt=_R(data,offs);
       break;
     case OP_LREF_P_S_PRI:
-      GETPARAM_P(op,offs);
+      GETPARAM_P(offs,op);
       offs=_R(data,frm+offs);
       pri=_R(data,offs);
       break;
     case OP_LREF_P_S_ALT:
-      GETPARAM_P(op,offs);
+      GETPARAM_P(offs,op);
       offs=_R(data,frm+offs);
       alt=_R(data,offs);
       break;
     case OP_LODB_P_I:
-      GETPARAM_P(op,offs);
+      GETPARAM_P(offs,op);
       goto __lodb_i;
     case OP_CONST_P_PRI:
-      GETPARAM_P(op,pri);
+      GETPARAM_P(pri,op);
       break;
     case OP_CONST_P_ALT:
-      GETPARAM_P(op,alt);
+      GETPARAM_P(alt,op);
       break;
     case OP_ADDR_P_PRI:
-      GETPARAM_P(op,pri);
+      GETPARAM_P(pri,op);
       pri+=frm;
       break;
     case OP_ADDR_P_ALT:
-      GETPARAM_P(op,alt);
+      GETPARAM_P(alt,op);
       alt+=frm;
       break;
     case OP_STOR_P_PRI:
-      GETPARAM_P(op,offs);
+      GETPARAM_P(offs,op);
       _W(data,offs,pri);
       break;
     case OP_STOR_P_ALT:
-      GETPARAM_P(op,offs);
+      GETPARAM_P(offs,op);
       _W(data,offs,alt);
       break;
     case OP_STOR_P_S_PRI:
-      GETPARAM_P(op,offs);
+      GETPARAM_P(offs,op);
       _W(data,frm+offs,pri);
       break;
     case OP_STOR_P_S_ALT:
-      GETPARAM_P(op,offs);
+      GETPARAM_P(offs,op);
       _W(data,frm+offs,alt);
       break;
     case OP_SREF_P_PRI:
-      GETPARAM_P(op,offs);
+      GETPARAM_P(offs,op);
       offs=_R(data,offs);
       _W(data,offs,pri);
       break;
     case OP_SREF_P_ALT:
-      GETPARAM_P(op,offs);
+      GETPARAM_P(offs,op);
       offs=_R(data,offs);
       _W(data,offs,alt);
       break;
     case OP_SREF_P_S_PRI:
-      GETPARAM_P(op,offs);
+      GETPARAM_P(offs,op);
       offs=_R(data,frm+offs);
       _W(data,offs,pri);
       break;
     case OP_SREF_P_S_ALT:
-      GETPARAM_P(op,offs);
+      GETPARAM_P(offs,op);
       offs=_R(data,frm+offs);
       _W(data,offs,alt);
       break;
-    case OP_STRB_I:
-      GETPARAM_P(op,offs);
+    case OP_STRB_P_I:
+      GETPARAM_P(offs,op);
       goto __strb_i;
     case OP_LIDX_P_B:
-      GETPARAM_P(op,offs);
+      GETPARAM_P(offs,op);
       offs=(pri << (int)offs)+alt;
       /* verify address */
       if (offs>=hea && offs<stk || (ucell)offs>=(ucell)amx->stp)
@@ -4633,91 +4712,91 @@ int AMXAPI amx_Exec(AMX *amx, cell *retval, int index)
       pri=_R(data,offs);
       break;
     case OP_IDXADDR_P_B:
-      GETPARAM_P(op,offs);
+      GETPARAM_P(offs,op);
       pri=(pri << (int)offs)+alt;
       break;
     case OP_ALIGN_P_PRI:
-      GETPARAM_P(op,offs);
+      GETPARAM_P(offs,op);
       #if BYTE_ORDER==LITTLE_ENDIAN
         if ((size_t)offs<sizeof(cell))
           pri ^= sizeof(cell)-offs;
       #endif
       break;
     case OP_ALIGN_P_ALT:
-      GETPARAM_P(op,offs);
+      GETPARAM_P(offs,op);
       #if BYTE_ORDER==LITTLE_ENDIAN
         if ((size_t)offs<sizeof(cell))
           alt ^= sizeof(cell)-offs;
       #endif
       break;
     case OP_PUSH_P_C:
-      GETPARAM_P(op,offs);
+      GETPARAM_P(offs,op);
       PUSH(offs);
       break;
     case OP_PUSH_P:
-      GETPARAM_P(op,offs);
+      GETPARAM_P(offs,op);
       PUSH(_R(data,offs));
       break;
     case OP_PUSH_P_S:
-      GETPARAM_P(op,offs);
+      GETPARAM_P(offs,op);
       PUSH(_R(data,frm+offs));
       break;
     case OP_STACK_P:
-      GETPARAM_P(op,offs);
+      GETPARAM_P(offs,op);
       alt=stk;
       stk+=offs;
       CHKMARGIN();
       CHKSTACK();
       break;
     case OP_HEAP_P:
-      GETPARAM_P(op,offs);
+      GETPARAM_P(offs,op);
       alt=hea;
       hea+=offs;
       CHKMARGIN();
       CHKHEAP();
       break;
     case OP_SHL_P_C_PRI:
-      GETPARAM_P(op,offs);
+      GETPARAM_P(offs,op);
       pri<<=offs;
       break;
     case OP_SHL_P_C_ALT:
-      GETPARAM_P(op,offs);
+      GETPARAM_P(offs,op);
       alt<<=offs;
       break;
     case OP_SHR_P_C_PRI:
-      GETPARAM_P(op,offs);
+      GETPARAM_P(offs,op);
       pri=(ucell)pri >> (int)offs;
       break;
     case OP_SHR_P_C_ALT:
-      GETPARAM_P(op,offs);
+      GETPARAM_P(offs,op);
       alt=(ucell)alt >> (int)offs;
       break;
     case OP_ADD_P_C:
-      GETPARAM_P(op,offs);
+      GETPARAM_P(offs,op);
       pri+=offs;
       break;
     case OP_SMUL_P_C:
-      GETPARAM_P(op,offs);
+      GETPARAM_P(offs,op);
       pri*=offs;
       break;
     case OP_ZERO_P:
-      GETPARAM_P(op,offs);
+      GETPARAM_P(offs,op);
       _W(data,offs,0);
       break;
     case OP_ZERO_P_S:
-      GETPARAM_P(op,offs);
+      GETPARAM_P(offs,op);
       _W(data,frm+offs,0);
       break;
     case OP_EQ_P_C_PRI:
-      GETPARAM_P(op,offs);
+      GETPARAM_P(offs,op);
       pri= pri==offs ? 1 : 0;
       break;
     case OP_EQ_P_C_ALT:
-      GETPARAM_P(op,offs);
+      GETPARAM_P(offs,op);
       pri= alt==offs ? 1 : 0;
       break;
     case OP_INC_P:
-      GETPARAM_P(op,offs);
+      GETPARAM_P(offs,op);
       #if defined _R_DEFAULT
         *(cell *)(data+(int)offs) += 1;
       #else
@@ -4726,7 +4805,7 @@ int AMXAPI amx_Exec(AMX *amx, cell *retval, int index)
       #endif
       break;
     case OP_INC_P_S:
-      GETPARAM_P(op,offs);
+      GETPARAM_P(offs,op);
       #if defined _R_DEFAULT
         *(cell *)(data+(int)(frm+offs)) += 1;
       #else
@@ -4735,7 +4814,7 @@ int AMXAPI amx_Exec(AMX *amx, cell *retval, int index)
       #endif
       break;
     case OP_DEC_P:
-      GETPARAM_P(op,offs);
+      GETPARAM_P(offs,op);
       #if defined _R_DEFAULT
         *(cell *)(data+(int)offs) -= 1;
       #else
@@ -4744,7 +4823,7 @@ int AMXAPI amx_Exec(AMX *amx, cell *retval, int index)
       #endif
       break;
     case OP_DEC_P_S:
-      GETPARAM_P(op,offs);
+      GETPARAM_P(offs,op);
       #if defined _R_DEFAULT
         *(cell *)(data+(int)(frm+offs)) -= 1;
       #else
@@ -4753,26 +4832,26 @@ int AMXAPI amx_Exec(AMX *amx, cell *retval, int index)
       #endif
       break;
     case OP_MOVS_P:
-      GETPARAM_P(op,offs);
+      GETPARAM_P(offs,op);
       goto __movs;
     case OP_CMPS_P:
-      GETPARAM_P(op,offs);
+      GETPARAM_P(offs,op);
       goto __cmps;
     case OP_FILL_P:
-      GETPARAM_P(op,offs);
+      GETPARAM_P(offs,op);
       goto __fill;
     case OP_HALT_P:
-      GETPARAM_P(op,offs);
+      GETPARAM_P(offs,op);
       goto __halt;
     case OP_BOUNDS_P:
-      GETPARAM_P(op,offs);
+      GETPARAM_P(offs,op);
       if ((ucell)pri>(ucell)offs) {
         amx->cip=(cell)((unsigned char *)cip-code);
         ABORT(amx,AMX_ERR_BOUNDS);
       } /* if */
       break;
-    case OP_PUSH_ADR_P:
-      GETPARAM_P(op,offs);
+    case OP_PUSH_P_ADR:
+      GETPARAM_P(offs,op);
       PUSH(frm+offs);
       break;
 #endif

@@ -1,6 +1,6 @@
 /* File input/output functions
  *
- * (c) Copyright 2004-2005, ITB CompuPhase
+ * (c) Copyright 2004-2007, ITB CompuPhase
  * This file is provided as is (no warranties).
  */
 #if defined _file_included
@@ -30,6 +30,7 @@ native File: fopen(const name[], filemode: mode = io_readwrite);
 native bool: fclose(File: handle);
 native File: ftemp();
 native bool: fremove(const name[]);
+native bool: frename(const oldname[], const newname);
 
 native       fwrite(File: handle, const string[]);
 native       fread(File: handle, string[], size = sizeof string, bool: pack = false);
@@ -42,3 +43,4 @@ native       fseek(File: handle, position = 0, seek_whence: whence = seek_start)
 native       flength(File: handle);
 native       fexist(const pattern[]);
 native bool: fmatch(name[], const pattern[], index = 0, size = sizeof name);
+native bool: fstat(name[], &size = 0, &timestamp = 0);

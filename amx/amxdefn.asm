@@ -5,6 +5,7 @@ _base:       resd 1
 _dataseg:    resd 1
 _callback:   resd 1
 _debug:      resd 1
+_overlay:    resd 1
 _cip:        resd 1
 _frm:        resd 1
 _hea:        resd 1
@@ -46,7 +47,8 @@ _natives:    resd 1  ; offset to the "native functions" table
 _libraries:  resd 1  ; offset to the "library" table
 _pubvars:    resd 1  ; offset to the "public variables" table
 _tags:       resd 1  ; offset to the "public tagnames" table
-_nametable:  resd 1  ; offset to the name table, file version 7 only
+_nametable:  resd 1  ; offset to the name table, file version 7+ only
+_overlaytbl: resd 1  ; offset to the overlay table, file version 10+ only
 	endstruc
 
 

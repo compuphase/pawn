@@ -3,7 +3,7 @@ Regression test for the Pawn toolkit
 The REXX script and the set of source files are what I use to check the Pawn
 compiler and (in a lesser extent) the Abstract Machine on a regular basis.
 
-The script file assumes that it can access the small compiler (PAWNCC.EXE) and
+The script file assumes that it can access the Pawn compiler (PAWNCC.EXE) and
 the simple run-time (PAWNRUN.EXE) in the "..\bin" directory relative from where
 the "test.rexx" file resides. In my setup, I have a directory C:\Pawn\bin that
 has the .EXE and .DLL files (under Microsoft Windows) files and C:\Pawn\Test
