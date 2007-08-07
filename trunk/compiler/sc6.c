@@ -1,6 +1,6 @@
 /*  Pawn compiler - Binary code generation (the "assembler")
  *
- *  Copyright (c) ITB CompuPhase, 1997-2006
+ *  Copyright (c) ITB CompuPhase, 1997-2007
  *
  *  This software is provided "as-is", without any express or implied warranty.
  *  In no event will the authors be held liable for any damages arising from
@@ -18,7 +18,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: sc6.c 3763 2007-05-22 07:23:30Z thiadmer $
+ *  Version: $Id: sc6.c 3744 2007-04-30 12:01:59Z thiadmer $
  */
 #include <assert.h>
 #include <stdio.h>
@@ -205,7 +205,7 @@ static void write_encoded(FILE *fbin,ucell *c,int num)
 
   assert(fbin!=NULL);
   while (num-->0) {
-    if (sc_compress) {
+    if (pc_compress) {
       ucell p=(ucell)*c;
       unsigned char t[ENC_MAX];
       unsigned char code;
@@ -286,7 +286,7 @@ static cell parm1_p(FILE *fbin,const char *params,cell opcode,cell cip)
   assert(p<(1<<(sizeof(cell)*4)));
   assert(opcode>=0 && opcode<=255);
   if (fbin!=NULL) {
-    p=(p<<sizeof(cell)/2) | opcode;
+    p=(p<<sizeof(cell)*4) | opcode;
     write_encoded(fbin,&p,1);
   } /* if */
   return opcodes(1);
@@ -395,6 +395,7 @@ static cell do_call(FILE *fbin,const char *params,cell opcode,cell cip)
     if (fbin!=NULL) {
       assert(lbltab!=NULL);
       p=lbltab[i]-cip;          /* make relative address */
+      // ??? the address should not be relocated if overlays are used
     } /* if */
   } else {
     /* look up the function address; note that the correct file number must
@@ -461,6 +462,7 @@ static cell do_case(FILE *fbin,const char *params,cell opcode,cell cip)
   if (fbin!=NULL) {
     assert(lbltab!=NULL);
     p=lbltab[i]-cip;
+    // ??? we may get into this function for state functions; the address should not be relocated if overlays are used
     write_encoded(fbin,&v,1);
     write_encoded(fbin,&p,1);
   } /* if */
@@ -473,66 +475,68 @@ static OPCODE opcodelist[] = {
   /* opcodes in sorted order */
   { 78, "add",        sIN_CSEG, parm0 },
   { 87, "add.c",      sIN_CSEG, parm1 },
-  {193, "add.p.c",    sIN_CSEG, parm1_p },
+  {195, "add.p.c",    sIN_CSEG, parm1_p },
   { 14, "addr.alt",   sIN_CSEG, parm1 },
-  {170, "addr.p.alt", sIN_CSEG, parm1_p },
-  {169, "addr.p.pri", sIN_CSEG, parm1_p },
+  {172, "addr.p.alt", sIN_CSEG, parm1_p },
+  {171, "addr.p.pri", sIN_CSEG, parm1_p },
   { 13, "addr.pri",   sIN_CSEG, parm1 },
   { 30, "align.alt",  sIN_CSEG, parm1 },
-  {183, "align.p.alt",sIN_CSEG, parm1_p },
+  {184, "align.p.alt",sIN_CSEG, parm1_p },
   {182, "align.p.pri",sIN_CSEG, parm1_p },
   { 29, "align.pri",  sIN_CSEG, parm1 },
   { 81, "and",        sIN_CSEG, parm0 },
   {121, "bounds",     sIN_CSEG, parm1 },
-  {207, "bounds.p",   sIN_CSEG, parm1_p },
+  {209, "bounds.p",   sIN_CSEG, parm1_p },
   {137, "break",      sIN_CSEG, parm0 },  /* version 8 */
   { 49, "call",       sIN_CSEG, do_call },
   { 50, "call.pri",   sIN_CSEG, parm0 },
   {  0, "case",       sIN_CSEG, do_case },
   {130, "casetbl",    sIN_CSEG, parm0 },  /* version 1 */
   {118, "cmps",       sIN_CSEG, parm1 },
-  {204, "cmps.p",     sIN_CSEG, parm1_p },
+  {206, "cmps.p",     sIN_CSEG, parm1_p },
   {  0, "code",       sIN_CSEG, set_currentfile },
   {156, "const",      sIN_CSEG, parm2 },  /* version 9 */
   { 12, "const.alt",  sIN_CSEG, parm1 },
-  {168, "const.p.alt",sIN_CSEG, parm1_p },
-  {167, "const.p.pri",sIN_CSEG, parm1_p },
+  {170, "const.p.alt",sIN_CSEG, parm1_p },
+  {169, "const.p.pri",sIN_CSEG, parm1_p },
   { 11, "const.pri",  sIN_CSEG, parm1 },
   {157, "const.s",    sIN_CSEG, parm2 },  /* version 9 */
   {  0, "data",       sIN_DSEG, set_currentfile },
   {114, "dec",        sIN_CSEG, parm1 },
   {113, "dec.alt",    sIN_CSEG, parm0 },
   {116, "dec.i",      sIN_CSEG, parm0 },
-  {201, "dec.p",      sIN_CSEG, parm1_p },
-  {202, "dec.p.s",    sIN_CSEG, parm1_p },
+  {203, "dec.p",      sIN_CSEG, parm1_p },
+  {204, "dec.p.s",    sIN_CSEG, parm1_p },
   {112, "dec.pri",    sIN_CSEG, parm0 },
   {115, "dec.s",      sIN_CSEG, parm1 },
   {  0, "dump",       sIN_DSEG, do_dump },
   { 95, "eq",         sIN_CSEG, parm0 },
   {106, "eq.c.alt",   sIN_CSEG, parm1 },
   {105, "eq.c.pri",   sIN_CSEG, parm1 },
-  {198, "eq.p.c.alt", sIN_CSEG, parm1_p },
-  {197, "eq.p.c.pri", sIN_CSEG, parm1_p },
+  {200, "eq.p.c.alt", sIN_CSEG, parm1_p },
+  {199, "eq.p.c.pri", sIN_CSEG, parm1_p },
 /*{124, "file",       sIN_CSEG, do_file }, */
   {119, "fill",       sIN_CSEG, parm1 },
-  {205, "fill.p",     sIN_CSEG, parm1_p },
+  {207, "fill.p",     sIN_CSEG, parm1_p },
   {100, "geq",        sIN_CSEG, parm0 },
   { 99, "grtr",       sIN_CSEG, parm0 },
   {120, "halt",       sIN_CSEG, parm1 },
-  {206, "halt.p",     sIN_CSEG, parm1_p },
+  {208, "halt.p",     sIN_CSEG, parm1_p },
   { 45, "heap",       sIN_CSEG, parm1 },
-  {188, "heap.p",     sIN_CSEG, parm1_p },
+  {190, "heap.p",     sIN_CSEG, parm1_p },
+  {158, "icall",      sIN_CSEG, parm1 },
   { 27, "idxaddr",    sIN_CSEG, parm0 },
   { 28, "idxaddr.b",  sIN_CSEG, parm1 },
-  {181, "idxaddr.p.b",sIN_CSEG, parm1_p },
+  {183, "idxaddr.p.b",sIN_CSEG, parm1_p },
   {109, "inc",        sIN_CSEG, parm1 },
   {108, "inc.alt",    sIN_CSEG, parm0 },
   {111, "inc.i",      sIN_CSEG, parm0 },
-  {199, "inc.p",      sIN_CSEG, parm1_p },
-  {200, "inc.p.s",    sIN_CSEG, parm1_p },
+  {201, "inc.p",      sIN_CSEG, parm1_p },
+  {202, "inc.p.s",    sIN_CSEG, parm1_p },
   {107, "inc.pri",    sIN_CSEG, parm0 },
   {110, "inc.s",      sIN_CSEG, parm1 },
   { 86, "invert",     sIN_CSEG, parm0 },
+  {159, "iretn",      sIN_CSEG, parm0 },
   { 55, "jeq",        sIN_CSEG, do_jump },
   { 60, "jgeq",       sIN_CSEG, do_jump },
   { 59, "jgrtr",      sIN_CSEG, do_jump },
@@ -553,33 +557,33 @@ static OPCODE opcodelist[] = {
   { 97, "less",       sIN_CSEG, parm0 },
   { 25, "lidx",       sIN_CSEG, parm0 },
   { 26, "lidx.b",     sIN_CSEG, parm1 },
-  {180, "lidx.p.b",   sIN_CSEG, parm1_p },
+  {182, "lidx.p.b",   sIN_CSEG, parm1_p },
 /*{125, "line",       sIN_CSEG, parm2 }, */
   {  2, "load.alt",   sIN_CSEG, parm1 },
   {154, "load.both",  sIN_CSEG, parm2 },  /* version 9 */
   {  9, "load.i",     sIN_CSEG, parm0 },
-  {159, "load.p.alt", sIN_CSEG, parm1_p },
-  {158, "load.p.pri", sIN_CSEG, parm1_p },
-  {161, "load.p.s.alt",sIN_CSEG,parm1_p },
-  {160, "load.p.s.pri",sIN_CSEG,parm1_p },
+  {161, "load.p.alt", sIN_CSEG, parm1_p },
+  {160, "load.p.pri", sIN_CSEG, parm1_p },
+  {163, "load.p.s.alt",sIN_CSEG,parm1_p },
+  {162, "load.p.s.pri",sIN_CSEG,parm1_p },
   {  1, "load.pri",   sIN_CSEG, parm1 },
   {  4, "load.s.alt", sIN_CSEG, parm1 },
   {155, "load.s.both",sIN_CSEG, parm2 },  /* version 9 */
   {  3, "load.s.pri", sIN_CSEG, parm1 },
   { 10, "lodb.i",     sIN_CSEG, parm1 },
-  {166, "lodb.p.i",   sIN_CSEG, parm1_p },
+  {168, "lodb.p.i",   sIN_CSEG, parm1_p },
   {  6, "lref.alt",   sIN_CSEG, parm1 },
-  {163, "lref.p.alt", sIN_CSEG, parm1_p },
-  {162, "lref.p.pri", sIN_CSEG, parm1_p },
-  {165, "lref.p.s.alt",sIN_CSEG,parm1_p },
-  {164, "lref.p.s.pri",sIN_CSEG,parm1_p },
+  {165, "lref.p.alt", sIN_CSEG, parm1_p },
+  {164, "lref.p.pri", sIN_CSEG, parm1_p },
+  {167, "lref.p.s.alt",sIN_CSEG,parm1_p },
+  {166, "lref.p.s.pri",sIN_CSEG,parm1_p },
   {  5, "lref.pri",   sIN_CSEG, parm1 },
   {  8, "lref.s.alt", sIN_CSEG, parm1 },
   {  7, "lref.s.pri", sIN_CSEG, parm1 },
   { 34, "move.alt",   sIN_CSEG, parm0 },
   { 33, "move.pri",   sIN_CSEG, parm0 },
   {117, "movs",       sIN_CSEG, parm1 },
-  {203, "movs.p",     sIN_CSEG, parm1_p },
+  {205, "movs.p",     sIN_CSEG, parm1_p },
   { 85, "neg",        sIN_CSEG, parm0 },
   { 96, "neq",        sIN_CSEG, parm0 },
   {134, "nop",        sIN_CSEG, parm0 },  /* version 6 */
@@ -592,10 +596,10 @@ static OPCODE opcodelist[] = {
   {133, "push.adr",   sIN_CSEG, parm1 },  /* version 4 */
   { 37, "push.alt",   sIN_CSEG, parm0 },
   { 39, "push.c",     sIN_CSEG, parm1 },
-  {185, "push.p",     sIN_CSEG, parm1_p },
-  {208, "push.p.adr", sIN_CSEG, parm1_p },
-  {184, "push.p.c",   sIN_CSEG, parm1_p },
-  {186, "push.p.s",   sIN_CSEG, parm1_p },
+  {187, "push.p",     sIN_CSEG, parm1_p },
+  {210, "push.p.adr", sIN_CSEG, parm1_p },
+  {186, "push.p.c",   sIN_CSEG, parm1_p },
+  {188, "push.p.s",   sIN_CSEG, parm1_p },
   { 36, "push.pri",   sIN_CSEG, parm0 },
 /*{ 38, "push.r",     sIN_CSEG, parm1 },  obsolete (never generated) */
   { 41, "push.s",     sIN_CSEG, parm1 },
@@ -625,44 +629,44 @@ static OPCODE opcodelist[] = {
   { 65, "shl",        sIN_CSEG, parm0 },
   { 69, "shl.c.alt",  sIN_CSEG, parm1 },
   { 68, "shl.c.pri",  sIN_CSEG, parm1 },
-  {190, "shl.p.c.alt",sIN_CSEG, parm1_p },
-  {189, "shl.p.c.pri",sIN_CSEG, parm1_p },
+  {192, "shl.p.c.alt",sIN_CSEG, parm1_p },
+  {191, "shl.p.c.pri",sIN_CSEG, parm1_p },
   { 66, "shr",        sIN_CSEG, parm0 },
   { 71, "shr.c.alt",  sIN_CSEG, parm1 },
   { 70, "shr.c.pri",  sIN_CSEG, parm1 },
-  {192, "shr.p.c.alt",sIN_CSEG, parm1_p },
-  {191, "shr.p.c.pri",sIN_CSEG, parm1_p },
+  {194, "shr.p.c.alt",sIN_CSEG, parm1_p },
+  {193, "shr.p.c.pri",sIN_CSEG, parm1_p },
   { 94, "sign.alt",   sIN_CSEG, parm0 },
   { 93, "sign.pri",   sIN_CSEG, parm0 },
   {102, "sleq",       sIN_CSEG, parm0 },
   {101, "sless",      sIN_CSEG, parm0 },
   { 72, "smul",       sIN_CSEG, parm0 },
   { 88, "smul.c",     sIN_CSEG, parm1 },
-  {194, "smul.p.c",   sIN_CSEG, parm1_p },
+  {196, "smul.p.c",   sIN_CSEG, parm1_p },
 /*{127, "srange",     sIN_CSEG, parm2 }, -- version 1 */
   { 20, "sref.alt",   sIN_CSEG, parm1 },
-  {176, "sref.p.alt", sIN_CSEG, parm1_p },
-  {175, "sref.p.pri", sIN_CSEG, parm1_p },
-  {178, "sref.p.s.alt",sIN_CSEG,parm1_p },
-  {177, "sref.p.s.pri",sIN_CSEG,parm1_p },
+  {178, "sref.p.alt", sIN_CSEG, parm1_p },
+  {177, "sref.p.pri", sIN_CSEG, parm1_p },
+  {180, "sref.p.s.alt",sIN_CSEG,parm1_p },
+  {179, "sref.p.s.pri",sIN_CSEG,parm1_p },
   { 19, "sref.pri",   sIN_CSEG, parm1 },
   { 22, "sref.s.alt", sIN_CSEG, parm1 },
   { 21, "sref.s.pri", sIN_CSEG, parm1 },
   { 67, "sshr",       sIN_CSEG, parm0 },
   { 44, "stack",      sIN_CSEG, parm1 },
-  {187, "stack.p",    sIN_CSEG, parm1_p },
+  {189, "stack.p",    sIN_CSEG, parm1_p },
   {  0, "stksize",    0,        noop },
   { 16, "stor.alt",   sIN_CSEG, parm1 },
   { 23, "stor.i",     sIN_CSEG, parm0 },
-  {172, "stor.p.alt", sIN_CSEG, parm1_p },
-  {171, "stor.p.pri", sIN_CSEG, parm1_p },
-  {174, "stor.p.s.alt",sIN_CSEG,parm1_p },
-  {173, "stor.p.s.pri",sIN_CSEG,parm1_p },
+  {174, "stor.p.alt", sIN_CSEG, parm1_p },
+  {173, "stor.p.pri", sIN_CSEG, parm1_p },
+  {176, "stor.p.s.alt",sIN_CSEG,parm1_p },
+  {175, "stor.p.s.pri",sIN_CSEG,parm1_p },
   { 15, "stor.pri",   sIN_CSEG, parm1 },
   { 18, "stor.s.alt", sIN_CSEG, parm1 },
   { 17, "stor.s.pri", sIN_CSEG, parm1 },
   { 24, "strb.i",     sIN_CSEG, parm1 },
-  {179, "strb.p.i",   sIN_CSEG, parm1_p },
+  {181, "strb.p.i",   sIN_CSEG, parm1_p },
   { 79, "sub",        sIN_CSEG, parm0 },
   { 80, "sub.alt",    sIN_CSEG, parm0 },
   {132, "swap.alt",   sIN_CSEG, parm0 },  /* version 4 */
@@ -680,8 +684,8 @@ static OPCODE opcodelist[] = {
   { 83, "xor",        sIN_CSEG, parm0 },
   { 91, "zero",       sIN_CSEG, parm1 },
   { 90, "zero.alt",   sIN_CSEG, parm0 },
-  {195, "zero.p",     sIN_CSEG, parm1_p },
-  {196, "zero.p.s",   sIN_CSEG, parm1_p },
+  {197, "zero.p",     sIN_CSEG, parm1_p },
+  {198, "zero.p.s",   sIN_CSEG, parm1_p },
   { 89, "zero.pri",   sIN_CSEG, parm0 },
   { 92, "zero.s",     sIN_CSEG, parm1 },
 };
@@ -721,7 +725,8 @@ SC_FUNC int assemble(FILE *fout,FILE *fin)
 {
   AMX_HEADER hdr;
   AMX_FUNCSTUBNT func;
-  int numpublics,numnatives,numlibraries,numpubvars,numtags,padding;
+  int numpublics,numnatives,numoverlays,numlibraries,numpubvars,numtags;
+  int padding;
   long nametablesize,nameofs;
   #if PAWN_CELL_SIZE > 32
     char line[512];
@@ -738,8 +743,8 @@ SC_FUNC int assemble(FILE *fout,FILE *fin)
 
   /* if compression failed, restart the assembly with compaction switched off */
   if (setjmp(compact_err)!=0) {
-    assert(sc_compress);  /* cannot arrive here if compact encoding was disabled */
-    sc_compress=FALSE;
+    assert(pc_compress);  /* cannot arrive here if compact encoding was disabled */
+    pc_compress=FALSE;
     pc_resetbin(fout,0);
     error(232);           /* disabled compact encoding */
   } /* if */
@@ -760,6 +765,7 @@ SC_FUNC int assemble(FILE *fout,FILE *fin)
   numpublics=0;
   numnatives=0;
   numpubvars=0;
+  numoverlays=0;
   mainaddr=-1;
   /* count number of public and native functions and public variables */
   for (sym=glbtab.next; sym!=NULL; sym=sym->next) {
@@ -769,9 +775,11 @@ SC_FUNC int assemble(FILE *fout,FILE *fin)
         match=++numnatives;
       if ((sym->usage & uPUBLIC)!=0 && (sym->usage & uDEFINE)!=0)
         match=++numpublics;
+      if (pc_overlays>0 && (sym->usage & uNATIVE)==0 && (sym->usage & uREAD)!=0)
+        ++numoverlays;
       if (strcmp(sym->name,uMAINFUNC)==0) {
         assert(sym->vclass==sGLOBAL);
-        mainaddr=sym->addr;
+        mainaddr=(pc_overlays>0) ? sym->ovl_index : sym->addr;
       } /* if */
     } else if (sym->ident==iVARIABLE) {
       if ((sym->usage & uPUBLIC)!=0 && (sym->usage & (uREAD | uWRITTEN))!=0)
@@ -824,10 +832,10 @@ SC_FUNC int assemble(FILE *fout,FILE *fin)
   /* write the abstract machine header */
   memset(&hdr, 0, sizeof hdr);
   hdr.magic=(unsigned short)AMX_MAGIC;
-  hdr.file_version=(char)((pc_optimize<=sOPTIMIZE_NOMACRO) ? MAX_FILE_VER_JIT : CUR_FILE_VERSION);
+  hdr.file_version=CUR_FILE_VERSION;
   hdr.amx_version=(char)((pc_optimize<=sOPTIMIZE_NOMACRO) ? MIN_AMX_VER_JIT : MIN_AMX_VERSION);
   hdr.flags=(short)(sc_debug & sSYMBOLIC);
-  if (sc_compress)
+  if (pc_compress)
     hdr.flags|=AMX_FLAG_COMPACT;
   if (sc_debug==0)
     hdr.flags|=AMX_FLAG_NOCHECKS;
@@ -839,7 +847,8 @@ SC_FUNC int assemble(FILE *fout,FILE *fin)
   hdr.libraries=hdr.natives + numnatives*sizeof(AMX_FUNCSTUBNT);
   hdr.pubvars=hdr.libraries + numlibraries*sizeof(AMX_FUNCSTUBNT);
   hdr.tags=hdr.pubvars + numpubvars*sizeof(AMX_FUNCSTUBNT);
-  hdr.nametable=hdr.tags + numtags*sizeof(AMX_FUNCSTUBNT);
+  hdr.overlays=hdr.tags + numtags*sizeof(AMX_FUNCSTUBNT);
+  hdr.nametable=hdr.overlays + numoverlays*sizeof(AMX_OVERLAYINFO);
   hdr.cod=hdr.nametable + nametablesize + padding;
   hdr.dat=hdr.cod + code_idx;
   hdr.hea=hdr.dat + glb_declared*sizeof(cell);
@@ -861,7 +870,8 @@ SC_FUNC int assemble(FILE *fout,FILE *fin)
         && (sym->usage & uPUBLIC)!=0 && (sym->usage & uDEFINE)!=0)
     {
       assert(sym->vclass==sGLOBAL);
-      func.address=sym->addr;
+      /* in the case of overlays, write the overlay index rather than the address */
+      func.address=(pc_overlays>0) ? sym->ovl_index : sym->addr;
       func.nameofs=nameofs;
       #if BYTE_ORDER==BIG_ENDIAN
         align32(&func.address);
@@ -997,6 +1007,26 @@ SC_FUNC int assemble(FILE *fout,FILE *fin)
     align16(&count);
   #endif
   pc_writebin(fout,&count,sizeof count);
+
+  /* write the overlay table */
+  if (pc_overlays>0) {
+    AMX_OVERLAYINFO info;
+    pc_resetbin(fout,hdr.overlays);
+    for (sym=glbtab.next; sym!=NULL; sym=sym->next) {
+      if (sym->ident==iFUNCTN
+          && (sym->usage & uNATIVE)==0 && (sym->usage & uREAD)!=0)
+      {
+        assert(sym->vclass==sGLOBAL);
+        info.offset=sym->addr;
+        info.size=sym->codeaddr - sym->addr;
+        #if BYTE_ORDER==BIG_ENDIAN
+          align32(&info.offset);
+          align32(&info.size);
+        #endif
+        pc_writebin(fout,&info,sizeof info);
+      } /* if */
+    } /* for */
+  } /* if */
   pc_resetbin(fout,hdr.cod);
 
   /* First pass: relocate all labels */
@@ -1076,7 +1106,7 @@ SC_FUNC int assemble(FILE *fout,FILE *fin)
     #endif
   } /* if */
 
-  if (sc_compress)
+  if (pc_compress)
     hdr.size=pc_lengthbin(fout);/* get this value before appending debug info */
   if (!writeerror && (sc_debug & sSYMBOLIC)!=0)
     append_dbginfo(fout);       /* optionally append debug file */

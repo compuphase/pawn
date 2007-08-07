@@ -1,6 +1,6 @@
 /*  Simple "run-time" for the Pawn Abstract Machine
  *
- *  Copyright (c) ITB CompuPhase, 1997-2006
+ *  Copyright (c) ITB CompuPhase, 1997-2007
  *
  *  This software is provided "as-is", without any express or implied warranty.
  *  In no event will the authors be held liable for any damages arising from
@@ -27,6 +27,7 @@
 #include <string.h>     /* for memset() (on some compilers) */
 #include "osdefs.h"     /* for _MAX_PATH */
 #include "amx.h"
+#include "amxpool.h"
 
 #include <time.h>
 #if !defined CLOCKS_PER_SEC     /* some (older) compilers do not have it */
@@ -52,13 +53,13 @@ extern int AMXEXPORT amx_ConsoleInit(AMX *amx);
 extern int AMXEXPORT amx_CoreInit(AMX *amx);
 
 AMX *global_amx;
-int AMXAPI srun_Monitor(AMX *amx);
+int AMXAPI prun_Monitor(AMX *amx);
 
 static int abortflagged = 0;
 void sigabort(int sig)
 {
   /* install the debug hook procedure if this was not done already */
-  amx_SetDebugHook(global_amx, srun_Monitor);
+  amx_SetDebugHook(global_amx, prun_Monitor);
   abortflagged=1;
   signal(sig,sigabort); /* re-install the signal handler */
 }
@@ -68,13 +69,13 @@ typedef struct tagSTACKINFO {
 } STACKINFO;
 
 
-/* srun_Monitor()
+/* prun_Monitor()
  * A simple debug hook, that allows the user to break out of a program
  * and that monitors stack usage. Note that the stack usage can only be
  * properly monitored when the debug hook is installed from the start
  * of the script to the end.
  */
-int AMXAPI srun_Monitor(AMX *amx)
+int AMXAPI prun_Monitor(AMX *amx)
 {
   int err;
   STACKINFO *stackinfo;
@@ -92,6 +93,25 @@ int AMXAPI srun_Monitor(AMX *amx)
   return abortflagged ? AMX_ERR_EXIT : AMX_ERR_NONE;
 }
 
+int AMXAPI prun_Overlay(AMX *amx, int index, cell **address)
+{
+  AMX_HEADER *hdr;
+  AMX_OVERLAYINFO *tbl;
+
+  hdr = (AMX_HEADER*)amx->base;
+  tbl = (AMX_OVERLAYINFO*)(amx->base + hdr->overlays);
+  if ((size_t)index >= (hdr->nametable - hdr->overlays) / sizeof(AMX_OVERLAYINFO))
+    return AMX_ERR_OVERLAY;
+  tbl += index;
+  assert(address!=NULL);
+  *address = amx_poolfind(index);
+  if (*address == NULL) {
+    *address = amx_poolalloc(tbl->size, index);
+    memcpy(*address, amx->base + (int)hdr->cod + tbl->offset, tbl->size);
+  } /* if */
+  return AMX_ERR_NONE;
+}
+
 /* aux_LoadProgram()
  * Load a compiled Pawn script into memory and initialize the abstract machine.
  * This function is extracted out of AMXAUX.C.
@@ -101,6 +121,7 @@ int AMXAPI aux_LoadProgram(AMX *amx, char *filename, void *memblock)
   FILE *fp;
   AMX_HEADER hdr;
   int result, didalloc;
+  unsigned char *overlayblock;
 
   /* open the file, read and check the header */
   if ((fp = fopen(filename, "rb")) == NULL)
@@ -125,6 +146,10 @@ int AMXAPI aux_LoadProgram(AMX *amx, char *filename, void *memblock)
     /* after amx_Init(), amx->base points to the memory block */
   } /* if */
 
+  overlayblock=malloc(2048);
+  assert(overlayblock!=NULL);
+  amx_poolinit(overlayblock,2048);
+
   /* read in the file */
   rewind(fp);
   fread(memblock, 1, (size_t)hdr.size, fp);
@@ -132,6 +157,7 @@ int AMXAPI aux_LoadProgram(AMX *amx, char *filename, void *memblock)
 
   /* initialize the abstract machine */
   memset(amx, 0, sizeof *amx);
+  amx->overlay=prun_Overlay;
   result = amx_Init(amx, memblock);
 
   /* free the memory block on error, if it was allocated here */
@@ -312,7 +338,7 @@ int main(int argc,char *argv[])
       /* Install the debug hook, so that we can start monitoring the stack/heap
        * usage right from the beginning of the script.
        */
-      amx_SetDebugHook(&amx, srun_Monitor);
+      amx_SetDebugHook(&amx, prun_Monitor);
     } /* if */
   } /* for */
 

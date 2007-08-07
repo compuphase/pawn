@@ -5,6 +5,7 @@ amx_s   STRUC
     _dataseg    DD ?
     _callback   DD ?
     _debug      DD ?
+    _overlay    DD ?
     _cip        DD ?
     _frm        DD ?
     _hea        DD ?
@@ -46,7 +47,8 @@ amxhead_s   STRUC
     _libraries  DD ?  ; offset to the "library" table
     _pubvars    DD ?  ; offset to the "public variables" table
     _tags       DD ?  ; offset to the "public tagnames" table
-    _nametable  DD ?  ; offset to the name table, file version 7 only
+    _nametable  DD ?  ; offset to the name table, file version 7+ only
+    _overlaytbl DD ?  ; offset to the overlay table, file version 10+ only
 amxhead_s   ENDS
 
 

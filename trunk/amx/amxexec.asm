@@ -4,7 +4,7 @@
 ;Some notes:
 ; * Please also look at the "history" log (below) for more notes.
 ; * This file assembles with Watcom's WASM, Borland's TASM and Microsoft's
-;   MASM.
+;   MASM; see the file "amxexecn.asm" for a version that works with NASM.
 ; * There are two "calling convention" issues:
 ;   o  The convention with which amx_exec_asm() itself is called. The default
 ;      calling convention is Watcom's register calling convention. Change
@@ -24,6 +24,9 @@
 ; * Not all opcodes are tested. Only those generated when using the demo
 ;   programs are giving the impression to be working. I've flagged them "good".
 ;   (I'm pretty sure now that all other codes are working correctly, too.)
+;   [I have removed these marks, because both this source code and the demo
+;   programs have changed significantly since the original development of this
+;   module --Thiadmer Riemersma]
 ; * On my P200 this implementation reaches >30 mill instr/sec - quite good.
 ;   It's 5 times as fast as the ANSI C version of SRUN.EXE (supplied with the
 ;   archive). (This was measured with the Hanoi "benchmark" [no output].)
@@ -62,7 +65,9 @@
 ;
 ;History (list of changes)
 ;-------------------------
-; 30 april 2007  by Thiadmer Riemersma (TR)
+; 31 may 2007  by Thiadmer Riemersma
+;       Added packed opcodes
+; 30 april 2007  by Thiadmer Riemersma
 ;       Move to position-independent code (no more relocation needed for
 ;       branches).
 ;       Removed cases for obsolete instructions.
@@ -148,6 +153,12 @@ ENDIF
 
 INCLUDE amxdef.asm
 
+IFNDEF AMX_NO_PACKED_OPC
+  IFNDEF AMX_TOKENTHREADING
+    AMX_TOKENTHREADING  EQU 1   ; packed opcodes require token threading
+  ENDIF
+ENDIF
+
 ;#define PUSH(v)         ( stk-=sizeof(cell), *(cell *)(data+(int)stk)=v )
 _PUSH   MACRO   v
         mov     [edi+ecx-4],v
@@ -164,8 +175,14 @@ _POP    MACRO   v
 NEXT    MACRO
     IFDEF AMX_TOKENTHREADING
         mov     ebp, [esi]
+      IFNDEF AMX_NO_PACKED_OPC
+        and     ebp, 0ffh
+      ENDIF
         jmp     DWORD ptr [_amx_opcodelist + 4*ebp]
     ELSE
+      IFNDEF AMX_NO_PACKED_OPC
+        .err                    ; opcode packing requires token threading
+      ENDIF
         ; direct threading
         jmp     DWORD ptr [esi]
     ENDIF
@@ -174,6 +191,12 @@ NEXT    MACRO
 
 JUMPREL MACRO
         add     esi,[esi+4]
+        ENDM
+
+GETPARAM_P MACRO reg
+        ; ??? verify that reg != esi
+        mov     reg,[esi]
+        shr     reg,16
         ENDM
 
 _CHKSTACK MACRO
@@ -312,31 +335,34 @@ OP_LOAD_PRI:
         mov     eax,[edi+eax]
         NEXT
 
+
 OP_LOAD_ALT:
         mov     edx,[esi+4]
         add     esi,8
         mov     edx,[edi+edx]
         NEXT
 
-;good
+
 OP_LOAD_S_PRI:
         mov     eax,[esi+4]
         add     esi,8
         mov     eax,[ebx+eax]
         NEXT
 
-;good
+
 OP_LOAD_S_ALT:
         mov     edx,[esi+4]
         add     esi,8
         mov     edx,[ebx+edx]
         NEXT
 
+
 OP_LOAD_I:
         add     esi,4
         _VERIFYADDRESS  eax
         mov     eax,[edi+eax]
         NEXT
+
 
 OP_LODB_I:
         _VERIFYADDRESS  eax
@@ -346,12 +372,14 @@ OP_LODB_I:
         and     eax,DWORD ptr [(lodb_and-4)+ebp*4]
         NEXT
 
+
 OP_LREF_PRI:
         mov     eax,[esi+4]
         add     esi,8
         mov     eax,[edi+eax]
         mov     eax,[edi+eax]
         NEXT
+
 
 OP_LREF_ALT:
         mov     edx,[esi+4]
@@ -360,12 +388,14 @@ OP_LREF_ALT:
         mov     edx,[edi+edx]
         NEXT
 
+
 OP_LREF_S_PRI:
         mov     eax,[esi+4]
         add     esi,8
         mov     eax,[ebx+eax]
         mov     eax,[edi+eax]
         NEXT
+
 
 OP_LREF_S_ALT:
         mov     edx,[esi+4]
@@ -374,31 +404,32 @@ OP_LREF_S_ALT:
         mov     edx,[edi+edx]
         NEXT
 
-;good
+
 OP_CONST_PRI:
         mov     eax,[esi+4]
         add     esi,8
         NEXT
 
-;good
+
 OP_CONST_ALT:
         mov     edx,[esi+4]
         add     esi,8
         NEXT
 
-;good
+
 OP_ADDR_PRI:
         mov     eax,[esi+4]
         add     esi,8
         add     eax,frm
         NEXT
 
-;good
+
 OP_ADDR_ALT:
         mov     edx,[esi+4]
         add     esi,8
         add     edx,frm
         NEXT
+
 
 OP_STOR_PRI:
         mov     ebp,[esi+4]
@@ -406,37 +437,40 @@ OP_STOR_PRI:
         mov     [ebp+edi],eax
         NEXT
 
+
 OP_STOR_ALT:
         mov     ebp,[esi+4]
         add     esi,8
         mov     [ebp+edi],edx
         NEXT
 
-;good
+
 OP_STOR_S_PRI:
         mov     ebp,[esi+4]
         add     esi,8
         mov     [ebp+ebx],eax
         NEXT
 
-;good
+
 OP_STOR_S_ALT:
         mov     ebp,[esi+4]
         add     esi,8
         mov     [ebp+ebx],edx
         NEXT
 
-;good
+
 OP_STOR_I:
         add     esi,4
         _VERIFYADDRESS  edx
         mov     [edi+edx],eax
         NEXT
 
+
 OP_STRB_I:
-        _VERIFYADDRESS  edx
         mov     ebp,[esi+4]
         add     esi,8
+    strb_entry:
+        _VERIFYADDRESS  edx
         cmp     ebp,1
         jne     short strb_not1byte
         mov     [edi+edx],al
@@ -450,12 +484,14 @@ OP_STRB_I:
         mov     [edi+edx],eax
         NEXT
 
+
 OP_SREF_PRI:
         mov     ebp,[esi+4]
         add     esi,8
         mov     ebp,[edi+ebp]
         mov     [edi+ebp],eax
         NEXT
+
 
 OP_SREF_ALT:
         mov     ebp,[esi+4]
@@ -464,12 +500,14 @@ OP_SREF_ALT:
         mov     [edi+ebp],edx
         NEXT
 
+
 OP_SREF_S_PRI:
         mov     ebp,[esi+4]
         add     esi,8
         mov     ebp,[ebx+ebp]
         mov     [edi+ebp],eax
         NEXT
+
 
 OP_SREF_S_ALT:
         mov     ebp,[esi+4]
@@ -478,7 +516,15 @@ OP_SREF_S_ALT:
         mov     [edi+ebp],edx
         NEXT
 
-;good
+
+OP_SREF_P_S_ALT:
+        GETPARAM_P ebp
+        add     esi,4
+        mov     ebp,[ebx+ebp]
+        mov     [edi+ebp],edx
+        NEXT
+
+
 OP_LIDX:
         lea     eax,[edx+4*eax]
         add     esi,4
@@ -486,22 +532,24 @@ OP_LIDX:
         mov     eax,[edi+eax]
         NEXT
 
+
 OP_LIDX_B:
         push    ecx
         mov     ecx,[esi+4]
-        shl     eax,cl
         add     esi,8
-        add     eax,edx
+        shl     eax,cl
         pop     ecx
+        add     eax,edx
         _VERIFYADDRESS  eax
         mov     eax,[edi+eax]
         NEXT
 
-;good
+
 OP_IDXADDR:
         add     esi,4
         lea     eax,[edx+4*eax]
         NEXT
+
 
 OP_IDXADDR_B:
         push    ecx
@@ -512,12 +560,14 @@ OP_IDXADDR_B:
         add     eax,edx
         NEXT
 
+
 OP_ALIGN_PRI:
-        mov     ebp,4   ; ??? one operation too many?
+        mov     ebp,4
         sub     ebp,[esi+4]
         add     esi,8
         xor     eax,ebp
         NEXT
+
 
 OP_ALIGN_ALT:
         mov     ebp,4
@@ -525,6 +575,7 @@ OP_ALIGN_ALT:
         add     esi,8
         xor     edx,ebp
         NEXT
+
 
 OP_LCTRL:
         mov     ebp,[esi+4]
@@ -564,6 +615,7 @@ OP_LCTRL:
         sub     eax,code
         NEXT
 
+
 OP_SCTRL:
         mov     ebp,[esi+4]
         add     esi,8
@@ -585,33 +637,36 @@ OP_SCTRL:
     sctrl_6:
         NEXT
 
+
 OP_MOVE_PRI:
         add     esi,4
         mov     eax,edx
         NEXT
 
-;good
+
 OP_MOVE_ALT:
         add     esi,4
         mov     edx,eax
         NEXT
+
 
 OP_XCHG:
         add     esi,4
         xchg    eax,edx
         NEXT
 
-;good
+
 OP_PUSH_PRI:
         add     esi,4
         _PUSH   eax
         NEXT
 
-;good
+
 OP_PUSH_ALT:
         add     esi,4
         _PUSH   edx
         NEXT
+
 
 OP_PUSH_R_PRI:
         mov     ebp,[esi+4]
@@ -622,12 +677,13 @@ OP_PUSH_R_PRI:
         jnz     short push_loop
         NEXT
 
-;good
+
 OP_PUSH_C:
         mov     ebp,[esi+4]
         add     esi,8
         _PUSH   ebp
         NEXT
+
 
 OP_PUSH:
         mov     ebp,[esi+4]
@@ -636,7 +692,7 @@ OP_PUSH:
         _PUSH   ebp
         NEXT
 
-;good
+
 OP_PUSH_S:
         mov     ebp,[esi+4]
         add     esi,8
@@ -644,18 +700,19 @@ OP_PUSH_S:
         _PUSH   ebp
         NEXT
 
+
 OP_POP_PRI:
         add     esi,4
         _POP    eax
         NEXT
 
-;good
+
 OP_POP_ALT:
         add     esi,4
         _POP    edx
         NEXT
 
-;good
+
 OP_STACK:
         mov     edx,ecx
         add     ecx,[esi+4]
@@ -664,7 +721,7 @@ OP_STACK:
         add     esi,8
         NEXT
 
-;good
+
 OP_HEAP:
         mov     ebp,[esi+4]
         mov     edx,hea
@@ -674,7 +731,7 @@ OP_HEAP:
         _CHKHEAP
         NEXT
 
-;good
+
 OP_PROC:
         mov     ebx,frm
         add     esi,4
@@ -684,6 +741,7 @@ OP_PROC:
         add     ebx,ecx
         _CHKMARGIN
         NEXT
+
 
 OP_RET:
         _POP    ebx
@@ -696,7 +754,7 @@ OP_RET:
         add     ebx,edi
         NEXT
 
-;good
+
 OP_RETN:
         _POP    ebx
         _POP    esi
@@ -710,11 +768,13 @@ OP_RETN:
         lea     ecx,[ecx+ebp+4]
         NEXT
 
+
 OP_CALL:
         lea     ebp,[esi+8]
         JUMPREL ; add esi,[esi+4]
         _PUSH   ebp
         NEXT
+
 
 OP_CALL_PRI:
         lea     ebp,[esi+4]
@@ -723,13 +783,13 @@ OP_CALL_PRI:
         _PUSH   ebp
         NEXT
 
-;good
+
 OP_JUMP:
 OP_JREL:                        ; JREL is now obsolete
         JUMPREL ; add esi,[esi+4]
         NEXT
 
-;good
+
 OP_JZER:
         or      eax,eax
         jz      short jump_taken
@@ -740,19 +800,20 @@ OP_JZER:
         JUMPREL ; add esi,[esi+4]
         NEXT
 
-;good
+
 OP_JNZ:
         or      eax,eax
         jnz     short jump_taken
         add     esi,8
         NEXT
 
-;good
+
 OP_JEQ:
         cmp     eax,edx
         je      short jump_taken
         add     esi,8
         NEXT
+
 
 OP_JNEQ:
         cmp     eax,edx
@@ -760,11 +821,13 @@ OP_JNEQ:
         add     esi,8
         NEXT
 
+
 OP_JLESS:
         cmp     eax,edx
         jb      short jump_taken
         add     esi,8
         NEXT
+
 
 OP_JLEQ:
         cmp     eax,edx
@@ -772,42 +835,48 @@ OP_JLEQ:
         add     esi,8
         NEXT
 
+
 OP_JGRTR:
         cmp     eax,edx
-        ja      short jump_taken
+        ja      jump_taken
         add     esi,8
         NEXT
+
 
 OP_JGEQ:
         cmp     eax,edx
-        jae     short jump_taken
+        jae     jump_taken
         add     esi,8
         NEXT
+
 
 OP_JSLESS:
         cmp     eax,edx
-        jl      short jump_taken
+        jl      jump_taken
         add     esi,8
         NEXT
 
-;good
+
 OP_JSLEQ:
         cmp     eax,edx
-        jle     short jump_taken
+        jle     jump_taken
         add     esi,8
         NEXT
+
 
 OP_JSGRTR:
         cmp     eax,edx
-        jg      short jump_taken
+        jg      jump_taken
         add     esi,8
         NEXT
 
+
 OP_JSGEQ:
         cmp     eax,edx
-        jge     short jump_taken
+        jge     jump_taken
         add     esi,8
         NEXT
+
 
 OP_SHL:
         push    ecx
@@ -817,6 +886,7 @@ OP_SHL:
         pop     ecx
         NEXT
 
+
 OP_SHR:
         push    ecx
         mov     ecx,edx
@@ -824,6 +894,7 @@ OP_SHR:
         shr     eax,cl
         pop     ecx
         NEXT
+
 
 OP_SSHR:
         push    ecx
@@ -833,6 +904,7 @@ OP_SSHR:
         pop     ecx
         NEXT
 
+
 OP_SHL_C_PRI:
         push    ecx
         mov     ecx,[esi+4]
@@ -840,6 +912,7 @@ OP_SHL_C_PRI:
         shl     eax,cl
         pop     ecx
         NEXT
+
 
 OP_SHL_C_ALT:
         push    ecx
@@ -849,6 +922,7 @@ OP_SHL_C_ALT:
         pop     ecx
         NEXT
 
+
 OP_SHR_C_PRI:
         push    ecx
         mov     ecx,[esi+4]
@@ -856,6 +930,7 @@ OP_SHR_C_PRI:
         shr     eax,cl
         pop     ecx
         NEXT
+
 
 OP_SHR_C_ALT:
         push    ecx
@@ -865,6 +940,7 @@ OP_SHR_C_ALT:
         pop     ecx
         NEXT
 
+
 OP_SMUL:
         add     esi,4
         push    edx
@@ -872,10 +948,11 @@ OP_SMUL:
         pop     edx
         NEXT
 
-;good
+
 OP_SDIV_ALT:
         xchg    eax,edx
         ALIGN   4
+
 
 OP_SDIV:
         mov     ebp,edx
@@ -900,12 +977,14 @@ OP_SDIV:
     sdiv_goon:
         NEXT
 
+
 OP_UMUL:
         add     esi,4
         push    edx
         mul     edx
         pop     edx
         NEXT
+
 
 OP_UDIV:
         mov     ebp,edx
@@ -914,6 +993,7 @@ OP_UDIV:
         add     esi,4
         div     ebp
         NEXT
+
 
 OP_UDIV_ALT:
         mov     ebp,eax
@@ -924,39 +1004,43 @@ OP_UDIV_ALT:
         div     ebp
         NEXT
 
-;good
+
 OP_ADD:
         add     esi,4
         add     eax,edx
         NEXT
 
-;good
+
 OP_SUB:
         add     esi,4
         sub     eax,edx
         NEXT
 
-;good
+
 OP_SUB_ALT:
         neg     eax
         add     esi,4
         add     eax,edx
         NEXT
 
+
 OP_AND:
         add     esi,4
         and     eax,edx
         NEXT
+
 
 OP_OR:
         add     esi,4
         or      eax,edx
         NEXT
 
+
 OP_XOR:
         add     esi,4
         xor     eax,edx
         NEXT
+
 
 OP_NOT:
         add     esi,4
@@ -965,23 +1049,25 @@ OP_NOT:
         inc     eax             ; -1 => 0 and 0 => 1
         NEXT
 
+
 OP_NEG:
         add     esi,4
         neg     eax
         NEXT
+
 
 OP_INVERT:
         add     esi,4
         not     eax
         NEXT
 
-;good
+
 OP_ADD_C:
         add     eax,[esi+4]
         add     esi,8
         NEXT
 
-;good
+
 OP_SMUL_C:
         mov     ebp,[esi+4]
         push    edx
@@ -990,17 +1076,18 @@ OP_SMUL_C:
         add     esi,8
         NEXT
 
-;good
+
 OP_ZERO_PRI:
         add     esi,4
         sub     eax,eax
         NEXT
 
-;good
+
 OP_ZERO_ALT:
         add     esi,4
         sub     edx,edx
         NEXT
+
 
 OP_ZERO:
         mov     ebp,[esi+4]
@@ -1008,11 +1095,13 @@ OP_ZERO:
         mov     DWORD ptr [edi+ebp],0
         NEXT
 
+
 OP_ZERO_S:
         mov     ebp,[esi+4]
         add     esi,8
         mov     DWORD ptr [ebx+ebp],0
         NEXT
+
 
 OP_SIGN_PRI:
         shl     eax,24
@@ -1020,11 +1109,13 @@ OP_SIGN_PRI:
         sar     eax,24
         NEXT
 
+
 OP_SIGN_ALT:
         shl     edx,24
         add     esi,4
         sar     edx,24
         NEXT
+
 
 OP_EQ:
         add     esi,4
@@ -1033,12 +1124,14 @@ OP_EQ:
         sete    al
         NEXT
 
+
 OP_NEQ:
         add     esi,4
         cmp     eax,edx         ; PRI != ALT ?
         mov     eax,0
         setne   al
         NEXT
+
 
 OP_LESS:
         add     esi,4
@@ -1047,12 +1140,14 @@ OP_LESS:
         setb    al
         NEXT
 
+
 OP_LEQ:
         add     esi,4
         cmp     eax,edx         ; PRI <= ALT ? (unsigned)
         mov     eax,0
         setbe   al
         NEXT
+
 
 OP_GRTR:
         add     esi,4
@@ -1061,6 +1156,7 @@ OP_GRTR:
         seta    al
         NEXT
 
+
 OP_GEQ:
         add     esi,4
         cmp     eax,edx         ; PRI >= ALT ? (unsigned)
@@ -1068,13 +1164,14 @@ OP_GEQ:
         setae   al
         NEXT
 
-;good
+
 OP_SLESS:
         add     esi,4
         cmp     eax,edx         ; PRI < ALT ? (signed)
         mov     eax,0
         setl    al
         NEXT
+
 
 OP_SLEQ:
         add     esi,4
@@ -1083,12 +1180,14 @@ OP_SLEQ:
         setle   al
         NEXT
 
+
 OP_SGRTR:
         add     esi,4
         cmp     eax,edx         ; PRI > ALT ? (signed)
         mov     eax,0
         setg    al
         NEXT
+
 
 OP_SGEQ:
         add     esi,4
@@ -1097,12 +1196,14 @@ OP_SGEQ:
         setge   al
         NEXT
 
+
 OP_EQ_C_PRI:
         cmp     eax,[esi+4]     ; PRI == value ?
         lea     esi,[esi+8]
         mov     eax,0
         sete    al
         NEXT
+
 
 OP_EQ_C_ALT:
         xor     eax,eax
@@ -1111,15 +1212,18 @@ OP_EQ_C_ALT:
         sete    al
         NEXT
 
+
 OP_INC_PRI:
         add     esi,4
         inc     eax
         NEXT
 
+
 OP_INC_ALT:
         add     esi,4
         inc     edx
         NEXT
+
 
 OP_INC:
         mov     ebp,[esi+4]
@@ -1127,27 +1231,31 @@ OP_INC:
         inc     DWORD ptr [edi+ebp]
         NEXT
 
-;good
+
 OP_INC_S:
         mov     ebp,[esi+4]
         add     esi,8
         inc     DWORD ptr [ebx+ebp]
         NEXT
 
+
 OP_INC_I:
         add     esi,4
         inc     DWORD ptr [edi+eax]
         NEXT
+
 
 OP_DEC_PRI:
         add     esi,4
         dec     eax
         NEXT
 
+
 OP_DEC_ALT:
         add     esi,4
         dec     edx
         NEXT
+
 
 OP_DEC:
         mov     ebp,[esi+4]
@@ -1155,16 +1263,19 @@ OP_DEC:
         dec     DWORD ptr [edi+ebp]
         NEXT
 
+
 OP_DEC_S:
         mov     ebp,[esi+4]
         add     esi,8
         dec     DWORD ptr [ebx+ebp]
         NEXT
 
+
 OP_DEC_I:
         add     esi,4
         sub     DWORD ptr [edi+eax],1
         NEXT
+
 
 OP_MOVS:
         _VERIFYADDRESS  eax             ; PRI
@@ -1173,14 +1284,14 @@ OP_MOVS:
         add     ebp,[esi+4]
         dec     ebp
         _VERIFYADDRESS  ebp             ; PRI + size - 1
-        mov     ebp,edx
-        add     ebp,[esi+4]
-        dec     ebp
+        sub     ebp,eax                 ; EBP = size - 1
+        add     ebp,edx
         _VERIFYADDRESS  ebp             ; ALT + size - 1
 
         push    ecx
         mov     ecx,[esi+4]
         add     esi,8
+    movs_entry:
         push    edi
         push    esi
         lea     esi,[edi+eax]
@@ -1198,6 +1309,7 @@ OP_MOVS:
         pop     ecx
         NEXT
 
+
 OP_CMPS:
         _VERIFYADDRESS  eax             ; PRI
         _VERIFYADDRESS  edx             ; ALT
@@ -1212,6 +1324,7 @@ OP_CMPS:
         push    ecx
         mov     ecx,[esi+4]
         add     esi,8
+    cmps_entry:
         push    edi
         push    esi
         lea     esi,[edi+edx]
@@ -1232,6 +1345,7 @@ OP_CMPS:
 OP_FILL:
         mov     ebp,[esi+4]             ; get byte count
         add     esi,8
+    fill_entry:
         and     ebp,0fffffffch          ; align to words
         jz      short fill_ready
         _VERIFYADDRESS  edx             ; ALT
@@ -1613,6 +1727,7 @@ OP_PUSH2_C:
         _PUSH   ebp
         NEXT
 
+
 OP_PUSH2:
         add     esi,12
         mov     ebp,[esi-8]
@@ -1623,6 +1738,7 @@ OP_PUSH2:
         _PUSH   ebp
         NEXT
 
+
 OP_PUSH2_S:
         add     esi,12
         mov     ebp,[esi-8]
@@ -1632,6 +1748,7 @@ OP_PUSH2_S:
         mov     ebp,[ebp+ebx]
         _PUSH   ebp
         NEXT
+
 
 OP_PUSH2_ADR:
         add     esi,12
@@ -1654,6 +1771,7 @@ OP_PUSH3_C:
         _PUSH   ebp
         NEXT
 
+
 OP_PUSH3:
         add     esi,16
         mov     ebp,[esi-12]
@@ -1667,6 +1785,7 @@ OP_PUSH3:
         _PUSH   ebp
         NEXT
 
+
 OP_PUSH3_S:
         add     esi,16
         mov     ebp,[esi-12]
@@ -1679,6 +1798,7 @@ OP_PUSH3_S:
         mov     ebp,[ebp+ebx]
         _PUSH   ebp
         NEXT
+
 
 OP_PUSH3_ADR:
         add     esi,16
@@ -1706,6 +1826,7 @@ OP_PUSH4_C:
         _PUSH   ebp
         NEXT
 
+
 OP_PUSH4:
         add     esi,20
         mov     ebp,[esi-16]
@@ -1722,6 +1843,7 @@ OP_PUSH4:
         _PUSH   ebp
         NEXT
 
+
 OP_PUSH4_S:
         add     esi,20
         mov     ebp,[esi-16]
@@ -1737,6 +1859,7 @@ OP_PUSH4_S:
         mov     ebp,[ebp+ebx]
         _PUSH   ebp
         NEXT
+
 
 OP_PUSH4_ADR:
         add     esi,20
@@ -1769,6 +1892,7 @@ OP_PUSH5_C:
         _PUSH   ebp
         NEXT
 
+
 OP_PUSH5:
         add     esi,24
         mov     ebp,[esi-20]
@@ -1788,6 +1912,7 @@ OP_PUSH5:
         _PUSH   ebp
         NEXT
 
+
 OP_PUSH5_S:
         add     esi,24
         mov     ebp,[esi-20]
@@ -1806,6 +1931,7 @@ OP_PUSH5_S:
         mov     ebp,[ebp+ebx]
         _PUSH   ebp
         NEXT
+
 
 OP_PUSH5_ADR:
         add     esi,24
@@ -1868,6 +1994,439 @@ OP_CONST_S:
 OP_INVALID:
         mov     eax,AMX_ERR_INVINSTR
         jmp     _return
+
+
+;----- packed opcodes
+IFNDEF AMX_NO_PACKED_OPC
+
+OP_LOAD_P_PRI:
+        GETPARAM_P eax
+        add     esi,4
+        mov     eax,[edi+eax]
+        NEXT
+
+OP_LOAD_P_ALT:
+        GETPARAM_P edx
+        add     esi,4
+        mov     edx,[edi+edx]
+        NEXT
+
+
+OP_LOAD_P_S_PRI:
+        GETPARAM_P eax
+        add     esi,4
+        mov     eax,[ebx+eax]
+        NEXT
+
+
+OP_LOAD_P_S_ALT:
+        GETPARAM_P edx
+        add     esi,4
+        mov     edx,[ebx+edx]
+        NEXT
+
+
+OP_LODB_P_I:
+        _VERIFYADDRESS  eax
+        GETPARAM_P ebp
+        mov     eax,[edi+eax]           ;subject to misalignment stalls
+        add     esi,4
+        and     eax,DWORD ptr [(lodb_and-4)+ebp*4]
+        NEXT
+
+
+OP_LREF_P_PRI:
+        GETPARAM_P eax
+        add     esi,4
+        mov     eax,[edi+eax]
+        mov     eax,[edi+eax]
+        NEXT
+
+
+OP_LREF_P_ALT:
+        GETPARAM_P edx
+        add     esi,4
+        mov     edx,[edi+edx]
+        mov     edx,[edi+edx]
+        NEXT
+
+
+OP_LREF_P_S_PRI:
+        GETPARAM_P eax
+        add     esi,4
+        mov     eax,[ebx+eax]
+        mov     eax,[edi+eax]
+        NEXT
+
+
+OP_LREF_P_S_ALT:
+        GETPARAM_P edx
+        add     esi,4
+        mov     edx,[ebx+edx]
+        mov     edx,[edi+edx]
+        NEXT
+
+
+OP_CONST_P_PRI:
+        GETPARAM_P eax
+        add     esi,4
+        NEXT
+
+
+OP_CONST_P_ALT:
+        GETPARAM_P edx
+        add     esi,4
+        NEXT
+
+
+OP_ADDR_P_PRI:
+        GETPARAM_P eax
+        add     esi,4
+        add     eax,frm
+        NEXT
+
+
+OP_ADDR_P_ALT:
+        GETPARAM_P edx
+        add     esi,4
+        add     edx,frm
+        NEXT
+
+
+OP_STOR_P_PRI:
+        GETPARAM_P ebp
+        add     esi,4
+        mov     [ebp+edi],eax
+        NEXT
+
+
+OP_STOR_P_ALT:
+        GETPARAM_P ebp
+        add     esi,4
+        mov     [ebp+edi],edx
+        NEXT
+
+
+OP_STOR_P_S_PRI:
+        GETPARAM_P ebp
+        add     esi,4
+        mov     [ebp+ebx],eax
+        NEXT
+
+
+OP_STOR_P_S_ALT:
+        GETPARAM_P ebp
+        add     esi,4
+        mov     [ebp+ebx],edx
+        NEXT
+
+
+OP_STRB_P_I:
+        GETPARAM_P ebp
+        add     esi,4
+        jmp     strb_entry
+
+
+OP_SREF_P_PRI:
+        GETPARAM_P ebp
+        add     esi,4
+        mov     ebp,[edi+ebp]
+        mov     [edi+ebp],eax
+        NEXT
+
+
+OP_SREF_P_ALT:
+        GETPARAM_P ebp
+        add     esi,4
+        mov     ebp,[edi+ebp]
+        mov     [edi+ebp],edx
+        NEXT
+
+
+OP_SREF_P_S_PRI:
+        GETPARAM_P ebp
+        add     esi,4
+        mov     ebp,[ebx+ebp]
+        mov     [edi+ebp],eax
+        NEXT
+
+
+OP_LIDX_P_B:
+        push    ecx
+        GETPARAM_P ecx
+        add     esi,4
+        shl     eax,cl
+        pop     ecx
+        add     eax,edx
+        _VERIFYADDRESS  eax
+        mov     eax,[edi+eax]
+        NEXT
+
+
+OP_IDXADDR_P_B:
+        push    ecx
+        GETPARAM_P ecx
+        add     esi,4
+        shl     eax,cl
+        pop     ecx
+        add     eax,edx
+        NEXT
+
+
+OP_ALIGN_P_PRI:
+        GETPARAM_P ebp
+        add     esi,4
+        neg     ebp             ; ebp = -param
+        add     ebp,4           ; ebp = 4 - param
+        xor     eax,ebp
+        NEXT
+
+
+OP_ALIGN_P_ALT:
+        GETPARAM_P ebp
+        add     esi,4
+        neg     ebp
+        add     ebp,4
+        xor     edx,ebp
+        NEXT
+
+
+OP_PUSH_P_C:
+        GETPARAM_P ebp
+        add     esi,4
+        _PUSH   ebp
+        NEXT
+
+
+OP_PUSH_P:
+        GETPARAM_P ebp
+        add     esi,4
+        mov     ebp,[ebp+edi]
+        _PUSH   ebp
+        NEXT
+
+
+OP_PUSH_P_S:
+        GETPARAM_P ebp
+        add     esi,4
+        mov     ebp,[ebp+ebx]
+        _PUSH   ebp
+        NEXT
+
+
+OP_STACK_P:
+        GETPARAM_P ebp
+        add     esi,4
+        mov     edx,ecx
+        add     ecx,ebp
+        _CHKMARGIN
+        _CHKSTACK
+        NEXT
+
+
+OP_HEAP_P:
+        GETPARAM_P ebp
+        add     esi,4
+        mov     edx,hea
+        add     hea,ebp
+        _CHKMARGIN
+        _CHKHEAP
+        NEXT
+
+
+OP_SHL_P_C_PRI:
+        push    ecx
+        GETPARAM_P ecx
+        add     esi,4
+        shl     eax,cl
+        pop     ecx
+        NEXT
+
+
+OP_SHL_P_C_ALT:
+        push    ecx
+        GETPARAM_P ecx
+        add     esi,4
+        shl     edx,cl
+        pop     ecx
+        NEXT
+
+
+OP_SHR_P_C_PRI:
+        push    ecx
+        GETPARAM_P ecx
+        add     esi,4
+        shr     eax,cl
+        pop     ecx
+        NEXT
+
+
+OP_SHR_P_C_ALT:
+        push    ecx
+        GETPARAM_P ecx
+        add     esi,4
+        shr     edx,cl
+        pop     ecx
+        NEXT
+
+
+OP_ADD_P_C:
+        GETPARAM_P ebp
+        add     esi,4
+        add     eax,ebp
+        NEXT
+
+
+OP_SMUL_P_C:
+        GETPARAM_P ebp
+        add     esi,4
+        push    edx
+        imul    ebp
+        pop     edx
+        NEXT
+
+
+OP_ZERO_P:
+        GETPARAM_P ebp
+        add     esi,4
+        mov     DWORD ptr [edi+ebp],0
+        NEXT
+
+
+OP_ZERO_P_S:
+        GETPARAM_P ebp
+        add     esi,4
+        mov     DWORD ptr [ebx+ebp],0
+        NEXT
+
+
+OP_EQ_P_C_PRI:
+        GETPARAM_P ebp
+        add     esi,4
+        cmp     eax,ebp         ; PRI == value ?
+        mov     eax,0
+        sete    al
+        NEXT
+
+
+OP_EQ_P_C_ALT:
+        GETPARAM_P ebp
+        add     esi,4
+        xor     eax,eax
+        cmp     edx,[esi+4]     ; ALT == value ?
+        sete    al
+        NEXT
+
+
+OP_INC_P:
+        GETPARAM_P ebp
+        add     esi,4
+        inc     DWORD ptr [edi+ebp]
+        NEXT
+
+
+OP_INC_P_S:
+        GETPARAM_P ebp
+        add     esi,4
+        inc     DWORD ptr [ebx+ebp]
+        NEXT
+
+
+OP_DEC_P:
+        GETPARAM_P ebp
+        add     esi,4
+        dec     DWORD ptr [edi+ebp]
+        NEXT
+
+
+OP_DEC_P_S:
+        GETPARAM_P ebp
+        add     esi,4
+        dec     DWORD ptr [ebx+ebp]
+        NEXT
+
+
+OP_MOVS_P:
+        _VERIFYADDRESS  eax             ; PRI
+        _VERIFYADDRESS  edx             ; ALT
+        GETPARAM_P ebp
+        add     ebp,eax
+        dec     ebp
+        _VERIFYADDRESS  ebp             ; PRI + size - 1
+        sub     ebp,eax                 ; EBP = size - 1
+        add     ebp,edx
+        _VERIFYADDRESS  ebp             ; ALT + size - 1
+
+        push    ecx                     ; matching POP is in movs_entry
+        GETPARAM_P ecx
+        add     esi,4
+        jmp     movs_entry
+
+
+OP_CMPS_P:
+        _VERIFYADDRESS  eax             ; PRI
+        _VERIFYADDRESS  edx             ; ALT
+        GETPARAM_P ebp
+        add     ebp,eax
+        dec     ebp                     ; EBP = PRI + size - 1
+        _VERIFYADDRESS  ebp             ; PRI + size - 1
+        sub     ebp,eax                 ; EBP = size - 1
+        add     ebp,edx                 ; EBP = ALT + size - 1
+        _VERIFYADDRESS  ebp             ; ALT + size - 1
+
+        push    ecx                     ; matching pop is in cmps_entry
+        GETPARAM_P ecx
+        add     esi,4
+        jmp     cmps_entry
+
+
+OP_FILL_P:
+        GETPARAM_P ebp                  ; get byte count
+        add     esi,4
+        jmp     fill_entry
+
+
+OP_HALT_P:
+        cmp     DWORD ptr retval,0
+        je      short halt_no_retval_p
+        mov     ebp,retval
+        mov     [ebp],eax
+    halt_no_retval_p:
+        ; store the complete status in the AMX
+        mov     ebp,amx         ; get amx into ebp
+        mov     [ebp+_pri],eax  ; store values in AMX structure (PRI, ALT, STK, HEA, FRM, ...)
+        mov     [ebp+_alt],edx
+        mov     [ebp+_stk],ecx
+        mov     ecx,hea
+        mov     ebx,frm
+        mov     [ebp+_hea],ecx
+        mov     [ebp+_frm],ebx  ; EBX & ECX are invalid by now
+        GETPARAM_P ebx          ; EBX=parameter of the HALT opcode
+        add     esi,4           ; skip this instruction
+        mov     eax,esi         ; EAX=CIP
+        sub     eax,code
+        mov     [ebp+_cip],eax
+        mov     eax,ebx         ; return the parameter of the HALT opcode
+        jmp     _return
+
+
+OP_BOUNDS_P:
+        GETPARAM_P ebp
+        add     esi,4
+        cmp     eax,ebp
+        ja      err_bounds      ; use unsigned comparison, so <0 is >bounds
+        NEXT
+
+
+OP_PUSH_P_ADR:
+        GETPARAM_P ebp
+        add     esi,4
+        add     ebp,frm
+        _PUSH   ebp
+        NEXT
+
+ENDIF  ; AMX_NO_PACKED_OPC
+
 
 err_call:
         mov     eax,AMX_ERR_CALLBACK
@@ -1995,7 +2554,7 @@ _amx_opcodelist DD OP_INVALID
         DD      OP_CALL
         DD      OP_CALL_PRI
         DD      OP_JUMP
-        DD      OP_JREL
+        DD      OP_JREL         ; obsolete
         DD      OP_JZER
         DD      OP_JNZ
         DD      OP_JEQ
@@ -2102,6 +2661,60 @@ _amx_opcodelist DD OP_INVALID
         DD      OP_LOAD_S_BOTH
         DD      OP_CONST
         DD      OP_CONST_S
+        ; packed opcodes
+IFNDEF AMX_NO_PACKED_OPC
+        DD      OP_LOAD_P_PRI
+        DD      OP_LOAD_P_ALT
+        DD      OP_LOAD_P_S_PRI
+        DD      OP_LOAD_P_S_ALT
+        DD      OP_LREF_P_PRI
+        DD      OP_LREF_P_ALT
+        DD      OP_LREF_P_S_PRI
+        DD      OP_LREF_P_S_ALT
+        DD      OP_LODB_P_I
+        DD      OP_CONST_P_PRI
+        DD      OP_CONST_P_ALT
+        DD      OP_ADDR_P_PRI
+        DD      OP_ADDR_P_ALT
+        DD      OP_STOR_P_PRI
+        DD      OP_STOR_P_ALT
+        DD      OP_STOR_P_S_PRI
+        DD      OP_STOR_P_S_ALT
+        DD      OP_SREF_P_PRI
+        DD      OP_SREF_P_ALT
+        DD      OP_SREF_P_S_PRI
+        DD      OP_SREF_P_S_ALT
+        DD      OP_STRB_P_I
+        DD      OP_LIDX_P_B
+        DD      OP_IDXADDR_P_B
+        DD      OP_ALIGN_P_PRI
+        DD      OP_ALIGN_P_ALT
+        DD      OP_PUSH_P_C
+        DD      OP_PUSH_P
+        DD      OP_PUSH_P_S
+        DD      OP_STACK_P
+        DD      OP_HEAP_P
+        DD      OP_SHL_P_C_PRI
+        DD      OP_SHL_P_C_ALT
+        DD      OP_SHR_P_C_PRI
+        DD      OP_SHR_P_C_ALT
+        DD      OP_ADD_P_C
+        DD      OP_SMUL_P_C
+        DD      OP_ZERO_P
+        DD      OP_ZERO_P_S
+        DD      OP_EQ_P_C_PRI
+        DD      OP_EQ_P_C_ALT
+        DD      OP_INC_P
+        DD      OP_INC_P_S
+        DD      OP_DEC_P
+        DD      OP_DEC_P_S
+        DD      OP_MOVS_P
+        DD      OP_CMPS_P
+        DD      OP_FILL_P
+        DD      OP_HALT_P
+        DD      OP_BOUNDS_P
+        DD      OP_PUSH_P_ADR
+ENDIF  ; AMX_NO_PACKED_OPC
         ; "patch" opcodes
         DD      OP_SYSREQ_D
         DD      OP_SYSREQ_ND

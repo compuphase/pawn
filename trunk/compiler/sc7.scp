@@ -1,7 +1,7 @@
 /*  Pawn compiler - Peephole optimizer "sequences" strings (plain
- *                   and compressed formats)
+ *                  and compressed formats)
  *
- *  Copyright (c) ITB CompuPhase, 2000-2006
+ *  Copyright (c) ITB CompuPhase, 2000-2007
  *
  *  This software is provided "as-is", without any express or implied warranty.
  *  In no event will the authors be held liable for any damages arising from
@@ -19,7 +19,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: sc7.sch 3763 2007-05-22 07:23:30Z thiadmer $
+ *  Version: $Id: sc7.sch 3684 2006-12-10 16:16:47Z thiadmer $
  */
 
 SC_FUNC int strexpand(char *dest, unsigned char *source, int maxlen, unsigned char pairtable[128][2]);
@@ -2062,7 +2062,7 @@ static SEQUENCE sequences_cmp[] = {
   },
 #endif /* !defined AMX_NO_MACRO_INSTR */
 
-#if !defined AMX_NO_OPCODE_PACKING
+#if !defined AMX_NO_PACKED_OPC
   /* ------------------ */
   /* Packed opcodes     */
   /* ------------------ */
@@ -2583,7 +2583,7 @@ static SEQUENCE sequences_cmp[] = {
     #endif
     seqsize(1,1) - seqsize(1,0)
   },
-#endif /* !defined AMX_NO_OPCODE_PACKING */
+#endif /* !defined AMX_NO_PACKED_OPC */
 
   /* ----- */
   { NULL, NULL, 0 }

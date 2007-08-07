@@ -27,7 +27,7 @@
  * across function parameter boundaries.
  *
  *
- *  Copyright (c) ITB CompuPhase, 1997-2006
+ *  Copyright (c) ITB CompuPhase, 1997-2007
  *
  *  This software is provided "as-is", without any express or implied warranty.
  *  In no event will the authors be held liable for any damages arising from
@@ -45,7 +45,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: sc7.c 3763 2007-05-22 07:23:30Z thiadmer $
+ *  Version: $Id: sc7.c 3579 2006-06-06 13:35:29Z thiadmer $
  */
 #include <assert.h>
 #include <stdio.h>
@@ -63,8 +63,8 @@
 #endif
 
 #if defined PAWN_LIGHT
-  #if !defined AMX_NO_OPCODE_PACKING
-    #define AMX_NO_OPCODE_PACKING
+  #if !defined AMX_NO_PACKED_OPC
+    #define AMX_NO_PACKED_OPC
   #endif
   #if !defined AMX_NO_MACRO_INSTR
     #define AMX_NO_MACRO_INSTR
@@ -520,7 +520,12 @@ static int matchsequence(char *start,char *end,const char *pattern,
           assert((str[4]=='0' || str[4]=='f') && (str[5]=='0' || str[5]=='f'));
           assert((str[6]=='0' || str[6]=='f') && (str[7]=='0' || str[7]=='f'));
         #endif
-        memmove(str,str+sizeof(cell),sizeof(cell)+1);
+        if (value==0) {
+          str[0]='0'; /* make zero transform to '0' rather than '0000' */
+          str[1]='\0';
+        } else {
+          memmove(str,str+sizeof(cell),sizeof(cell)+1);
+        } /* if */
       } /* if */
       if (symbols[var][0]!='\0') {
         if (strcmp(symbols[var],str)!=0)
@@ -594,7 +599,7 @@ static char *replacesequence(char *pattern,char symbols[MAX_OPT_VARS+1][MAX_ALIA
       var=atoi(lptr);
       assert(var>=0 && var<=MAX_OPT_VARS);
       assert(symbols[var][0]!='\0');    /* variable should be defined */
-      assert(var!=0 || strlen(symbols[var])==sizeof(cell));
+      assert(var!=0 || strlen(symbols[var])==sizeof(cell) || atoi(symbols[var])==0);
       *repl_length+=strlen(symbols[var]);
       break;
     case '!':

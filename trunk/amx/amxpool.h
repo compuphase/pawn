@@ -1,8 +1,7 @@
-/*  Pawn compiler driver
+/*  Simple allocation from a memory pool, with automatic release of
+ *  least-recently used blocks (LRU blocks).
  *
- *  Function and variable definition and declaration, statement parser.
- *
- *  Copyright (c) ITB CompuPhase, 2006-2007
+ *  Copyright (c) ITB CompuPhase, 2007
  *
  *  This software is provided "as-is", without any express or implied warranty.
  *  In no event will the authors be held liable for any damages arising from
@@ -20,11 +19,14 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: pawncc.c 3612 2006-07-22 09:59:46Z thiadmer $
+ *  Version: $Id$
  */
-#include "sc.h"
+#ifndef AMXALLOC_H_INCLUDED
+#define AMXALLOC_H_INCLUDED
 
-int main(int argc, char *argv[])
-{
-  return pc_compile(argc,argv);
-}
+void  amx_poolinit(void *pool, unsigned size);
+void *amx_poolalloc(unsigned size, int index);
+void  amx_poolfree(void *block);
+void *amx_poolfind(int index);
+
+#endif /* AMXALLOC_H_INCLUDED */

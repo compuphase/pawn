@@ -126,6 +126,29 @@ increment(a)
     return a + 1
 #endif
 
+#if defined RECURSION_DETECTION
+    recurse1(a)
+        {
+        if (a<=0)
+            return 1
+        return a + recurse1(a-1)
+        }
+
+    recurse2a(n)
+        {
+        if (n<=0)
+            return 1
+        return n * recurse2b(n-1)
+        }
+
+    recurse2b(n)
+        {
+        if (n<=0)
+            return 1
+        return n + recurse2a(n-1)
+        }
+#endif
+
 #if 0
 #error This error message should never pop up
 #endif
@@ -428,6 +451,11 @@ main()
 
         if (array || 32)
             array[0] = 1;
+    #endif
+
+    #if defined RECURSION_DETECTION
+        recurse1 10
+        recurse2a 10
     #endif
 
     #if defined ARRAY_TOO_LARGE

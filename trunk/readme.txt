@@ -1,4 +1,4 @@
-the Pawn embedded scripting language
+The Pawn embedded scripting language
 ====================================
 Pawn is a simple, typeless, 32-bit extension language with a C-like syntax.
 The Pawn compiler outputs P-code (or bytecode) that subsequently runs on an

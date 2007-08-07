@@ -33,10 +33,10 @@
 ;       misrepresented as being the original software.
 ;   3.  This notice may not be removed or altered from any source distribution.
 ;
-;   Version: $Id: amxexec_arm7.s 3763 2007-05-22 07:23:30Z thiadmer $
+;   Version: $Id: amxexec_arm7.s 3792 2007-07-20 14:29:05Z thiadmer $
 
 
-IF :LNOT::DEF:AMX_NO_OPCODE_PACKING
+IF :LNOT::DEF:AMX_NO_PACKED_OPC
   IF :LNOT::DEF:AMX_TOKENTHREADING
     AMX_TOKENTHREADING EQU 1   ; packed opcodes require token threading
   ENDIF
@@ -61,24 +61,25 @@ amxBase           EQU    0
 amxData           EQU    4     ; points to separate data+stack+heap, may be NULL
 amxCallback       EQU    8
 amxDebug          EQU    12    ; debug callback
-amxCIP            EQU    16    ; instruction pointer: relative to base + amxhdr->cod
-amxFRM            EQU    20    ; stack frame base: relative to base + amxhdr->dat
-amxHEA            EQU    24    ; top of the heap: relative to base + amxhdr->dat
-amxHLW            EQU    28    ; bottom of the heap: relative to base + amxhdr->dat
-amxSTK            EQU    32    ; stack pointer: relative to base + amxhdr->dat
-amxSTP            EQU    36    ; top of the stack: relative to base + amxhdr->dat
-amxFlags          EQU    40    ; current status, see amx_Flags()
-amxUserTags       EQU    44    ; user data, AMX_USERNUM fields
-amxUserData       EQU    60    ; user data
-amxError          EQU    76    ; native functions that raise an error
-amxParamCount     EQU    80    ; passing parameters requires a "count" field
-amxPRI            EQU    84    ; the sleep opcode needs to store the full AMX status
-amxALT            EQU    88
-amx_reset_stk     EQU    92
-amx_reset_hea     EQU    96
-amx_sysreq_d      EQU    100   ; relocated address/value for the SYSREQ.D opcode
-amx_reloc_size    EQU    104   ; (JIT) required temporary buffer for relocations
-amx_code_size     EQU    108   ; estimated memory footprint of the native code
+amxOverlay        EQU    16    ; overlay callback
+amxCIP            EQU    20    ; instruction pointer: relative to base + amxhdr->cod
+amxFRM            EQU    24    ; stack frame base: relative to base + amxhdr->dat
+amxHEA            EQU    28    ; top of the heap: relative to base + amxhdr->dat
+amxHLW            EQU    32    ; bottom of the heap: relative to base + amxhdr->dat
+amxSTK            EQU    36    ; stack pointer: relative to base + amxhdr->dat
+amxSTP            EQU    40    ; top of the stack: relative to base + amxhdr->dat
+amxFlags          EQU    44    ; current status, see amx_Flags()
+amxUserTags       EQU    48    ; user data, AMX_USERNUM fields
+amxUserData       EQU    64    ; user data
+amxError          EQU    80    ; native functions that raise an error
+amxParamCount     EQU    84    ; passing parameters requires a "count" field
+amxPRI            EQU    88    ; the sleep opcode needs to store the full AMX status
+amxALT            EQU    92
+amx_reset_stk     EQU    96
+amx_reset_hea     EQU    100
+amx_sysreq_d      EQU    104   ; relocated address/value for the SYSREQ.D opcode
+amx_reloc_size    EQU    108   ; (JIT) required temporary buffer for relocations
+amx_code_size     EQU    112   ; estimated memory footprint of the native code
 
 
     AREA    amxexec_data, DATA, READONLY
@@ -223,6 +224,7 @@ amx_opcodelist
     DCD     OP_SYSREQ_N
     DCD     OP_SYMTAG          ; obsolete
     DCD     OP_BREAK
+    ; macro opcodes
     DCD     OP_PUSH2_C
     DCD     OP_PUSH2
     DCD     OP_PUSH2_S
@@ -243,9 +245,8 @@ amx_opcodelist
     DCD     OP_LOAD_S_BOTH
     DCD     OP_CONST
     DCD     OP_CONST_S
-    DCD     OP_SYSREQ_D
-    DCD     OP_SYSREQ_ND
-IF :LNOT::DEF:AMX_NO_OPCODE_PACKING
+    ; packed opcodes
+IF :LNOT::DEF:AMX_NO_PACKED_OPC
     DCD     OP_LOAD_P_PRI
     DCD     OP_LOAD_P_ALT
     DCD     OP_LOAD_P_S_PRI
@@ -296,15 +297,18 @@ IF :LNOT::DEF:AMX_NO_OPCODE_PACKING
     DCD     OP_FILL_P
     DCD     OP_HALT_P
     DCD     OP_BOUNDS_P
-    DCD     OP_PUSH_ADR_P
-ENDIF   ; AMX_NO_OPCODE_PACKING
+    DCD     OP_PUSH_P_ADR
+ENDIF   ; AMX_NO_PACKED_OPC
+    ; patch opcodes
+    DCD     OP_SYSREQ_D
+    DCD     OP_SYSREQ_ND
 
 
     MACRO
     NEXT
       IF :DEF:AMX_TOKENTHREADING
 
-        IF :DEF:AMX_NO_OPCODE_PACKING
+        IF :DEF:AMX_NO_PACKED_OPC
           ldr r11, [r4], #4     ; get opcode, increment CIP
         ELSE
           ldr r12, [r4], #4     ; get opcode + parameter, increment CIP
@@ -312,7 +316,7 @@ ENDIF   ; AMX_NO_OPCODE_PACKING
         ENDIF
         ldr pc, [r14, r11, LSL #2]
       ELSE
-        IF :LNOT::DEF:AMX_NO_OPCODE_PACKING
+        IF :LNOT::DEF:AMX_NO_PACKED_OPC
           INFO 1, "opcode packing requires token threading"
         ENDIF
         ldr pc, [r4], #4        ; indirect register jump
@@ -349,14 +353,14 @@ ENDIF   ; AMX_NO_OPCODE_PACKING
     CHKMARGIN $rtmp             ; $rtmp = temp register to use
     add $rtmp, r3, #64          ; 64 = 16 cells
     cmp $rtmp, r6               ; compare HEA + 16*cell to STK
-    movhi r0, #AMX_ERR_STACKERR
+    movhi r11, #AMX_ERR_STACKERR
     bhi amx_exit
     MEND
 
     MACRO
     CHKSTACK
     cmp r6, r2                  ; compare STK to STP
-    movhi r0, #AMX_ERR_STACKLOW
+    movhi r11, #AMX_ERR_STACKLOW
     bhi amx_exit
     MEND
 
@@ -364,7 +368,7 @@ ENDIF   ; AMX_NO_OPCODE_PACKING
     CHKHEAP $rtmp               ; $rtmp = temp register to use
     ldr $rtmp, [r10, #amxHLW]
     cmp r3, $rtmp               ; compare HEA to HLW
-    movlo r0, #AMX_ERR_HEAPLOW
+    movlo r11, #AMX_ERR_HEAPLOW
     blo amx_exit
     MEND
 
@@ -441,7 +445,7 @@ amx_exec_asm
     NEXT
 
 OP_INVALID
-    mov r0, #AMX_ERR_INVINSTR
+    mov r11, #AMX_ERR_INVINSTR
     b   amx_exit
 
 OP_LOAD_PRI                     ; tested
@@ -752,7 +756,7 @@ OP_RETN                         ; tested
     NEXT
 
 err_memaccess
-    mov r0, #AMX_ERR_MEMACCESS
+    mov r11, #AMX_ERR_MEMACCESS
     b   amx_exit
 
 OP_CALL                         ; tested
@@ -892,7 +896,7 @@ OP_SDIV_ALT                     ; tested
     mov r1, r11
 OP_SDIV                         ; tested (not generated by pawncc)
     teq r1, #0                  ; verify r1 (divisor)
-    moveq r0, #AMX_ERR_DIVIDE   ; r1 == 0 -> set error code
+    moveq r11, #AMX_ERR_DIVIDE   ; r1 == 0 -> set error code
     beq amx_exit                ; r1 == 0 -> jump to error-exit
     stmfd sp!, {r2 - r3}        ; need two more scratch registers
     ; save input registers and create absolute values
@@ -924,7 +928,7 @@ OP_UDIV_ALT                     ; not generated by pawncc
     mov r1, r11
 OP_UDIV                         ; not generated by pawncc
     teq r1, #0                  ; verify r1 (divisor)
-    moveq r0, #AMX_ERR_DIVIDE   ; r1 == 0 -> set error code
+    moveq r11, #AMX_ERR_DIVIDE   ; r1 == 0 -> set error code
     beq amx_exit                ; r1 == 0 -> jump to error-exit
     bl  amx_div                 ; PRI = PRI / ALT, ALT = PRI % ALT
     NEXT
@@ -1234,13 +1238,13 @@ OP_HALT                         ; tested
     ldr r11, [sp]               ; get "retval" pointer
     teq r11, #0
     strne r0, [r11]             ; store PRI, but only if r11 != 0
-    GETPARAM r0                 ; parameter = return code from function
+    GETPARAM r11                ; parameter = return code from function
     b   amx_exit
 
 OP_BOUNDS                       ; tested
     GETPARAM r11
     cmp r0, r11
-    movhi r0, #AMX_ERR_BOUNDS
+    movhi r11, #AMX_ERR_BOUNDS
     bhi amx_exit
     NEXT
 
@@ -1266,11 +1270,11 @@ OP_SYSREQ_PRI                   ; tested (not generated by pawncc)
     ldr r11, [r10, #amxCallback]; callback function pointer in r11
     mov lr, pc                  ; simulate BLX with MOV and BX
     bx  r11
-    ldr r11, [sp], #4           ; get return value (in r11), restore stack
+    mov	r11, r0                 ; get error return in r11
+    ldr r0, [sp], #4            ; get return value, restore stack
     ldmfd sp!, {r1 - r3}        ; restore registers
-    teq r0, #AMX_ERR_NONE       ; callback hook returned error/abort code?
+    teq r11, #AMX_ERR_NONE      ; callback hook returned error/abort code?
     bne amx_exit                ; yes -> quit
-    mov r0, r11                 ; no, set PRI to the return value
     NEXT
 
 OP_SYSREQ_N                     ; tested
@@ -1296,13 +1300,13 @@ OP_SYSREQ_N                     ; tested
     ldr r11, [r10, #amxCallback]; callback function pointer in r11
     mov lr, pc                  ; simulate BLX with MOV and BX
     bx  r11
-    ldr r11, [sp], #4           ; get return value (in r11), restore ARM stack
+    mov	r11, r0                 ; get error return in r11
+    ldr r0, [sp], #4            ; get return value, restore ARM stack
     ldmfd sp!, {r1 - r3, r12}   ; restore registers
     add r6, r6, r12             ; remove # parameters from the AMX stack
     add r6, r6, #4              ; also remove the extra cell pushed
-    teq r0, #AMX_ERR_NONE       ; callback hook returned error/abort code?
+    teq r11, #AMX_ERR_NONE      ; callback hook returned error/abort code?
     bne amx_exit                ; yes -> quit
-    mov r0, r11                 ; no, set PRI to the return value
     NEXT
 
 OP_SYSREQ_D                     ; tested
@@ -1325,7 +1329,6 @@ OP_SYSREQ_D                     ; tested
     ldmfd sp!, {r1 - r3}        ; restore registers
     ldr r11, [r10, #amxError]   ; get error returned by native function
     teq r11, #AMX_ERR_NONE      ; callback hook returned error/abort code?
-    movne r0, r11               ; yes -> set error in r0 (return value)
     bne amx_exit                ; yes -> quit
     NEXT
 
@@ -1354,7 +1357,6 @@ OP_SYSREQ_ND                    ; tested
     add r6, r6, #4              ; also remove the extra cell pushed
     ldr r11, [r10, #amxError]   ; get error returned by native function
     teq r11, #AMX_ERR_NONE      ; callback hook returned error/abort code?
-    movne r0, r11               ; yes -> set error in r0 (return value)
     bne amx_exit                ; yes -> quit
     NEXT
 
@@ -1365,7 +1367,7 @@ OP_SYMBOL
 OP_SRANGE
 OP_SYMTAG
 OP_CASETBL
-    mov r0, #AMX_ERR_INVINSTR   ; these instructions are no longer supported
+    mov r11, #AMX_ERR_INVINSTR  ; these instructions are no longer supported
     b   amx_exit
 
 OP_JUMP_PRI                     ; not generated by pawncc
@@ -1434,6 +1436,7 @@ OP_BREAK                        ; tested
     bx  r12
     ldmfd sp!, {r1 - r3}        ; restore registers
     teq r0, #0                  ; debug hook returned error/abort code?
+    movne r11, r0               ; yes -> store exit code in r11
     bne amx_exit                ; yes -> quit
 op_break_quit
     NEXT
@@ -1563,7 +1566,7 @@ OP_CONST_S                      ; tested
 ; --------------------------------------------------------
 ; packed opcodes
 ; --------------------------------------------------------
-IF :LNOT::DEF:AMX_NO_OPCODE_PACKING
+IF :LNOT::DEF:AMX_NO_PACKED_OPC
 
 OP_LOAD_P_PRI:
     ldr r0, [r5, r12, ASR #16]
@@ -1844,40 +1847,42 @@ OP_HALT_P:
     ldr r11, [sp]               ; get "retval" pointer
     teq r11, #0
     strne r0, [r11]             ; store PRI, but only if r11 != 0
-    GETPARAM_P r0               ; parameter = return code from function
+    GETPARAM_P r11              ; parameter = return code from function
     b   amx_exit
 
 OP_BOUNDS_P:
     GETPARAM_P r11
     cmp r0, r11
-    movhi r0, #AMX_ERR_BOUNDS
+    movhi r11, #AMX_ERR_BOUNDS
     bhi amx_exit
     NEXT
 
-OP_PUSH_ADR_P:
+OP_PUSH_P_ADR:
     GETPARAM_P r11
     add r11, r11, r7            ; relocate to FRM
     sub r11, r11, r5            ; but relative to start of data section
     PUSH r11
     NEXT
 
-ENDIF   ; AMX_NO_OPCODE_PACKING
+ENDIF   ; AMX_NO_PACKED_OPC
 
 
-amx_exit                        ; assume r0 already set
+amx_exit                        ; assume r11 already set (to exit code)
     ; reverse relocate registers
     sub r3, r3, r5              ; reverse-relocate HEA
     sub r6, r6, r5              ; reverse-relocate STK
     sub r7, r7, r5              ; reverse-relocate FRM
+    sub r4, r4, r8              ; reverse-relocate CIP
 
     ; store stack and heap state AMX state
-    str r0, [r10, #amxPRI]      ; PRI (redundant store)
+    str r0, [r10, #amxPRI]      ; PRI
     str r1, [r10, #amxALT]      ; ALT
     str r3, [r10, #amxHEA]      ; HEA
     str r4, [r10, #amxCIP]      ; CIP
     str r6, [r10, #amxSTK]      ; STK
     str r7, [r10, #amxFRM]      ; FRM
 
+    mov r0, r11                 ; put return value in r0
     add sp, sp, #4              ; drop register for the return value
     ldmfd sp!, {r4 - r12, lr}
     bx  lr

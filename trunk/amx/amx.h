@@ -1,6 +1,6 @@
 /*  Pawn Abstract Machine (for the Pawn language)
  *
- *  Copyright (c) ITB CompuPhase, 1997-2006
+ *  Copyright (c) ITB CompuPhase, 1997-2007
  *
  *  This software is provided "as-is", without any express or implied warranty.
  *  In no event will the authors be held liable for any damages arising from
@@ -146,22 +146,22 @@ extern  "C" {
  *   5 (tagnames table)
  *   6 (reformatted header)
  *   7 (name table, opcodes SYMTAG & SYSREQ.D)
- *   8 (opcode STMT, renewed debug interface)
+ *   8 (opcode BREAK, renewed debug interface)
  *   9 (macro opcodes)
- *  10 (position-independent code)
+ *  10 (position-independent code, overlays)
  * MIN_FILE_VERSION is the lowest file version number that the current AMX
  * implementation supports. If the AMX file header gets new fields, this number
- * often needs to be incremented. MAX_AMX_VERSION is the lowest AMX version that
+ * often needs to be incremented. MIN_AMX_VERSION is the lowest AMX version that
  * is needed to support the current file version. When there are new opcodes,
  * this number needs to be incremented.
  * The file version supported by the JIT may run behind MIN_AMX_VERSION. So
  * there is an extra constant for it: MAX_FILE_VER_JIT.
  */
-#define CUR_FILE_VERSION  10    /* current file version; also the current AMX version */
-#define MIN_FILE_VERSION  10    /* lowest supported file format version for the current AMX version */
-#define MIN_AMX_VERSION   10    /* minimum AMX version needed to support the current file format */
-#define MAX_FILE_VER_JIT  10    /* file version supported by the JIT */
-#define MIN_AMX_VER_JIT   10    /* AMX version supported by the JIT */
+#define CUR_FILE_VERSION 10     /* current file version; also the current AMX version */
+#define MIN_FILE_VERSION  6     /* lowest supported file format version for the current AMX version */
+#define MIN_AMX_VERSION  10     /* minimum AMX version needed to support the current file format */
+#define MAX_FILE_VER_JIT  8     /* file version supported by the JIT */
+#define MIN_AMX_VER_JIT  10     /* AMX version supported by the JIT */
 
 #if !defined PAWN_CELL_SIZE
   #define PAWN_CELL_SIZE 32     /* by default, use 32-bit cells */
@@ -187,6 +187,7 @@ typedef cell (AMX_NATIVE_CALL *AMX_NATIVE)(struct tagAMX *amx, const cell *param
 typedef int (AMXAPI *AMX_CALLBACK)(struct tagAMX *amx, cell index,
                                    cell *result, const cell *params);
 typedef int (AMXAPI *AMX_DEBUG)(struct tagAMX *amx);
+typedef int (AMXAPI *AMX_OVERLAY)(struct tagAMX *amx, int index, cell **address);
 typedef int (AMXAPI *AMX_IDLE)(struct tagAMX *amx, int AMXAPI Exec(struct tagAMX *, cell *, int));
 #if !defined _FAR
   #define _FAR
@@ -246,6 +247,11 @@ typedef struct tagFUNCSTUBNT {
   uint32_t nameofs      PACKED;
 } AMX_FUNCSTUBNT;
 
+typedef struct tagOVERLAYINFO {
+  int32_t offset        PACKED;
+  int32_t size          PACKED;
+} AMX_OVERLAYINFO;
+
 /* The AMX structure is the internal structure for many functions. Not all
  * fields are valid at all times; many fields are cached in local variables.
  */
@@ -254,6 +260,7 @@ typedef struct tagAMX {
   unsigned char _FAR *data PACKED; /* points to separate data+stack+heap, may be NULL */
   AMX_CALLBACK callback PACKED;
   AMX_DEBUG debug       PACKED; /* debug callback */
+  AMX_OVERLAY overlay   PACKED; /* overlay reader callback */
   /* for external functions a few registers must be accessible from the outside */
   cell cip              PACKED; /* instruction pointer: relative to base + amxhdr->cod */
   cell frm              PACKED; /* stack frame base: relative to base + amxhdr->dat */
@@ -303,9 +310,10 @@ typedef struct tagAMX_HEADER {
   int32_t publics       PACKED; /* offset to the "public functions" table */
   int32_t natives       PACKED; /* offset to the "native functions" table */
   int32_t libraries     PACKED; /* offset to the table of libraries */
-  int32_t pubvars       PACKED; /* the "public variables" table */
-  int32_t tags          PACKED; /* the "public tagnames" table */
-  int32_t nametable     PACKED; /* name table */
+  int32_t pubvars       PACKED; /* offset to the "public variables" table */
+  int32_t tags          PACKED; /* offset to the "public tagnames" table */
+  int32_t nametable     PACKED; /* offset to the name table */
+  int32_t overlays      PACKED; /* offset to the overlay table */
 } AMX_HEADER;
 
 #if PAWN_CELL_SIZE==16
@@ -345,6 +353,7 @@ enum {
   AMX_ERR_PARAMS,       /* parameter error */
   AMX_ERR_DOMAIN,       /* domain error, expression result does not fit in range */
   AMX_ERR_GENERAL,      /* general error (unknown or unspecific error) */
+  AMX_ERR_OVERLAY,      /* overlays are unsupported (JIT) or uninitialized */
 };
 
 /*      AMX_FLAG_CHAR16   0x01     no longer used */

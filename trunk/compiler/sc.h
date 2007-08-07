@@ -7,7 +7,7 @@
  *
  *  Copyright R. Cain, 1980
  *  Copyright J.E. Hendrix, 1982, 1983
- *  Copyright ITB CompuPhase, 1997-2006
+ *  Copyright ITB CompuPhase, 1997-2007
  *
  *  This software is provided "as-is", without any express or implied warranty.
  *  In no event will the authors be held liable for any damages arising from
@@ -25,7 +25,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: sc.h 3763 2007-05-22 07:23:30Z thiadmer $
+ *  Version: $Id: sc.h 3788 2007-07-09 08:49:11Z thiadmer $
  */
 #ifndef SC_H_INCLUDED
 #define SC_H_INCLUDED
@@ -112,16 +112,22 @@ typedef struct s_constvalue {
 typedef struct s_symbol {
   struct s_symbol *next;
   struct s_symbol *parent;  /* hierarchical types (multi-dimensional arrays) */
+
   char name[sNAMEMAX+1];
   uint32_t hash;        /* value derived from name, for quicker searching */
+
   cell addr;            /* address or offset (or value for constant, index for native function) */
-  cell codeaddr;        /* address (in the code segment) where the symbol declaration starts */
+  cell codeaddr;        /* address (in the code segment) where the symbol declaration
+                         * starts (for a function, the start is in "addr" and the
+                         * end is in "code_addr") */
+
   char vclass;          /* sLOCAL if "addr" refers to a local symbol */
   char ident;           /* see below for possible values */
   short usage;          /* see below for possible values */
   char flags;           /* see below for possible values */
   int compound;         /* compound level (braces nesting level) */
   int tag;              /* tagname id */
+
   union {
     int declared;       /* label: how many local variables are declared */
     struct {
@@ -131,6 +137,7 @@ typedef struct s_symbol {
     constvalue *lib;    /* native function: library it is part of */
     long stacksize;     /* normal/public function: stack requirements */
   } x;                  /* 'x' for 'extra' */
+
   union {
     arginfo *arglist;   /* types of all parameters for functions */
     constvalue *enumlist;/* list of names for the "root" of an enumeration */
@@ -139,11 +146,15 @@ typedef struct s_symbol {
       short level;      /* number of dimensions below this level */
     } array;
   } dim;                /* for 'dimension', both functions and arrays */
+
   constvalue *states;   /* list of state function/state variable ids + addresses */
   int fnumber;          /* static global variables: file number in which the declaration is visible */
   int lnumber;          /* line number (in the current source file) for the declaration */
+  int ovl_index;        /* overlay index number */
+
   struct s_symbol **refer;  /* referrer list, functions that "use" this symbol */
   int numrefers;        /* number of entries in the referrer list */
+
   char *documentation;  /* optional documentation string */
 } symbol;
 
@@ -421,7 +432,7 @@ typedef struct s_valuepair {
 enum {
   sOPTIMIZE_NONE,               /* no optimization */
   sOPTIMIZE_NOMACRO,            /* no macro instructions */
-  sOPTIMIZE_DEFAULT,            /* full optimization */
+  sOPTIMIZE_FULL,               /* full optimization */
   /* ----- */
   sOPTIMIZE_NUMBER
 };
@@ -524,7 +535,7 @@ SC_FUNC int constexpr(cell *val,int *tag,symbol **symptr);
 SC_FUNC constvalue *append_constval(constvalue *table,const char *name,cell val,int index);
 SC_FUNC constvalue *find_constval(constvalue *table,char *name,int index);
 SC_FUNC void delete_consttable(constvalue *table);
-SC_FUNC symbol *add_constant(char *name,cell val,int vclass,int tag);
+SC_FUNC symbol *add_constant(char *name,cell val,int vclass,int tag,int allow_redef);
 SC_FUNC void exporttag(int tag);
 SC_FUNC void sc_attachdocumentation(symbol *sym);
 
@@ -660,7 +671,7 @@ SC_FUNC void inc(value *lval);
 SC_FUNC void dec(value *lval);
 SC_FUNC void jmp_ne0(int number);
 SC_FUNC void jmp_eq0(int number);
-SC_FUNC void outval(cell val,int newline);
+SC_FUNC void outval(cell val,int fullcell,int newline);
 
 /* function prototypes in SC5.C */
 SC_FUNC int error(int number,...);
@@ -788,7 +799,7 @@ SC_VDECL int sc_debug;        /* debug/optimization options (bit field) */
 SC_VDECL int sc_packstr;      /* strings are packed by default? */
 SC_VDECL int sc_asmfile;      /* create .ASM file? */
 SC_VDECL int sc_listing;      /* create .LST file? */
-SC_VDECL int sc_compress;     /* compress bytecode? */
+SC_VDECL int pc_compress;     /* compress bytecode? */
 SC_VDECL int sc_needsemicolon;/* semicolon required to terminate expressions? */
 SC_VDECL int sc_dataalign;    /* data alignment value */
 SC_VDECL int sc_alignnext;    /* must frame of the next function be aligned? */
@@ -816,6 +827,7 @@ SC_VDECL char *pc_deprecate;  /* if non-NULL, mark next declaration as deprecate
 SC_VDECL int sc_curstates;    /* ID of the current state list */
 SC_VDECL int pc_optimize;     /* (peephole) optimization level */
 SC_VDECL int pc_memflags;     /* special flags for the stack/heap usage */
+SC_VDECL int pc_overlays;     /* generate overlay table + instructions? (abstract machine overay size limit) */
 
 SC_VDECL constvalue sc_automaton_tab; /* automaton table */
 SC_VDECL constvalue sc_state_tab;     /* state table */

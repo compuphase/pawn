@@ -1,6 +1,6 @@
 /*  Date/time module for the Pawn Abstract Machine
  *
- *  Copyright (c) ITB CompuPhase, 2001-2006
+ *  Copyright (c) ITB CompuPhase, 2001-2007
  *
  *  This software is provided "as-is", without any express or implied warranty.
  *  In no event will the authors be held liable for any damages arising from
@@ -18,7 +18,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: amxtime.c 3649 2006-10-12 13:13:57Z thiadmer $
+ *  Version: $Id: amxtime.c 3764 2007-05-22 10:29:16Z thiadmer $
  */
 #include <time.h>
 #include <assert.h>
@@ -29,6 +29,11 @@
 #endif
 
 #define CELLMIN   (-1 << (8*sizeof(cell) - 1))
+
+#define SECONDS_PER_MINUTE	60
+#define SECONDS_PER_HOUR	3600
+#define SECONDS_PER_DAY		86400
+#define SECONDS_PER_YEAR	31556952	/* based on 365.2425 days per year */
 
 #if !defined CLOCKS_PER_SEC
   #define CLOCKS_PER_SEC CLK_TCK
@@ -75,21 +80,64 @@ static unsigned long gettimestamp(void)
   return value;
 }
 
-/* settime(hour, minute, second)
- * Always returns 0
- */
-static cell AMX_NATIVE_CALL n_settime(AMX *amx, const cell *params)
+void stamp2datetime(unsigned long sec1970,
+                    int *year, int *month, int *day,
+                    int *hour, int *minute, int *second)
+{
+  int days, seconds;
+
+  /* find the year */
+  assert(year!=NULL);
+  for (*year = 1970; ; *year += 1) {
+    days = 365 + ((*year & 0x03) == 0); /* clumsy "leap-year" routine, fails for 2100 */
+    seconds = days * SECONDS_PER_DAY;
+    if ((unsigned long)seconds > sec1970)
+      break;
+    sec1970 -= seconds;
+  } /* if */
+
+  /* find the month */
+  assert(month!=NULL);
+  for (*month = 1; ; *month += 1) {
+    days = monthdays[*month - 1];
+    seconds = days * SECONDS_PER_DAY;
+    if ((unsigned long)seconds > sec1970)
+      break;
+    sec1970 -= seconds;
+  } /* if */
+
+  /* find the day */
+  assert(day!=NULL);
+  for (*day = 1; sec1970 >= SECONDS_PER_DAY; *day += 1)
+    sec1970 -= SECONDS_PER_DAY;
+
+  /* find the hour */
+  assert(hour!=NULL);
+  for (*hour = 0; sec1970 >= SECONDS_PER_HOUR; *hour += 1)
+    sec1970 -= SECONDS_PER_HOUR;
+
+  /* find the minute */
+  assert(minute!=NULL);
+  for (*minute = 0; sec1970 >= SECONDS_PER_MINUTE; *minute += 1)
+    sec1970 -= SECONDS_PER_MINUTE;
+
+  /* remainder is the number of seconds */
+  assert(second!=NULL);
+  *second = (int)sec1970;
+}
+
+static void settime(cell hour,cell minute,cell second)
 {
   #if defined __WIN32__ || defined _WIN32 || defined WIN32
     SYSTEMTIME systim;
 
     GetLocalTime(&systim);
-    if (params[1]!=CELLMIN)
-      systim.wHour=(WORD)wrap((int)params[1],0,23);
-    if (params[2]!=CELLMIN)
-      systim.wMinute=(WORD)wrap((int)params[2],0,59);
-    if (params[3]!=CELLMIN)
-      systim.wSecond=(WORD)wrap((int)params[3],0,59);
+    if (hour!=CELLMIN)
+      systim.wHour=(WORD)wrap((int)hour,0,23);
+    if (minute!=CELLMIN)
+      systim.wMinute=(WORD)wrap((int)minute,0,59);
+    if (second!=CELLMIN)
+      systim.wSecond=(WORD)wrap((int)second,0,59);
     SetLocalTime(&systim);
   #else
     /* Linux/Unix (and some DOS compilers) have stime(); on Linux/Unix, you
@@ -98,19 +146,65 @@ static cell AMX_NATIVE_CALL n_settime(AMX *amx, const cell *params)
     time_t sec1970;
     struct tm gtm;
 
-    (void)amx;
     time(&sec1970);
     gtm=*localtime(&sec1970);
-    if (params[1]!=CELLMIN)
-      gtm.tm_hour=wrap((int)params[1],0,23);
-    if (params[2]!=CELLMIN)
-      gtm.tm_min=wrap((int)params[2],0,59);
-    if (params[3]!=CELLMIN)
-      gtm.tm_sec=wrap((int)params[3],0,59);
+    if (hour!=CELLMIN)
+      gtm.tm_hour=wrap((int)hour,0,23);
+    if (minute!=CELLMIN)
+      gtm.tm_min=wrap((int)minute,0,59);
+    if (second!=CELLMIN)
+      gtm.tm_sec=wrap((int)second,0,59);
     sec1970=mktime(&gtm);
     stime(&sec1970);
   #endif
+}
+
+static void setdate(cell year,cell month,cell day)
+{
+  int maxday;
+
+  #if defined __WIN32__ || defined _WIN32 || defined WIN32
+    SYSTEMTIME systim;
+
+    GetLocalTime(&systim);
+    if (year!=CELLMIN)
+      systim.wYear=(WORD)wrap((int)year,1970,2099);
+    if (month!=CELLMIN)
+      systim.wMonth=(WORD)wrap((int)month,1,12);
+    maxday=monthdays[systim.wMonth - 1];
+    if (systim.wMonth==2 && ((systim.wYear % 4)==0 && ((systim.wYear % 100)!=0 || (systim.wYear % 400)==0)))
+      maxday++;
+    if (day!=CELLMIN)
+      systim.wDay=(WORD)wrap((int)day,1,maxday);
+    SetLocalTime(&systim);
+  #else
+    /* Linux/Unix (and some DOS compilers) have stime(); on Linux/Unix, you
+     * must have "root" permission to call stime()
+     */
+    time_t sec1970;
+    struct tm gtm;
+
+    time(&sec1970);
+    gtm=*localtime(&sec1970);
+    if (year!=CELLMIN)
+      gtm.tm_year=year-1900;
+    if (month!=CELLMIN)
+      gtm.tm_mon=month-1;
+    if (day!=CELLMIN)
+      gtm.tm_mday=day;
+    sec1970=mktime(&gtm);
+    stime(&sec1970);
+  #endif
+}
+
+
+/* settime(hour, minute, second)
+ * Always returns 0
+ */
+static cell AMX_NATIVE_CALL n_settime(AMX *amx, const cell *params)
+{
   (void)amx;
+  settime(params[1],params[2],params[3]);
   return 0;
 }
 
@@ -150,42 +244,8 @@ static cell AMX_NATIVE_CALL n_gettime(AMX *amx, const cell *params)
  */
 static cell AMX_NATIVE_CALL n_setdate(AMX *amx, const cell *params)
 {
-  int maxday;
-
-  #if defined __WIN32__ || defined _WIN32 || defined WIN32
-    SYSTEMTIME systim;
-
-    GetLocalTime(&systim);
-    if (params[1]!=CELLMIN)
-      systim.wYear=(WORD)wrap((int)params[1],1970,2099);
-    if (params[2]!=CELLMIN)
-      systim.wMonth=(WORD)wrap((int)params[2],1,12);
-    maxday=monthdays[systim.wMonth - 1];
-    if (systim.wMonth==2 && ((systim.wYear % 4)==0 && ((systim.wYear % 100)!=0 || (systim.wYear % 400)==0)))
-      maxday++;
-    if (params[3]!=CELLMIN)
-      systim.wDay=(WORD)wrap((int)params[3],1,maxday);
-    SetLocalTime(&systim);
-  #else
-    /* Linux/Unix (and some DOS compilers) have stime(); on Linux/Unix, you
-     * must have "root" permission to call stime()
-     */
-    time_t sec1970;
-    struct tm gtm;
-
-    (void)amx;
-    time(&sec1970);
-    gtm=*localtime(&sec1970);
-    if (params[1]!=CELLMIN)
-      gtm.tm_year=params[1]-1900;
-    if (params[2]!=CELLMIN)
-      gtm.tm_mon=params[2]-1;
-    if (params[3]!=CELLMIN)
-      gtm.tm_mday=params[3];
-    sec1970=mktime(&gtm);
-    stime(&sec1970);
-  #endif
   (void)amx;
+  setdate(params[1],params[2],params[3]);
   return 0;
 }
 
@@ -282,6 +342,44 @@ static cell AMX_NATIVE_CALL n_gettimer(AMX *amx, const cell *params)
   return timelimit>0;
 }
 
+/* settimestamp(seconds1970) sets the date and time from a single parameter: the
+ * number of seconds since 1 January 1970.
+ */
+static cell n_settimestamp(AMX *amx, const cell *params)
+{
+  #if defined __WIN32__ || defined _WIN32 || defined WIN32
+    int year, month, day, hour, minute, second;
+
+    stamp2datetime(params[1],
+                   &year, &month, &day,
+                   &hour, &minute, &second);
+    setdate(year, month, day);
+    settime(hour, minute, second);
+  #else
+    /* Linux/Unix (and some DOS compilers) have stime(); on Linux/Unix, you
+     * must have "root" permission to call stime()
+     */
+    time_t sec1970=(time_t)params[1];
+    stime(&sec1970);
+  #endif
+  (void)amx;
+
+  return 0;
+}
+
+/* cvttimestamp(seconds1970, &year, &month, &day, &hour, &minute, &second)
+ */
+static cell n_cvttimestamp(AMX *amx, const cell *params)
+{
+  int year, month, day, hour, minute, second;
+
+  (void)amx;
+  stamp2datetime(params[1],
+                 &year, &month, &day,
+                 &hour, &minute, &second);
+  return 0;
+}
+
 
 #if !defined AMXTIME_NOIDLE
 static AMX_IDLE PrevIdle = NULL;
@@ -315,14 +413,16 @@ static int AMXAPI amx_TimeIdle(AMX *amx, int AMXAPI Exec(AMX *, cell *, int))
   extern "C"
 #endif
 const AMX_NATIVE_INFO time_Natives[] = {
-  { "gettime",   n_gettime },
-  { "settime",   n_settime },
-  { "getdate",   n_getdate },
-  { "setdate",   n_setdate },
-  { "tickcount", n_tickcount },
-  { "settimer",  n_settimer },
-  { "gettimer",  n_gettimer },
-  { "delay",     n_delay },
+  { "gettime",      n_gettime },
+  { "settime",      n_settime },
+  { "getdate",      n_getdate },
+  { "setdate",      n_setdate },
+  { "tickcount",    n_tickcount },
+  { "settimer",     n_settimer },
+  { "gettimer",     n_gettimer },
+  { "delay",        n_delay },
+  { "settimestamp", n_settimestamp },
+  { "cvttimestamp", n_cvttimestamp },
   { NULL, NULL }        /* terminator */
 };
 

@@ -1,6 +1,6 @@
 /*  Simple terminal for Microsoft Windows
  *
- *  Copyright (c) ITB CompuPhase, 2004-2006
+ *  Copyright (c) ITB CompuPhase, 2004-2007
  *
  *  This software is provided "as-is", without any express or implied warranty.
  *  In no event will the authors be held liable for any damages arising from

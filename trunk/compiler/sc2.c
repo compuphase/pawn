@@ -1,6 +1,6 @@
 /*  Pawn compiler - File input, preprocessing and lexical analysis functions
  *
- *  Copyright (c) ITB CompuPhase, 1997-2006
+ *  Copyright (c) ITB CompuPhase, 1997-2007
  *
  *  This software is provided "as-is", without any express or implied warranty.
  *  In no event will the authors be held liable for any damages arising from
@@ -18,7 +18,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: sc2.c 3763 2007-05-22 07:23:30Z thiadmer $
+ *  Version: $Id: sc2.c 3764 2007-05-22 10:29:16Z thiadmer $
  */
 #include <assert.h>
 #include <stdio.h>
@@ -277,7 +277,7 @@ static void doinclude(int silent)
      */
     result=plungefile(name,(c!='>'),TRUE);
     if (result)
-      add_constant(symname,1,sGLOBAL,0);
+      add_constant(symname,1,sGLOBAL,0,FALSE);
     else if (!silent)
       error(100,name);            /* cannot read from ... (fatal error) */
   } /* if */
@@ -374,6 +374,7 @@ static void readline(unsigned char *line)
       line+=strlen((char*)line);
     } /* if */
     fline+=1;
+    add_constant("__line",fline,sGLOBAL,0,TRUE);
   } while (num>=0 && cont);
 }
 
@@ -1055,7 +1056,7 @@ static int command(void)
         } else if (strcmp(str,"compress")==0) {
           cell val;
           preproc_expr(&val,NULL);
-          sc_compress=(int)val; /* switch code packing on/off */
+          pc_compress=(int)val; /* switch code packing on/off */
         } else if (strcmp(str,"ctrlchar")==0) {
           while (*lptr<=' ' && *lptr!='\0')
             lptr++;
@@ -1096,6 +1097,11 @@ static int command(void)
             if (find_constval(&libname_tab,name,0)==NULL)
               curlibrary=append_constval(&libname_tab,name,0,0);
           } /* if */
+        } else if (strcmp(str,"overlay")==0) {
+          cell val;
+          preproc_expr(&val,NULL);
+          pc_overlays=(int)val; /* switch overlay code generation on/off,
+                                 * also set the size of the overlay buffer */
         } else if (strcmp(str,"pack")==0) {
           cell val;
           preproc_expr(&val,NULL);      /* default = packed/unpacked */
@@ -1213,7 +1219,7 @@ static int command(void)
       switch (tok) {
       case tNUMBER:
       case tRATIONAL:
-        outval(val,FALSE);
+        outval(val,TRUE,FALSE);
         code_idx+=opargs(1);
         break;
       case tSYMBOL:
@@ -1223,7 +1229,7 @@ static int command(void)
         if (sym==NULL || sym->ident!=iFUNCTN && sym->ident!=iREFFUNC && (sym->usage & uDEFINE)==0) {
           error(17,str);        /* undefined symbol */
         } else {
-          outval(sym->addr,FALSE);
+          outval(sym->addr,TRUE,FALSE);
           /* mark symbol as "used", unknown whether for read or write */
           markusage(sym,uREAD | uWRITTEN);
           code_idx+=opargs(1);
@@ -1800,7 +1806,6 @@ static const unsigned char *packedstring(const unsigned char *lptr,int flags)
  *  is true, this information is returned.
  *
  *  Global references: lptr          (altered)
- *                     fline         (referred to only)
  *                     litidx        (referred to only)
  *                     _lextok, _lexval, _lexstr
  *                     _pushed
@@ -2729,6 +2734,7 @@ SC_FUNC symbol *addsym(const char *name,cell addr,int ident,int vclass,int tag,i
   entry.usage=(char)usage;
   entry.fnumber=-1;     /* assume global visibility (ignored for local symbols) */
   entry.lnumber=fline;
+  entry.ovl_index=-1;   /* assume no overlay function */
   entry.numrefers=1;
   entry.refer=refer;
 
