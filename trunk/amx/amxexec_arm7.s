@@ -33,7 +33,7 @@
 ;       misrepresented as being the original software.
 ;   3.  This notice may not be removed or altered from any source distribution.
 ;
-;   Version: $Id: amxexec_arm7.s 3792 2007-07-20 14:29:05Z thiadmer $
+;   Version: $Id: amxexec_arm7.s 3821 2007-10-15 16:54:20Z thiadmer $
 
 
 IF :LNOT::DEF:AMX_NO_PACKED_OPC
@@ -57,29 +57,31 @@ AMX_ERR_DIVIDE    EQU     11   ; divide by zero
 AMX_ERR_SLEEP     EQU     12   ; go into sleepmode - code can be restarted
 AMX_ERR_INVSTATE  EQU     13   ; invalid state for this access
 
-amxBase           EQU    0
-amxData           EQU    4     ; points to separate data+stack+heap, may be NULL
-amxCallback       EQU    8
-amxDebug          EQU    12    ; debug callback
-amxOverlay        EQU    16    ; overlay callback
-amxCIP            EQU    20    ; instruction pointer: relative to base + amxhdr->cod
-amxFRM            EQU    24    ; stack frame base: relative to base + amxhdr->dat
-amxHEA            EQU    28    ; top of the heap: relative to base + amxhdr->dat
-amxHLW            EQU    32    ; bottom of the heap: relative to base + amxhdr->dat
-amxSTK            EQU    36    ; stack pointer: relative to base + amxhdr->dat
-amxSTP            EQU    40    ; top of the stack: relative to base + amxhdr->dat
-amxFlags          EQU    44    ; current status, see amx_Flags()
-amxUserTags       EQU    48    ; user data, AMX_USERNUM fields
-amxUserData       EQU    64    ; user data
-amxError          EQU    80    ; native functions that raise an error
-amxParamCount     EQU    84    ; passing parameters requires a "count" field
-amxPRI            EQU    88    ; the sleep opcode needs to store the full AMX status
-amxALT            EQU    92
-amx_reset_stk     EQU    96
-amx_reset_hea     EQU    100
-amx_sysreq_d      EQU    104   ; relocated address/value for the SYSREQ.D opcode
-amx_reloc_size    EQU    108   ; (JIT) required temporary buffer for relocations
-amx_code_size     EQU    112   ; estimated memory footprint of the native code
+amxBase           EQU    0     ; points to the AMX header, perhaps followed by P-code and data
+amxCode           EQU    4     ; points to P-code block, possibly in ROM or in an overlay pool
+amxData           EQU    8     ; points to separate data+stack+heap, may be NULL
+amxCallback       EQU    12
+amxDebug          EQU    16    ; debug callback
+amxOverlay        EQU    20    ; overlay callback
+amxCIP            EQU    24    ; instruction pointer: relative to base + amxhdr->cod
+amxFRM            EQU    28    ; stack frame base: relative to base + amxhdr->dat
+amxHEA            EQU    32    ; top of the heap: relative to base + amxhdr->dat
+amxHLW            EQU    36    ; bottom of the heap: relative to base + amxhdr->dat
+amxSTK            EQU    40    ; stack pointer: relative to base + amxhdr->dat
+amxSTP            EQU    44    ; top of the stack: relative to base + amxhdr->dat
+amxFlags          EQU    48    ; current status, see amx_Flags()
+amxUserTags       EQU    52    ; user data, AMX_USERNUM fields
+amxUserData       EQU    68    ; user data
+amxError          EQU    84    ; native functions that raise an error
+amxParamCount     EQU    88    ; passing parameters requires a "count" field
+amxPRI            EQU    92    ; the sleep opcode needs to store the full AMX status
+amxALT            EQU    96
+amx_reset_stk     EQU    100
+amx_reset_hea     EQU    104
+amx_sysreq_d      EQU    108   ; relocated address/value for the SYSREQ.D opcode
+amxOvlIndex       EQU    112
+amxCodeSize       EQU    116   ; memory size of the overlay or of the native code
+amx_reloc_size    EQU    120   ; (JIT) required temporary buffer for relocations
 
 
     AREA    amxexec_data, DATA, READONLY
@@ -386,8 +388,8 @@ ENDIF   ; AMX_NO_PACKED_OPC
 
 
 ; ----------------------------------------------------------------
-; cell amx_exec_asm(cell parms[9],cell *retval,cell stp,cell hea)
-;                   r0            r1           r2       r3
+; cell amx_exec_asm(AMX *amx, cell *retval, char *data)
+;                        r0         r1            r2
 ; ----------------------------------------------------------------
 
     AREA    amxexec_code, CODE, READONLY
@@ -408,30 +410,32 @@ amx_exec_asm
     str r1, [sp, #-4]!
 
     ; set up the registers
-    ; r0  = PRI  = parms[0]
-    ; r1  = ALT  = parms[1]
+    ; r0  = PRI
+    ; r1  = ALT
     ; r2  = STP (stack top), relocated (absolute address)
     ; r3  = HEA, relocated (absolute address)
-    ; r4  = CIP  = (cell*)parms[2]
-    ; r5  = data section = (unsigned char*)parms[3]
-    ; r6  = STK = parms[4], relocated (absolute address)
-    ; r7  = FRM  = parms[5], relocated (absolute address)
-    ; r8  = code_start = (unsigned char*)parms[7]
-    ; r9  = code_end = code_start + (ucell)parms[8]
-    ; r10 = amx base = (AMX*)parms[6]
+    ; r4  = CIP
+    ; r5  = data section (passed in r2)
+    ; r6  = STK, relocated (absolute address)
+    ; r7  = FRM, relocated (absolute address)
+    ; r8  = code
+    ; r9  = code_end = code + code_size
+    ; r10 = amx base (passed in r0)
     ; r14 = opcode list address (for token threading)
     ; r11 and r12 are scratch; r11 is used in the macro to fetch the next opcode
     ; and r12 is also used there in the case that packed opcodes are supported
 
-    ldr r1, [r0, #4]
-    ldr r4, [r0, #8]
-    ldr r5, [r0, #12]
-    ldr r6, [r0, #16]
-    ldr r7, [r0, #20]
-    ldr r10, [r0, #24]
-    ldr r8, [r0, #28]
-    ldr r9, [r0, #32]
-    ldr r0, [r0, #0]            ; this one last
+    mov r10, r0                 ; r10 = AMX
+    mov r5, r2                  ; r5 = data section
+    ldr r0, [r10, #amxPRI]
+    ldr r1, [r10, #amxALT]
+    ldr r2, [r10, #amxSTP]
+    ldr r3, [r10, #amxHEA]
+    ldr r4, [r10, #amxCIP]
+    ldr r6, [r10, #amxSTK]
+    ldr r7, [r10, #amxFRM]
+    ldr r8, [r10, #amxCode]
+    ldr r9, [r10, #amxCodeSize]
 
     add r2, r2, r5              ; relocate STP (absolute address)
     add r3, r3, r5              ; relocate HEA

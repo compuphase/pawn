@@ -57,29 +57,31 @@
 .equ    AMX_ERR_SLEEP,     12   @ go into sleepmode - code can be restarted
 .equ    AMX_ERR_INVSTATE,  13   @ invalid state for this access
 
-.equ    amxBase,        0
-.equ    amxData,        4       @ points to separate data+stack+heap, may be NULL
-.equ    amxCallback,    8
-.equ    amxDebug,       12      @ debug callback
-.equ    amxOverlay,     16      @ overlay callback
-.equ    amxCIP,         20      @ instruction pointer: relative to base + amxhdr->cod
-.equ    amxFRM,         24      @ stack frame base: relative to base + amxhdr->dat
-.equ    amxHEA,         28      @ top of the heap: relative to base + amxhdr->dat
-.equ    amxHLW,         32      @ bottom of the heap: relative to base + amxhdr->dat
-.equ    amxSTK,         36      @ stack pointer: relative to base + amxhdr->dat
-.equ    amxSTP,         40      @ top of the stack: relative to base + amxhdr->dat
-.equ    amxFlags,       44      @ current status, see amx_Flags()
-.equ    amxUserTags,    48      @ user data, AMX_USERNUM fields
-.equ    amxUserData,    64      @ user data
-.equ    amxError,       80      @ native functions that raise an error
-.equ    amxParamCount,  84      @ passing parameters requires a "count" field
-.equ    amxPRI,         88      @ the sleep opcode needs to store the full AMX status
-.equ    amxALT,         92
-.equ    amx_reset_stk,  96
-.equ    amx_reset_hea,  100
-.equ    amx_sysreq_d,   104     @ relocated address/value for the SYSREQ.D opcode
-.equ    amx_reloc_size, 108     @ (JIT) required temporary buffer for relocations
-.equ    amx_code_size,  112     @ estimated memory footprint of the native code
+.equ    amxBase,        0       @ points to the AMX header, perhaps followed by P-code and data
+.equ    amxCode,        4       @ points to P-code block, possibly in ROM or in an overlay pool
+.equ    amxData,        8       @ points to separate data+stack+heap, may be NULL
+.equ    amxCallback,    12
+.equ    amxDebug,       16      @ debug callback
+.equ    amxOverlay,     20      @ overlay callback
+.equ    amxCIP,         24      @ instruction pointer: relative to base + amxhdr->cod
+.equ    amxFRM,         28      @ stack frame base: relative to base + amxhdr->dat
+.equ    amxHEA,         32      @ top of the heap: relative to base + amxhdr->dat
+.equ    amxHLW,         36      @ bottom of the heap: relative to base + amxhdr->dat
+.equ    amxSTK,         40      @ stack pointer: relative to base + amxhdr->dat
+.equ    amxSTP,         44      @ top of the stack: relative to base + amxhdr->dat
+.equ    amxFlags,       48      @ current status, see amx_Flags()
+.equ    amxUserTags,    52      @ user data, AMX_USERNUM fields
+.equ    amxUserData,    68      @ user data
+.equ    amxError,       84      @ native functions that raise an error
+.equ    amxParamCount,  88      @ passing parameters requires a "count" field
+.equ    amxPRI,         92      @ the sleep opcode needs to store the full AMX status
+.equ    amxALT,         96
+.equ    amx_reset_stk,  100
+.equ    amx_reset_hea,  104
+.equ    amx_sysreq_d,   108     @ relocated address/value for the SYSREQ.D opcode
+.equ    amxOvlIndex,    112
+.equ    amxCodeSize,    116     @ memory size of the overlay or of the native code
+.equ    amx_reloc_size, 120     @ (JIT) required temporary buffer for relocations
 
 
     .section    .rodata
@@ -377,8 +379,8 @@ amx_opcodelist:
 
 
 @ ----------------------------------------------------------------
-@ cell amx_exec_asm(cell parms[9],cell *retval,cell stp,cell hea)
-@                   r0            r1           r2       r3
+@ cell amx_exec_asm(AMX *amx, cell *retval, char *data)
+@                        r0         r1            r2
 @ ----------------------------------------------------------------
 
     .text
@@ -399,30 +401,32 @@ amx_exec_asm:
     str r1, [sp, #-4]!
 
     @ set up the registers
-    @ r0  = PRI  = parms[0]
-    @ r1  = ALT  = parms[1]
+    @ r0  = PRI
+    @ r1  = ALT
     @ r2  = STP (stack top), relocated (absolute address)
     @ r3  = HEA, relocated (absolute address)
-    @ r4  = CIP  = (cell*)parms[2]
-    @ r5  = data section = (unsigned char*)parms[3]
-    @ r6  = STK = parms[4], relocated (absolute address)
-    @ r7  = FRM  = parms[5], relocated (absolute address)
-    @ r8  = code_start = (unsigned char*)parms[7]
-    @ r9  = code_end = code_start + (ucell)parms[8]
-    @ r10 = amx base = (AMX*)parms[6]
+    @ r4  = CIP
+    @ r5  = data section (passed in r2)
+    @ r6  = STK, relocated (absolute address)
+    @ r7  = FRM, relocated (absolute address)
+    @ r8  = code
+    @ r9  = code_end = code + code_size
+    @ r10 = amx base (passed in r0)
     @ r14 = opcode list address (for token threading)
     @ r11 and r12 are scratch; r11 is used in the macro to fetch the next opcode
     @ and r12 is also used there in the case that packed opcodes are supported
 
-    ldr r1, [r0, #4]
-    ldr r4, [r0, #8]
-    ldr r5, [r0, #12]
-    ldr r6, [r0, #16]
-    ldr r7, [r0, #20]
-    ldr r10, [r0, #24]
-    ldr r8, [r0, #28]
-    ldr r9, [r0, #32]
-    ldr r0, [r0, #0]            @ this one last
+    mov r10, r0                 ; r10 = AMX
+    mov r5, r2                  ; r5 = data section
+    ldr r0, [r10, #amxPRI]
+    ldr r1, [r10, #amxALT]
+    ldr r2, [r10, #amxSTP]
+    ldr r3, [r10, #amxHEA]
+    ldr r4, [r10, #amxCIP]
+    ldr r6, [r10, #amxSTK]
+    ldr r7, [r10, #amxFRM]
+    ldr r8, [r10, #amxCode]
+    ldr r9, [r10, #amxCodeSize]
 
     add r2, r2, r5              @ relocate STP (absolute address)
     add r3, r3, r5              @ relocate HEA

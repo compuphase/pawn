@@ -18,7 +18,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: amxargs.c 3649 2006-10-12 13:13:57Z thiadmer $
+ *  Version: $Id: amxargs.c 3821 2007-10-15 16:54:20Z thiadmer $
  */
 #if defined _UNICODE || defined __UNICODE__ || defined UNICODE
 # if !defined UNICODE   /* for Windows */
@@ -91,7 +91,7 @@ static const TCHAR *rawcmdline(void)
 {
   #if defined __WIN32__ || defined _WIN32 || defined WIN32
   #elif defined _Windows || defined __MSDOS__
-    static char cmdbuffer[128];
+    static char cmdbuffer[128];   /* DOS & Windows 3.1 are never in Unicode mode */
   #elif defined LINUX
     static char cmdbuffer[1024];  /* some arbitrary maximum */
   #endif
@@ -132,7 +132,6 @@ static const TCHAR *rawcmdline(void)
         fread(cmdbuffer, 1, fsize, fp);
         fclose(fp);
         cmdbuffer[fsize] = '\0';        /* terminate with double-zero */
-        // ??? convert to Unicode
         /* convert '\0' characters to spaces, for uniform parsing */
         for (ptr = cmdbuffer; *ptr != ' '; ptr = strchr(ptr, '\0') + 1)
           *ptr = ' ';

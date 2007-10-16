@@ -1,6 +1,6 @@
 /* String functions
  *
- * (c) Copyright 2005, ITB CompuPhase
+ * (c) Copyright 2005-2007, ITB CompuPhase
  * This file is provided as is (no warranties).
  */
 #if defined _string_included
@@ -12,6 +12,7 @@
 native strlen(const string[]);
 native strpack(dest[], const source[], maxlength=sizeof dest);
 native strunpack(dest[], const source[], maxlength=sizeof dest);
+native strcopy(dest[], const source[], maxlength=sizeof dest);
 native strcat(dest[], const source[], maxlength=sizeof dest);
 
 native strmid(dest[], const source[], start=0, end=cellmax, maxlength=sizeof dest);

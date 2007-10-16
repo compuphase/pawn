@@ -56,6 +56,8 @@
 ;
 ;History (list of changes)
 ;-------------------------
+; 26 august 2007  by Thiadmer Riemersma
+;       Minor clean-up; removed unneeded parameters
 ; 31 may 2007  by Thiadmer Riemersma
 ;       Added packed opcodes
 ; 30 april 2007  by Thiadmer Riemersma (TR)
@@ -206,7 +208,7 @@ Start_CODE
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;                                                               ;
-;cell   asm_exec( cell *regs, cell *retval, cell stp, cell hea );
+;cell   asm_exec( AMX *amx, cell *retval, char *data )          ;
 ;                                                               ;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -219,7 +221,6 @@ _amx_exec_asm: ;PROC
         mov     eax,[esp+08h]
         mov     edx,[esp+0ch]
         mov     ebx,[esp+10h]
-        mov     ecx,[esp+14h]
 
         push    edi
         push    esi
@@ -227,13 +228,13 @@ _amx_exec_asm: ;PROC
 
         sub     esp,4*3         ; place for PRI, ALT & STK at SYSREQs
 
-        push    DWORD [eax+20h] ; store code size
-        push    DWORD [eax+1ch] ; store pointer to code segment
-        push    DWORD [eax+18h] ; store pointer to AMX
-        push    edx             ; store address of retval
-        push    ebx             ; store STP
-        push    ecx             ; store HEA
-        push    DWORD [eax+14h] ; store FRM
+        push    DWORD [eax+_codesize]   ; store code size
+        push    DWORD [eax+_codeseg]    ; store pointer to code segment
+        push    eax                     ; store pointer to AMX
+        push    edx                     ; store address of retval
+        push    DWORD [eax+_stp]        ; store STP
+        push    DWORD [eax+_hea]        ; store HEA
+        push    DWORD [eax+_frm]        ; store FRM
 
 %define stk     [esp+36]        ; define some aliases to registers
 %define alt     [esp+32]        ;   that are stored on the stack
@@ -241,7 +242,7 @@ _amx_exec_asm: ;PROC
 %define codesiz [esp+24]
 %define code    [esp+20]
 %define amx     [esp+16]
-%define retval  [esp+12]
+%define retval  [esp+ 12]
 %define stp     [esp+8]
 %define hea     [esp+4]
 %define frm     [esp]           ; FRM is NOT stored in ebp, rather FRM+DAT
@@ -250,12 +251,12 @@ _amx_exec_asm: ;PROC
         mov     edx,code        ; change the code size to an...
         add     codesiz,edx     ; ..."end of code" address
 
-        mov     edx,[eax+04h]   ; get ALT
-        mov     esi,[eax+08h]   ; get CIP
-        mov     edi,[eax+0ch]   ; get pointer to data segment
-        mov     ecx,[eax+10h]   ; get STK
-        mov     ebx,[eax+14h]   ; get FRM
-        mov     eax,[eax]       ; get PRI
+        mov     edi,ebx         ; get pointer to data segment
+        mov     edx,[eax+_alt]  ; get ALT
+        mov     esi,[eax+_cip]  ; get CIP
+        mov     ecx,[eax+_stk]  ; get STK
+        mov     ebx,[eax+_frm]  ; get FRM
+        mov     eax,[eax+_pri]  ; get PRI
         add     ebx,edi         ; relocate frame
 
         NEXT                    ; start interpreting
@@ -679,6 +680,62 @@ OP_CALL_PRI:
         mov     esi,eax
         add     esi,code        ; cip = PRI + code
         _PUSH   ebp
+        NEXT
+
+
+OP_ICALL:
+        mov     alt,edx         ; save ALT
+        lea     edx,[esi+8]     ; EDX=address of next instruction
+        sub     edx,code        ; EDX=relative address (to start of code segment)
+        mov     ebp,amx
+        shl     edx,16
+        or      edx,[ebp+_ovl_index] ; EDX=(relative address << 16) | ovl_index
+        _PUSH   edx
+        mov     edx,[esi+4]     ; EAX=ovl_index
+        mov     [ebp+_ovl_index],edx
+        mov     eax,ebp         ; 1st parm: amx
+%ifdef CDECL_STDCALL
+        _SAVEREGS
+        push    edx             ; EDX (2nd parm)=overlay index
+        push    eax
+%endif
+        call    [ebp+_overlay]  ; call overlay function
+        _DROPARGS 8             ; remove arguments from stack
+        _RESTOREREGS
+        mov     edx,alt         ; restore ALT
+        mov     esi,[ebp+_codeseg] ; get new code base
+        mov     code,esi        ; save new code base in local variable
+        NEXT
+
+
+OP_IRETN:
+        mov     pri,eax         ; save PRI
+        mov     alt,edx         ; save ALT
+        _POP    ebx             ; restore FRM
+        _POP    esi             ; restore code offset + overlay index
+        mov     frm,ebx
+        add     ebx,edi
+        mov     edx,esi
+        mov     ebp,amx
+        and     edx,0ffffh      ; EDX=overlay index (popped from stack)
+        mov     [ebp+_ovl_index],edx ; store overlay index returning to
+        shr     esi,16          ; ESI=offset into overlay
+        mov     eax,[edi+ecx]   ; EAX=dataseg[stk]
+        lea     ecx,[ecx+eax+4] ; STK=STK+dataseg[stk]+4
+        mov     eax,ebp         ; 1st parm: amx
+%ifdef CDECL_STDCALL
+        _SAVEREGS
+        push    edx             ; EDX (2nd parm)=overlay index
+        push    eax
+%endif
+        call    [ebp+_overlay]  ; call overlay function
+        _DROPARGS 8             ; remove arguments from stack
+        _RESTOREREGS
+        mov     eax,[ebp+_codeseg] ; get new code base
+        mov     code,eax        ; save new code base in local variable        
+        add     esi,eax         ; ESI=code base + offset
+        mov     eax,pri         ; restore PRI
+        mov     edx,alt         ; restore ALT
         NEXT
 
 
@@ -1479,7 +1536,41 @@ OP_SWITCH:
         NEXT
 
 
+OP_ISWITCH:
+        push    ecx
+        mov     ebp,esi         ; EBP = CIP
+        add     ebp,[esi+4]     ; EBP = offset of the icasetable
+        add     ebp,4           ; skip the "OP_ICASETBL" opcode
+        mov     ecx,[ebp]       ; ECX = number of records
+        mov     edx,[ebp+4]     ; preset EDX to "none-matched" case
+    op_iswitch_loop:
+        or      ecx, ecx        ; number of records == 0?
+        jz      short op_iswitch_end ; yes, no more records, exit loop
+        add     ebp,8           ; skip previous record
+        dec     ecx             ; already decrement cases to do
+        cmp     eax,[ebp]       ; PRI == icase label?
+        jne     short op_iswitch_loop ; no, continue loop
+        mov     edx,[ebp+4]     ; yes, get jump address and exit loop
+    op_iswitch_end:
+        pop     ecx
+        ;load overlay
+        mov     eax,amx
+        mov     [eax+_ovl_index],edx
+%ifdef CDECL_STDCALL
+        _SAVEREGS
+        push    edx             ; EDX (2nd parm)=overlay index
+        push    eax             ; EAX (1st parm)=amx structure
+%endif
+        call    [eax+_overlay]  ; call overlay function
+        _DROPARGS 8             ; remove arguments from stack
+        _RESTOREREGS
+        mov     esi,[eax+_codeseg] ; get new code base
+        mov     code,esi        ; save new code base in local variable
+        NEXT
+
+
 OP_CASETBL:
+OP_ICASETBL:
         jmp     OP_INVALID
 
 
@@ -1967,6 +2058,14 @@ OP_SREF_P_S_PRI:
         add     esi,4
         mov     ebp,[ebx+ebp]
         mov     [edi+ebp],eax
+        NEXT
+
+
+OP_SREF_P_S_ALT:
+        GETPARAM_P ebp
+        add     esi,4
+        mov     ebp,[ebx+ebp]
+        mov     [edi+ebp],edx
         NEXT
 
 
@@ -2470,8 +2569,13 @@ _amx_opcodelist DD OP_INVALID
         DD      OP_LOAD_S_BOTH
         DD      OP_CONST
         DD      OP_CONST_S
+        ; overlay opcodes
+        DD      OP_ICALL 
+        DD      OP_IRETN
+        DD      OP_ISWITCH
+        DD      OP_ICASETBL
         ; packed opcodes
-IFNDEF AMX_NO_PACKED_OPC
+%ifndef AMX_NO_PACKED_OPC
         DD      OP_LOAD_P_PRI
         DD      OP_LOAD_P_ALT
         DD      OP_LOAD_P_S_PRI
@@ -2523,7 +2627,7 @@ IFNDEF AMX_NO_PACKED_OPC
         DD      OP_HALT_P
         DD      OP_BOUNDS_P
         DD      OP_PUSH_P_ADR
-ENDIF  ; AMX_NO_PACKED_OPC
+%endif  ; AMX_NO_PACKED_OPC
         ; "patch" opcodes
         DD      OP_SYSREQ_D
         DD      OP_SYSREQ_ND

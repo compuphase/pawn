@@ -20,7 +20,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: scvars.c 3655 2006-10-23 20:17:52Z thiadmer $
+ *  Version: $Id: scvars.c 3821 2007-10-15 16:54:20Z thiadmer $
  */
 #include <stdio.h>
 #include <stdlib.h>     /* for _MAX_PATH */
@@ -91,6 +91,7 @@ SC_VDEFINE int sc_curstates=0;     /* ID of the current state list */
 SC_VDEFINE int pc_optimize=sOPTIMIZE_NOMACRO; /* (peephole) optimization level */
 SC_VDEFINE int pc_memflags=0;      /* special flags for the stack/heap usage */
 SC_VDEFINE int pc_overlays=0;      /* generate overlay table + instructions? */
+SC_VDEFINE int pc_ovl0size[ovlFIRST][2];/* offset & size (in bytes) of the first (special) overlays */
 
 SC_VDEFINE constvalue sc_automaton_tab = { NULL, "", 0, 0}; /* automaton table */
 SC_VDEFINE constvalue sc_state_tab = { NULL, "", 0, 0};   /* state table */

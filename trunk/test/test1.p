@@ -462,6 +462,15 @@ main()
         new big[1000][1000][1000]
         big[0][0][0] = 10
     #endif
+    
+    #if defined CHAINED_ASSIGN
+        new bool: chglist = false
+        new bool: to_parent = false
+        if (!chglist)
+            chglist = to_parent = true
+        assert chglist
+        assert to_parent
+    #endif
     }
 
 #if defined LOCAL_SHADOWS

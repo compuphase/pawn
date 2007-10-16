@@ -25,7 +25,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: sc.h 3788 2007-07-09 08:49:11Z thiadmer $
+ *  Version: $Id: sc.h 3821 2007-10-15 16:54:20Z thiadmer $
  */
 #ifndef SC_H_INCLUDED
 #define SC_H_INCLUDED
@@ -94,10 +94,18 @@ typedef struct s_constvalue {
   struct s_constvalue *next;
   char name[sNAMEMAX+1];
   cell value;
-  int index;            /* index level, for constants referring to array sizes/tags
-                         * automaton id. for states and automatons
+  int index;            /* index level for constants referring to array sizes/tags;
+                         * automaton id. for states and automatons;
                          * tag for enumeration lists */
 } constvalue;
+
+typedef struct s_statelist {
+  struct s_statelist *next;
+  int label;            /* code label (for functions), or overlay index */
+  cell addr;            /* code start address (for functions) */
+  cell endaddr;         /* code end address (for functions) */
+  int id;               /* state-list id */
+} statelist;
 
 /*  Symbol table format
  *
@@ -116,10 +124,11 @@ typedef struct s_symbol {
   char name[sNAMEMAX+1];
   uint32_t hash;        /* value derived from name, for quicker searching */
 
-  cell addr;            /* address or offset (or value for constant, index for native function) */
+  cell addr;            /* address or offset (or value for constant) */
   cell codeaddr;        /* address (in the code segment) where the symbol declaration
                          * starts (for a function, the start is in "addr" and the
-                         * end is in "code_addr") */
+                         * end is in "codeaddr") */
+  int index;            /* overlay index number or index for native function */
 
   char vclass;          /* sLOCAL if "addr" refers to a local symbol */
   char ident;           /* see below for possible values */
@@ -147,10 +156,9 @@ typedef struct s_symbol {
     } array;
   } dim;                /* for 'dimension', both functions and arrays */
 
-  constvalue *states;   /* list of state function/state variable ids + addresses */
+  statelist *states;    /* list of state function/state variable ids + addresses */
   int fnumber;          /* static global variables: file number in which the declaration is visible */
   int lnumber;          /* line number (in the current source file) for the declaration */
-  int ovl_index;        /* overlay index number */
 
   struct s_symbol **refer;  /* referrer list, functions that "use" this symbol */
   int numrefers;        /* number of entries in the referrer list */
@@ -271,6 +279,13 @@ enum {
   statFIRST,    /* first pass */
   statWRITE,    /* writing output */
   statSKIP,     /* skipping output */
+};
+
+enum {
+  ovlEXIT,      /* fixed, predefined overlay index for the normal exit point */
+  ovlSTATEEXIT, /* fixed, predefined overlay index for the address for invalid state functions */
+  /* ----- */
+  ovlFIRST,     /* overlay index of the first overlay function */
 };
 
 typedef struct s_stringlist {
@@ -530,7 +545,7 @@ long pc_lengthbin(void *handle); /* return the length of the file */
 SC_FUNC void set_extension(char *filename,char *extension,int force);
 SC_FUNC symbol *fetchfunc(char *name,int tag);
 SC_FUNC char *operator_symname(char *symname,char *opername,int tag1,int tag2,int numtags,int resulttag);
-SC_FUNC char *funcdisplayname(char *dest,char *funcname);
+SC_FUNC char *funcdisplayname(char *dest,const char *funcname);
 SC_FUNC int constexpr(cell *val,int *tag,symbol **symptr);
 SC_FUNC constvalue *append_constval(constvalue *table,const char *name,cell val,int index);
 SC_FUNC constvalue *find_constval(constvalue *table,char *name,int index);
@@ -554,6 +569,7 @@ SC_FUNC void lexinit(void);
 SC_FUNC int lex(cell *lexvalue,char **lexsym);
 SC_FUNC void lexpush(void);
 SC_FUNC void lexclr(int clreol);
+SC_FUNC int lexpeek(void);
 SC_FUNC int matchtoken(int token);
 SC_FUNC int tokeninfo(cell *val,char **str);
 SC_FUNC int needtoken(int token);
@@ -586,8 +602,9 @@ SC_FUNC int sc_getstateid(constvalue **automaton,constvalue **state,char *staten
 SC_FUNC cell array_totalsize(symbol *sym);
 
 /* function prototypes in SC4.C */
-SC_FUNC void writeleader(symbol *root);
+SC_FUNC int writeleader(symbol *root);
 SC_FUNC void writetrailer(void);
+SC_FUNC void writestatetables(symbol *root,int lbl_nostate);
 SC_FUNC void begcseg(void);
 SC_FUNC void begdseg(void);
 SC_FUNC void setline(int chkbounds);
@@ -595,7 +612,7 @@ SC_FUNC void setfiledirect(char *name);
 SC_FUNC void setlinedirect(int line);
 SC_FUNC void setlabel(int index);
 SC_FUNC void markexpr(optmark type,const char *name,cell offset);
-SC_FUNC void startfunc(char *fname);
+SC_FUNC void startfunc(const char *fname,int index);
 SC_FUNC void endfunc(void);
 SC_FUNC void alignframe(int numbytes);
 SC_FUNC void rvalue(value *lval);
@@ -612,8 +629,8 @@ SC_FUNC void pushreg(regid reg);
 SC_FUNC void pushval(cell val);
 SC_FUNC void popreg(regid reg);
 SC_FUNC void swap1(void);
-SC_FUNC void ffswitch(int label);
-SC_FUNC void ffcase(cell value,char *labelname,int newtable);
+SC_FUNC void ffswitch(int label,int iswitch);
+SC_FUNC void ffcase(cell value,int label,int newtable,int icase);
 SC_FUNC void ffcall(symbol *sym,const char *label,int numargs);
 SC_FUNC void ffret(int remparams);
 SC_FUNC void ffabort(int reason);
@@ -678,6 +695,7 @@ SC_FUNC int error(int number,...);
 SC_FUNC void errorset(int code,int line);
 
 /* function prototypes in SC6.C */
+SC_FUNC ucell getparamvalue(const char *s,const char **n);
 SC_FUNC int assemble(FILE *fout,FILE *fin);
 
 /* function prototypes in SC7.C */
@@ -765,6 +783,8 @@ SC_FUNC int state_inlist(int listid,int state);
 SC_FUNC int state_listitem(int listid,int index);
 SC_FUNC void state_conflict(symbol *root);
 SC_FUNC int state_conflict_id(int listid1,int listid2);
+SC_FUNC statelist *append_statelist(statelist *root,int id,int label,cell address);
+SC_FUNC void delete_statelisttable(statelist *root);
 
 /* external variables (defined in scvars.c) */
 #if !defined SC_SKIP_VDECL
@@ -828,6 +848,7 @@ SC_VDECL int sc_curstates;    /* ID of the current state list */
 SC_VDECL int pc_optimize;     /* (peephole) optimization level */
 SC_VDECL int pc_memflags;     /* special flags for the stack/heap usage */
 SC_VDECL int pc_overlays;     /* generate overlay table + instructions? (abstract machine overay size limit) */
+SC_VDECL int pc_ovl0size[][2];/* size (in bytes) of the first (special) overlays */
 
 SC_VDECL constvalue sc_automaton_tab; /* automaton table */
 SC_VDECL constvalue sc_state_tab;     /* state table */

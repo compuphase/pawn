@@ -18,7 +18,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: sc4.c 3684 2006-12-10 16:16:47Z thiadmer $
+ *  Version: $Id: sc4.c 3821 2007-10-15 16:54:20Z thiadmer $
  */
 #include <assert.h>
 #include <ctype.h>
@@ -38,137 +38,59 @@ static int fcurseg;     /* the file number (fcurrent) for the active segment */
  * Today, the compiler simply generates a HALT instruction at address 0. So
  * a subroutine can savely return to 0, and then encounter a HALT.
  */
-SC_FUNC void writeleader(symbol *root)
+SC_FUNC int writeleader(symbol *root)
 {
-  int lbl_nostate,lbl_table;
-  int statecount;
+  int lbl_nostate;
   symbol *sym;
-  constvalue *fsa, *state, *stlist;
-  int fsa_id,listid;
-  char lbl_default[sNAMEMAX+1];
 
   assert(code_idx==0);
 
   begcseg();
+  pc_ovl0size[ovlEXIT][0]=code_idx;     /* store offset to the special overlay */
   stgwrite(";program exit point\n");
-  stgwrite("\thalt 0\n\n"); //??? halt.p
-  code_idx+=opcodes(1)+opargs(1);       /* calculate code length */
+#if !defined AMX_NO_PACKED_OPC
+  if (pc_optimize>sOPTIMIZE_NOMACRO) {
+    stgwrite("\thalt.p 0\n\n");
+    code_idx+=opcodes(1);
+  } else {
+#endif
+    stgwrite("\thalt 0\n\n");
+    code_idx+=opcodes(1)+opargs(1);     /* calculate code length */
+#if !defined AMX_NO_PACKED_OPC
+  } /* if */
+#endif
+  pc_ovl0size[ovlEXIT][1]=code_idx-pc_ovl0size[ovlEXIT][0]; /* store overlay code size */
 
   /* check whether there are any functions that have states */
   for (sym=root->next; sym!=NULL; sym=sym->next)
     if (sym->ident==iFUNCTN && (sym->usage & (uPUBLIC | uREAD))!=0 && sym->states!=NULL)
       break;
   if (sym==NULL)
-    return;             /* no function has states, nothing to do next */
+    return 0;           /* no function has states, nothing to do next */
 
   /* generate an error function that is called for an undefined state */
-  stgwrite("\n;exit point for functions called from the wrong state\n");
+  pc_ovl0size[ovlSTATEEXIT][0]=code_idx;
+  stgwrite(";exit point for functions called from the wrong state\n");
   lbl_nostate=getlabel();
   setlabel(lbl_nostate);
-  stgwrite("\thalt ");  //??? halt.p
-  outval(AMX_ERR_INVSTATE,TRUE,TRUE);
-  code_idx+=opcodes(1)+opargs(1);       /* calculate code length */
+#if !defined AMX_NO_PACKED_OPC
+  if (pc_optimize>sOPTIMIZE_NOMACRO) {
+    assert(AMX_ERR_INVSTATE<(1<<sizeof(cell)*4));
+    stgwrite("\thalt.p ");
+    outval(AMX_ERR_INVSTATE,TRUE,TRUE);
+    code_idx+=opcodes(1);
+  } else {
+#endif
+    stgwrite("\thalt ");
+    outval(AMX_ERR_INVSTATE,TRUE,TRUE);
+    code_idx+=opcodes(1)+opargs(1);     /* calculate code length */
+#if !defined AMX_NO_PACKED_OPC
+  } /* if */
+#endif
+  stgwrite("\n");
+  pc_ovl0size[ovlSTATEEXIT][1]=code_idx-pc_ovl0size[ovlSTATEEXIT][0];
 
-  /* write the "state-selectors" table with all automatons (update the
-   * automatons structure too, as we are now assigning the address to
-   * each automaton state-selector variable)
-   */
-  assert(glb_declared==0);
-  begdseg();
-  for (fsa=sc_automaton_tab.next; fsa!=NULL; fsa=fsa->next) {
-    defstorage();
-    stgwrite("0\t; automaton ");
-    if (strlen(fsa->name)==0)
-      stgwrite("(anonymous)");
-    else
-      stgwrite(fsa->name);
-    stgwrite("\n");
-    fsa->value=glb_declared*sizeof(cell);
-    glb_declared++;
-  } /* for */
-
-  /* write stubs and jump tables for all state functions */
-  begcseg();
-  for (sym=root->next; sym!=NULL; sym=sym->next) {
-    if (sym->ident==iFUNCTN && (sym->usage & (uPUBLIC | uREAD))!=0 && sym->states!=NULL) {
-      stlist=sym->states->next;
-      assert(stlist!=NULL);     /* there should be at least one state item */
-      listid=stlist->index;
-      assert(listid==-1 || listid>0);
-      if (listid==-1 && stlist->next!=NULL) {
-        /* first index is the "fallback", take the next one (if available) */
-        stlist=stlist->next;
-        listid=stlist->index;
-      } /* if */
-      if (listid==-1) {
-        /* first index is the fallback, there is no second... */
-        strcpy(stlist->name,"0"); /* insert dummy label number */
-        /* this is an error, but we postpone adding the error message until the
-         * function definition
-         */
-        continue;
-      } /* if */
-      /* generate label numbers for all statelist ids */
-      for (stlist=sym->states->next; stlist!=NULL; stlist=stlist->next) {
-        assert(strlen(stlist->name)==0);
-        strcpy(stlist->name,itoh(getlabel()));
-      } /* for */
-      if (strcmp(sym->name,uENTRYFUNC)==0)
-        continue;               /* do not generate stubs for this special function */
-      sym->addr=code_idx;       /* fix the function address now */
-      /* get automaton id for this function */
-      assert(listid>0);
-      fsa_id=state_getfsa(listid);
-      assert(fsa_id>=0);        /* automaton 0 exists */
-      fsa=automaton_findid(fsa_id);
-      /* count the number of states actually used; at the sane time, check
-       * whether there is a default state function
-       */
-      statecount=0;
-      strcpy(lbl_default,itoh(lbl_nostate));
-      for (stlist=sym->states->next; stlist!=NULL; stlist=stlist->next) {
-        if (stlist->index==-1) {
-          assert(strlen(stlist->name)<sizeof lbl_default);
-          strcpy(lbl_default,stlist->name);
-        } else {
-          statecount+=state_count(stlist->index);
-        } /* if */
-      } /* for */
-      /* generate a stub entry for the functions */
-      stgwrite("\tload.pri ");
-      outval(fsa->value,TRUE,FALSE);
-      stgwrite("\t; ");
-      stgwrite(sym->name);
-      stgwrite("\n");
-      code_idx+=opcodes(1)+opargs(1);   /* calculate code length */
-      lbl_table=getlabel();
-      ffswitch(lbl_table);
-      /* generate the jump table */
-      setlabel(lbl_table);
-      ffcase(statecount,lbl_default,TRUE);
-      for (state=sc_state_tab.next; state!=NULL; state=state->next) {
-        if (state->index==fsa_id) {
-          /* find the label for this list id */
-          for (stlist=sym->states->next; stlist!=NULL; stlist=stlist->next) {
-            if (stlist->index!=-1 && state_inlist(stlist->index,(int)state->value)) {
-              ffcase(state->value,stlist->name,FALSE);
-              //??? when overlays are used, the jump-label for the case statement
-              //    should be overlay indices; the jump table gets its own
-              //    overlay index, and the size of the jump table must therefore
-              //    be set
-              //??? alternatively (and prettier: all state functions and the
-              //    jump table should be combined in a single overlay;
-              //    this requires source code re-organization
-              break;
-            } /* if */
-          } /* for */
-          if (stlist==NULL && strtol(lbl_default,NULL,16)==lbl_nostate)
-            error(230,state->name,sym->name);  /* unimplemented state, no fallback */
-        } /* if (state belongs to automaton of function) */
-      } /* for (state) */
-      stgwrite("\n");
-    } /* if (is function, used & having states) */
-  } /* for (sym) */
+  return lbl_nostate;
 }
 
 /*  writetrailer
@@ -208,6 +130,147 @@ SC_FUNC void writetrailer(void)
   outval(pc_stksize - (pc_stksize % sc_dataalign),TRUE,TRUE);
 }
 
+/* writestatetables
+ * Creates and dumps the state tables. Every function with states has a state
+ * table that contains jump addresses (or overlay indices) the branch to the
+ * appropriate function using the (hidden) state variable as the criterion.
+ * Technically, this happens in a "switch" (or an "iswitch") instruction.
+ * This function also creates the hidden state variables (one for each
+ * automaton) in the data segment.
+ */
+SC_FUNC void writestatetables(symbol *root,int lbl_nostate)
+{
+  int lbl_default,lbl_table;
+  int statecount;
+  symbol *sym;
+  constvalue *fsa, *state;
+  statelist *stlist;
+  int fsa_id,listid;
+
+  assert(code_idx>0);   /* leader must already have been written */
+
+  /* check whether there are any functions that have states */
+  for (sym=root->next; sym!=NULL; sym=sym->next)
+    if (sym->ident==iFUNCTN && (sym->usage & (uPUBLIC | uREAD))!=0 && sym->states!=NULL)
+      break;
+  if (sym==NULL)
+    return;             /* no function has states, nothing to do next */
+
+  assert(pc_ovl0size[ovlSTATEEXIT][0]>0); /* state exit point must already have been created */
+  assert(pc_ovl0size[ovlSTATEEXIT][1]>0);
+
+  /* write the "state-selectors" table with all automatons (update the
+   * automatons structure too, as we are now assigning the address to
+   * each automaton state-selector variable)
+   */
+  assert(glb_declared==0);
+  begdseg();
+  for (fsa=sc_automaton_tab.next; fsa!=NULL; fsa=fsa->next) {
+    defstorage();
+    stgwrite("0\t; automaton ");
+    if (strlen(fsa->name)==0)
+      stgwrite("(anonymous)");
+    else
+      stgwrite(fsa->name);
+    stgwrite("\n");
+    fsa->value=glb_declared*sizeof(cell);
+    glb_declared++;
+  } /* for */
+
+  /* write stubs and jump tables for all state functions */
+  begcseg();
+  for (sym=root->next; sym!=NULL; sym=sym->next) {
+    if (sym->ident==iFUNCTN && (sym->usage & (uPUBLIC | uREAD))!=0 && sym->states!=NULL) {
+      stlist=sym->states->next;
+      assert(stlist!=NULL);     /* there should be at least one state item */
+      listid=stlist->id;
+      assert(listid==-1 || listid>0);
+      if (listid==-1 && stlist->next!=NULL) {
+        /* first index is the "fallback", take the next one (if available) */
+        stlist=stlist->next;
+        listid=stlist->id;
+      } /* if */
+      if (listid==-1) {
+        /* first index is the fallback, there is no second... */
+        stlist->label=0;        /* insert dummy label number */
+        /* this is an error, but we postpone adding the error message until the
+         * function definition
+         */
+        continue;
+      } /* if */
+      /* generate label numbers for all statelist ids */
+      for (stlist=sym->states->next; stlist!=NULL; stlist=stlist->next) {
+        if (pc_overlays>0) {
+          /* code overlay indices should already be set, see gen_ovlinfo() */
+          assert(stlist->label>0);
+        } else {
+          assert(stlist->label==0);
+          stlist->label=getlabel();
+        } /* if */
+      } /* for */
+      if (strcmp(sym->name,uENTRYFUNC)==0)
+        continue;               /* do not generate stubs for this special function */
+      sym->addr=code_idx;       /* fix the function address now */
+      /* get automaton id for this function */
+      assert(listid>0);
+      fsa_id=state_getfsa(listid);
+      assert(fsa_id>=0);        /* automaton 0 exists */
+      fsa=automaton_findid(fsa_id);
+      /* count the number of states actually used; at the same time, check
+       * whether there is a default (i.e. "fallback") state function
+       */
+      statecount=0;      
+      lbl_default= (pc_overlays>0) ? ovlSTATEEXIT : lbl_nostate;
+      for (stlist=sym->states->next; stlist!=NULL; stlist=stlist->next) {
+        if (stlist->id==-1) {
+          lbl_default=stlist->label;
+        } else {
+          statecount+=state_count(stlist->id);
+        } /* if */
+      } /* for */
+      /* generate a stub entry for the functions */
+      stgwrite("\tload.pri ");
+      outval(fsa->value,TRUE,FALSE);
+      stgwrite("\t; ");
+      stgwrite(sym->name);
+      if (pc_overlays>0) {
+        /* add overlay index */
+        stgwrite("/");
+        outval(sym->index,FALSE,FALSE);
+      } /* if */
+      stgwrite("\n");
+      code_idx+=opcodes(1)+opargs(1);   /* calculate code length */
+      lbl_table=getlabel();
+      ffswitch(lbl_table,(pc_overlays>0));
+      /* generate the jump table */
+      setlabel(lbl_table);
+      ffcase(statecount,lbl_default,TRUE,(pc_overlays>0));
+      for (state=sc_state_tab.next; state!=NULL; state=state->next) {
+        if (state->index==fsa_id) {
+          /* find the label for this list id */
+          for (stlist=sym->states->next; stlist!=NULL; stlist=stlist->next) {
+            if (stlist->id!=-1 && state_inlist(stlist->id,(int)state->value)) {
+              /* when overlays are used, the jump-label for the case statement
+               * are overlay indices instead of code labels
+               */
+              ffcase(state->value,stlist->label,FALSE,(pc_overlays>0));
+              break;
+            } /* if */
+          } /* for */
+          if (stlist==NULL && lbl_default==lbl_nostate)
+            error(230,state->name,sym->name);  /* unimplemented state, no fallback */
+        } /* if (state belongs to automaton of function) */
+      } /* for (state) */
+      stgwrite("\n");
+      /* the jump table gets its own overlay index, and the size of the jump
+       * table must therefore be known (i.e. update the codeaddr field of the
+       * function with the address where the jump table ends)
+       */
+      sym->codeaddr=code_idx;
+    } /* if (is function, used & having states) */
+  } /* for (sym) */
+}
+
 /*
  *  Start (or restart) the CODE segment.
  *
@@ -224,7 +287,7 @@ SC_FUNC void begcseg(void)
   if (sc_status!=statSKIP && (curseg!=sIN_CSEG || fcurrent!=fcurseg)) {
     stgwrite("\n");
     stgwrite("CODE ");
-    outval(fcurrent,TRUE,FALSE);
+    outval(fcurrent,FALSE,FALSE);
     stgwrite("\t; ");
     outval(code_idx,TRUE,TRUE);
     curseg=sIN_CSEG;
@@ -242,7 +305,7 @@ SC_FUNC void begdseg(void)
   if (sc_status!=statSKIP && (curseg!=sIN_DSEG || fcurrent!=fcurseg)) {
     stgwrite("\n");
     stgwrite("DATA ");
-    outval(fcurrent,TRUE,FALSE);
+    outval(fcurrent,FALSE,FALSE);
     stgwrite("\t; ");
     outval((glb_declared-litidx)*sizeof(cell),TRUE,TRUE);
     curseg=sIN_DSEG;
@@ -336,7 +399,7 @@ SC_FUNC void markexpr(optmark type,const char *name,cell offset)
  *
  *  Global references: funcstatus  (referred to only)
  */
-SC_FUNC void startfunc(char *fname)
+SC_FUNC void startfunc(const char *fname,int index)
 {
   stgwrite("\tproc");
   if (sc_asmfile) {
@@ -344,6 +407,11 @@ SC_FUNC void startfunc(char *fname)
     funcdisplayname(symname,fname);
     stgwrite("\t; ");
     stgwrite(symname);
+    if (pc_overlays>0) {
+      /* add overlay index */
+      stgwrite("/");
+      outval(index,FALSE,FALSE);
+    } /* if */
   } /* if */
   stgwrite("\n");
   code_idx+=opcodes(1);
@@ -400,7 +468,7 @@ SC_FUNC void rvalue(value *lval)
     code_idx+=opcodes(1);
   } else if (lval->ident==iARRAYCHAR) {
     /* indirect fetch of a character from a pack, address already in PRI */
-    stgwrite("\tlodb.i ");  //??? lodb.p.i
+    stgwrite("\tlodb.i ");
     outval(sCHARBITS/8,TRUE,TRUE);   /* read one or two bytes */
     code_idx+=opcodes(1)+opargs(1);
   } else if (lval->ident==iREFERENCE) {
@@ -408,9 +476,9 @@ SC_FUNC void rvalue(value *lval)
     assert(sym!=NULL);
     assert(sym->vclass==sLOCAL);/* global references don't exist in Pawn */
     if (sym->vclass==sLOCAL)
-      stgwrite("\tlref.s.pri ");  //??? lref.p.s.pri
+      stgwrite("\tlref.s.pri ");
     else
-      stgwrite("\tlref.pri ");    //??? lref.p.pri
+      stgwrite("\tlref.pri ");
     outval(sym->addr,TRUE,TRUE);
     markusage(sym,uREAD);
     code_idx+=opcodes(1)+opargs(1);
@@ -418,9 +486,9 @@ SC_FUNC void rvalue(value *lval)
     /* direct or stack relative fetch */
     assert(sym!=NULL);
     if (sym->vclass==sLOCAL)
-      stgwrite("\tload.s.pri ");  //??? load.s.pri
+      stgwrite("\tload.s.pri ");
     else
-      stgwrite("\tload.pri ");    //??? load.pri
+      stgwrite("\tload.pri ");
     outval(sym->addr,TRUE,TRUE);
     markusage(sym,uREAD);
     code_idx+=opcodes(1)+opargs(1);
@@ -453,15 +521,15 @@ SC_FUNC void address(symbol *sym,regid reg)
     switch (reg) {
     case sPRI:
       if (sym->vclass==sLOCAL)
-        stgwrite("\taddr.pri ");  //??? use addr.p.pri if possible
+        stgwrite("\taddr.pri ");
       else
-        stgwrite("\tconst.pri "); //??? use const.p.pri if possible
+        stgwrite("\tconst.pri ");
       break;
     case sALT:
       if (sym->vclass==sLOCAL)
-        stgwrite("\taddr.alt ");  //??? use addr.p.alt if possible
+        stgwrite("\taddr.alt ");
       else
-        stgwrite("\tconst.alt "); //??? use const.p.alt if possible
+        stgwrite("\tconst.alt ");
       break;
     } /* switch */
   } /* if */
@@ -560,9 +628,9 @@ SC_FUNC void copyarray(symbol *sym,cell size)
   } else {
     /* a local or global array */
     if (sym->vclass==sLOCAL)
-      stgwrite("\taddr.alt ");  //??? use addr.p.alt if possible
+      stgwrite("\taddr.alt ");
     else
-      stgwrite("\tconst.alt "); //??? use const.p.alt if possible
+      stgwrite("\tconst.alt ");
   } /* if */
   outval(sym->addr,TRUE,TRUE);
   markusage(sym,uWRITTEN);
@@ -582,13 +650,13 @@ SC_FUNC void fillarray(symbol *sym,cell size,cell value)
   if (sym->ident==iREFARRAY) {
     /* reference to an array; currently this is always a local variable */
     assert(sym->vclass==sLOCAL);        /* symbol must be stack relative */
-    stgwrite("\tload.s.alt ");  //??? use load.p.s.alt if possible
+    stgwrite("\tload.s.alt ");
   } else {
     /* a local or global array */
     if (sym->vclass==sLOCAL)
-      stgwrite("\taddr.alt ");  //??? use addr.p.alt if possible
+      stgwrite("\taddr.alt ");
     else
-      stgwrite("\tconst.alt "); //??? use const.p.alt if possible
+      stgwrite("\tconst.alt ");
   } /* if */
   outval(sym->addr,TRUE,TRUE);
   markusage(sym,uWRITTEN);
@@ -612,7 +680,7 @@ SC_FUNC void ldconst(cell val,regid reg)
       stgwrite("\tzero.pri\n");
       code_idx+=opcodes(1);
     } else {
-      stgwrite("\tconst.pri "); //??? use const.p.pri if possible
+      stgwrite("\tconst.pri ");
       outval(val,TRUE,TRUE);
       code_idx+=opcodes(1)+opargs(1);
     } /* if */
@@ -622,7 +690,7 @@ SC_FUNC void ldconst(cell val,regid reg)
       stgwrite("\tzero.alt\n");
       code_idx+=opcodes(1);
     } else {
-      stgwrite("\tconst.alt "); //??? use const.p.alt if possible
+      stgwrite("\tconst.alt ");
       outval(val,TRUE,TRUE);
       code_idx+=opcodes(1)+opargs(1);
     } /* if */
@@ -696,25 +764,35 @@ SC_FUNC void swap1(void)
  * the label to branch to when none of the values in the case table match.
  * The case table is sorted on the comparison value. This allows more advanced
  * abstract machines to sift the case table with a binary search.
+ * The iswitch statement uses an icase table. The parameter of an iswitch is
+ * still a (relative) code address.
  */
-SC_FUNC void ffswitch(int label)
+SC_FUNC void ffswitch(int label,int iswitch)
 {
-  stgwrite("\tswitch ");
+  if (iswitch)
+    stgwrite("\tiswitch ");
+  else
+    stgwrite("\tswitch ");
   outval(label,TRUE,TRUE);      /* the label is the address of the case table */
   code_idx+=opcodes(1)+opargs(1);
 }
 
-SC_FUNC void ffcase(cell value,char *labelname,int newtable)
+SC_FUNC void ffcase(cell value,int label,int newtable,int icase)
 {
   if (newtable) {
-    stgwrite("\tcasetbl\n");
+    if (icase)
+      stgwrite("\ticasetbl\n");
+    else
+      stgwrite("\tcasetbl\n");
     code_idx+=opcodes(1);
   } /* if */
-  stgwrite("\tcase ");
+  if (icase)
+    stgwrite("\ticase ");
+  else
+    stgwrite("\tcase ");
   outval(value,TRUE,FALSE);
   stgwrite(" ");
-  stgwrite(labelname);
-  stgwrite("\n");
+  outval(label,TRUE,TRUE);
   code_idx+=opcodes(0)+opargs(2);
 }
 
@@ -732,10 +810,10 @@ SC_FUNC void ffcall(symbol *sym,const char *label,int numargs)
   if ((sym->usage & uNATIVE)!=0) {
     /* reserve a SYSREQ id if called for the first time */
     assert(label==NULL);
-    if (sc_status==statWRITE && (sym->usage & uREAD)==0 && sym->addr>=0)
-      sym->addr=ntv_funcid++;
+    if (sc_status==statWRITE && (sym->usage & uREAD)==0 && sym->index>=0)
+      sym->index=ntv_funcid++;
     stgwrite("\tsysreq.c ");
-    outval(sym->addr,TRUE,FALSE);
+    outval(sym->index,TRUE,FALSE);
     if (sc_asmfile) {
       stgwrite("\t; ");
       stgwrite(symname);
@@ -746,20 +824,25 @@ SC_FUNC void ffcall(symbol *sym,const char *label,int numargs)
     code_idx+=opcodes(2)+opargs(2);
   } else {
     /* normal function */
-    if (pc_overlays)
+    if (pc_overlays>0)
       stgwrite("\ticall ");
     else
       stgwrite("\tcall ");
-    if (label!=NULL) {
-      stgwrite("l.");
-      stgwrite(label);
-    } else if (pc_overlays) {
-      outval(sym->ovl_index,TRUE,FALSE);
+    if (pc_overlays>0) {
+      if (label!=NULL)
+        stgwrite(label);
+      else
+        outval(sym->index,TRUE,FALSE);
     } else {
-      stgwrite(sym->name);
+      if (label!=NULL) {
+        stgwrite("l.");
+        stgwrite(label);
+      } else {
+        stgwrite(sym->name);
+      } /* if */
     } /* if */
     if (sc_asmfile
-        && (label!=NULL || pc_overlays
+        && (label!=NULL || pc_overlays>0
             || !isalpha(sym->name[0]) && sym->name[0]!='_'  && sym->name[0]!=sc_ctrlchar))
     {
       stgwrite("\t; ");
@@ -776,7 +859,9 @@ SC_FUNC void ffcall(symbol *sym,const char *label,int numargs)
  */
 SC_FUNC void ffret(int remparams)
 {
-  if (remparams)
+  if (pc_overlays>0)
+    stgwrite("\tiretn\n");
+  else if (remparams)
     stgwrite("\tretn\n");
   else
     stgwrite("\tret\n");
@@ -899,7 +984,7 @@ SC_FUNC void setheap_pri(void)
 SC_FUNC void setheap(cell value)
 {
   stgwrite("\tconst.pri ");     /* load default value in PRI */
-  outval(value,TRUE,TRUE);   //??? use const.p.pri if possible
+  outval(value,TRUE,TRUE);
   code_idx+=opcodes(1)+opargs(1);
   setheap_pri();
 }

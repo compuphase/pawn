@@ -20,7 +20,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: amxdbg.c 3612 2006-07-22 09:59:46Z thiadmer $
+ *  Version: $Id: amxdbg.c 3821 2007-10-15 16:54:20Z thiadmer $
  */
 #include <assert.h>
 #include <stdio.h>
@@ -204,6 +204,34 @@ int AMXAPI dbg_LoadInfo(AMX_DBG *amxdbg, FILE *fp)
     ptr++;              /* skip '\0' too */
   } /* for */
 
+  return AMX_ERR_NONE;
+}
+
+/* dbg_LinearAddress() returns the linear address that matches the given
+ * relative address for the current overlay. The linear address is relative
+ * to the code section (as if the code section were a single block).
+ * Linearizing addresses is only needed for debugging hooks when overlays
+ * are active. On a non-overlay file, dbg_LinearAddress() returns the same
+ * address as its input.
+ */
+int AMXAPI dbg_LinearAddress(AMX *amx, ucell relative_addr, ucell *linear_addr)
+{
+  AMX_HEADER *hdr;
+
+  assert(amx!=NULL);
+  hdr=(AMX_HEADER *)amx->base;
+  assert(hdr!=NULL);
+  assert(linear_addr!=NULL);
+  if ((hdr->flags & AMX_FLAG_OVERLAY)==0) {
+    *linear_addr=relative_addr;
+  } else {
+    AMX_OVERLAYINFO *tbl;
+    assert(hdr->overlays!=0 && hdr->overlays!=hdr->nametable);
+    if ((size_t)amx->ovl_index >= (hdr->nametable-hdr->overlays)/sizeof(AMX_OVERLAYINFO))
+      return AMX_ERR_OVERLAY;
+    tbl=(AMX_OVERLAYINFO*)(amx->base+hdr->overlays)+amx->ovl_index;
+    *linear_addr=tbl->offset+relative_addr;
+  } /* if */
   return AMX_ERR_NONE;
 }
 
