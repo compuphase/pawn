@@ -20,7 +20,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: sc1.c 3764 2007-05-22 10:29:16Z thiadmer $
+ *  Version: $Id: sc1.c 3821 2007-10-15 16:54:20Z thiadmer $
  */
 #include <assert.h>
 #include <ctype.h>
@@ -95,7 +95,7 @@ static cell initvector(int ident,int tag,cell size,int fillzero,
                        constvalue *enumroot,int *errorfound);
 static cell init(int ident,int *tag,int *errorfound);
 static int getstates(const char *funcname);
-static void attachstatelist(symbol *sym, int state_id);
+static statelist *attachstatelist(symbol *sym,int state_id);
 static void funcstub(int fnative);
 static int newfunc(char *firstname,int firsttag,int fpublic,int fstatic,int stock);
 static int declargs(symbol *sym,int chkshadow);
@@ -421,6 +421,7 @@ int pc_compile(int argc, char *argv[])
 
   /* set global variables to their initial value */
   binf=NULL;
+  tmpname=NULL;
   initglobals();
   errorset(sRESET,0);
   errorset(sEXPRRELEASE,0);
@@ -507,7 +508,7 @@ int pc_compile(int argc, char *argv[])
     pc_closesrc(ftmp);
     strcpy(inpfname,tmpname);
   } else {
-    tmpname=NULL;
+    assert(tmpname==NULL);
     strcpy(inpfname,get_sourcefile(0));
   } /* if */
   inpf_org=(FILE*)pc_opensrc(inpfname);
@@ -586,7 +587,6 @@ int pc_compile(int argc, char *argv[])
   /* second (or third) pass */
   sc_status=statWRITE;                  /* set, to enable warnings */
   state_conflict(&glbtab);
-  gen_ovlinfo(&glbtab);
 
   /* write a report, if requested */
   #if !defined PAWN_LIGHT
@@ -615,9 +615,6 @@ int pc_compile(int argc, char *argv[])
    * - open assembler file (outf)
    */
 
-  /* reset "defined" flag of all functions and global variables */
-  reduce_referrers(&glbtab);
-  delete_symbols(&glbtab,0,TRUE,FALSE);
   #if !defined NO_DEFINE
     delete_substtable();
   #endif
@@ -634,7 +631,12 @@ int pc_compile(int argc, char *argv[])
   fline=skipinput;              /* reset line number */
   lexinit();                    /* clear internal flags of lex() */
   sc_status=statWRITE;          /* allow to write --this variable was reset by resetglobals() */
-  writeleader(&glbtab);
+  i=writeleader(&glbtab);
+  gen_ovlinfo(&glbtab);         /* generate overlay information */
+  writestatetables(&glbtab,i);  /* create state tables and additional overlay information */
+  /* reset "defined" flag of all functions and global variables */
+  reduce_referrers(&glbtab);
+  delete_symbols(&glbtab,0,TRUE,FALSE);
   insert_dbgfile(inpfname);
   if (strlen(incfname)>0) {
     if (strcmp(incfname,sDEF_PREFIX)==0)
@@ -683,13 +685,13 @@ cleanup:
         long totalsize=hdrsize;
         if (pc_overlays==0)
           totalsize+=code_idx;
+        else if (pc_overlays==1)
+          totalsize+=max_ovlsize;
         if (pc_amxram==0)
           totalsize+=(glb_declared+pc_stksize)*sizeof(cell);
         if (totalsize>=pc_amxlimit)
           flag_exceed=1;
       } /* if */
-      if (pc_overlays>0 && max_ovlsize>pc_overlays)
-        flag_exceed=1;
       if (pc_amxram>0 && (glb_declared+pc_stksize)*sizeof(cell)>=(unsigned long)pc_amxram)
         flag_exceed=1;
       if ((sc_debug & sSYMBOLIC)!=0 || verbosity>=2 || stacksize+32>=(long)pc_stksize || flag_exceed) {
@@ -710,9 +712,10 @@ cleanup:
           pc_printf("=%ld cells (%ld bytes)\n",stacksize,stacksize*sizeof(cell));
         pc_printf("Total requirements:%8ld bytes\n", (long)hdrsize+(long)code_idx+(long)glb_declared*sizeof(cell)+(long)pc_stksize*sizeof(cell));
       } /* if */
+      if (pc_overlays>1 && max_ovlsize>pc_overlays)
+        error(112,max_ovlsize-(1<<4*sizeof(cell))); //??? should also tell which function is causing this error
       if (flag_exceed)
         error(106,pc_amxlimit+pc_amxram); /* this causes a jump back to label "cleanup" */
-        //??? should flag exceeding overlay size separately
     } /* if */
   #endif
 
@@ -860,6 +863,8 @@ static void resetglobals(void)
 
 static void initglobals(void)
 {
+  int i;
+
   resetglobals();
 
   sc_asmfile=FALSE;     /* do not create .ASM file */
@@ -884,10 +889,12 @@ static void initglobals(void)
   pc_stksize=sDEF_AMXSTACK;/* default stack size */
   pc_amxlimit=0;        /* no limit on size of the abstract machine */
   pc_amxram=0;          /* no limit on data size of the abstract machine */
-  pc_overlays=0;        /* do not generate for overlays */
   sc_tabsize=8;         /* assume a TAB is 8 spaces */
   sc_rationaltag=0;     /* assume no support for rational numbers */
   rational_digits=0;    /* number of fractional digits */
+  pc_overlays=0;        /* do not generate for overlays */
+  for (i=0; i<ovlFIRST; i++)
+    pc_ovl0size[i][0]=pc_ovl0size[i][1]=0;
 
   outfname[0]='\0';     /* output file name */
   errfname[0]='\0';     /* error file name */
@@ -979,7 +986,7 @@ static void parseoptions(int argc,char **argv,char *oname,char *ename,char *pnam
                          char *rname, char *codepage)
 {
   char str[_MAX_PATH],*name;
-  const char *ptr;
+  const char *ptr,*optionptr;
   int arg,i,isoption;
 
   for (arg=1; arg<argc; arg++) {
@@ -1113,10 +1120,23 @@ static void parseoptions(int argc,char **argv,char *oname,char *ename,char *pnam
         sc_tabsize=atoi(option_value(ptr));
         break;
       case 'V':
-        pc_overlays=atoi(option_value(ptr));
+        /* allow -V+, -V- and -V1234, where 1234 is the code pool size;
+         * with -V+, this pool is set to 1 byte, which means "unlimited"
+         */
+        optionptr=option_value(ptr);
+        if (isdigit(*optionptr))
+          pc_overlays=atoi(optionptr);
+        else
+          pc_overlays=toggle_option(ptr,pc_overlays);
+        /* there is a technical limit on the size of an overlay of the max. number
+         * that fits in half a cell
+         */
+        if (pc_overlays>=(1<<4*sizeof(cell)))
+          pc_overlays=(1<<4*sizeof(cell));
         break;
       case 'v':
-        verbosity= isdigit(*option_value(ptr)) ? atoi(option_value(ptr)) : 2;
+        optionptr=option_value(ptr);
+        verbosity= isdigit(*optionptr) ? atoi(optionptr) : 2;
         if (sc_asmfile && verbosity>1)
           verbosity=1;
         break;
@@ -1265,7 +1285,7 @@ static void setopt(int argc,char **argv,char *oname,char *ename,char *pname,
     strcpy(oname,"test.asm");
   #endif
 
-  #if !defined PWANC_LIGHT
+  #if !defined PAWNC_LIGHT
     /* first parse a "config" file with default options */
     if (argv[0]!=NULL) {
       char cfgfile[_MAX_PATH];
@@ -1282,6 +1302,12 @@ static void setopt(int argc,char **argv,char *oname,char *ename,char *pname,
     } /* if */
   #endif
   parseoptions(argc,argv,oname,ename,pname,rname,codepage);
+  /* when overlays are used, the output file should not use compact encoding,
+   * because it is read in chunks, and the overlay table contains offsets to
+   * the non-compacted code
+   */
+  if (pc_overlays>0)
+    pc_compress=FALSE;
   if (get_sourcefile(0)==NULL)
     about();
 }
@@ -1362,7 +1388,7 @@ static void setconfig(char *root)
 
 static void setcaption(void)
 {
-  pc_printf("Pawn compiler " VERSION_STR "\t \t \tCopyright (c) 1997-2007, ITB CompuPhase\n\n");
+  pc_printf("Pawn compiler %-25s Copyright (c) 1997-2007, ITB CompuPhase\n\n",VERSION_STR);
 }
 
 static void about(void)
@@ -1478,6 +1504,8 @@ static void setconstants(void)
   else if ((sc_debug & sCHKBOUNDS)==sCHKBOUNDS)
     debug=1;
   add_constant("debug",debug,sGLOBAL,0,FALSE);
+
+  add_constant("overlaysize",pc_overlays,sGLOBAL,0,TRUE);
 
   append_constval(&sc_automaton_tab,"",0,0);    /* anonymous automaton */
 }
@@ -1937,7 +1965,7 @@ static void declglb(char *firstname,int firsttag,int fpublic,int fstatic,int fst
      */
     assert(sym==NULL
            || sym->states==NULL && sc_curstates==0
-           || sym->states!=NULL && sym->next!=NULL && sym->states->next->index==sc_curstates);
+           || sym->states!=NULL && sym->next!=NULL && sym->states->next->id==sc_curstates);
     /* a state variable may only have a single id in its list (so either this
      * variable has no states, or it has a single list)
      */
@@ -1999,7 +2027,7 @@ static void declglb(char *firstname,int firsttag,int fpublic,int fstatic,int fst
             continue;   /* a function or a constant */
           if ((sweep->usage & uDEFINE)==0)
             continue;   /* undefined variable, ignore */
-          if (fsa!=state_getfsa(sweep->states->next->index))
+          if (fsa!=state_getfsa(sweep->states->next->id))
             continue;   /* wrong automaton */
           /* when arrived here, this is a global variable, with states and
            * belonging to the same automaton as the variable we are declaring
@@ -2021,7 +2049,7 @@ static void declglb(char *firstname,int firsttag,int fpublic,int fstatic,int fst
             continue;   /* a function or a constant */
           if ((sweep->usage & uDEFINE)==0)
             continue;   /* undefined variable, ignore */
-          if (fsa!=state_getfsa(sweep->states->next->index))
+          if (fsa!=state_getfsa(sweep->states->next->id))
             continue;   /* wrong automaton */
           /* when arrived here, this is a global variable, with states and
            * belonging to the same automaton as the variable we are declaring
@@ -2030,7 +2058,7 @@ static void declglb(char *firstname,int firsttag,int fpublic,int fstatic,int fst
            * variable have a non-empty intersection, this is not a suitable
            * overlap point -> wipe the address range
            */
-          if (state_conflict_id(sc_curstates,sweep->states->next->index)) {
+          if (state_conflict_id(sc_curstates,sweep->states->next->id)) {
             sweepsize=(sweep->ident==iVARIABLE) ? 1 : array_totalsize(sweep);
             assert(sweep->addr % sizeof(cell) == 0);
             addr=sweep->addr/sizeof(cell);
@@ -2077,7 +2105,7 @@ static void declglb(char *firstname,int firsttag,int fpublic,int fstatic,int fst
         attachstatelist(sym,sc_curstates);
     } else {            /* if declared but not yet defined, adjust the variable's address */
       assert(sym->states==NULL && sc_curstates==0
-             || sym->states->next!=NULL && sym->states->next->index==sc_curstates && sym->states->next->next==NULL);
+             || sym->states->next!=NULL && sym->states->next->id==sc_curstates && sym->states->next->next==NULL);
       sym->addr=address;
       sym->codeaddr=code_idx;
       sym->usage|=uDEFINE;
@@ -2914,7 +2942,7 @@ static int getstates(const char *funcname)
   return state_id;
 }
 
-static void attachstatelist(symbol *sym, int state_id)
+static statelist *attachstatelist(symbol *sym,int state_id)
 {
   assert(sym!=NULL);
   if ((sym->usage & uDEFINE)!=0 && (sym->states==NULL || state_id==0))
@@ -2922,37 +2950,41 @@ static void attachstatelist(symbol *sym, int state_id)
 
   if (state_id!=0) {
     /* add the state list id */
-    constvalue *stateptr;
+    statelist *stateptr;
     if (sym->states==NULL) {
-      if ((sym->states=(constvalue*)malloc(sizeof(constvalue)))==NULL)
+      if ((sym->states=(statelist*)malloc(sizeof(statelist)))==NULL)
         error(103);             /* insufficient memory (fatal error) */
-      memset(sym->states,0,sizeof(constvalue));
+      memset(sym->states,0,sizeof(statelist));
     } /* if */
     /* see whether the id already exists (add new state only if it does not
      * yet exist
      */
     assert(sym->states!=NULL);
-    for (stateptr=sym->states->next; stateptr!=NULL && stateptr->index!=state_id; stateptr=stateptr->next)
+    for (stateptr=sym->states->next; stateptr!=NULL && stateptr->id!=state_id; stateptr=stateptr->next)
       /* nothing */;
     assert(state_id<=SHRT_MAX);
     if (stateptr==NULL)
-      append_constval(sym->states,"",code_idx,(short)state_id);
-    else if (stateptr->value==0)
-      stateptr->value=code_idx;
+      stateptr=append_statelist(sym->states,state_id,0,code_idx);
+    else if (stateptr->addr==0)
+      stateptr->addr=code_idx;
     else
-      error(84,sym->name);
+      error(84,sym->name);      /* state conflict */
     /* also check for another conflicting situation: a fallback function
      * without any states
      */
     if (state_id==-1 && sc_status!=statFIRST) {
       /* in the second round, all states should have been accumulated */
+      statelist *stlist;
       assert(sym->states!=NULL);
-      for (stateptr=sym->states->next; stateptr!=NULL && stateptr->index==-1; stateptr=stateptr->next)
+      for (stlist=sym->states->next; stlist!=NULL && stlist->id==-1; stlist=stlist->next)
         /* nothing */;
-      if (stateptr==NULL)
-        error(85,sym->name);      /* no states are defined for this function */
+      if (stlist==NULL)
+        error(85,sym->name);    /* no states are defined for this function */
     } /* if */
+    return stateptr;
   } /* if */
+
+  return NULL;
 }
 
 /*
@@ -3211,9 +3243,10 @@ SC_FUNC char *operator_symname(char *symname,char *opername,int tag1,int tag2,in
   return symname;
 }
 
-static int parse_funcname(char *fname,int *tag1,int *tag2,char *opname)
+static int parse_funcname(const char *fname,int *tag1,int *tag2,char *opname)
 {
-  char *ptr,*name;
+  const char *ptr;
+  char *name;
   int unary;
 
   /* tags are only positive, so if the function name starts with a '-',
@@ -3224,7 +3257,7 @@ static int parse_funcname(char *fname,int *tag1,int *tag2,char *opname)
     unary=TRUE;
     ptr=fname;
   } else {
-    *tag1=(int)strtol(fname,&ptr,16);
+    *tag1=(int)strtol(fname,(char**)&ptr,16);
     unary= ptr==fname;  /* unary operator if it doesn't start with a tag name */
   } /* if */
   assert(!unary || *tag1==0);
@@ -3245,7 +3278,7 @@ static constvalue *find_tag_byval(int tag)
   return tagsym;
 }
 
-SC_FUNC char *funcdisplayname(char *dest,char *funcname)
+SC_FUNC char *funcdisplayname(char *dest,const char *funcname)
 {
   int tags[2];
   char opname[10];
@@ -3375,7 +3408,7 @@ static void funcstub(int fnative)
         insert_alias(sym->name,str);
       } else {
         constexpr(&val,NULL,NULL);
-        sym->addr=val;
+        sym->index=(int)val;
         /* At the moment, I have assumed that this syntax is only valid if
          * val < 0. To properly mix "normal" native functions and indexed
          * native functions, one should use negative indices anyway.
@@ -3420,7 +3453,8 @@ static int newfunc(char *firstname,int firsttag,int fpublic,int fstatic,int stoc
   char *str;
   cell val,cidx,glbdecl;
   short filenum;
-  int state_id;
+  int state_id,ovl_index;
+  statelist *stlist;
 
   assert(litidx==0);    /* literal queue should be empty */
   litidx=0;             /* clear the literal pool (should already be empty) */
@@ -3502,7 +3536,7 @@ static int newfunc(char *firstname,int firsttag,int fpublic,int fstatic,int stoc
   state_id=getstates(symbolname);
   if (state_id>0 && (opertok!=0 || strcmp(symbolname,uMAINFUNC)==0))
     error(82);          /* operators may not have states, main() may neither */
-  attachstatelist(sym,state_id);
+  stlist=attachstatelist(sym,state_id);
   /* "declargs()" found the ")"; if a ";" appears after this, it was a
    * prototype */
   if (matchtoken(';')) {
@@ -3531,18 +3565,21 @@ static int newfunc(char *firstname,int firsttag,int fpublic,int fstatic,int stoc
   if (opertok!=0 && opererror)
     sym->usage &= ~uDEFINE;
   /* if the function has states, dump the label to the start of the function */
+  ovl_index=sym->index;
   if (state_id!=0) {
-    constvalue *ptr=sym->states->next;
+    statelist *ptr=sym->states->next;
     while (ptr!=NULL) {
-      assert(sc_status!=statWRITE || strlen(ptr->name)>0);
-      if (ptr->index==state_id) {
-        setlabel((int)strtol(ptr->name,NULL,16));
-        break;
+      assert(sc_status!=statWRITE || ptr->label>0);
+      if (ptr->id==state_id) {
+        if (pc_overlays==0)
+          setlabel(ptr->label);
+        ovl_index=ptr->label;
+        break;          /* no need to search further */
       } /* if */
       ptr=ptr->next;
     } /* while */
   } /* if */
-  startfunc(sym->name); /* creates stack frame */
+  startfunc(sym->name,ovl_index); /* creates stack frame */
   insert_dbgline(funcline);
   setline(FALSE);
   if (sc_alignnext) {
@@ -3590,7 +3627,14 @@ static int newfunc(char *firstname,int firsttag,int fpublic,int fstatic,int stoc
     } /* if */
   } /* if */
   endfunc();
-  sym->codeaddr=code_idx;
+  /* for normal functions, set the end address of the function symbol; for
+   * for functions with states, adjust the endaddr field for the particular
+   * state (these fields are needed for overlays)
+   */
+  if (stlist==NULL)
+    sym->codeaddr=code_idx;
+  else
+    stlist->endaddr=code_idx;
   sc_attachdocumentation(sym);  /* attach collected documenation to the function */
   if (litidx) {                 /* if there are literals defined */
     glb_declared+=litidx;
@@ -4304,16 +4348,17 @@ static void make_report(symbol *root,FILE *log,char *sourcefile)
     if ((sym->usage & uNATIVE)==0)
       fprintf(log,"\t\t\t<stacksize value=\"%ld\"/>\n",(long)sym->x.stacksize);
     if (sym->states!=NULL) {
-      constvalue *stlist=sym->states->next;
+      statelist *stlist=sym->states->next;
+      constvalue *fsa;
       assert(stlist!=NULL);     /* there should be at least one state item */
-      while (stlist!=NULL && stlist->index==-1)
+      while (stlist!=NULL && stlist->id==-1)
         stlist=stlist->next;
       assert(stlist!=NULL);     /* state id should be found */
-      i=state_getfsa(stlist->index);
+      i=state_getfsa(stlist->id);
       assert(i>=0);             /* automaton 0 exists */
-      stlist=automaton_findid(i);
-      assert(stlist!=NULL);     /* automaton should be found */
-      fprintf(log,"\t\t\t<automaton name=\"%s\"/>\n", strlen(stlist->name)>0 ? stlist->name : "(anonymous)");
+      fsa=automaton_findid(i);
+      assert(fsa!=NULL);        /* automaton should be found */
+      fprintf(log,"\t\t\t<automaton name=\"%s\"/>\n", strlen(fsa->name)>0 ? fsa->name : "(anonymous)");
       //??? dump state decision table
     } /* if */
     assert(sym->refer!=NULL);
@@ -4453,17 +4498,36 @@ static void reduce_referrers(symbol *root)
  * have completed, and we know which functions are actually called. The overlay
  * information is always generated; it depends on the compiler options and
  * configuration whether it is actually used.
+ * This function should be called after the pre-amble is generated, because
+ * the pre-amble contains "static" overlays.
  */
 static void gen_ovlinfo(symbol *root)
 {
   int idx=0;
   symbol *sym;
+  int i;
 
-  for (sym=root->next; sym!=NULL; sym=sym->next) {
-    if (sym->ident==iFUNCTN && sym->parent==NULL
-        && (sym->usage & uNATIVE)==0 && (sym->usage & uREAD)!=0)
-      sym->ovl_index=idx++;
-  } /* for */
+  if (pc_overlays>0) {
+    assert(pc_ovl0size[ovlEXIT][1]!=0); /* if this fails, writeleader() was not called */
+    for (i=0; i<ovlFIRST; i++)
+      if (pc_ovl0size[i][1]!=0)
+          idx++;
+
+    for (sym=root->next; sym!=NULL; sym=sym->next) {
+      if (sym->ident==iFUNCTN && sym->parent==NULL
+          && (sym->usage & uNATIVE)==0 && (sym->usage & (uREAD | uPUBLIC))!=0
+          && (sym->usage & uDEFINE)!=0)
+      {
+        sym->index=idx++;
+        if (sym->states!=NULL) {
+          /* for functions with states, allocate an index for every implementation */
+          statelist *stateptr;
+          for (stateptr=sym->states->next; stateptr!=NULL; stateptr=stateptr->next)
+            stateptr->label=idx++;
+        } /* if */
+      } /* if */
+    } /* for */
+  } /* if */
 }
 
 #if !defined PAWN_LIGHT
@@ -5435,7 +5499,7 @@ static void doswitch(void)
   char *str;
   constvalue caselist = { NULL, "", 0, 0};   /* case list starts empty */
   constvalue *cse,*csp;
-  char labelname[sNAMEMAX+1];
+  int label;
 
   endtok= matchtoken('(') ? ')' : tDO;
   doexpr(TRUE,FALSE,FALSE,FALSE,NULL,NULL,TRUE);/* evaluate switch expression */
@@ -5445,7 +5509,7 @@ static void doswitch(void)
    */
   lbl_table=getlabel();
   lbl_case=0;                   /* just to avoid a compiler warning */
-  ffswitch(lbl_table);
+  ffswitch(lbl_table,FALSE);
 
   if (matchtoken(tBEGIN)) {
     endtok=tEND;
@@ -5489,10 +5553,10 @@ static void doswitch(void)
         if (cse!=NULL && cse->value==val)
           error(40,val);                /* duplicate "case" label */
         /* Since the label is stored as a string in the "constvalue", the
-         * size of an identifier must be at least 8, as there are 8
-         * hexadecimal digits in a 32-bit number.
+         * size of an identifier must be at least 1/4th of a cell size in bits
+         * (there are 8 hexadecimal digits in a 32-bit number).
          */
-        #if sNAMEMAX < 8
+        #if sNAMEMAX < PAWN_CELL_SIZE / 4
           #error Length of identifier (sNAMEMAX) too small.
         #endif
         assert(csp!=NULL);
@@ -5559,15 +5623,15 @@ static void doswitch(void)
   assert(swdefault==FALSE || swdefault==TRUE);
   if (swdefault==FALSE) {
     /* store lbl_exit as the "none-matched" label in the switch table */
-    strcpy(labelname,itoh(lbl_exit));
+    label=lbl_exit;
   } else {
     /* lbl_case holds the label of the "default" clause */
-    strcpy(labelname,itoh(lbl_case));
+    label=lbl_case;
   } /* if */
-  ffcase(casecount,labelname,TRUE);
+  ffcase(casecount,label,TRUE,FALSE);
   /* generate the rest of the table */
   for (cse=caselist.next; cse!=NULL; cse=cse->next)
-    ffcase(cse->value,cse->name,FALSE);
+    ffcase(cse->value,strtol(cse->name,NULL,16),FALSE,FALSE);
 
   setlabel(lbl_exit);
   delete_consttable(&caselist); /* clear list of case labels */
@@ -5864,7 +5928,7 @@ static void dostate(void)
   char name[sNAMEMAX+1];
   constvalue *automaton;
   constvalue *state;
-  constvalue *stlist;
+  statelist *stlist;
   int flabel,result;
   symbol *sym;
   #if !defined PAWN_LIGHT
@@ -5917,14 +5981,14 @@ static void dostate(void)
   sym=findglb(uENTRYFUNC,sGLOBAL);
   if (sc_status==statWRITE && sym!=NULL && sym->ident==iFUNCTN && sym->states!=NULL) {
     for (stlist=sym->states->next; stlist!=NULL; stlist=stlist->next) {
-      assert(strlen(stlist->name)!=0);
-      if (state_getfsa(stlist->index)==automaton->index && state_inlist(stlist->index,(int)state->value))
+      assert(stlist->label>0);
+      if (state_getfsa(stlist->id)==automaton->index && state_inlist(stlist->id,(int)state->value))
         break;      /* found! */
     } /* for */
-    assert(stlist==NULL || state_inlist(stlist->index,state->value));
+    assert(stlist==NULL || state_inlist(stlist->id,state->value));
     if (stlist!=NULL) {
       /* the label to jump to is in stlist->name */
-      ffcall(sym,stlist->name,0);
+      ffcall(sym,itoh(stlist->label),0);
     } /* if */
   } /* if */
 
@@ -5942,7 +6006,7 @@ static void dostate(void)
         assert(stlist!=NULL);
         while (stlist->next!=NULL)
           stlist=stlist->next;
-        listid=stlist->index;
+        listid=stlist->id;
       } else {
         listid=-1;
       } /* if */

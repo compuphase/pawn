@@ -33,7 +33,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: pawndbg.c 3662 2006-11-07 08:44:33Z thiadmer $
+ *  Version: $Id: pawndbg.c 3827 2007-10-16 14:53:31Z thiadmer $
  *
  *
  *  Command line options:
@@ -810,12 +810,16 @@ static int getresponse_rs232(char *buffer, int buffersize, long retries)
   int len=0;
   unsigned long size;
 
+  //assert(hCom!=INVALID_HANDLE_VALUE);
   do {
 
+    /* read character by character, so that when we see the '\n' we stop
+     * reading and keep the rest of the waiting characters in the queue
+     */
     #if defined __WIN32__
-      ReadFile(hCom,buffer+len,buffersize-len,&size,NULL);
+      ReadFile(hCom,buffer+len,1,&size,NULL);
     #else
-      size=read(fdCom,buffer+len,buffersize-len);
+      size=read(fdCom,buffer+len,1);
     #endif
     len+=size;
 
@@ -840,7 +844,7 @@ static int getresponse_rs232(char *buffer, int buffersize, long retries)
       retries--;
     } /* if */
 
-  } while ((len==0 || strchr(buffer,'\n')==NULL) && retries>=0);
+  } while ((len==0 || strchr(buffer,'\n')==NULL) && retries>0);
 
   return len;
 }
@@ -963,21 +967,21 @@ static int remote_rs232(int port,int baud)
   do {
     #if defined __WIN32__
       WriteFile(hCom,"!",1,&size,NULL);
-      Sleep(100);
+      Sleep(500);
       do {
         ReadFile(hCom,buffer,1,&size,NULL);
       } while (size>0 && buffer[0]!='@');
-      Sleep(100);
+      Sleep(500);
       /* read remaining buffer (if any) */
       ReadFile(hCom,buffer+1,sizeof buffer - 1,&size,NULL);
       size++; /* add size of the handshake character */
     #else
       write(fdCom,"!",1);
-      usleep(100*1000);
+      usleep(500*1000);
       do {
         size=read(fdCom,buffer,1);
       } while (size>0 && buffer[0]!='@');
-      usleep(100*1000);
+      usleep(500*1000);
       /* read remaining buffer (if any) */
       size=read(fdCom,buffer+1,sizeof buffer - 1);
       size++; /* add size of the handshake character */

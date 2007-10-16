@@ -18,7 +18,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: amxstring.c 3763 2007-05-22 07:23:30Z thiadmer $
+ *  Version: $Id: amxstring.c 3827 2007-10-16 14:53:31Z thiadmer $
  */
 #include <limits.h>
 #include <string.h>
@@ -293,6 +293,45 @@ static cell AMX_NATIVE_CALL n_strcat(AMX *amx,const cell *params)
     assert((ucell)*cdest<=UNPACKEDMAX || len2==0);
     err=amx_StrUnpack(cdest+len2,csrc,len);
   } /* if */
+  if (err!=AMX_ERR_NONE)
+    return amx_RaiseError(amx,err);
+
+  return len;
+}
+
+/* strcopy(dest[], const source[], maxlength=sizeof dest)
+ * packed/unpacked attribute from source[]
+ */
+static cell AMX_NATIVE_CALL n_strcat(AMX *amx,const cell *params)
+{
+  cell *cdest,*csrc;
+  int len,needed;
+  int packed,err;
+  size_t lastaddr;
+
+  /* calculate number of cells needed for (packed) destination */
+  amx_GetAddr(amx,params[2],&csrc);
+  amx_GetAddr(amx,params[1],&cdest);
+  amx_StrLen(csrc,&len);
+  packed=(ucell)*csrc>UNPACKEDMAX;
+  if (packed) {
+    if ((unsigned)len>params[3]*sizeof(cell)-1)
+      len=params[3]*sizeof(cell)-1;
+    needed=(len+sizeof(cell))/sizeof(cell); /* # of cells needed */
+    assert(needed>0);
+    lastaddr=(size_t)(params[1]+sizeof(cell)*needed-1);
+  } else {
+    if (len>params[3]-1)
+      len=params[3]-1;
+    lastaddr=(size_t)(params[1]+sizeof(cell)*(len+1)-1);
+  } /* if */
+  if (verify_addr(amx,(cell)lastaddr)!=AMX_ERR_NONE)
+    return amx_RaiseError(amx,AMX_ERR_NATIVE);
+
+  if (packed)
+    err=amx_StrPack(cdest,csrc,len,0);
+  else
+    err=amx_StrUnpack(cdest,csrc,len);
   if (err!=AMX_ERR_NONE)
     return amx_RaiseError(amx,err);
 
@@ -856,6 +895,7 @@ const AMX_NATIVE_INFO string_Natives[] = {
   { "memcpy",    n_memcpy },
   { "strcat",    n_strcat },
   { "strcmp",    n_strcmp },
+  { "strcopy",   n_strcopy },
   { "strdel",    n_strdel },
   { "strfind",   n_strfind },
   { "strformat", n_strformat },

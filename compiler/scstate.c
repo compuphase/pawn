@@ -13,11 +13,11 @@
  *    This list assigns a unique id to the combination of the automaton and all
  *    states.
  *
- *  For a function/variable that has states, there is a fourth list, which is
- *  attached to the "symbol" structure. This list contains the code label (in
- *  the "name" field, only for functions), the id of the state combinations (the
- *  state list id; it is stored in the "index" field) and the code address at
- *  which the function starts. The latter is currently unused.
+ *  A fourth list is partially maintained here: it is attached to the "symbol"
+ *  structure of a function/variable that has states. This list contains the
+ *  code label, the id of the state combinations (the state list id) and the
+ *  code addresses at which the function starts and ends. These addresses are
+ *  currently only used for state functions in an overlay system.
  *
  *  At the start of the compiled code, a set of stub functions is generated.
  *  Each stub function looks up the value of the "state selector" value for the
@@ -43,7 +43,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: scstate.c 3763 2007-05-22 07:23:30Z thiadmer $
+ *  Version: $Id: scstate.c 3821 2007-10-15 16:54:20Z thiadmer $
  */
 #include <assert.h>
 #include <limits.h>
@@ -59,15 +59,15 @@
   #include <alloc/fortify.h>
 #endif
 
-typedef struct s_statelist {
-  struct s_statelist *next;
+typedef struct s_statepool {
+  struct s_statepool *next;
   int *states;          /* list of states in this combination */
   int numstates;        /* number of items in the above list */
   int fsa;              /* automaton id */
   int listid;           /* unique id for this combination list */
-} statelist;
+} statepool;
 
-static statelist statelist_tab = { NULL, NULL, 0, 0, 0};   /* state combinations table */
+static statepool statepool_tab = { NULL, NULL, 0, 0, 0};   /* state combinations table */
 
 
 static constvalue *find_automaton(const char *name,int *last)
@@ -193,15 +193,15 @@ SC_FUNC void state_buildlist(int **list,int *listsize,int *count,int stateid)
   *count+=1;
 }
 
-static statelist *state_findlist(int *list,int count,int fsa,int *last)
+static statepool *state_findlist(int *list,int count,int fsa,int *last)
 {
-  statelist *ptr;
+  statepool *ptr;
   int i;
 
   assert(count>0);
   assert(last!=NULL);
   *last=0;
-  ptr=statelist_tab.next;
+  ptr=statepool_tab.next;
   while (ptr!=NULL) {
     if (ptr->listid>*last)
       *last=ptr->listid;
@@ -217,26 +217,26 @@ static statelist *state_findlist(int *list,int count,int fsa,int *last)
   return NULL;
 }
 
-static statelist *state_getlist_ptr(int listid)
+static statepool *state_getlist_ptr(int listid)
 {
-  statelist *ptr;
+  statepool *ptr;
 
   assert(listid>0);
-  for (ptr=statelist_tab.next; ptr!=NULL && ptr->listid!=listid; ptr=ptr->next)
+  for (ptr=statepool_tab.next; ptr!=NULL && ptr->listid!=listid; ptr=ptr->next)
     /* nothing */;
   return ptr;
 }
 
 SC_FUNC int state_addlist(int *list,int count,int fsa)
 {
-  statelist *ptr;
+  statepool *ptr;
   int last;
 
   assert(list!=NULL);
   assert(count>0);
   ptr=state_findlist(list,count,fsa,&last);
   if (ptr==NULL) {
-    if ((ptr=(statelist*)malloc(sizeof(statelist)))==NULL)
+    if ((ptr=(statepool*)malloc(sizeof(statepool)))==NULL)
       error(103);       /* insufficient memory */
     if ((ptr->states=(int*)malloc(count*sizeof(int)))==NULL) {
       free(ptr);
@@ -246,8 +246,8 @@ SC_FUNC int state_addlist(int *list,int count,int fsa)
     ptr->numstates=count;
     ptr->fsa=fsa;
     ptr->listid=last+1;
-    ptr->next=statelist_tab.next;
-    statelist_tab.next=ptr;
+    ptr->next=statepool_tab.next;
+    statepool_tab.next=ptr;
   } /* if */
   assert(ptr!=NULL);
   return ptr->listid;
@@ -255,12 +255,12 @@ SC_FUNC int state_addlist(int *list,int count,int fsa)
 
 SC_FUNC void state_deletetable(void)
 {
-  statelist *ptr;
+  statepool *ptr;
 
-  while (statelist_tab.next!=NULL) {
-    ptr=statelist_tab.next;
+  while (statepool_tab.next!=NULL) {
+    ptr=statepool_tab.next;
     /* unlink first */
-    statelist_tab.next=ptr->next;
+    statepool_tab.next=ptr->next;
     /* then delete */
     assert(ptr->states!=NULL);
     free(ptr->states);
@@ -270,7 +270,7 @@ SC_FUNC void state_deletetable(void)
 
 SC_FUNC int state_getfsa(int listid)
 {
-  statelist *ptr;
+  statepool *ptr;
 
   assert(listid>=0);
   if (listid==0)
@@ -282,7 +282,7 @@ SC_FUNC int state_getfsa(int listid)
 
 SC_FUNC int state_count(int listid)
 {
-  statelist *ptr=state_getlist_ptr(listid);
+  statepool *ptr=state_getlist_ptr(listid);
   if (ptr==NULL)
     return 0;           /* unknown list, no states in it */
   return ptr->numstates;
@@ -290,7 +290,7 @@ SC_FUNC int state_count(int listid)
 
 SC_FUNC int state_inlist(int listid,int state)
 {
-  statelist *ptr;
+  statepool *ptr;
   int i;
 
   ptr=state_getlist_ptr(listid);
@@ -304,7 +304,7 @@ SC_FUNC int state_inlist(int listid,int state)
 
 SC_FUNC int state_listitem(int listid,int index)
 {
-  statelist *ptr;
+  statepool *ptr;
 
   ptr=state_getlist_ptr(listid);
   assert(ptr!=NULL);
@@ -312,7 +312,7 @@ SC_FUNC int state_listitem(int listid,int index)
   return ptr->states[index];
 }
 
-static int checkconflict(statelist *psrc,statelist *ptgt)
+static int checkconflict(statepool *psrc,statepool *ptgt)
 {
   int s,t;
 
@@ -325,14 +325,14 @@ static int checkconflict(statelist *psrc,statelist *ptgt)
   return 0;
 }
 
-/* This function searches whether one of the states in the list of statelist id's
- * of a symbol exists in any other statelist id's of the same function; it also
+/* This function searches whether one of the states in the list of statepool id's
+ * of a symbol exists in any other statepool id's of the same function; it also
  * verifies that all definitions of the symbol are in the same automaton.
  */
 SC_FUNC void state_conflict(symbol *root)
 {
-  statelist *psrc,*ptgt;
-  constvalue *srcptr,*tgtptr;
+  statepool *psrc,*ptgt;
+  statelist *srcptr,*tgtptr;
   symbol *sym;
 
   assert(root!=NULL);
@@ -342,14 +342,14 @@ SC_FUNC void state_conflict(symbol *root)
     if (sym->states==NULL)
       continue;                 /* this function has no states */
     for (srcptr=sym->states->next; srcptr!=NULL; srcptr=srcptr->next) {
-      if (srcptr->index==-1)
+      if (srcptr->id==-1)
         continue;               /* state list id -1 is a special case */
-      psrc=state_getlist_ptr(srcptr->index);
+      psrc=state_getlist_ptr(srcptr->id);
       assert(psrc!=NULL);
       for (tgtptr=srcptr->next; tgtptr!=NULL; tgtptr=tgtptr->next) {
-        if (tgtptr->index==-1)
+        if (tgtptr->id==-1)
           continue;             /* state list id -1 is a special case */
-        ptgt=state_getlist_ptr(tgtptr->index);
+        ptgt=state_getlist_ptr(tgtptr->id);
         assert(ptgt!=NULL);
         if (psrc->fsa!=ptgt->fsa && strcmp(sym->name,uENTRYFUNC)!=0)
           error(83,sym->name);  /* this function is part of another machine */
@@ -365,11 +365,47 @@ SC_FUNC void state_conflict(symbol *root)
  */
 SC_FUNC int state_conflict_id(int listid1,int listid2)
 {
-  statelist *psrc,*ptgt;
+  statepool *psrc,*ptgt;
 
   psrc=state_getlist_ptr(listid1);
   assert(psrc!=NULL);
   ptgt=state_getlist_ptr(listid2);
   assert(ptgt!=NULL);
   return checkconflict(psrc,ptgt);
+}
+
+
+SC_FUNC statelist *append_statelist(statelist *root,int id,int label,cell address)
+{
+  statelist *cur;
+
+  if ((cur=(statelist*)malloc(sizeof(statelist)))==NULL)
+    error(103);       /* insufficient memory (fatal error) */
+  cur->next=NULL;
+  cur->id=id;
+  cur->label=label;
+  cur->addr=address;
+  cur->endaddr=0;
+
+  /* insert as "last" (append mode) */
+  assert(root!=NULL);
+  while (root->next!=NULL)
+    root=root->next;
+  root->next=cur;
+
+  return cur;
+}
+
+SC_FUNC void delete_statelisttable(statelist *root)
+{
+  statelist *cur,*next;
+
+  assert(root!=NULL);
+  cur=root->next;
+  while (cur!=NULL) {
+    next=cur->next;
+    free(cur);
+    cur=next;
+  } /* while */
+  memset(root,0,sizeof(statelist));
 }

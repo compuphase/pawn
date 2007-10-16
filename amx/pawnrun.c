@@ -1,4 +1,5 @@
-/*  Simple "run-time" for the Pawn Abstract Machine
+/*  Simple "run-time" for the Pawn Abstract Machine, with optional support
+ *  for debugging information and overlays.
  *
  *  Copyright (c) ITB CompuPhase, 1997-2007
  *
@@ -18,7 +19,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: pawnrun.c 3615 2006-07-27 07:49:08Z thiadmer $
+ *  Version: $Id: pawnrun.c 3821 2007-10-15 16:54:20Z thiadmer $
  */
 #include <assert.h>
 #include <stdio.h>
@@ -27,7 +28,6 @@
 #include <string.h>     /* for memset() (on some compilers) */
 #include "osdefs.h"     /* for _MAX_PATH */
 #include "amx.h"
-#include "amxpool.h"
 
 #include <time.h>
 #if !defined CLOCKS_PER_SEC     /* some (older) compilers do not have it */
@@ -38,11 +38,14 @@
   #include <binreloc.h> /* from BinReloc, see www.autopackage.org */
 #endif
 
+#if defined AMXOVL
+  #include "amxpool.h"
+#endif
 #if defined AMXDBG
   #include "amxdbg.h"
-  static char g_filename[_MAX_PATH];/* for loading the debug information */
 #endif
-
+static char g_filename[_MAX_PATH];      /* for loading the debug or information
+                                         * or for loading overlays */
 
 /* These initialization functions are part of the "extension modules"
  * (libraries with native functions) that this run-time uses. More
@@ -93,35 +96,47 @@ int AMXAPI prun_Monitor(AMX *amx)
   return abortflagged ? AMX_ERR_EXIT : AMX_ERR_NONE;
 }
 
-int AMXAPI prun_Overlay(AMX *amx, int index, cell **address)
+#if defined AMXOVL
+/* prun_Overlay()
+ * Helper function to load overlays 
+ */
+int AMXAPI prun_Overlay(AMX *amx, int index)
 {
   AMX_HEADER *hdr;
   AMX_OVERLAYINFO *tbl;
+  FILE *ovl;
 
+  assert(amx != NULL);
   hdr = (AMX_HEADER*)amx->base;
-  tbl = (AMX_OVERLAYINFO*)(amx->base + hdr->overlays);
-  if ((size_t)index >= (hdr->nametable - hdr->overlays) / sizeof(AMX_OVERLAYINFO))
-    return AMX_ERR_OVERLAY;
-  tbl += index;
-  assert(address!=NULL);
-  *address = amx_poolfind(index);
-  if (*address == NULL) {
-    *address = amx_poolalloc(tbl->size, index);
-    memcpy(*address, amx->base + (int)hdr->cod + tbl->offset, tbl->size);
+  assert((size_t)index < (hdr->nametable - hdr->overlays) / sizeof(AMX_OVERLAYINFO));
+  tbl = (AMX_OVERLAYINFO*)(amx->base + hdr->overlays) + index;
+  amx->codesize = tbl->size;
+  amx->code = amx_poolfind(index);
+  if (amx->code == NULL) {
+    if ((amx->code = amx_poolalloc(tbl->size, index)) == NULL)
+      return AMX_ERR_OVERLAY;   /* failure allocating memory for the overlay */
+    ovl = fopen(g_filename, "rb");
+    assert(ovl != NULL);
+    fseek(ovl, (int)hdr->cod + tbl->offset, SEEK_SET);
+    fread(amx->code, 1, tbl->size, ovl);
+    fclose(ovl);
   } /* if */
   return AMX_ERR_NONE;
 }
+#endif
 
 /* aux_LoadProgram()
  * Load a compiled Pawn script into memory and initialize the abstract machine.
  * This function is extracted out of AMXAUX.C.
  */
-int AMXAPI aux_LoadProgram(AMX *amx, char *filename, void *memblock)
+int AMXAPI aux_LoadProgram(AMX *amx, char *filename)
 {
   FILE *fp;
   AMX_HEADER hdr;
-  int result, didalloc;
-  unsigned char *overlayblock;
+  int result;
+  int32_t size;
+  unsigned char *datablock;
+  #define OVLPOOLSIZE 4096
 
   /* open the file, read and check the header */
   if ((fp = fopen(filename, "rb")) == NULL)
@@ -129,49 +144,72 @@ int AMXAPI aux_LoadProgram(AMX *amx, char *filename, void *memblock)
   fread(&hdr, sizeof hdr, 1, fp);
   amx_Align16(&hdr.magic);
   amx_Align32((uint32_t *)&hdr.size);
+  amx_Align32((uint32_t *)&hdr.cod);
+  amx_Align32((uint32_t *)&hdr.dat);
+  amx_Align32((uint32_t *)&hdr.hea);
   amx_Align32((uint32_t *)&hdr.stp);
   if (hdr.magic != AMX_MAGIC) {
     fclose(fp);
     return AMX_ERR_FORMAT;
   } /* if */
 
-  /* allocate the memblock if it is NULL */
-  didalloc = 0;
-  if (memblock == NULL) {
-    if ((memblock = malloc(hdr.stp)) == NULL) {
-      fclose(fp);
-      return AMX_ERR_MEMORY;
-    } /* if */
-    didalloc = 1;
-    /* after amx_Init(), amx->base points to the memory block */
+  if ((hdr.flags & AMX_FLAG_OVERLAY) != 0) {
+    /* allocate the block for the data + stack/heap, plus the complete file 
+     * header, plus the overlay pool 
+     */
+    #if defined AMXOVL
+      size = (hdr.stp - hdr.dat) + hdr.cod + OVLPOOLSIZE;
+    #else
+      return AMX_ERR_OVERLAY;
+    #endif
+  } else {
+    size = hdr.stp;
+  } /* if */
+  if ((datablock = malloc(size)) == NULL) {
+    fclose(fp);
+    return AMX_ERR_MEMORY;
   } /* if */
 
-  overlayblock=malloc(2048);
-  assert(overlayblock!=NULL);
-  amx_poolinit(overlayblock,2048);
+  /* save the filename, for optionally reading the debug information (we could
+   * also have read it here immediately); for reading overlays, we also need
+   * the filename (and in this case, note that amx_Init() already browses
+   * through all overlays)
+   */
+  strcpy(g_filename, filename);
 
-  /* read in the file */
+  /* read in the file, in two parts; first the header and then the data section */
   rewind(fp);
-  fread(memblock, 1, (size_t)hdr.size, fp);
+  if ((hdr.flags & AMX_FLAG_OVERLAY) != 0) {
+    #if defined AMXOVL
+      /* read the entire header */
+      fread(datablock, 1, hdr.cod, fp);
+      /* read the data section, put it behind the header in the block */
+      fseek(fp, hdr.dat, SEEK_SET);
+      fread(datablock + hdr.cod, 1, hdr.hea - hdr.dat, fp);
+      /* initialize the overlay pool */
+      amx_poolinit(datablock + (hdr.stp - hdr.dat) + hdr.cod, OVLPOOLSIZE);
+    #endif
+  } else {
+    fread(datablock, 1, (size_t)hdr.size, fp);
+  } /* if */
   fclose(fp);
 
   /* initialize the abstract machine */
   memset(amx, 0, sizeof *amx);
-  amx->overlay=prun_Overlay;
-  result = amx_Init(amx, memblock);
+  #if defined AMXOVL
+    if ((hdr.flags & AMX_FLAG_OVERLAY) != 0) {
+      amx->data = datablock + hdr.cod;
+      amx->flags |= AMX_FLAG_DSEG_INIT; /* data section was already loaded from file */
+      amx->overlay = prun_Overlay;
+    } /* if */
+  #endif
+  result = amx_Init(amx, datablock);
 
   /* free the memory block on error, if it was allocated here */
-  if (result != AMX_ERR_NONE && didalloc) {
-    free(memblock);
+  if (result != AMX_ERR_NONE) {
+    free(datablock);
     amx->base = NULL;                   /* avoid a double free */
   } /* if */
-
-  /* save the filename, for optionally reading the debug information (we could
-   * also have read it here immediately
-   */
-  #if defined AMXDBG
-    strcpy(g_filename, filename);
-  #endif
 
   return result;
 }
@@ -223,6 +261,9 @@ static char *messages[] = {
       /* AMX_ERR_USERDATA  */ "Unable to set user data field (table full)",
       /* AMX_ERR_INIT_JIT  */ "Cannot initialize the JIT",
       /* AMX_ERR_PARAMS    */ "Parameter error",
+      /* AMX_ERR_DOMAIN    */ "domain error, expression result does not fit in range",
+      /* AMX_ERR_GENERAL   */ "general error (unknown or unspecific error)",
+      /* AMX_ERR_OVERLAY   */ "overlays are unsupported (JIT) or uninitialized",
     };
   if (errnum < 0 || errnum >= sizeof messages / sizeof messages[0])
     return "(unknown)";
@@ -247,7 +288,7 @@ void ExitOnError(AMX *amx, int error)
      */
     #if defined AMXDBG
       /* load the debug info. */
-      if ((fp=fopen(g_filename,"r")) != NULL && dbg_LoadInfo(&amxdbg,fp) == AMX_ERR_NONE) {
+      if ((fp=fopen(g_filename,"rb")) != NULL && dbg_LoadInfo(&amxdbg,fp) == AMX_ERR_NONE) {
         dbg_LookupFile(&amxdbg, amx->cip, &filename);
         dbg_LookupLine(&amxdbg, amx->cip, &line);
         printf("File: %s, line: %ld\n", filename, line);
@@ -292,13 +333,13 @@ int main(int argc,char *argv[])
   #endif
 
   /* Load the program and initialize the abstract machine. */
-  err = aux_LoadProgram(&amx, argv[1], NULL);
+  err = aux_LoadProgram(&amx, argv[1]);
   if (err != AMX_ERR_NONE) {
     /* try adding an extension */
     char filename[_MAX_PATH];
     strcpy(filename, argv[1]);
     strcat(filename, ".amx");
-    err = aux_LoadProgram(&amx, filename, NULL);
+    err = aux_LoadProgram(&amx, filename);
     if (err != AMX_ERR_NONE)
       PrintUsage(argv[0]);
   } /* if */

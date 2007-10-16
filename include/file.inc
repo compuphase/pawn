@@ -30,7 +30,7 @@ native File: fopen(const name[], filemode: mode = io_readwrite);
 native bool: fclose(File: handle);
 native File: ftemp();
 native bool: fremove(const name[]);
-native bool: frename(const oldname[], const newname);
+native bool: frename(const oldname[], const newname[]);
 
 native       fwrite(File: handle, const string[]);
 native       fread(File: handle, string[], size = sizeof string, bool: pack = false);

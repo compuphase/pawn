@@ -18,7 +18,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: amx.h 3744 2007-04-30 12:01:59Z thiadmer $
+ *  Version: $Id: amx.h 3821 2007-10-15 16:54:20Z thiadmer $
  */
 
 #ifndef AMX_H_INCLUDED
@@ -187,7 +187,7 @@ typedef cell (AMX_NATIVE_CALL *AMX_NATIVE)(struct tagAMX *amx, const cell *param
 typedef int (AMXAPI *AMX_CALLBACK)(struct tagAMX *amx, cell index,
                                    cell *result, const cell *params);
 typedef int (AMXAPI *AMX_DEBUG)(struct tagAMX *amx);
-typedef int (AMXAPI *AMX_OVERLAY)(struct tagAMX *amx, int index, cell **address);
+typedef int (AMXAPI *AMX_OVERLAY)(struct tagAMX *amx, int index);
 typedef int (AMXAPI *AMX_IDLE)(struct tagAMX *amx, int AMXAPI Exec(struct tagAMX *, cell *, int));
 #if !defined _FAR
   #define _FAR
@@ -248,15 +248,16 @@ typedef struct tagFUNCSTUBNT {
 } AMX_FUNCSTUBNT;
 
 typedef struct tagOVERLAYINFO {
-  int32_t offset        PACKED;
-  int32_t size          PACKED;
+  int32_t offset        PACKED; /* offset relative to the start of the code block */
+  int32_t size          PACKED; /* size in bytes */
 } AMX_OVERLAYINFO;
 
 /* The AMX structure is the internal structure for many functions. Not all
  * fields are valid at all times; many fields are cached in local variables.
  */
 typedef struct tagAMX {
-  unsigned char _FAR *base PACKED; /* points to the AMX header plus the code, optionally also the data */
+  unsigned char _FAR *base PACKED; /* points to the AMX header, perhaps followed by P-code and data */
+  unsigned char _FAR *code PACKED; /* points to P-code block, possibly in ROM or in an overlay pool */
   unsigned char _FAR *data PACKED; /* points to separate data+stack+heap, may be NULL */
   AMX_CALLBACK callback PACKED;
   AMX_DEBUG debug       PACKED; /* debug callback */
@@ -285,10 +286,12 @@ typedef struct tagAMX {
   cell reset_hea        PACKED;
   /* extra fields for increased performance */
   cell sysreq_d         PACKED; /* relocated address/value for the SYSREQ.D opcode */
+  /* fields for overlay support and JIT support */
+  int ovl_index         PACKED; /* current overlay index */
+  long codesize         PACKED; /* size of the overlay, or estimated memory footprint of the native code */
   #if defined JIT
     /* support variables for the JIT */
     int reloc_size      PACKED; /* required temporary buffer for relocations */
-    long code_size      PACKED; /* estimated memory footprint of the native code */
   #endif
 } AMX;
 
@@ -339,7 +342,7 @@ enum {
   AMX_ERR_NATIVE,       /* native function failed */
   AMX_ERR_DIVIDE,       /* divide by zero */
   AMX_ERR_SLEEP,        /* go into sleepmode - code can be restarted */
-  AMX_ERR_INVSTATE,     /* invalid state for this access */
+  AMX_ERR_INVSTATE,     /* no implementation for this state, no fall-back */
 
   AMX_ERR_MEMORY = 16,  /* out of memory */
   AMX_ERR_FORMAT,       /* invalid file format */
@@ -356,12 +359,12 @@ enum {
   AMX_ERR_OVERLAY,      /* overlays are unsupported (JIT) or uninitialized */
 };
 
-/*      AMX_FLAG_CHAR16   0x01     no longer used */
+#define AMX_FLAG_OVERLAY  0x01  /* all function calls use overlays */
 #define AMX_FLAG_DEBUG    0x02  /* symbolic info. available */
 #define AMX_FLAG_COMPACT  0x04  /* compact encoding */
 #define AMX_FLAG_SLEEP    0x08  /* script uses the sleep instruction (possible re-entry or power-down mode) */
 #define AMX_FLAG_NOCHECKS 0x10  /* no array bounds checking; no BREAK opcodes */
-#define AMX_FLAG_MACRO   0x400  /* script uses macro instructions (incompatible with JIT) */
+#define AMX_FLAG_DSEG_INIT 0x20 /* data section is explicitly initialized */
 #define AMX_FLAG_SYSREQN 0x800  /* script uses new (optimized) version of SYSREQ opcode */
 #define AMX_FLAG_NTVREG 0x1000  /* all native functions are registered */
 #define AMX_FLAG_JITC   0x2000  /* abstract machine is JIT compiled */

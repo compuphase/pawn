@@ -110,33 +110,16 @@ void amx_poolfree(void *block)
   } /* if */
 }
 
-#if 0 //???
-void amx_poolfreeall(void)
-{
-  ARENA *hdr;
-
-  for ( ;; ) {
-    hdr=(ARENA*)pool_base;
-    if (hdr->index==-1 && hdr->blocksize==pool_size-sizeof(ARENA))
-      break;  /* only a single block left, and that one is free */
-    while (hdr->index==-1) {
-      assert((void*)hdr>=pool_base && (void*)hdr<(char*)pool_base+pool_size);
-      hdr=(ARENA*)((char*)hdr+hdr->blocksize+sizeof(ARENA));
-    } /* while */
-    amx_poolfree((char*)hdr+sizeof(ARENA));
-  } /* for */
-}
-#endif
-
 /* amx_poolfind() returns the address of the memory block with the given index,
  * or NULL if no such block exists. Parameter "index" should not be -1, because
- * -1 represents a free block.
+ * -1 represents a free block (actually, only positive values are valid).
  */
 void *amx_poolfind(int index)
 {
   ARENA *hdr;
   unsigned sz;
 
+  assert(index>=0);
   sz=pool_size;
   hdr=(ARENA*)pool_base;
   while (sz>0 && hdr->index!=index) {
@@ -154,10 +137,10 @@ void *amx_poolfind(int index)
  * with an "arena header"; the return value of this function points just
  * behind this arena header.
  *
- * If the block already exists in the pool, it is not re-allocated. In other
- * words, parameter "index" should be unique for every of memory block, and
- * the block should not change in size. If you do not want this "already
- * present" check for blocks, set parameter "index" to -1.
+ * The block with the specified "index" should not already exist in the pool.
+ * In other words, parameter "index" should be unique for every of memory block,
+ * and the block should not change in size. Use amx_poolfind() to verify whether
+ * a block is already in the pool (and optionally amx_poolfree() to remove it).
  *
  * If no block of sufficient size is available, the routine frees blocks until
  * the requested amount of memory can be allocated. There is no intelligent
@@ -172,12 +155,8 @@ void *amx_poolalloc(unsigned size,int index)
   unsigned short minlru;
 
   assert(size>0);
-
-  if (index!=-1) {
-    void *block=amx_poolfind(index);
-    if (block!=NULL)
-      return block;
-  } /* if */
+  assert(index>=0 && index<=SHRT_MAX);
+  assert(amx_poolfind(index)==NULL);
 
   /* align the size to a cell boundary */
   if ((size % sizeof(cell))!=0)
@@ -194,16 +173,18 @@ void *amx_poolalloc(unsigned size,int index)
     sz=pool_size;
     hdr=(ARENA*)pool_base;
     hdrlru=hdr;
-    minlru=hdr->lru;
-    while (sz>0 && hdr->index!=-1) {
+    minlru=USHRT_MAX;
+    while (sz>0) {
       assert(sz<=pool_size);
       assert((void*)hdr>=pool_base && (void*)hdr<(char*)pool_base+pool_size);
-      sz-=hdr->blocksize+sizeof(ARENA);
-      hdr=(ARENA*)((char*)hdr+hdr->blocksize+sizeof(ARENA));
-      if (hdr->lru<minlru) {
+      if (hdr->index==-1 && hdr->blocksize>=size)
+        break;
+      if (hdr->index!=-1 && hdr->lru<minlru) {
         minlru=hdr->lru;
         hdrlru=hdr;
       } /* if */
+      sz-=hdr->blocksize+sizeof(ARENA);
+      hdr=(ARENA*)((char*)hdr+hdr->blocksize+sizeof(ARENA));
     } /* while */
     assert(sz<=pool_size);
     if (sz==0) {
@@ -224,11 +205,11 @@ void *amx_poolalloc(unsigned size,int index)
     size=hdr->blocksize;
   } /* if */
   hdr->blocksize=size;
-  hdr->index=(short)((index==-1) ? 0 : index);
+  hdr->index=(short)index;
   hdr->lru=++pool_lru;
 
-  /* special case: of the overlay LRU count wrapped back to zero, set the
-   * overlay count of all blocks to zero, but set the count of the block just
+  /* special case: if the overlay LRU count wrapped back to zero, set the
+   * LRU count of all blocks to zero, but set the count of the block just
    * allocated to 1
    */
   if (pool_lru==0) {
@@ -247,18 +228,3 @@ void *amx_poolalloc(unsigned size,int index)
 
   return (void*)((char*)hdr+sizeof(ARENA));
 }
-
-/*
-Using overlays:
-
-First verify whether the overlay is already present in the pool. If it is, just
-jump to the returned start address.
-
-Otherwise (the overlay is not in the pool), look up the file offset and the
-size of the overlay. Allocate that amount of memory into the pool, load the
-data into it and jump to the start address.
-
-All function calls and all function returns now get the overhead of a function
-call that verifies whether the overlaid function called into (or returned to)
-is in memory.
-*/

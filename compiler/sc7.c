@@ -45,7 +45,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: sc7.c 3579 2006-06-06 13:35:29Z thiadmer $
+ *  Version: $Id: sc7.c 3821 2007-10-15 16:54:20Z thiadmer $
  */
 #include <assert.h>
 #include <stdio.h>
@@ -508,23 +508,28 @@ static int matchsequence(char *start,char *end,const char *pattern,
       if (var==0) {
         /* match only if the parameter is numeric and in the range of a half cell */
         const char *ptr;
-        value=hex2cell(str,&ptr);
-        if (*ptr>' ' || value<-(1<<sizeof(cell)*4) || value>=(1<<sizeof(cell)*4))
+        /* getparamvalue() resolves leading '-' on values and adds multiple
+         * values (the peephole optimizer may create such variants)
+         */
+        ucell v=getparamvalue(str,&ptr);
+        if (*ptr>' ' || v>=(1<<sizeof(cell)*4))
           return FALSE;
-        /* strip the leading digits from the string */
-        assert((str[0]=='0' || str[0]=='f') && (str[1]=='0' || str[1]=='f'));
+        /* reconvert the value to a string (without signs or expressions) */
+        ptr=itoh(v);
+        assert(strlen(ptr)==2*sizeof(cell));
+        assert((ptr[0]=='0' || ptr[0]=='f') && (ptr[1]=='0' || ptr[1]=='f'));
         #if PAWN_CELL_SIZE>=32
-          assert((str[2]=='0' || str[2]=='f') && (str[3]=='0' || str[3]=='f'));
+          assert((ptr[2]=='0' || ptr[2]=='f') && (ptr[3]=='0' || ptr[3]=='f'));
         #endif
         #if PAWN_CELL_SIZE>=64
-          assert((str[4]=='0' || str[4]=='f') && (str[5]=='0' || str[5]=='f'));
-          assert((str[6]=='0' || str[6]=='f') && (str[7]=='0' || str[7]=='f'));
+          assert((ptr[4]=='0' || ptr[4]=='f') && (ptr[5]=='0' || ptr[5]=='f'));
+          assert((ptr[6]=='0' || ptr[6]=='f') && (ptr[7]=='0' || ptr[7]=='f'));
         #endif
         if (value==0) {
           str[0]='0'; /* make zero transform to '0' rather than '0000' */
           str[1]='\0';
         } else {
-          memmove(str,str+sizeof(cell),sizeof(cell)+1);
+          memmove(str,ptr+sizeof(cell),sizeof(cell)+1);
         } /* if */
       } /* if */
       if (symbols[var][0]!='\0') {
@@ -599,7 +604,7 @@ static char *replacesequence(char *pattern,char symbols[MAX_OPT_VARS+1][MAX_ALIA
       var=atoi(lptr);
       assert(var>=0 && var<=MAX_OPT_VARS);
       assert(symbols[var][0]!='\0');    /* variable should be defined */
-      assert(var!=0 || strlen(symbols[var])==sizeof(cell) || atoi(symbols[var])==0);
+      assert(var!=0 || strlen(symbols[var])==sizeof(cell) || (symbols[var][0]=='-' && strlen(symbols[var])==sizeof(cell)+1) || atoi(symbols[var])==0);
       *repl_length+=strlen(symbols[var]);
       break;
     case '!':

@@ -21,7 +21,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: amxdbg.h 3681 2006-12-01 10:20:23Z thiadmer $
+ *  Version: $Id: amxdbg.h 3821 2007-10-15 16:54:20Z thiadmer $
  */
 
 #ifndef AMXDBG_H_INCLUDED
@@ -142,6 +142,7 @@ typedef struct tagAMX_DBG {
 int AMXAPI dbg_FreeInfo(AMX_DBG *amxdbg);
 int AMXAPI dbg_LoadInfo(AMX_DBG *amxdbg, FILE *fp);
 
+int AMXAPI dbg_LinearAddress(AMX *amx, ucell relative_addr, ucell *linear_addr);
 int AMXAPI dbg_LookupFile(AMX_DBG *amxdbg, ucell address, const char **filename);
 int AMXAPI dbg_LookupFunction(AMX_DBG *amxdbg, ucell address, const char **funcname);
 int AMXAPI dbg_LookupLine(AMX_DBG *amxdbg, ucell address, long *line);

@@ -18,7 +18,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: sc3.c 3706 2007-01-29 07:30:10Z thiadmer $
+ *  Version: $Id: sc3.c 3821 2007-10-15 16:54:20Z thiadmer $
  */
 #include <assert.h>
 #include <stdio.h>
@@ -53,7 +53,7 @@ static int hier4(value *lval);
 static int hier3(value *lval);
 static int hier2(value *lval);
 static int hier1(value *lval1);
-static int primary(value *lval);
+static int primary(value *lval,int *symtok);
 static void clear_value(value *lval);
 static void callfunction(symbol *sym,value *lval_result,int matchparanthesis);
 static int dbltest(void (*oper)(),value *lval1,value *lval2);
@@ -125,6 +125,25 @@ static int nextop(int *opidx,const int *list)
     } /* if */
   } /* while */
   return FALSE;         /* entire list scanned, nothing found */
+}
+
+/* verifies whether an operator can only be used as a binary operator (this
+ * excludes the '-', which can be used in both unary and binary forms)
+ */
+static int isbinaryop(int tok)
+{
+  static const operators[] = {'*','/','%','+',
+                              tSHL,tSHR,tSHRU,
+                              '&','^','|',
+                              tlLE,tlGE,'<','>',tlEQ,tlNE,
+                              tlAND,tlOR,
+                              '='
+                             };
+  int idx;
+  
+  for (idx=0; idx<sizearray(operators) && tok!=operators[idx]; idx++)
+    /* nothing */;
+  return idx<sizearray(operators);    
 }
 
 SC_FUNC int check_userop(void (*oper)(void),int tag1,int tag2,int numparam,
@@ -1586,8 +1605,7 @@ static int hier1(value *lval1)
   symbol *sym;
   symbol dummysymbol,*cursym;   /* for changing the index tags in case of enumerated pseudo-arrays */
 
-  lvalue=primary(lval1);
-  symtok=tokeninfo(&val,&st);   /* get token read by primary() */
+  lvalue=primary(lval1,&symtok);
   cursym=lval1->sym;
 restart:
   sym=cursym;
@@ -1596,7 +1614,8 @@ restart:
     if (sym==NULL && symtok!=tSYMBOL) {
       /* we do not have a valid symbol and we appear not to have read a valid
        * symbol name (so it is unlikely that we would have read a name of an
-       * undefined symbol) */
+       * undefined symbol) 
+       */
       error(29);                /* expression error, assumed 0 */
       lexpush();                /* analyse '(', '{' or '[' again later */
       return FALSE;
@@ -1802,13 +1821,16 @@ restart:
  *
  *  Global references: sc_intest  (may be altered, but restored upon termination)
  */
-static int primary(value *lval)
+static int primary(value *lval,int *symtok)
 {
   char *st;
-  int lvalue,tok;
+  int lvalue;
   cell val;
   symbol *sym;
 
+  assert(lval!=NULL);
+  assert(symtok!=NULL);
+  *symtok=0;
   if (matchtoken('(')){         /* sub-expression - (expression,...) */
     PUSHSTK_I(sc_intest);
     PUSHSTK_I(sc_allowtags);
@@ -1828,14 +1850,14 @@ static int primary(value *lval)
   } /* if */
 
   clear_value(lval);    /* clear lval */
-  tok=lex(&val,&st);
-  if (tok==tSYMBOL) {
+  *symtok=lex(&val,&st);
+  if (*symtok==tSYMBOL) {
     /* lastsymbol is char[sNAMEMAX+1], lex() should have truncated any symbol
      * to sNAMEMAX significant characters */
     assert(strlen(st)<sizeof lastsymbol);
     strcpy(lastsymbol,st);
   } /* if */
-  if (tok==tSYMBOL && !findconst(st,NULL)) {
+  if (*symtok==tSYMBOL && !findconst(st,NULL)) {
     /* first look for a local variable */
     if ((sym=findloc(st))!=0) {
       if (sym->ident==iLABEL) {
@@ -1861,7 +1883,7 @@ static int primary(value *lval)
          * implemented, issue an error
          */
         if ((sym->usage & uPROTOTYPED)==0)
-          error(17,st);
+          return error(17,st);
       } else {
         if ((sym->usage & uDEFINE)==0)
           error(17,st);
@@ -1876,13 +1898,18 @@ static int primary(value *lval)
         } /* if */
       } /* if */
     } else {
-      if (!sc_allowproccall)
-        return error(17,st);    /* undefined symbol */
+      char symbolname[sNAMEMAX+1];
+      assert(strlen(st)<sizearray(symbolname));
+      strcpy(symbolname,st);
+      if (!sc_allowproccall || isbinaryop(lexpeek())) {
+        lexclr(FALSE);
+        return error(17,symbolname);  /* undefined symbol */
+      } /* if */
       /* an unknown symbol, but used in a way compatible with the "procedure
        * call" syntax. So assume that the symbol refers to a function.
        */
       assert(sc_status==statFIRST);
-      sym=fetchfunc(st,0);
+      sym=fetchfunc(symbolname,0);
       if (sym==NULL)
         error(103);     /* insufficient memory */
     } /* if */

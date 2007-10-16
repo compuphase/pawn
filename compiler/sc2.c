@@ -18,7 +18,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: sc2.c 3764 2007-05-22 10:29:16Z thiadmer $
+ *  Version: $Id: sc2.c 3821 2007-10-15 16:54:20Z thiadmer $
  */
 #include <assert.h>
 #include <stdio.h>
@@ -175,22 +175,24 @@ SC_FUNC int plungefile(char *name,int try_currentpath,int try_includepaths)
   int result=FALSE;
 
   if (try_currentpath) {
-    result=plungequalifiedfile(name);
-    if (!result) {
-      /* failed to open the file in the active directory, try to open the file
-       * in the same directory as the current file --but first check whether
-       * there is a (relative) path for the current file
-       */
-      char *ptr;
-      if ((ptr=strrchr(inpfname,DIRSEP_CHAR))!=0) {
-        int len=(int)(ptr-inpfname)+1;
-        if (len+strlen(name)<_MAX_PATH) {
-          char path[_MAX_PATH];
-          strlcpy(path,inpfname,len+1);
-          strlcat(path,name,sizeof path);
-          result=plungequalifiedfile(path);
-        } /* if */
+    /* try to open the file in the same directory as the current file --but 
+     * first check whether there is a (relative) path for the current file
+     */
+    char *ptr;
+    if ((ptr=strrchr(inpfname,DIRSEP_CHAR))!=0) {
+      int len=(int)(ptr-inpfname)+1;
+      if (len+strlen(name)<_MAX_PATH) {
+        char path[_MAX_PATH];
+        strlcpy(path,inpfname,len+1);
+        strlcat(path,name,sizeof path);
+        result=plungequalifiedfile(path);
       } /* if */
+    } else {
+      /* there is no path for the current source file, meaning that it comes
+       * from the active directory; try to open the file from the active 
+       * directory too
+       */
+      result=plungequalifiedfile(name);
     } /* if */
   } /* if */
 
@@ -204,6 +206,7 @@ SC_FUNC int plungefile(char *name,int try_currentpath,int try_includepaths)
       result=plungequalifiedfile(path);
     } /* while */
   } /* if */
+  
   return result;
 }
 
@@ -1097,11 +1100,12 @@ static int command(void)
             if (find_constval(&libname_tab,name,0)==NULL)
               curlibrary=append_constval(&libname_tab,name,0,0);
           } /* if */
-        } else if (strcmp(str,"overlay")==0) {
+        } else if (strcmp(str,"overlaysize")==0) {
           cell val;
           preproc_expr(&val,NULL);
           pc_overlays=(int)val; /* switch overlay code generation on/off,
                                  * also set the size of the overlay buffer */
+          add_constant("overlaysize",val,sGLOBAL,0,TRUE);
         } else if (strcmp(str,"pack")==0) {
           cell val;
           preproc_expr(&val,NULL);      /* default = packed/unpacked */
@@ -2045,6 +2049,20 @@ SC_FUNC void lexclr(int clreol)
   } /* if */
 }
 
+/* lexpeek()
+ * Returns the next token without removing it
+ */
+SC_FUNC int lexpeek(void)
+{
+  cell val;
+  char *str;
+  int tok;
+
+  tok=lex(&val,&str);
+  lexpush();
+  return tok;
+}
+
 /*  matchtoken
  *
  *  This routine is useful if only a simple check is needed. If the token
@@ -2086,7 +2104,7 @@ SC_FUNC int matchtoken(int token)
  */
 SC_FUNC int tokeninfo(cell *val,char **str)
 {
-  /* if the token was pushed back, tokeninfo() returns the token and
+  /* if the token was pushed back, tokeninfo() would return the token and
    * parameters of the *next* token, not of the *current* token.
    */
   assert(!_pushed);
@@ -2390,12 +2408,12 @@ static void free_symbol(symbol *sym)
     } /* for */
     free(sym->dim.arglist);
     if (sym->states!=NULL) {
-      delete_consttable(sym->states);
+      delete_statelisttable(sym->states);
       free(sym->states);
     } /* if */
   } else if (sym->ident==iVARIABLE || sym->ident==iARRAY) {
     if (sym->states!=NULL) {
-      delete_consttable(sym->states);
+      delete_statelisttable(sym->states);
       free(sym->states);
     } /* if */
   } else if (sym->ident==iCONSTEXPR && (sym->usage & uENUMROOT)==uENUMROOT) {
@@ -2431,7 +2449,7 @@ SC_FUNC void delete_symbol(symbol *root,symbol *sym)
 SC_FUNC void delete_symbols(symbol *root,int level,int delete_labels,int delete_functions)
 {
   symbol *sym,*parent_sym;
-  constvalue *stateptr;
+  statelist *stateptr;
   int mustdelete;
 
   /* erase only the symbols with a deeper nesting level than the
@@ -2498,7 +2516,7 @@ SC_FUNC void delete_symbols(symbol *root,int level,int delete_labels,int delete_
       /* set all states as "undefined" too */
       if (sym->states!=NULL)
         for (stateptr=sym->states->next; stateptr!=NULL; stateptr=stateptr->next)
-          stateptr->value=0;
+          stateptr->addr=0;
       /* for user defined operators, also remove the "prototyped" flag, as
        * user-defined operators *must* be declared before use
        */
@@ -2537,7 +2555,7 @@ static symbol *find_symbol(const symbol *root,const char *name,int fnumber,int a
       assert(sym->states==NULL || sym->states->next!=NULL); /* first element of the state list is the "root" */
       if (sym->ident==iFUNCTN
           || automaton<0 && sym->states==NULL
-          || automaton>=0 && sym->states!=NULL && state_getfsa(sym->states->next->index)==automaton)
+          || automaton>=0 && sym->states!=NULL && state_getfsa(sym->states->next->id)==automaton)
       {
         if (cmptag==NULL)
           return sym;   /* return first match */
@@ -2656,7 +2674,7 @@ SC_FUNC symbol *findglb(const char *name,int filter)
        * state list and the current state list
        */
       assert(sym->states!=NULL && sym->states->next!=NULL);
-      if (!state_conflict_id(sc_curstates,sym->states->next->index))
+      if (!state_conflict_id(sc_curstates,sym->states->next->id))
         sym=NULL;
     } /* if */
   } /* if */
@@ -2734,7 +2752,6 @@ SC_FUNC symbol *addsym(const char *name,cell addr,int ident,int vclass,int tag,i
   entry.usage=(char)usage;
   entry.fnumber=-1;     /* assume global visibility (ignored for local symbols) */
   entry.lnumber=fline;
-  entry.ovl_index=-1;   /* assume no overlay function */
   entry.numrefers=1;
   entry.refer=refer;
 

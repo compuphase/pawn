@@ -22,7 +22,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: amxcons.c 3745 2007-04-30 16:32:33Z thiadmer $
+ *  Version: $Id: amxcons.c 3821 2007-10-15 16:54:20Z thiadmer $
  */
 
 #if defined _UNICODE || defined __UNICODE__ || defined UNICODE
@@ -631,9 +631,13 @@ static int dochar(AMX *amx,TCHAR ch,cell param,TCHAR sign,TCHAR decpoint,int wid
     if (width>0)
       _stprintf(formatstring+_tcslen(formatstring),__T("%d"),width);
     _stprintf(formatstring+_tcslen(formatstring),__T(".%df"),digits);
-    /* ??? decimal comma? */
     amx_GetAddr(amx,param,&cptr);
     _stprintf(buffer,formatstring,*(float*)cptr);
+    if (decpoint==__T(',')) {
+      TCHAR *ptr=_tcschr(buffer,__T('.'));
+      if (ptr!=NULL)
+        *ptr=__T(',');
+    } /* if */
     f_putstr(user,buffer);
     return 1;
 #endif
