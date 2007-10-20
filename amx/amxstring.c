@@ -18,7 +18,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: amxstring.c 3827 2007-10-16 14:53:31Z thiadmer $
+ *  Version: $Id: amxstring.c 3831 2007-10-19 17:25:41Z thiadmer $
  */
 #include <limits.h>
 #include <string.h>
@@ -302,7 +302,7 @@ static cell AMX_NATIVE_CALL n_strcat(AMX *amx,const cell *params)
 /* strcopy(dest[], const source[], maxlength=sizeof dest)
  * packed/unpacked attribute from source[]
  */
-static cell AMX_NATIVE_CALL n_strcat(AMX *amx,const cell *params)
+static cell AMX_NATIVE_CALL n_strcopy(AMX *amx,const cell *params)
 {
   cell *cdest,*csrc;
   int len,needed;

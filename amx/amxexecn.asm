@@ -691,7 +691,7 @@ OP_ICALL:
         shl     edx,16
         or      edx,[ebp+_ovl_index] ; EDX=(relative address << 16) | ovl_index
         _PUSH   edx
-        mov     edx,[esi+4]     ; EAX=ovl_index
+        mov     edx,[esi+4]     ; EDX=ovl_index
         mov     [ebp+_ovl_index],edx
         mov     eax,ebp         ; 1st parm: amx
 %ifdef CDECL_STDCALL
@@ -732,7 +732,7 @@ OP_IRETN:
         _DROPARGS 8             ; remove arguments from stack
         _RESTOREREGS
         mov     eax,[ebp+_codeseg] ; get new code base
-        mov     code,eax        ; save new code base in local variable        
+        mov     code,eax        ; save new code base in local variable
         add     esi,eax         ; ESI=code base + offset
         mov     eax,pri         ; restore PRI
         mov     edx,alt         ; restore ALT
@@ -2570,7 +2570,7 @@ _amx_opcodelist DD OP_INVALID
         DD      OP_CONST
         DD      OP_CONST_S
         ; overlay opcodes
-        DD      OP_ICALL 
+        DD      OP_ICALL
         DD      OP_IRETN
         DD      OP_ISWITCH
         DD      OP_ICASETBL
