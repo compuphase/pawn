@@ -84,7 +84,7 @@ void amx_poolfree(void *block)
 
   assert(block!=NULL);
   hdr=(ARENA*)((char*)block-sizeof(ARENA));
-  assert((void*)hdr>=pool_base && (void*)hdr<(char*)pool_base+pool_size);
+  assert((char*)hdr>=(char*)pool_base && (char*)hdr<(char*)pool_base+pool_size);
   assert(hdr->blocksize<pool_size);
 
   /* free this block */
@@ -124,7 +124,7 @@ void *amx_poolfind(int index)
   hdr=(ARENA*)pool_base;
   while (sz>0 && hdr->index!=index) {
     assert(sz<=pool_size);
-    assert((void*)hdr>=pool_base && (void*)hdr<(char*)pool_base+pool_size);
+    assert((char*)hdr>=(char*)pool_base && (char*)hdr<(char*)pool_base+pool_size);
     sz-=hdr->blocksize+sizeof(ARENA);
     hdr=(ARENA*)((char*)hdr+hdr->blocksize+sizeof(ARENA));
   } /* while */
@@ -176,7 +176,7 @@ void *amx_poolalloc(unsigned size,int index)
     minlru=USHRT_MAX;
     while (sz>0) {
       assert(sz<=pool_size);
-      assert((void*)hdr>=pool_base && (void*)hdr<(char*)pool_base+pool_size);
+      assert((char*)hdr>=(char*)pool_base && (char*)hdr<(char*)pool_base+pool_size);
       if (hdr->index==-1 && hdr->blocksize>=size)
         break;
       if (hdr->index!=-1 && hdr->lru<minlru) {

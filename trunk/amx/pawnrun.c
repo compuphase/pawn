@@ -19,7 +19,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: pawnrun.c 3821 2007-10-15 16:54:20Z thiadmer $
+ *  Version: $Id: pawnrun.c 3830 2007-10-19 15:03:32Z thiadmer $
  */
 #include <assert.h>
 #include <stdio.h>
@@ -98,7 +98,7 @@ int AMXAPI prun_Monitor(AMX *amx)
 
 #if defined AMXOVL
 /* prun_Overlay()
- * Helper function to load overlays 
+ * Helper function to load overlays
  */
 int AMXAPI prun_Overlay(AMX *amx, int index)
 {
@@ -143,6 +143,7 @@ int AMXAPI aux_LoadProgram(AMX *amx, char *filename)
     return AMX_ERR_NOTFOUND;
   fread(&hdr, sizeof hdr, 1, fp);
   amx_Align16(&hdr.magic);
+  amx_Align16((uint16_t *)&hdr.flags);
   amx_Align32((uint32_t *)&hdr.size);
   amx_Align32((uint32_t *)&hdr.cod);
   amx_Align32((uint32_t *)&hdr.dat);
@@ -154,8 +155,8 @@ int AMXAPI aux_LoadProgram(AMX *amx, char *filename)
   } /* if */
 
   if ((hdr.flags & AMX_FLAG_OVERLAY) != 0) {
-    /* allocate the block for the data + stack/heap, plus the complete file 
-     * header, plus the overlay pool 
+    /* allocate the block for the data + stack/heap, plus the complete file
+     * header, plus the overlay pool
      */
     #if defined AMXOVL
       size = (hdr.stp - hdr.dat) + hdr.cod + OVLPOOLSIZE;
@@ -199,7 +200,6 @@ int AMXAPI aux_LoadProgram(AMX *amx, char *filename)
   #if defined AMXOVL
     if ((hdr.flags & AMX_FLAG_OVERLAY) != 0) {
       amx->data = datablock + hdr.cod;
-      amx->flags |= AMX_FLAG_DSEG_INIT; /* data section was already loaded from file */
       amx->overlay = prun_Overlay;
     } /* if */
   #endif

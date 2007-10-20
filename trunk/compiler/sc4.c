@@ -18,7 +18,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: sc4.c 3821 2007-10-15 16:54:20Z thiadmer $
+ *  Version: $Id: sc4.c 3830 2007-10-19 15:03:32Z thiadmer $
  */
 #include <assert.h>
 #include <ctype.h>
@@ -219,7 +219,7 @@ SC_FUNC void writestatetables(symbol *root,int lbl_nostate)
       /* count the number of states actually used; at the same time, check
        * whether there is a default (i.e. "fallback") state function
        */
-      statecount=0;      
+      statecount=0;
       lbl_default= (pc_overlays>0) ? ovlSTATEEXIT : lbl_nostate;
       for (stlist=sym->states->next; stlist!=NULL; stlist=stlist->next) {
         if (stlist->id==-1) {
@@ -910,7 +910,7 @@ SC_FUNC void modstk(int delta)
 {
   if (delta) {
 #if !defined AMX_NO_PACKED_OPC
-    if (pc_optimize>sOPTIMIZE_NOMACRO && delta>=-(1<<sizeof(cell)*4) && delta<(1<<sizeof(cell)*4)) {
+    if (!staging && pc_optimize>sOPTIMIZE_NOMACRO && delta>=-(1<<sizeof(cell)*4) && delta<(1<<sizeof(cell)*4)) {
       stgwrite("\tstack.p ");
       outval(delta,FALSE,TRUE);
       code_idx+=opcodes(1);
@@ -947,7 +947,7 @@ SC_FUNC void modheap(int delta)
 {
   if (delta) {
 #if !defined AMX_NO_PACKED_OPC
-    if (pc_optimize>sOPTIMIZE_NOMACRO && delta>=-(1<<sizeof(cell)*4) && delta<(1<<sizeof(cell)*4)) {
+    if (!staging && pc_optimize>sOPTIMIZE_NOMACRO && delta>=-(1<<sizeof(cell)*4) && delta<(1<<sizeof(cell)*4)) {
       stgwrite("\theap.p ");
       outval(delta,FALSE,TRUE);
       code_idx+=opcodes(1);
@@ -965,7 +965,7 @@ SC_FUNC void modheap(int delta)
 SC_FUNC void setheap_pri(void)
 {
 #if !defined AMX_NO_PACKED_OPC
-  if (pc_optimize>sOPTIMIZE_NOMACRO) {
+  if (!staging && pc_optimize>sOPTIMIZE_NOMACRO) {
     stgwrite("\theap.p ");
     outval(sizeof(cell),FALSE,TRUE);
     code_idx+=opcodes(3);       /* the other 2 opcodes follow below */
@@ -1076,7 +1076,7 @@ SC_FUNC void addconst(cell value)
 {
   if (value!=0) {
 #if !defined AMX_NO_PACKED_OPC
-    if (pc_optimize>sOPTIMIZE_NOMACRO && value>=-(1<<sizeof(cell)*4) && value<(1<<sizeof(cell)*4))
+    if (!staging && pc_optimize>sOPTIMIZE_NOMACRO && value>=-(1<<sizeof(cell)*4) && value<(1<<sizeof(cell)*4))
       stgwrite("\tadd.p.c ");
     else
 #endif

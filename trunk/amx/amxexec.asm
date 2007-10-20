@@ -17,7 +17,7 @@
 ; * You will need to compile the standard AMX.C file with the macro ASM32
 ;   defined. On the command line, use:
 ;       wcl386 /l=nt /dASM32 srun.c amx.c amxcore.c amxcons.c amxexec.asm
-; * OP_CASETBL and OP_ICASETBL are not implemented, but they should not occur 
+; * OP_CASETBL and OP_ICASETBL are not implemented, but they should not occur
 ;   anyway.
 ; * Since the move to position-independent code, all obsolete instructions have
 ;   been removed; you the Pawn compiler that generates position-independent code
@@ -786,7 +786,7 @@ OP_ICALL:
         shl     edx,16
         or      edx,[ebp+_ovl_index] ; EDX=(relative address << 16) | ovl_index
         _PUSH   edx
-        mov     edx,[esi+4]     ; EAX=ovl_index
+        mov     edx,[esi+4]     ; EDX=ovl_index
         mov     [ebp+_ovl_index],edx
         mov     eax,ebp         ; 1st parm: amx
 IFDEF CDECL_STDCALL
@@ -827,7 +827,7 @@ ENDIF
         _DROPARGS 8             ; remove arguments from stack
         _RESTOREREGS
         mov     eax,[ebp+_codeseg] ; get new code base
-        mov     code,eax        ; save new code base in local variable        
+        mov     code,eax        ; save new code base in local variable
         add     esi,eax         ; ESI=code base + offset
         mov     eax,PRI         ; restore PRI
         mov     edx,alt         ; restore ALT
@@ -2754,7 +2754,7 @@ _amx_opcodelist DD OP_INVALID
         DD      OP_CONST
         DD      OP_CONST_S
         ; overlay opcodes
-        DD      OP_ICALL 
+        DD      OP_ICALL
         DD      OP_IRETN
         DD      OP_ISWITCH
         DD      OP_ICASETBL

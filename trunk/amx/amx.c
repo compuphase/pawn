@@ -18,7 +18,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: amx.c 3821 2007-10-15 16:54:20Z thiadmer $
+ *  Version: $Id: amx.c 3831 2007-10-19 17:25:41Z thiadmer $
  */
 
 #if BUILD_PLATFORM == WINDOWS && BUILD_TYPE == RELEASE && BUILD_COMPILER == MSVC && PAWN_CELL_SIZE == 64
@@ -609,7 +609,7 @@ static int VerifyPcode(AMX *amx)
   AMX_HEADER *hdr;
   cell op,cip,tgt;
   int sysreq_flg;
-  #if defined __GNUC__ || defined __ICC || defined ASM32 || defined JIT
+  #if (defined __GNUC__ || defined __ICC || defined ASM32 || defined JIT) && !defined AMX_TOKENTHREADING
     cell *opcode_list;
   #endif
   #if defined JIT
@@ -971,6 +971,12 @@ static int VerifyPcode(AMX *amx)
       DBGPARAM(num);    /* number of records follows the opcode */
       for (i=0; i<=num; i++) {
         cell offs=cip+2*i*sizeof(cell);
+        /* if this file is an older version (absolute references instead of the
+         * current use of position-independent code), convert the parameter
+         * to position-independent code first
+         */
+        if (hdr->file_version<10)
+          RELOC_PIC(amx->code,offs);
         tgt=*(cell*)(amx->code+(int)offs)+offs-sizeof(cell);
         if (tgt<0 || tgt>amx->codesize) {
           amx->flags &= ~AMX_FLAG_VERIFY;
@@ -1089,7 +1095,7 @@ static void expand(unsigned char *code, long codesize, long memsize)
 int AMXAPI amx_Init(AMX *amx,void *program)
 {
   AMX_HEADER *hdr;
-  int err;
+  int err,i;
   unsigned char *data;
   #if (defined _Windows || defined LINUX || defined __FreeBSD__ || defined __OpenBSD__) && !defined AMX_NODYNALOAD
     #if defined _Windows
@@ -1105,7 +1111,7 @@ int AMXAPI amx_Init(AMX *amx,void *program)
         #define AMX_LIBPATH     "AMXLIB"
       #endif
     #endif
-    int numlibraries,i;
+    int numlibraries;
     AMX_FUNCSTUB *lib;
     AMX_ENTRY libinit;
   #endif
@@ -1197,7 +1203,7 @@ int AMXAPI amx_Init(AMX *amx,void *program)
 
   /* to split the data segment off the code segment, the "data" field must
    * be set to a non-NULL value on initialization, before calling amx_Init();
-   * you may also need to explicitly initialize the data section with the 
+   * you may also need to explicitly initialize the data section with the
    * contents read from the AMX file
    */
   if (amx->data!=NULL) {
@@ -3577,13 +3583,14 @@ int AMXAPI amx_Exec(AMX *amx, cell *retval, int index)
   unsigned char *data;
   cell pri,alt,stk,frm,hea;
   cell reset_stk, reset_hea, *cip;
-  int i;
+  int num,i;
   #if !(defined ASM32 || defined JIT)
     cell op,offs,val;
-    int num;
   #endif
   #if defined ASM32
-    extern void const *amx_opcodelist[];
+    #if !defined AMX_TOKENTHREADING
+      extern void const *amx_opcodelist[];
+    #endif
     #ifdef __WATCOMC__
       #pragma aux amx_opcodelist "_*"
     #endif
@@ -3642,13 +3649,15 @@ int AMXAPI amx_Exec(AMX *amx, cell *retval, int index)
   if (index==AMX_EXEC_MAIN) {
     if (hdr->cip<0)
       return AMX_ERR_INDEX;
-    cip=(cell *)(amx->code + (int)hdr->cip);
+    amx->cip=hdr->cip;
+    cip=(cell *)(amx->code + (int)amx->cip);
     if (hdr->file_version>=10 && hdr->overlays!=hdr->nametable) {
       assert(hdr->overlays!=0);
       amx->ovl_index=(int)hdr->cip;
       num=amx->overlay(amx,amx->ovl_index);
       if (num!=AMX_ERR_NONE)
         return 0;
+      amx->cip=0;
       cip=(cell*)amx->code;
     } /* if */
   } else if (index==AMX_EXEC_CONT) {
@@ -3667,13 +3676,15 @@ int AMXAPI amx_Exec(AMX *amx, cell *retval, int index)
     if (index>=(cell)NUMENTRIES(hdr,publics,natives))
       return AMX_ERR_INDEX;
     func=GETENTRY(hdr,publics,index);
-    cip=(cell *)(amx->code+(int)func->address);
+    amx->cip=func->address;
+    cip=(cell *)(amx->code+(int)amx->cip);
     if (hdr->file_version>=10 && hdr->overlays!=hdr->nametable) {
       assert(hdr->overlays!=0);
       amx->ovl_index=func->address;
       num=amx->overlay(amx,amx->ovl_index);
       if (num!=AMX_ERR_NONE)
         return 0;
+      amx->cip=0;
       cip=(cell*)amx->code;
     } /* if */
   } /* if */
@@ -3723,6 +3734,7 @@ int AMXAPI amx_Exec(AMX *amx, cell *retval, int index)
   /* start running */
 #if defined ASM32 || defined JIT
   /* either the ARM or 80x86 assembler abstract machine or the JIT */
+  amx->stk=stk;
   #if defined ASM32 && defined JIT
     if ((amx->flags & AMX_FLAG_JITC)!=0)
       i = amx_exec_jit(amx,retval,data);
@@ -4564,7 +4576,7 @@ int AMXAPI amx_Exec(AMX *amx, cell *retval, int index)
       num=amx->overlay(amx,amx->ovl_index);
       if (num!=AMX_ERR_NONE)
         ABORT(amx,num);
-      cip=(cell*)amx->code;      
+      cip=(cell*)amx->code;
       break;
     } /* case */
     case OP_SWAP_PRI:
