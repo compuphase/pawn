@@ -18,7 +18,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: amxargs.c 3821 2007-10-15 16:54:20Z thiadmer $
+ *  Version: $Id: amxargs.c 3853 2007-11-26 13:59:01Z thiadmer $
  */
 #if defined _UNICODE || defined __UNICODE__ || defined UNICODE
 # if !defined UNICODE   /* for Windows */
@@ -35,13 +35,13 @@
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
-#if defined __WIN32__ || defined _WIN32 || defined WIN32 || defined __MSDOS__
+#include "osdefs.h"
+#if defined __WIN32__ || defined __MSDOS__
   #include <malloc.h>
 #endif
-#if defined __WIN32__ || defined _WIN32 || defined WIN32 || defined _Windows
+#if defined __WIN32__ || defined _Windows
   #include <windows.h>
 #endif
-#include "osdefs.h"
 #include "amx.h"
 
 #if defined _UNICODE

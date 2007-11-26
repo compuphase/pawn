@@ -1,10 +1,14 @@
-/* __MSDOS__    set when compiling for DOS (not Windows)
- * _Windows     set when compiling for any version of Microsoft Windows
- * __WIN32__    set when compiling for Windows95 or WindowsNT (32 bit mode)
- * __32BIT__    set when compiling in 32-bit "flat" mode (DOS or Windows)
+/*
+ * Platform
+ *   __MSDOS__    set when compiling for DOS (not Windows)
+ *   _Windows     set when compiling for any version of Microsoft Windows
+ *   __WIN32__    set when compiling for Windows95 or WindowsNT (32 bit mode)
+ *   __32BIT__    set when compiling in 32-bit "flat" mode (DOS or Windows)
+ *   __ECOS__     set if Pawn was included with the eCos with configtool
+ *   __LINUX__    set when compiling for Linux
  *
- * Copyright 1998-2005, ITB CompuPhase, The Netherlands.
- * info@compuphase.com.
+ * Copyright 1998-2007, ITB CompuPhase, The Netherlands.
+ * No usage restrictions, no warranties.
  */
 
 #ifndef _OSDEFS_H
@@ -35,13 +39,59 @@
 #  endif
 #endif
 
-#if defined __FreeBSD__
-   #include <sys/endian.h>
-#elif defined LINUX
-   #include <endian.h>
+#if defined __linux || defined __linux__
+#  define __LINUX__
+#endif
+/* To be able to eventually set __ECOS__, we have to find a symbol
+ * defined in a common place (so including the header file won't break
+ * anything for other platforms). <sys/types.h> includes
+ * <pkgconf/system.h> and in this later file we can find CYGPKG_PAWN
+ * if the Pawn package was included with configtool and so we know
+ * that we are compiling for eCos.
+ */
+#include <sys/types.h>
+#if defined CYGPKG_PAWN
+#  define __ECOS__      1
+#  define HAVE_ALLOCA_H 0
 #endif
 
-/* Linux NOW has these */
+
+#if defined __FreeBSD__
+#  include <sys/endian.h>
+#elif defined __LINUX__
+#  include <endian.h>
+#elif defined __ECOS__
+#  include <cyg/hal/hal_endian.h>
+#  define BIG_ENDIAN    4321
+#  define LITTLE_ENDIAN 1234
+#  if (CYG_BYTEORDER == CYG_LSBFIRST)
+#    define BYTE_ORDER  LITTLE_ENDIAN
+#  else
+#    define BYTE_ORDER  BIG_ENDIAN
+#  endif
+   /*
+    * eCos option management.
+    */
+#  include <pkgconf/pawn.h>
+#  if CYGPKG_PAWN_AMX_ANSIONLY==1
+#    define AMX_ANSIONLY
+#  endif
+#  define PAWN_CELL_SIZE CYGPKG_PAWN_AMX_CELLSIZE
+#  if CYGPKG_PAWN_CORE_RANDOM==0
+#    define AMX_NORANDOM
+#  endif
+#  if CYGPKG_PAWN_CORE_PROPERTY==0
+#    define AMX_NOPROPLIST
+#  endif
+#  if CYGPKG_PAWN_AMX_CONS_FIXEDPOINT==1
+#    define FIXEDPOINT
+#  endif
+#  if CYGPKG_PAWN_AMX_CONS_FLOATPOINT==1
+#    define FLOATPOINT
+#  endif
+#endif
+
+/* Linux now has these */
 #if !defined BIG_ENDIAN
   #define BIG_ENDIAN    4321
 #endif

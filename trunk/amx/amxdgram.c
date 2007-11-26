@@ -20,12 +20,13 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: amxdgram.c 3681 2006-12-01 10:20:23Z thiadmer $
+ *  Version: $Id: amxdgram.c 3845 2007-11-16 14:41:29Z thiadmer $
  */
 #include <assert.h>
 #include <stdio.h>
 #include <string.h>
-#if defined LINUX
+#include "osdefs.h"
+#if defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__
   #include <arpa/inet.h>
   #include <netinet/in.h>
   #include <sys/ioctl.h>
@@ -37,7 +38,6 @@
   #include <malloc.h>
   #include <winsock.h>
 #endif
-#include "osdefs.h"
 #include "amx.h"
 
 

@@ -25,7 +25,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: sc.h 3821 2007-10-15 16:54:20Z thiadmer $
+ *  Version: $Id: sc.h 3853 2007-11-26 13:59:01Z thiadmer $
  */
 #ifndef SC_H_INCLUDED
 #define SC_H_INCLUDED
@@ -314,13 +314,16 @@ typedef struct s_valuepair {
 #if !defined sizearray
   #define sizearray(a)  (sizeof(a) / sizeof((a)[0]))
 #endif
+#if !defined makelong
+  #define makelong(low,high) ((long)(low) | ((long)(high) << (sizeof(long)*4)))
+#endif
 
 /*  Tokens recognized by lex()
  *  Some of these constants are assigned as well to the variable "lastst" (see SC1.C)
  */
 #define tFIRST      256 /* value of first multi-character operator */
 #define tMIDDLE     280 /* value of last multi-character operator */
-#define tLAST       328 /* value of last multi-character match-able token */
+#define tLAST       323 /* value of last multi-character match-able token */
 /* multi-character operators */
 #define taMULT      256 /* *= */
 #define taDIV       257 /* /= */
@@ -349,65 +352,60 @@ typedef struct s_valuepair {
 #define tDBLCOLON   280 /* :: */
 /* reserved words (statements) */
 #define tASSERT     281
-#define tBEGIN      282
-#define tBREAK      283
-#define tCASE       284
-#define tCHAR       285
-#define tCONST      286
-#define tCONTINUE   287
-#define tDEFAULT    288
-#define tDEFINED    289
-#define tDO         290
-#define tELSE       291
-#define tEND        292
-#define tENUM       293
-#define tEXIT       294
-#define tFOR        295
-#define tFORWARD    296
-#define tGOTO       297
-#define tIF         298
-#define tNATIVE     299
-#define tNEW        300
-#define tOPERATOR   301
-#define tPUBLIC     302
-#define tRETURN     303
-#define tSIZEOF     304
-#define tSLEEP      305
-#define tSTATE      306
-#define tSTATIC     307
-#define tSTOCK      308
-#define tSWITCH     309
-#define tTAGOF      310
-#define tTHEN       311
-#define tWHILE      312
+#define tBREAK      282
+#define tCASE       283
+#define tCHAR       284
+#define tCONST      285
+#define tCONTINUE   286
+#define tDEFAULT    287
+#define tDEFINED    288
+#define tDO         289
+#define tELSE       290
+#define tENUM       291
+#define tEXIT       292
+#define tFOR        293
+#define tFORWARD    294
+#define tGOTO       295
+#define tIF         296
+#define tNATIVE     297
+#define tNEW        298
+#define tOPERATOR   299
+#define tPUBLIC     300
+#define tRETURN     301
+#define tSIZEOF     302
+#define tSLEEP      303
+#define tSTATE      304
+#define tSTATIC     305
+#define tSTOCK      306
+#define tSWITCH     307
+#define tTAGOF      308
+#define tWHILE      309
 /* compiler directives */
-#define tpASSERT    313 /* #assert */
-#define tpDEFINE    314
-#define tpELSE      315 /* #else */
-#define tpELSEIF    316 /* #elseif */
-#define tpEMIT      317
-#define tpENDIF     318
-#define tpENDINPUT  319
-#define tpENDSCRPT  320
-#define tpERROR     321
-#define tpFILE      322
-#define tpIF        323 /* #if */
-#define tINCLUDE    324
-#define tpLINE      325
-#define tpPRAGMA    326
-#define tpTRYINCLUDE 327
-#define tpUNDEF     328
+#define tpASSERT    310 /* #assert */
+#define tpDEFINE    311
+#define tpELSE      312 /* #else */
+#define tpELSEIF    313 /* #elseif */
+#define tpENDIF     314
+#define tpENDINPUT  315
+#define tpERROR     316
+#define tpFILE      317
+#define tpIF        318 /* #if */
+#define tINCLUDE    319
+#define tpLINE      320
+#define tpPRAGMA    321
+#define tpTRYINCLUDE 322
+#define tpUNDEF     323
 /* semicolon is a special case, because it can be optional */
-#define tTERM       329 /* semicolon or newline */
-#define tENDEXPR    330 /* forced end of expression */
+#define tTERM       324 /* semicolon or newline */
+#define tENDEXPR    325 /* forced end of expression */
 /* other recognized tokens */
-#define tNUMBER     331 /* integer number */
-#define tRATIONAL   332 /* rational number */
-#define tSYMBOL     333
-#define tLABEL      334
-#define tSTRING     335
-#define tEXPR       336 /* for assigment to "lastst" only (see SC1.C) */
-#define tENDLESS    337 /* endless loop, for assigment to "lastst" only */
+#define tNUMBER     326 /* integer number */
+#define tRATIONAL   327 /* rational number */
+#define tSYMBOL     328
+#define tLABEL      329
+#define tSTRING     330
+#define tEXPR       331 /* for assigment to "lastst" only (see SC1.C) */
+#define tENDLESS    332 /* endless loop, for assigment to "lastst" only */
 
 /* (reversed) evaluation of staging buffer */
 #define sSTARTREORDER 0x01
@@ -691,8 +689,13 @@ SC_FUNC void jmp_eq0(int number);
 SC_FUNC void outval(cell val,int fullcell,int newline);
 
 /* function prototypes in SC5.C */
-SC_FUNC int error(int number,...);
+SC_FUNC int error(long number,...);
+SC_FUNC int error_suggest(int error,const char *name,int ident);
 SC_FUNC void errorset(int code,int line);
+#define MAX_EDIT_DIST 2 /* allow two mis-typed characters; when there are more,
+                         * the names are too different, and no match is returned */
+SC_FUNC int levenshtein_distance(const char *s,const char*t);
+SC_FUNC symbol *find_closestsymbol(const char *name,int symboltype);
 
 /* function prototypes in SC6.C */
 SC_FUNC ucell getparamvalue(const char *s,const char **n);
@@ -769,10 +772,10 @@ SC_FUNC int scan_utf8(FILE *fp,const char *filename);
 
 /* function prototypes in SCSTATE.C */
 SC_FUNC constvalue *automaton_add(const char *name);
-SC_FUNC constvalue *automaton_find(const char *name);
+SC_FUNC constvalue *automaton_find(const char *name,char *closestmatch);
 SC_FUNC constvalue *automaton_findid(int id);
 SC_FUNC constvalue *state_add(const char *name,int fsa_id);
-SC_FUNC constvalue *state_find(const char *name,int fsa_id);
+SC_FUNC constvalue *state_find(const char *name,int fsa_id,char *closestmatch);
 SC_FUNC constvalue *state_findid(int id);
 SC_FUNC void state_buildlist(int **list,int *listsize,int *count,int stateid);
 SC_FUNC int state_addlist(int *list,int count,int fsa_id);

@@ -1,13 +1,9 @@
 /* An assortment of additional functions in the DLL version of the
  * Abstract Machine.
  *
- * (c) Copyright 2000-2005, ITB CompuPhase
+ * (c) Copyright 2000-2007, ITB CompuPhase
  * This file is provided as is (no warranties).
  */
-#if defined _amxdll_included
-  #endinput
-#endif
-#define _amxdll_included
 
 enum
     {

@@ -18,7 +18,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: sc2.c 3821 2007-10-15 16:54:20Z thiadmer $
+ *  Version: $Id: sc2.c 3853 2007-11-26 13:59:01Z thiadmer $
  */
 #include <assert.h>
 #include <stdio.h>
@@ -28,7 +28,7 @@
 #include <math.h>
 #include "lstring.h"
 #include "sc.h"
-#if defined LINUX || defined __FreeBSD__ || defined __OpenBSD__
+#if defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__
   #include <sclinux.h>
 #endif
 
@@ -175,7 +175,7 @@ SC_FUNC int plungefile(char *name,int try_currentpath,int try_includepaths)
   int result=FALSE;
 
   if (try_currentpath) {
-    /* try to open the file in the same directory as the current file --but 
+    /* try to open the file in the same directory as the current file --but
      * first check whether there is a (relative) path for the current file
      */
     char *ptr;
@@ -189,7 +189,7 @@ SC_FUNC int plungefile(char *name,int try_currentpath,int try_includepaths)
       } /* if */
     } else {
       /* there is no path for the current source file, meaning that it comes
-       * from the active directory; try to open the file from the active 
+       * from the active directory; try to open the file from the active
        * directory too
        */
       result=plungequalifiedfile(name);
@@ -206,7 +206,7 @@ SC_FUNC int plungefile(char *name,int try_currentpath,int try_includepaths)
       result=plungequalifiedfile(path);
     } /* while */
   } /* if */
-  
+
   return result;
 }
 
@@ -271,12 +271,23 @@ static void doinclude(int silent)
     strlcat(symname,ptr+1,sizeof symname);
   else
     strlcat(symname,name,sizeof symname);
+  /* replace invalid characters by '_' (anything not a digit, character or underscore) */
+  for (i=0; symname[i]!='\0'; i++)
+    if (!alphanum(symname[i]))
+      symname[i]='_';
+  #if defined	__WIN32__ || defined _WIN32 || defined _Windows || defined __MSDOS__
+    /* on systems with case-insentive filenames, force the symbol for the file
+     * to lower case
+     */
+    strlwr(symname);
+  #endif
   if (find_symbol(&glbtab,symname,fcurrent,-1,NULL)==NULL) {
     /* constant is not present, so this file has not been included yet */
 
-    /* Include files between "..." or without quotes are read from the current
-     * directory, or from a list of "include directories". Include files
-     * between <...> are only read from the list of include directories.
+    /* Include files between "..." or without quotes are read from the same
+     * relative path as the current file, from the active directory, or from
+     * a list of "include directories". Include files between <...> are only
+     * read from the list of include directories.
      */
     result=plungefile(name,(c!='>'),TRUE);
     if (result)
@@ -1191,7 +1202,6 @@ static int command(void)
     } /* if */
     break;
   case tpENDINPUT:
-  case tpENDSCRPT:
     if (!SKIPPING) {
       check_empty(lptr);
       assert(inpf!=NULL);
@@ -1200,62 +1210,6 @@ static int command(void)
       inpf=NULL;
     } /* if */
     break;
-#if !defined NOEMIT
-  case tpEMIT: {
-    /* write opcode to output file */
-    char name[40];
-    int i;
-    while (*lptr<=' ' && *lptr!='\0')
-      lptr++;
-    for (i=0; i<40 && (isalpha(*lptr) || *lptr=='.'); i++,lptr++)
-      name[i]=(char)tolower(*lptr);
-    name[i]='\0';
-    stgwrite("\t");
-    stgwrite(name);
-    stgwrite(" ");
-    code_idx+=opcodes(1);
-    /* write parameter (if any) */
-    while (*lptr<=' ' && *lptr!='\0')
-      lptr++;
-    if (*lptr!='\0') {
-      symbol *sym;
-      tok=lex(&val,&str);
-      switch (tok) {
-      case tNUMBER:
-      case tRATIONAL:
-        outval(val,TRUE,FALSE);
-        code_idx+=opargs(1);
-        break;
-      case tSYMBOL:
-        sym=findloc(str);
-        if (sym==NULL)
-          sym=findglb(str,sSTATEVAR);
-        if (sym==NULL || sym->ident!=iFUNCTN && sym->ident!=iREFFUNC && (sym->usage & uDEFINE)==0) {
-          error(17,str);        /* undefined symbol */
-        } else {
-          outval(sym->addr,TRUE,FALSE);
-          /* mark symbol as "used", unknown whether for read or write */
-          markusage(sym,uREAD | uWRITTEN);
-          code_idx+=opargs(1);
-        } /* if */
-        break;
-      default: {
-        char s2[20];
-        extern char *sc_tokens[];/* forward declaration */
-        if (tok<256)
-          sprintf(s2,"%c",(char)tok);
-        else
-          strcpy(s2,sc_tokens[tok-tFIRST]);
-        error(1,sc_tokens[tSYMBOL-tFIRST],s2);
-        break;
-      } /* case */
-      } /* switch */
-    } /* if */
-    stgwrite("\n");
-    check_empty(lptr);
-    break;
-  } /* case */
-#endif
 #if !defined NO_DEFINE
   case tpDEFINE: {
     ret=CMD_DEFINE;
@@ -1835,12 +1789,12 @@ char *sc_tokens[] = {
          "*=", "/=", "%=", "+=", "-=", "<<=", ">>>=", ">>=", "&=", "^=", "|=",
          "||", "&&", "==", "!=", "<=", ">=", "<<", ">>>", ">>", "++", "--",
          "...", "..", "::",
-         "assert", "*begin", "break", "case", "char", "const", "continue", "default",
-         "defined", "do", "else", "*end", "enum", "exit", "for", "forward", "goto",
+         "assert", "break", "case", "char", "const", "continue", "default",
+         "defined", "do", "else", "enum", "exit", "for", "forward", "goto",
          "if", "native", "new", "operator", "public", "return", "sizeof",
-         "sleep", "state", "static", "stock", "switch", "tagof", "*then", "while",
-         "#assert", "#define", "#else", "#elseif", "#emit", "#endif", "#endinput",
-         "#endscript", "#error", "#file", "#if", "#include", "#line", "#pragma",
+         "sleep", "state", "static", "stock", "switch", "tagof", "while",
+         "#assert", "#define", "#else", "#elseif", "#endif", "#endinput",
+         "#error", "#file", "#if", "#include", "#line", "#pragma",
          "#tryinclude", "#undef",
          ";", ";", "-integer value-", "-rational value-", "-identifier-",
          "-label-", "-string-"

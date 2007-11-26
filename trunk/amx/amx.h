@@ -18,7 +18,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: amx.h 3821 2007-10-15 16:54:20Z thiadmer $
+ *  Version: $Id: amx.h 3853 2007-11-26 13:59:01Z thiadmer $
  */
 
 #ifndef AMX_H_INCLUDED
@@ -27,17 +27,20 @@
 #include <stdlib.h>   /* for size_t */
 #include <limits.h>
 
+#if defined __linux || defined __linux__
+  #define __LINUX__
+#endif
 #if defined FREEBSD && !defined __FreeBSD__
   #define __FreeBSD__
 #endif
-#if defined LINUX || defined __FreeBSD__ || defined __OpenBSD__
+#if defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__
   #include <sclinux.h>
 #endif
 
 #if defined HAVE_STDINT_H
   #include <stdint.h>
 #else
-  #if defined __LCC__ || defined __DMC__ || defined LINUX || (defined __WATCOMC__ && __WATCOMC__ >= 1200)
+  #if defined __LCC__ || defined __DMC__ || defined __LINUX__ || (defined __WATCOMC__ && __WATCOMC__ >= 1200)
     #if defined HAVE_INTTYPES_H
       #include <inttypes.h>
     #else
@@ -213,7 +216,7 @@ typedef int (AMXAPI *AMX_IDLE)(struct tagAMX *amx, int AMXAPI Exec(struct tagAMX
 #endif
 
 #if !defined AMX_NO_ALIGN
-  #if defined LINUX || defined __FreeBSD__
+  #if defined __LINUX__ || defined __FreeBSD__
     #pragma pack(1)         /* structures must be packed (byte-aligned) */
   #elif defined MACOS && defined __MWERKS__
 	#pragma options align=mac68k
@@ -405,6 +408,7 @@ enum {
       else (result) = NULL;                                                 \
     } while (0)
 
+
 uint16_t * AMXAPI amx_Align16(uint16_t *v);
 uint32_t * AMXAPI amx_Align32(uint32_t *v);
 #if defined _I64_MAX || defined HAVE_I64
@@ -422,7 +426,7 @@ int AMXAPI amx_FindTagId(AMX *amx, cell tag_id, char *tagname);
 int AMXAPI amx_Flags(AMX *amx,uint16_t *flags);
 int AMXAPI amx_GetAddr(AMX *amx,cell amx_addr,cell **phys_addr);
 int AMXAPI amx_GetNative(AMX *amx, int index, char *funcname);
-int AMXAPI amx_GetPublic(AMX *amx, int index, char *funcname);
+int AMXAPI amx_GetPublic(AMX *amx, int index, char *funcname, ucell *address);
 int AMXAPI amx_GetPubVar(AMX *amx, int index, char *varname, cell *amx_addr);
 int AMXAPI amx_GetString(char *dest,const cell *source, int use_wchar, size_t size);
 int AMXAPI amx_GetTag(AMX *amx, int index, char *tagname, cell *tag_id);
@@ -466,7 +470,7 @@ int AMXAPI amx_UTF8Put(char *string, char **endptr, int maxchars, cell value);
   amx_Register((amx), amx_NativeInfo((name),(func)), 1);
 
 #if !defined AMX_NO_ALIGN
-  #if defined LINUX || defined __FreeBSD__
+  #if defined __LINUX__ || defined __FreeBSD__
     #pragma pack()    /* reset default packing */
   #elif defined MACOS && defined __MWERKS__
     #pragma options align=reset

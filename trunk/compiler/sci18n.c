@@ -30,7 +30,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: sci18n.c 3612 2006-07-22 09:59:46Z thiadmer $
+ *  Version: $Id: sci18n.c 3845 2007-11-16 14:41:29Z thiadmer $
  */
 #include <assert.h>
 #include <stdio.h>
@@ -47,7 +47,7 @@
   #define _MAX_PATH     250
 #endif
 #if !defined DIRSEP_CHAR
-  #if defined LINUX || defined __FreeBSD__ || defined __OpenBSD__
+  #if defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__
     #define DIRSEP_CHAR '/'
   #elif defined macintosh
     #define DIRSEP_CHAR ':'

@@ -18,7 +18,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: sc3.c 3821 2007-10-15 16:54:20Z thiadmer $
+ *  Version: $Id: sc3.c 3848 2007-11-20 11:48:34Z thiadmer $
  */
 #include <assert.h>
 #include <stdio.h>
@@ -140,10 +140,10 @@ static int isbinaryop(int tok)
                               '='
                              };
   int idx;
-  
+
   for (idx=0; idx<sizearray(operators) && tok!=operators[idx]; idx++)
     /* nothing */;
-  return idx<sizearray(operators);    
+  return idx<sizearray(operators);
 }
 
 SC_FUNC int check_userop(void (*oper)(void),int tag1,int tag2,int numparam,
@@ -209,7 +209,7 @@ static void (*unopers[])(void) = { lneg, neg, user_inc, user_dec };
   operator_symname(symbolname,opername,tag1,tag2,numparam,tag2);
   swapparams=FALSE;
   sym=findglb(symbolname,sGLOBAL);
-  if (sym==NULL /*|| (sym->usage & uDEFINE)==0*/) {  /* ??? should not check uDEFINE; first pass clears these bits */
+  if (sym==NULL /*|| (sym->usage & uDEFINE)==0*/) {  /* should not check uDEFINE; first pass clears these bits */
     /* check for commutative operators */
     if (tag1==tag2 || oper==NULL || !commutative(oper))
       return FALSE;             /* not commutative, cannot swap operands */
@@ -846,7 +846,7 @@ SC_FUNC int expression(cell *val,int *tag,symbol **symptr,int chkfuncresult)
 
 SC_FUNC int sc_getstateid(constvalue **automaton,constvalue **state,char *statename)
 {
-  char name[sNAMEMAX+1];
+  char name[sNAMEMAX+1],closestmatch[sNAMEMAX+1];
   cell val;
   char *str;
   int fsa,islabel;
@@ -861,7 +861,7 @@ SC_FUNC int sc_getstateid(constvalue **automaton,constvalue **state,char *staten
   strcpy(name,str);
   if (islabel || matchtoken(':')) {
     /* token is an automaton name, add the name and get a new token */
-    *automaton=automaton_find(name);
+    *automaton=automaton_find(name,closestmatch);
     /* read in the state name before checking the automaton, to keep the parser
      * going (an "unknown automaton" error may occur when the "state" instruction
      * precedes any state definition)
@@ -870,14 +870,17 @@ SC_FUNC int sc_getstateid(constvalue **automaton,constvalue **state,char *staten
       return 0;
     tokeninfo(&val,&str);        /* do not copy the name yet, must check automaton first */
     if (*automaton==NULL) {
-      error(86,name);            /* unknown automaton */
+      if (*closestmatch!='\0')
+        error(makelong(86,1),name,closestmatch);
+      else
+        error(86,name);          /* unknown automaton */
       return 0;
     } /* if */
     assert((*automaton)->index>0);
     assert(strlen(str)<sizeof name);
     strcpy(name,str);
   } else {
-    *automaton=automaton_find("");
+    *automaton=automaton_find("",NULL);
     assert(*automaton!=NULL);
     assert((*automaton)->index==0);
   } /* if */
@@ -887,12 +890,15 @@ SC_FUNC int sc_getstateid(constvalue **automaton,constvalue **state,char *staten
   if (statename!=NULL)
     strcpy(statename,name);
 
-  *state=state_find(name,fsa);
+  *state=state_find(name,fsa,closestmatch);
   if (*state==NULL) {
     char *fsaname=(*automaton)->name;
     if (*fsaname=='\0')
       fsaname="<main>";
-    error(87,name,fsaname);   /* unknown state for automaton */
+    if (*closestmatch!='\0')
+      error(makelong(87,1),name,fsaname,closestmatch);
+    else
+      error(87,name,fsaname); /* unknown state for automaton */
     return 0;
   } /* if */
 
@@ -1369,7 +1375,7 @@ static int hier2(value *lval)
       paranthese++;
     tok=lex(&val,&st);
     if (tok!=tSYMBOL)
-      return error(20,st);      /* illegal symbol name */
+      return error_suggest(20,st,iVARIABLE);  /* illegal symbol name */
     sym=findloc(st);
     if (sym==NULL)
       sym=findglb(st,sSTATEVAR);
@@ -1392,18 +1398,18 @@ static int hier2(value *lval)
       paranthese++;
     tok=lex(&val,&st);
     if (tok!=tSYMBOL)
-      return error(20,st);      /* illegal symbol name */
+      return error_suggest(20,st,iVARIABLE);  /* illegal symbol name */
     sym=findloc(st);
     if (sym==NULL)
       sym=findglb(st,sSTATEVAR);
     if (sym==NULL)
-      return error(17,st);      /* undefined symbol */
+      return error_suggest(17,st,iVARIABLE);  /* undefined symbol */
     if (sym->ident==iCONSTEXPR)
       error(39);                /* constant symbol has no size */
     else if (sym->ident==iFUNCTN || sym->ident==iREFFUNC)
       error(72);                /* "function" symbol has no size */
     else if ((sym->usage & uDEFINE)==0)
-      return error(17,st);      /* undefined symbol (symbol is in the table, but it is "used" only) */
+      return error_suggest(17,st,iVARIABLE); /* undefined symbol (symbol is in the table, but it is "used" only) */
     clear_value(lval);
     lval->ident=iCONSTEXPR;
     lval->constval=1;           /* preset */
@@ -1418,7 +1424,7 @@ static int hier2(value *lval)
           int cmptag=subsym->x.tags.index;
           tokeninfo(&val,&idxname);
           if ((idxsym=findconst(idxname,&cmptag))==NULL)
-            error(80,idxname);  /* unknown symbol, or non-constant */
+            error_suggest(80,idxname,iCONSTEXPR);  /* unknown symbol, or non-constant */
           else if (cmptag>1)
             error(91,idxname);  /* ambiguous constant */
         } /* if */
@@ -1445,7 +1451,7 @@ static int hier2(value *lval)
       paranthese++;
     tok=lex(&val,&st);
     if (tok!=tSYMBOL && tok!=tLABEL)
-      return error(20,st);      /* illegal symbol name */
+      return error_suggest(20,st,iVARIABLE);  /* illegal symbol name */
     if (tok==tLABEL) {
       constvalue *tagsym=find_constval(&tagname_tab,st,0);
       tag=(int)((tagsym!=NULL) ? tagsym->value : 0);
@@ -1454,9 +1460,9 @@ static int hier2(value *lval)
       if (sym==NULL)
         sym=findglb(st,sSTATEVAR);
       if (sym==NULL)
-        return error(17,st);      /* undefined symbol */
+        return error_suggest(17,st,iVARIABLE); /* undefined symbol */
       if ((sym->usage & uDEFINE)==0)
-        return error(17,st);      /* undefined symbol (symbol is in the table, but it is "used" only) */
+        return error_suggest(17,st,iVARIABLE); /* undefined symbol (symbol is in the table, but it is "used" only) */
       tag=sym->tag;
     } /* if */
     if (sym->ident==iARRAY || sym->ident==iREFARRAY) {
@@ -1470,7 +1476,7 @@ static int hier2(value *lval)
           int cmptag=subsym->x.tags.index;
           tokeninfo(&val,&idxname);
           if ((idxsym=findconst(idxname,&cmptag))==NULL)
-            error(80,idxname);  /* unknown symbol, or non-constant */
+            error_suggest(80,idxname,iCONSTEXPR);  /* unknown symbol, or non-constant */
           else if (cmptag>1)
             error(91,idxname);  /* ambiguous constant */
         } /* if */
@@ -1614,7 +1620,7 @@ restart:
     if (sym==NULL && symtok!=tSYMBOL) {
       /* we do not have a valid symbol and we appear not to have read a valid
        * symbol name (so it is unlikely that we would have read a name of an
-       * undefined symbol) 
+       * undefined symbol)
        */
       error(29);                /* expression error, assumed 0 */
       lexpush();                /* analyse '(', '{' or '[' again later */
@@ -1631,7 +1637,7 @@ restart:
         needtoken(close);
         return FALSE;
       } else if (sym->dim.array.level>0 && close!=']') {
-        error(51);      /* invalid subscript, must use [ ] */
+        error(51);              /* invalid subscript, must use [ ] */
         needtoken(close);
         return FALSE;
       } /* if */
@@ -1883,10 +1889,10 @@ static int primary(value *lval,int *symtok)
          * implemented, issue an error
          */
         if ((sym->usage & uPROTOTYPED)==0)
-          return error(17,st);
+          return error_suggest(17,st,iVARIABLE); /* undefined symbol */
       } else {
         if ((sym->usage & uDEFINE)==0)
-          error(17,st);
+          error_suggest(17,st,iVARIABLE); /* undefined symbol */
         lval->sym=sym;
         lval->ident=sym->ident;
         lval->tag=sym->tag;
@@ -1903,7 +1909,7 @@ static int primary(value *lval,int *symtok)
       strcpy(symbolname,st);
       if (!sc_allowproccall || isbinaryop(lexpeek())) {
         lexclr(FALSE);
-        return error(17,symbolname);  /* undefined symbol */
+        return error_suggest(17,st,iVARIABLE);  /* undefined symbol */
       } /* if */
       /* an unknown symbol, but used in a way compatible with the "procedure
        * call" syntax. So assume that the symbol refers to a function.
@@ -1985,13 +1991,24 @@ static void setdefarray(cell *string,cell size,cell array_sz,cell *dataaddr,int 
   } /* if */
 }
 
-static int findnamedarg(arginfo *arg,char *name)
+static int findnamedarg(const arginfo *arg,const char *name, char *closestarg)
 {
   int i;
+  int dist,closestdist=INT_MAX;
 
-  for (i=0; arg[i].ident!=0 && arg[i].ident!=iVARARGS; i++)
+  if (closestarg!=NULL)
+    *closestarg='\0';
+  for (i=0; arg[i].ident!=0 && arg[i].ident!=iVARARGS; i++) {
     if (strcmp(arg[i].name,name)==0)
       return i;
+    if (closestarg!=NULL) {
+      dist=levenshtein_distance(arg[i].name,name);
+      if (dist<closestdist && dist<=MAX_EDIT_DIST) {
+        strcpy(closestarg,arg[i].name);
+        closestdist=dist;
+      } /* if */
+    } /* if */
+  } /* for */
   return -1;
 }
 
@@ -2032,6 +2049,7 @@ static int nesting=0;
   value lval = {0};
   arginfo *arg;
   char arglist[sMAXARGS];
+  char closestname[sNAMEMAX+1];
   constvalue arrayszlst = { NULL, "", 0, 0};/* array size list starts empty */
   constvalue taglst = { NULL, "", 0, 0};    /* tag list starts empty */
   symbol *symret;
@@ -2105,9 +2123,12 @@ static int nesting=0;
           tokeninfo(&lexval,&lexstr);
         else
           lexstr="";
-        argpos=findnamedarg(arg,lexstr);
+        argpos=findnamedarg(arg,lexstr,closestname);
         if (argpos<0) {
-          error(17,lexstr);       /* undefined symbol */
+          if (closestname[0]!='\0')
+            error(makelong(17,1),lexstr,closestname);
+          else
+            error(17,lexstr);     /* undefined symbol (meaning "undefined argument") */
           break;                  /* exit loop, argpos is invalid */
         } /* if */
         needtoken('=');

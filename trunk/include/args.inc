@@ -1,12 +1,8 @@
 /* Script Arguments support functions
  *
- * (c) Copyright 2005, ITB CompuPhase
+ * (c) Copyright 2005-2007, ITB CompuPhase
  * This file is provided as is (no warranties).
  */
-#if defined _args_included
-  #endinput
-#endif
-#define _args_included
 #pragma library Args
 
 native argcount();

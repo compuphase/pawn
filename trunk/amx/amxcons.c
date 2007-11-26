@@ -22,7 +22,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: amxcons.c 3821 2007-10-15 16:54:20Z thiadmer $
+ *  Version: $Id: amxcons.c 3853 2007-11-26 13:59:01Z thiadmer $
  */
 
 #if defined _UNICODE || defined __UNICODE__ || defined UNICODE
@@ -46,7 +46,16 @@
 #if defined USE_CURSES
   #include <curses.h>
 #endif
-#include "amx.h"
+#include "osdefs.h"
+#if defined __ECOS__
+  /* eCos puts include files in cyg/package_name */
+  #include <cyg/hal/hal_if.h>
+  #include <cyg/infra/diag.h>
+  #include <cyg/hal/hal_diag.h>
+  #include <cyg/pawn/amx.h>
+#else
+  #include "amx.h"
+#endif
 #if defined __WIN32__ || defined _WIN32 || defined WIN32
   #include <windows.h>
 #endif
@@ -95,14 +104,44 @@
   unsigned int amx_setattr(int foregr,int backgr,int highlight);
   void amx_console(int columns, int lines, int flags);
   int amx_kbhit(void);
-#elif defined VT100 || defined LINUX || defined ANSITERM
+#elif defined VT100 || defined __LINUX__ || defined ANSITERM || defined __ECOS__
   /* ANSI/VT100 terminal, or shell emulating "xterm" */
-  #define amx_putstr(s)       printf("%s",(s))
-  #define amx_putchar(c)      putchar(c)
-  #define amx_fflush()        fflush(stdout)
-  #define amx_getch()         getch()
-  #define amx_gets(s,n)       fgets(s,n,stdin)
-  #define amx_kbhit()         kbhit()
+  #if defined __ECOS__
+    #define AMXCONSOLE_NOIDLE
+  #endif
+
+  #if CYGPKG_PAWN_AMXCONSOLE_DIAG==1
+    /* eCos has basically two ways to make simple exchanges with a terminal:
+     * - with the diag_*() functions (no input provided!)
+     * - with f*() functions (fprintf(),fputs(), etc).
+     */
+    #define amx_fflush()
+
+    static int amx_putstr(TCHAR *s)
+    {
+      diag_write_string(s);
+      return 1;
+    }
+    static int amx_putchar(TCHAR c)
+    {
+      diag_write_char(c);
+      return c;
+    }
+    static char amx_getch(void)
+    {
+      char c=-1;
+      HAL_DIAG_READ_CHAR(c);
+      return c;
+    }
+  #else
+
+    #define amx_putstr(s)     fputs((s),stdout)
+    #define amx_putchar(c)    putchar(c)
+    #define amx_fflush()      fflush(stdout)
+    #define amx_getch()       getch()
+    #define amx_gets(s,n)     fgets(s,n,stdin)
+    #define amx_kbhit()       kbhit()
+  #endif
 
   int amx_termctl(int code,int value)
   {
@@ -350,11 +389,11 @@
   #define amx_gets(s,n)       getnstr(s,n)
   #define amx_clrscr()        clear()
   #define amx_clreol()        clrtoeol()
-  #define amx_gotoxy(x,y)     (0)
+  #define amx_gotoxy(x,y)     ((void)(x),(void)(y),(0))
   #define amx_wherexy(x,y)    (*(x)=*(y)=0)
-  #define amx_setattr(c,b,h)  (0)
-  #define amx_termctl(c,v)    (0)
-  #define amx_console(c,l,f)  (void)(0)
+  #define amx_setattr(c,b,h)  ((void)(c),(void)(b),(void)(h),(0))
+  #define amx_termctl(c,v)    ((void)(c),(void)(v),(0))
+  #define amx_console(c,l,f)  ((void)(c),(void)(l),(void)(f))
   #define amx_kbhit()         kbhit()
 #else
   /* assume a streaming terminal; limited features (no colour, no cursor
@@ -999,18 +1038,19 @@ static cell AMX_NATIVE_CALL n_getchar(AMX *amx,const cell *params)
 static cell AMX_NATIVE_CALL n_getstring(AMX *amx,const cell *params)
 {
   int c,chars,max;
-  TCHAR *str;
   cell *cptr;
 
   CreateConsole();
-  max=(int)params[2];
-  if (max<=0)
-    return 0;
-
   chars=0;
-
-  str=(TCHAR *)alloca(max*sizeof(TCHAR));
-  if (str!=NULL) {
+  max=(int)params[2];
+  if (max>0) {
+    #if __STDC_VERSION__ >= 199901L
+      TCHAR str[max];   /* use C99 feature if available */
+    #else
+      TCHAR *str=(TCHAR *)alloca(max*sizeof(TCHAR));
+      if (str==NULL)
+        return chars;
+    #endif
 
     c=amx_getch();
     while (c!=EOF && c!=EOL_CHAR && chars<max-1) {
@@ -1113,7 +1153,7 @@ static cell AMX_NATIVE_CALL n_getvalue(AMX *amx,const cell *params)
     } /* if */
 
     /* check end of input */
-    #if defined LINUX || defined __FreeBSD__ || defined __OpenBSD__ || defined MACOS
+    #if defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__ || defined MACOS
       if (c=='\n' && inlist(amx,'\r',params+2,(int)params[0]/sizeof(cell)-1)!=0)
         c='\r';
     #endif

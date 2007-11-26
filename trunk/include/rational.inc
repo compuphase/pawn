@@ -1,19 +1,15 @@
 /* Rational number support
  * Loads either Float.inc or Fixed.inc, depending on the configuration
  *
- * (c) Copyright 2004-2005, ITB CompuPhase
+ * (c) Copyright 2004-2007, ITB CompuPhase
  * This file is provided as is (no warranties).
  */
-#if defined _Rational_included
-  #endinput
-#endif
-#define _Rational_included
 
 /* first try to include floating point support */
 #if !defined NOFLOAT
   #tryinclude <float>
 #endif
-#if defined _Float_included
+#if defined _inc_float
   #define Rational:             Float:
   #define rval(%1)              strfloat(%1)
   #define rround(%1, %2)        floatround(%1, %2)
@@ -33,7 +29,7 @@
 #if !defined NOFIXED
   #tryinclude <fixed>
 #endif
-#if defined _Fixed_included
+#if defined _inc_fixed
   #define Rational:             Fixed:
   #define rval(%1)              strfixed(%1)
   #define rround(%1, %2)        fround(%1, %2)

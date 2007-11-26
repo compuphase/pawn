@@ -1,12 +1,8 @@
 /* Core functions
  *
- * (c) Copyright 1998-2005, ITB CompuPhase
+ * (c) Copyright 1998-2007, ITB CompuPhase
  * This file is provided as is (no warranties).
  */
-#if defined _core_included
-  #endinput
-#endif
-#define _core_included
 #pragma library Core
 
 native heapspace();

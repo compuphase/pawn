@@ -43,7 +43,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: scstate.c 3821 2007-10-15 16:54:20Z thiadmer $
+ *  Version: $Id: scstate.c 3848 2007-11-20 11:48:34Z thiadmer $
  */
 #include <assert.h>
 #include <limits.h>
@@ -51,7 +51,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "sc.h"
-#if defined LINUX || defined __FreeBSD__ || defined __OpenBSD__
+#if defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__
   #include <sclinux.h>
 #endif
 
@@ -70,16 +70,26 @@ typedef struct s_statepool {
 static statepool statepool_tab = { NULL, NULL, 0, 0, 0};   /* state combinations table */
 
 
-static constvalue *find_automaton(const char *name,int *last)
+static constvalue *find_automaton(const char *name,int *last,char *closestmatch)
 {
   constvalue *ptr;
+  int dist,closestdist=INT_MAX;
 
   assert(last!=NULL);
   *last=0;
+  if (closestmatch!=NULL)
+    *closestmatch='\0';
   ptr=sc_automaton_tab.next;
   while (ptr!=NULL) {
     if (strcmp(name,ptr->name)==0)
       return ptr;
+    if (closestmatch!=NULL) {
+      dist=levenshtein_distance(name,ptr->name);
+      if (dist<closestdist && dist<=MAX_EDIT_DIST) {
+        strcpy(closestmatch,ptr->name);
+        closestdist=dist;
+      } /* if */
+    } /* if */
     if (ptr->index>*last)
       *last=ptr->index;
     ptr=ptr->next;
@@ -93,7 +103,7 @@ SC_FUNC constvalue *automaton_add(const char *name)
   int last;
 
   assert(strlen(name)<sizeof(ptr->name));
-  ptr=find_automaton(name,&last);
+  ptr=find_automaton(name,&last,NULL);
   if (ptr==NULL) {
     assert(last+1 <= SHRT_MAX);
     ptr=append_constval(&sc_automaton_tab,name,(cell)0,(short)(last+1));
@@ -101,10 +111,10 @@ SC_FUNC constvalue *automaton_add(const char *name)
   return ptr;
 }
 
-SC_FUNC constvalue *automaton_find(const char *name)
+SC_FUNC constvalue *automaton_find(const char *name,char *closestmatch)
 {
-  int last;
-  return find_automaton(name,&last);
+  int last; /* dummy, never used */
+  return find_automaton(name,&last,closestmatch);
 }
 
 SC_FUNC constvalue *automaton_findid(int id)
@@ -116,17 +126,27 @@ SC_FUNC constvalue *automaton_findid(int id)
 }
 
 
-static constvalue *find_state(const char *name,int fsa,int *last)
+static constvalue *find_state(const char *name,int fsa,int *last,char *closestmatch)
 {
   constvalue *ptr;
+  int dist,closestdist=INT_MAX;
 
   assert(last!=NULL);
   *last=0;
+  if (closestmatch!=NULL)
+    *closestmatch='\0';
   ptr=sc_state_tab.next;
   while (ptr!=NULL) {
     if (ptr->index==fsa) {
       if (strcmp(name,ptr->name)==0)
         return ptr;
+      if (closestmatch!=NULL) {
+        dist=levenshtein_distance(name,ptr->name);
+        if (dist<closestdist && dist<=MAX_EDIT_DIST) {
+          strcpy(closestmatch,ptr->name);
+          closestdist=dist;
+        } /* if */
+      } /* if */
       if ((int)ptr->value>*last)
         *last=(int)ptr->value;
     } /* if */
@@ -141,7 +161,7 @@ SC_FUNC constvalue *state_add(const char *name,int fsa)
   int last;
 
   assert(strlen(name)<sizeof(ptr->name));
-  ptr=find_state(name,fsa,&last);
+  ptr=find_state(name,fsa,&last,NULL);
   if (ptr==NULL) {
     assert(fsa <= SHRT_MAX);
     ptr=append_constval(&sc_state_tab,name,(cell)(last+1),(short)fsa);
@@ -149,10 +169,10 @@ SC_FUNC constvalue *state_add(const char *name,int fsa)
   return ptr;
 }
 
-SC_FUNC constvalue *state_find(const char *name,int fsa_id)
+SC_FUNC constvalue *state_find(const char *name,int fsa_id,char *closestmatch)
 {
   int last;     /* dummy */
-  return find_state(name,fsa_id,&last);
+  return find_state(name,fsa_id,&last,closestmatch);
 }
 
 SC_FUNC constvalue *state_findid(int id)

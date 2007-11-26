@@ -1,13 +1,9 @@
 /* Process control and Foreign Function Interface (calling functions
  * in DLLs or shared libraries)
  *
- * (c) Copyright 2006, ITB CompuPhase
+ * (c) Copyright 2006-2007, ITB CompuPhase
  * This file is provided as is (no warranties).
  */
-#if defined _process_included
-  #endinput
-#endif
-#define _process_included
 #pragma library Process
 
 native libcall(const libname[], const funcname[], const typestring[], ...);

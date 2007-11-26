@@ -19,7 +19,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: pawnrun.c 3830 2007-10-19 15:03:32Z thiadmer $
+ *  Version: $Id: pawnrun.c 3845 2007-11-16 14:41:29Z thiadmer $
  */
 #include <assert.h>
 #include <stdio.h>
@@ -34,7 +34,7 @@
   #define CLOCKS_PER_SEC CLK_TCK
 #endif
 
-#if !defined AMX_NODYNALOAD && (defined LINUX || defined __FreeBSD__ || defined __OpenBSD__)
+#if !defined AMX_NODYNALOAD && (defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__)
   #include <binreloc.h> /* from BinReloc, see www.autopackage.org */
 #endif
 
@@ -323,7 +323,7 @@ int main(int argc,char *argv[])
   if (argc < 2)
     PrintUsage(argv[0]);        /* function "usage" aborts the program */
 
-  #if !defined AMX_NODYNALOAD && (defined LINUX || defined __FreeBSD__ || defined __OpenBSD__)
+  #if !defined AMX_NODYNALOAD && (defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__)
     /* see www.autopackage.org for the BinReloc module */
     if (br_init(NULL)) {
       char *libroot=br_find_exe_dir("");

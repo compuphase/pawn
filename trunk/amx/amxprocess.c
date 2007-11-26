@@ -18,7 +18,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: amxprocess.c 3664 2006-11-08 12:09:25Z thiadmer $
+ *  Version: $Id: amxprocess.c 3845 2007-11-16 14:41:29Z thiadmer $
  */
 #if defined _UNICODE || defined __UNICODE__ || defined UNICODE
 # if !defined UNICODE   /* for Windows */
@@ -35,12 +35,13 @@
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
-#if defined __WIN32__ || defined _WIN32 || defined WIN32 || defined _Windows
+#include "osdefs.h"
+#if defined __WIN32__ || defined __MSDOS__
   #include <malloc.h>
 #endif
-#if defined __WIN32__ || defined _WIN32 || defined WIN32 || defined _Windows
+#if defined __WIN32__ || defined _Windows
   #include <windows.h>
-#elif defined LINUX || defined __FreeBSD__ || defined __OpenBSD__
+#elif defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__
   #include <unistd.h>
   #include <dlfcn.h>
   #include <sys/types.h>
@@ -54,7 +55,6 @@
    */
   #include <ffi.h>
 #endif
-#include "osdefs.h"
 #include "amx.h"
 
 #if defined _UNICODE
@@ -104,7 +104,7 @@ static MODLIST ModRoot = { NULL };
 /* pipes for I/O redirection */
 #if defined __WIN32__ || defined _WIN32 || defined WIN32
   static HANDLE newstdin,newstdout,read_stdout,write_stdin;
-#elif defined LINUX || defined __FreeBSD__ || defined __OpenBSD__
+#elif defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__
   static int pipe_to[2]={-1,-1};
   static int pipe_from[2]={-1,-1};
   void *inst_ffi=NULL;          /* open handle for libffi */
@@ -157,7 +157,7 @@ static MODLIST _FAR *addlib(MODLIST *root, AMX *amx, const TCHAR *name)
       if (item->inst <= 32)
         item->inst = 0;
     #endif
-  #elif defined LINUX || defined __FreeBSD__ || defined __OpenBSD__
+  #elif defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__
     /* also load the FFI library, if this is the first call */
     inst_ffi=dlopen("libffi.so",RTLD_NOW);
     if (inst_ffi==NULL)
@@ -184,7 +184,7 @@ error:
     if (item->inst != 0) {
       #if defined __WIN32__ || defined _WIN32 || defined WIN32 || defined _Windows
         FreeLibrary((HINSTANCE)item->inst);
-      #elif defined LINUX || defined __FreeBSD__ || defined __OpenBSD__
+      #elif defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__
         dlclose((void*)item->inst);
       #else
         #error Unsupported environment
@@ -209,7 +209,7 @@ static int freelib(MODLIST *root, AMX *amx, const TCHAR *name)
       assert(item->inst != 0);
       #if defined __WIN32__ || defined _WIN32 || defined WIN32 || defined _Windows
         FreeLibrary((HINSTANCE)item->inst);
-      #elif defined LINUX || defined __FreeBSD__ || defined __OpenBSD__
+      #elif defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__
         dlclose((void*)item->inst);
       #else
         #error Unsupported environment
@@ -220,7 +220,7 @@ static int freelib(MODLIST *root, AMX *amx, const TCHAR *name)
       count++;
     } /* if */
   } /* for */
-  #if defined LINUX || defined __FreeBSD__ || defined __OpenBSD__
+  #if defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__
     if (amx==NULL && name==NULL && inst_ffi!=NULL)
       dlclose(inst_ffi);
   #endif
@@ -399,7 +399,7 @@ static cell AMX_NATIVE_CALL n_libcall(AMX *amx, const cell *params)
   PARAM ps[MAXPARAMS];
   cell *cptr,result;
   LIBFUNC LibFunc;
-  #if defined LINUX || defined __FreeBSD__ || defined __OpenBSD__
+  #if defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__
     ffi_cif cif;
     ffi_type *ptypes[MAXPARAMS];
     void *pvalues[MAXPARAMS];
@@ -535,7 +535,7 @@ static cell AMX_NATIVE_CALL n_libcall(AMX *amx, const cell *params)
      * function should remove the parameters from the stack)
      */
     result=LibFunc();
-  #elif defined LINUX || defined __FreeBSD__ || defined __OpenBSD__
+  #elif defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__
     /* use libffi (foreign function interface) */
     for (idx = 0; idx < paramidx; idx++) {
       /* copy parameter types */
@@ -670,7 +670,7 @@ static void closepipe(void)
       CloseHandle(write_stdin);
       write_stdin=NULL;
     } /* if */
-  #elif defined LINUX || defined __FreeBSD__ || defined __OpenBSD__
+  #elif defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__
     if (pipe_to[0]>=0) {
       close(pipe_to[0]);
       pipe_to[0]=-1;
@@ -706,7 +706,7 @@ static cell AMX_NATIVE_CALL n_procexec(AMX *amx, const cell *params)
     PROCESS_INFORMATION pi;
   #elif defined _Windows
     HINSTANCE hinst;
-  #elif defined LINUX || defined __FreeBSD__ || defined __OpenBSD__
+  #elif defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__
   	pid_t pid;
   #endif
 
@@ -763,7 +763,7 @@ static cell AMX_NATIVE_CALL n_procexec(AMX *amx, const cell *params)
     if (hinst<=32)
       hinst=0;
     return (cell)hinst;
-  #elif defined LINUX || defined __FreeBSD__ || defined __OpenBSD__
+  #elif defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__
     /* set up communication pipes first */
     closepipe();
     if (pipe(pipe_to)!=0 || pipe(pipe_from)!=0) {
@@ -833,7 +833,7 @@ static cell AMX_NATIVE_CALL n_procwrite(AMX *amx, const cell *params)
     WriteFile(write_stdin,line,_tcslen(line),&num,NULL); //send it to stdin
     if (params[2])
       WriteFile(write_stdin,__T("\n"),1,&num,NULL);
-  #elif defined LINUX || defined __FreeBSD__ || defined __OpenBSD__
+  #elif defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__
     if (pipe_to[1]<0)
       return 0;
     write(pipe_to[1],line,_tcslen(line));
@@ -861,7 +861,7 @@ static cell AMX_NATIVE_CALL n_procread(AMX *amx, const cell *params)
         break;
       index++;
     } while (index<sizeof(line)/sizeof(line[0])-1 && line[index-1]!=__T('\n'));
-  #elif defined LINUX || defined __FreeBSD__ || defined __OpenBSD__
+  #elif defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__
     if (pipe_from[0]<0)
       return 0;
     do {
@@ -899,7 +899,7 @@ static cell AMX_NATIVE_CALL n_procwait(AMX *amx, const cell *params)
         Sleep(100);
       CloseHandle(hProcess);
     } /* if */
-  #elif defined LINUX || defined __FreeBSD__ || defined __OpenBSD__
+  #elif defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__
     waitpid((pid_t)params[1],NULL,WNOHANG);
   #endif
   return 0;

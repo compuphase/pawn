@@ -7,10 +7,6 @@
  *
  * This file is provided as is (no warranties).
  */
-#if defined _Float_included
-  #endinput
-#endif
-#define _Float_included
 #pragma library Float
 
 /* Different methods of rounding */

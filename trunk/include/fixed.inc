@@ -1,12 +1,8 @@
 /* Fixed point arithmetic
  *
- * (c) Copyright 1998-2005, ITB CompuPhase
+ * (c) Copyright 1998-2007, ITB CompuPhase
  * This file is provided as is (no warranties).
  */
-#if defined _Fixed_included
-  #endinput
-#endif
-#define _Fixed_included
 #pragma library Fixed
 
 enum fround_method {
