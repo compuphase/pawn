@@ -1,12 +1,8 @@
-/* Wrapper for the "Better String library" by  Paul Hsieh
+/* Minimalistic wrapper for the "Better String library" by Paul Hsieh
  *
- * (c) Copyright 2004-2005, ITB CompuPhase
+ * (c) Copyright 2004-2007, ITB CompuPhase
  * This file is provided as is (no warranties).
  */
-#if defined _bstring_included
-  #endinput
-#endif
-#define _bstring_included
 #pragma library BString
 
 /* native functions */

@@ -33,7 +33,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: pawndbg.c 3827 2007-10-16 14:53:31Z thiadmer $
+ *  Version: $Id: pawndbg.c 3845 2007-11-16 14:41:29Z thiadmer $
  *
  *
  *  Command line options:
@@ -64,13 +64,13 @@
   #include <readline/readline.h>
   #include <readline/history.h>
 #endif
-#include "osdefs.h"     /* for _MAX_PATH */
+#include "osdefs.h"     /* for _MAX_PATH and other macros */
 #include "amx.h"
 #include "amxdbg.h"
 
-#if defined __WIN32 || defined _WIN32 || defined __WIN32__ || defined __MSDOS__ || defined __WATCOMC__
+#if defined __WIN32__ || defined __MSDOS__ || defined __WATCOMC__
   #include <conio.h>
-  #if defined __WIN32 || defined _WIN32 || defined __WIN32__ || defined __WATCOMC__
+  #if defined __WIN32__ || defined __WATCOMC__
     #if !defined __WIN32__
       #define __WIN32__ 1
     #endif
@@ -86,7 +86,7 @@
   #include <unistd.h>
 #endif
 
-#if !defined AMX_NODYNALOAD && (defined LINUX || defined __FreeBSD__ || defined __OpenBSD__)
+#if !defined AMX_NODYNALOAD && (defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__)
   #include <binreloc.h> /* from BinReloc, see www.autopackage.org */
 #endif
 
@@ -127,9 +127,9 @@
     #define CHR_HLINE   '-'
   #endif
   #define CHR_VLINE     '|'
-#elif defined VT100 || defined LINUX || defined ANSITERM
+#elif defined VT100 || defined __LINUX__ || defined ANSITERM
   /* ANSI/VT100 terminal, or shell emulating "xterm" */
-  #if !defined VT100 && !defined ANSITERM && defined LINUX
+  #if !defined VT100 && !defined ANSITERM && defined __LINUX__
     #define VT100
   #endif
   #define amx_printf      printf
@@ -2675,7 +2675,7 @@ extern AMX_NATIVE_INFO console_Natives[];
   unsigned short flags;
   char *ptr;
 
-  #if !defined AMX_NODYNALOAD && (defined LINUX || defined __FreeBSD__ || defined __OpenBSD__)
+  #if !defined AMX_NODYNALOAD && (defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__)
     /* see www.autopackage.org for the BinReloc module */
     if (br_init(NULL)) {
       char *libroot=br_find_exe_dir("");

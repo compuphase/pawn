@@ -18,7 +18,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: amxcore.c 3657 2006-10-24 20:09:50Z thiadmer $
+ *  Version: $Id: amxcore.c 3845 2007-11-16 14:41:29Z thiadmer $
  */
 #if defined _UNICODE || defined __UNICODE__ || defined UNICODE
 # if !defined UNICODE   /* for Windows */
@@ -33,7 +33,14 @@
 #include <string.h>
 #include <limits.h>
 #include <assert.h>
-#include "amx.h"
+#include "osdefs.h"
+#if defined __ECOS__
+  /* eCos puts include files in cyg/package_name */
+  #include <cyg/pawn/amx.h>
+  #define  stricmp(a,b) strcasecmp(a,b)
+#else
+  #include "amx.h"
+#endif
 #if defined __WIN32__ || defined _WIN32 || defined WIN32 || defined _Windows
   #include <windows.h>
 #endif

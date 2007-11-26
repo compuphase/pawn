@@ -18,7 +18,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: amxfile.c 3764 2007-05-22 10:29:16Z thiadmer $
+ *  Version: $Id: amxfile.c 3845 2007-11-16 14:41:29Z thiadmer $
  */
 #if defined _UNICODE || defined __UNICODE__ || defined UNICODE
 # if !defined UNICODE   /* for Windows */
@@ -35,17 +35,17 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
-#if defined __WIN32__ || defined _WIN32 || defined WIN32 || defined __MSDOS__
+#include "osdefs.h"
+#if defined __WIN32__ || defined __MSDOS__
   #include <io.h>
   #include <malloc.h>
 #endif
-#if defined __WIN32__ || defined _WIN32 || defined WIN32 || defined _Windows
+#if defined __WIN32__ || defined _Windows
   #include <windows.h>
 #endif
-#if defined LINUX || defined __FreeBSD__ || defined __OpenBSD__ || defined MACOS
+#if defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__ || defined MACOS
   #include <dirent.h>
 #endif
-#include "osdefs.h"
 #include "amx.h"
 
 #include "fpattern.c"
@@ -662,7 +662,7 @@ static cell AMX_NATIVE_CALL n_fremove(AMX *amx, const cell *params)
 }
 
 /* bool: frename(const oldname[], const newname[]) */
-static cell AMX_NATIVE_CALL n_fremove(AMX *amx, const cell *params)
+static cell AMX_NATIVE_CALL n_frename(AMX *amx, const cell *params)
 {
   int r=1;
   TCHAR *name,oldname[_MAX_PATH],newname[_MAX_PATH];
@@ -670,7 +670,7 @@ static cell AMX_NATIVE_CALL n_fremove(AMX *amx, const cell *params)
   amx_StrParam(amx,params[1],name);
   if (name!=NULL && completename(oldname,name,sizearray(oldname))!=NULL) {
     amx_StrParam(amx,params[2],name);
-    if (name!=NULL && completename(newname,name,sizearray(newname))!=NULL) {
+    if (name!=NULL && completename(newname,name,sizearray(newname))!=NULL)
       r=_trename(oldname,newname);
   } /* if */
   return r==0;
@@ -785,7 +785,7 @@ static cell AMX_NATIVE_CALL n_fmatch(AMX *amx, const cell *params)
   return fullname[0]!='\0';
 }
 
-/* bool: fstat(const name[], &size = 0, &timestamp = 0) */
+/* bool: fstat(const name[], &size = 0, &timestamp = 0, &mode = 0, &inode = 0) */
 static cell AMX_NATIVE_CALL n_fstat(AMX *amx, const cell *params)
 {
   #if !(defined __WIN32__ || defined _WIN32 || defined WIN32)
@@ -803,6 +803,10 @@ static cell AMX_NATIVE_CALL n_fstat(AMX *amx, const cell *params)
       *cptr=stbuf.st_size;
       amx_GetAddr(amx,params[3],&cptr);
       *cptr=stbuf.st_mtime;
+      amx_GetAddr(amx,params[4],&cptr);
+      *cptr=stbuf.st_mode;  /* mode/protection bits */
+      amx_GetAddr(amx,params[5],&cptr);
+      *cptr=stbuf.st_ino;   /* inode number, unique id for a file */
       result=1;
     } /* if */
   } /* if */

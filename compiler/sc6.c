@@ -18,7 +18,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: sc6.c 3821 2007-10-15 16:54:20Z thiadmer $
+ *  Version: $Id: sc6.c 3845 2007-11-16 14:41:29Z thiadmer $
  */
 #include <assert.h>
 #include <stdio.h>
@@ -32,7 +32,7 @@
 #include "lstring.h"
 #include "sc.h"
 #include "../amx/amxdbg.h"
-#if defined LINUX || defined __FreeBSD__ || defined __OpenBSD__
+#if defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__
   #include <sclinux.h>
 #endif
 
@@ -506,7 +506,7 @@ static OPCODE opcodelist[] = {
   { 13, "addr.pri",   sIN_CSEG, parm1 },
   { 30, "align.alt",  sIN_CSEG, parm1 },
   {187, "align.p.alt",sIN_CSEG, parm1_p },
-  {185, "align.p.pri",sIN_CSEG, parm1_p },
+  {186, "align.p.pri",sIN_CSEG, parm1_p },
   { 29, "align.pri",  sIN_CSEG, parm1 },
   { 81, "and",        sIN_CSEG, parm0 },
   {121, "bounds",     sIN_CSEG, parm1 },
@@ -553,7 +553,7 @@ static OPCODE opcodelist[] = {
   {161, "icasetbl",   sIN_CSEG, parm0 },        /* version 10 */
   { 27, "idxaddr",    sIN_CSEG, parm0 },
   { 28, "idxaddr.b",  sIN_CSEG, parm1 },
-  {186, "idxaddr.p.b",sIN_CSEG, parm1_p },
+  {185, "idxaddr.p.b",sIN_CSEG, parm1_p },
   {109, "inc",        sIN_CSEG, parm1 },
   {108, "inc.alt",    sIN_CSEG, parm0 },
   {111, "inc.i",      sIN_CSEG, parm0 },
@@ -598,7 +598,7 @@ static OPCODE opcodelist[] = {
   {155, "load.s.both",sIN_CSEG, parm2 },        /* version 9 */
   {  3, "load.s.pri", sIN_CSEG, parm1 },
   { 10, "lodb.i",     sIN_CSEG, parm1 },
-  {169, "lodb.p.i",   sIN_CSEG, parm1_p },
+  {170, "lodb.p.i",   sIN_CSEG, parm1_p },
   {  6, "lref.alt",   sIN_CSEG, parm1 },
   {167, "lref.p.alt", sIN_CSEG, parm1_p },
   {166, "lref.p.pri", sIN_CSEG, parm1_p },
@@ -673,7 +673,7 @@ static OPCODE opcodelist[] = {
 /*{127, "srange",     sIN_CSEG, parm2 },        -- version 1 */
   { 20, "sref.alt",   sIN_CSEG, parm1 },
   {180, "sref.p.alt", sIN_CSEG, parm1_p },
-  {170, "sref.p.pri", sIN_CSEG, parm1_p },
+  {179, "sref.p.pri", sIN_CSEG, parm1_p },
   {182, "sref.p.s.alt",sIN_CSEG,parm1_p },
   {181, "sref.p.s.pri",sIN_CSEG,parm1_p },
   { 19, "sref.pri",   sIN_CSEG, parm1 },
@@ -780,11 +780,18 @@ SC_FUNC int assemble(FILE *fout,FILE *fin)
     /* verify that the opcode list is sorted (skip entry 1; it is reserved
      * for a non-existant opcode)
      */
-    assert(opcodelist[1].name!=NULL);
-    for (i=2; i<(sizeof opcodelist / sizeof opcodelist[0]); i++) {
-      assert(opcodelist[i].name!=NULL);
-      assert(stricmp(opcodelist[i].name,opcodelist[i-1].name)>0);
-    } /* for */
+    {
+      unsigned char opcodearray[sizeof opcodelist / sizeof opcodelist[0]];
+      assert(opcodelist[1].name!=NULL);
+      memset(opcodearray,0,sizeof opcodearray);
+      for (i=2; i<(sizeof opcodelist / sizeof opcodelist[0]); i++) {
+        assert(opcodelist[i].name!=NULL);
+        assert(stricmp(opcodelist[i].name,opcodelist[i-1].name)>0);
+        assert(opcodelist[i].opcode==0 || opcodearray[(int)opcodelist[i].opcode]==0);
+        /* also verify that no opcode number appears twice */
+        opcodearray[(int)opcodelist[i].opcode] += 1;
+      } /* for */
+    }
   #endif
 
   writeerror=FALSE;
@@ -802,8 +809,8 @@ SC_FUNC int assemble(FILE *fout,FILE *fin)
         match=++numnatives;
       if ((sym->usage & uPUBLIC)!=0 && (sym->usage & uDEFINE)!=0)
         match=++numpublics;
-      if (pc_overlays>0 && (sym->usage & uNATIVE)==0 
-          && (sym->usage & (uREAD | uPUBLIC))!=0 && (sym->usage & uDEFINE)!=0) 
+      if (pc_overlays>0 && (sym->usage & uNATIVE)==0
+          && (sym->usage & (uREAD | uPUBLIC))!=0 && (sym->usage & uDEFINE)!=0)
       {
         ++numoverlays;
         if (sym->states!=NULL) {

@@ -19,15 +19,16 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: sc5.c 3707 2007-02-04 12:51:45Z thiadmer $
+ *  Version: $Id: sc5.c 3853 2007-11-26 13:59:01Z thiadmer $
  */
 #include <assert.h>
 #if defined	__WIN32__ || defined _WIN32 || defined __MSDOS__
   #include <io.h>
 #endif
-#if defined LINUX || defined __GNUC__
+#if defined __LINUX__ || defined __GNUC__
   #include <unistd.h>
 #endif
+#include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>     /* ANSI standardized variable argument list functions */
@@ -67,14 +68,22 @@ static int errline;     /* forced line number for the error message */
  *                     fcurrent   (reffered to only)
  *                     errflag    (altered)
  */
-SC_FUNC int error(int number,...)
+SC_FUNC int error(long number,...)
 {
 static char *prefix[3]={ "error", "fatal error", "warning" };
 static int lastline,errorcount;
 static short lastfile;
   char *msg,*pre;
   va_list argptr;
-  char string[128];
+  char string[256];
+  int notice;
+
+  /* split the error field between the real error/warning number and an optional
+   * "notice" number
+   */
+  notice=number >> (sizeof(long)*4);
+  number&=((unsigned long)~0) >> (sizeof(long)*4);
+  assert(number>0 && number<300);
 
   /* errflag is reset on each semicolon.
    * In a two-pass compiler, an error should not be reported twice. Therefore
@@ -93,21 +102,32 @@ static short lastfile;
   } /* if */
 
   if (number<100){
-    msg=errmsg[number-1];
+    assert(number>0 && number<sizearray(errmsg));
+    msg=errmsg[number];
     pre=prefix[0];
     errflag=TRUE;       /* set errflag (skip rest of erroneous expression) */
     errnum++;
-  } else if (number<200){
+  } else if (number<200) {
+    assert((number-100)>=0 && (number-100)<sizearray(fatalmsg));
     msg=fatalmsg[number-100];
     pre=prefix[1];
     errnum++;           /* a fatal error also counts as an error */
   } else {
+    assert((number-200)>=0 && (number-200)<sizearray(warnmsg));
     msg=warnmsg[number-200];
     pre=prefix[2];
     warnnum++;
   } /* if */
 
-  strexpand(string,(unsigned char *)msg,sizeof string,SCPACK_TABLE);
+  strexpand(string,(unsigned char *)msg,sizeof string-2,SCPACK_TABLE);
+  if (notice>0) {
+    int len;
+    assert(notice<sizearray(noticemsg));
+    strcat(string,"; ");
+    len=strlen(string);
+    strexpand(string+len,(unsigned char *)noticemsg[notice],sizeof string-len-1,SCPACK_TABLE);
+  } /* if */
+  strcat(string,"\n");
 
   assert(errstart<=fline || errline>=0);
   if (errline>0)
@@ -118,7 +138,7 @@ static short lastfile;
   va_start(argptr,number);
   if (strlen(errfname)==0) {
     int start= (errstart==errline) ? -1 : errstart;
-    if (pc_error(number,string,inpfname,start,errline,argptr)) {
+    if (pc_error((int)number,string,inpfname,start,errline,argptr)) {
       if (outf!=NULL) {
         pc_closeasm(outf,TRUE);
         outf=NULL;
@@ -165,6 +185,16 @@ static short lastfile;
   return 0;
 }
 
+SC_FUNC int error_suggest(int number,const char *name,int ident)
+{
+  symbol *closestsym=find_closestsymbol(name,ident);
+  if (closestsym!=NULL)
+    error(makelong(number,1),name,closestsym->name);
+  else
+    error(number,name);
+  return 0;
+}
+
 SC_FUNC void errorset(int code,int line)
 {
   switch (code) {
@@ -198,6 +228,12 @@ SC_FUNC void errorset(int code,int line)
  *  o  1 for enable
  *  o  2 for toggle
  */
+# if defined __WIN32__ || defined _WIN32 || defined WIN32 || defined __NT__
+  __declspec (dllexport)
+#endif
+#if defined __cplusplus
+  extern "C"
+#endif
 int pc_enablewarning(int number,int enable)
 {
   int index;
@@ -224,6 +260,88 @@ int pc_enablewarning(int number,int enable)
   } /* switch */
 
   return TRUE;
+}
+
+/* Implementation of Levenshtein distance, by Lorenzo Seidenari
+ */
+static int minimum(int a,int b,int c)
+{
+  int min=a;
+  if(b<min)
+    min=b;
+  if(c<min)
+    min=c;
+  return min;
+}
+
+SC_FUNC int levenshtein_distance(const char *s,const char*t)
+{
+  //Step 1
+  int k,i,j,cost,*d,distance;
+  int n=strlen(s);
+  int m=strlen(t);
+  assert(n>0 && m>0);
+  d=(int*)malloc((sizeof(int))*(m+1)*(n+1));
+  m++;
+  n++;
+  //Step 2
+  for (k=0;k<n;k++)
+    d[k]=k;
+  for (k=0;k<m;k++)
+    d[k*n]=k;
+  //Step 3 and 4
+  for (i=1;i<n;i++) {
+    for (j=1;j<m;j++) {
+      //Step 5
+      cost= (tolower(s[i-1])!=tolower(t[j-1]));
+      //Step 6
+      d[j*n+i]=minimum(d[(j-1)*n+i]+1,d[j*n+i-1]+1,d[(j-1)*n+i-1]+cost);
+    } /* for */
+  } /* for */
+  distance=d[n*m-1];
+  free(d);
+  return distance;
+}
+
+static int find_closestsymbol_table(const char *name,const symbol *root,int symboltype,symbol **closestsym)
+{
+  int dist,closestdist=INT_MAX;
+  char symname[2*sNAMEMAX+16];
+  symbol *sym=root->next;
+  int ident;
+
+  assert(closestsym!=NULL);
+  *closestsym=NULL;
+  while (sym!=NULL) {
+    funcdisplayname(symname,sym->name);
+    ident=sym->ident;
+    if (sym->ident==iCONSTEXPR || sym->ident==iREFERENCE || sym->ident==iARRAY || sym->ident==iREFARRAY)
+      ident=iVARIABLE;
+    if (symboltype==ident || (symboltype==iVARIABLE && ident==iFUNCTN)) {
+      dist=levenshtein_distance(name,symname);
+      if (dist<closestdist && dist<=MAX_EDIT_DIST) {
+        *closestsym=sym;
+        closestdist=dist;
+      } /* if */
+    } /* if */
+    sym=sym->next;
+  } /* while */
+  return closestdist;
+}
+
+SC_FUNC symbol *find_closestsymbol(const char *name,int symboltype)
+{
+  symbol *symloc,*symglb;
+  int distloc,distglb;
+
+  if (sc_status==statFIRST)
+    return NULL;
+  assert(name!=NULL);
+  if (strlen(name)==0)
+    return NULL;
+  distloc=find_closestsymbol_table(name,&loctab,symboltype,&symloc);
+  distglb=find_closestsymbol_table(name,&glbtab,symboltype,&symglb);
+  return (distglb<distloc) ? symglb : symloc;
 }
 
 #undef SCPACK_TABLE

@@ -18,7 +18,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: amx.c 3831 2007-10-19 17:25:41Z thiadmer $
+ *  Version: $Id: amx.c 3853 2007-11-26 13:59:01Z thiadmer $
  */
 
 #if BUILD_PLATFORM == WINDOWS && BUILD_TYPE == RELEASE && BUILD_COMPILER == MSVC && PAWN_CELL_SIZE == 64
@@ -42,7 +42,7 @@
 #include <stdlib.h>     /* for getenv() */
 #include <string.h>
 #include "osdefs.h"
-#if defined LINUX || defined __FreeBSD__ || defined __OpenBSD__
+#if defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__
   #include <sclinux.h>
   #if !defined AMX_NODYNALOAD
     #include <dlfcn.h>
@@ -52,16 +52,23 @@
     #include <sys/mman.h>
   #endif
 #endif
-#if defined __LCC__ || defined LINUX
+#if defined __LCC__ || defined __LINUX__
   #include <wchar.h>    /* for wcslen() */
 #endif
-#include "amx.h"
+
+#if defined __ECOS__
+  /* eCos puts include files in cyg/package_name */
+  #include <cyg/pawn/amx.h>
+#else
+  #include "amx.h"
+#endif
+
 #if (defined _Windows && !defined AMX_NODYNALOAD) || (defined JIT && __WIN32__)
   #include <windows.h>
 #endif
 
 
-/* When one or more of the AMX_funcname macris are defined, we want
+/* When one or more of the AMX_funcname macros are defined, we want
  * to compile only those functions. However, when none of these macros
  * is present, we want to compile everything.
  */
@@ -1097,12 +1104,12 @@ int AMXAPI amx_Init(AMX *amx,void *program)
   AMX_HEADER *hdr;
   int err,i;
   unsigned char *data;
-  #if (defined _Windows || defined LINUX || defined __FreeBSD__ || defined __OpenBSD__) && !defined AMX_NODYNALOAD
+  #if (defined _Windows || defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__) && !defined AMX_NODYNALOAD
     #if defined _Windows
       char libname[sNAMEMAX+8]; /* +1 for '\0', +3 for 'amx' prefix, +4 for extension */
       typedef int (FAR WINAPI *AMX_ENTRY)(AMX _FAR *amx);
       HINSTANCE hlib;
-    #elif defined LINUX || defined __FreeBSD__ || defined __OpenBSD__
+    #elif defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__
       char libname[_MAX_PATH];
       char *root;
       typedef int (*AMX_ENTRY)(AMX *amx);
@@ -1292,8 +1299,8 @@ int AMXAPI amx_Init(AMX *amx,void *program)
     return err;
 
   /* load any extension modules that the AMX refers to */
-  #if (defined _Windows || defined LINUX || defined __FreeBSD__ || defined __OpenBSD__) && !defined AMX_NODYNALOAD
-    #if defined LINUX || defined __FreeBSD__ || defined __OpenBSD__
+  #if (defined _Windows || defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__) && !defined AMX_NODYNALOAD
+    #if defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__
       root=getenv("AMXLIB");
     #endif
     hdr=(AMX_HEADER *)amx->base;
@@ -1301,7 +1308,7 @@ int AMXAPI amx_Init(AMX *amx,void *program)
     for (i=0; i<numlibraries; i++) {
       lib=GETENTRY(hdr,libraries,i);
       libname[0]='\0';
-      #if defined LINUX || defined __FreeBSD__ || defined __OpenBSD__
+      #if defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__
         if (root!=NULL && *root!='\0') {
           strcpy(libname,root);
           if (libname[strlen(libname)-1]!='/')
@@ -1319,7 +1326,7 @@ int AMXAPI amx_Init(AMX *amx,void *program)
           if (hlib<=HINSTANCE_ERROR)
             hlib=NULL;
         #endif
-      #elif defined LINUX || defined __FreeBSD__ || defined __OpenBSD__
+      #elif defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__
         strcat(libname,".so");
         hlib=dlopen(libname,RTLD_NOW);
       #endif
@@ -1333,7 +1340,7 @@ int AMXAPI amx_Init(AMX *amx,void *program)
         strcat(funcname,"Init");
         #if defined _Windows
           libinit=(AMX_ENTRY)GetProcAddress(hlib,funcname);
-        #elif defined LINUX || defined __FreeBSD__ || defined __OpenBSD__
+        #elif defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__
           libinit=(AMX_ENTRY)dlsym(hlib,funcname);
         #endif
         if (libinit!=NULL)
@@ -1369,7 +1376,7 @@ int AMXAPI amx_Init(AMX *amx,void *program)
       return !VirtualProtect(addr, len, p, &prev);
     }
 
-  #elif defined LINUX || defined __FreeBSD__ || defined __OpenBSD__
+  #elif defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__
 
     /* Linux already has mprotect() */
     #define ALIGN(addr) (char *)(((long)addr + sysconf(_SC_PAGESIZE)-1) & ~(sysconf(_SC_PAGESIZE)-1))
@@ -1450,10 +1457,10 @@ int AMXAPI amx_InitJIT(AMX *amx,void *compiled_program,void *reloc_table)
 #if defined AMX_CLEANUP
 int AMXAPI amx_Cleanup(AMX *amx)
 {
-  #if (defined _Windows || defined LINUX || defined __FreeBSD__ || defined __OpenBSD__) && !defined AMX_NODYNALOAD
+  #if (defined _Windows || defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__) && !defined AMX_NODYNALOAD
     #if defined _Windows
       typedef int (FAR WINAPI *AMX_ENTRY)(AMX FAR *amx);
-    #elif defined LINUX || defined __FreeBSD__ || defined __OpenBSD__
+    #elif defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__
       typedef int (*AMX_ENTRY)(AMX *amx);
     #endif
     AMX_HEADER *hdr;
@@ -1463,7 +1470,7 @@ int AMXAPI amx_Cleanup(AMX *amx)
   #endif
 
   /* unload all extension modules */
-  #if (defined _Windows || defined LINUX || defined __FreeBSD__ || defined __OpenBSD__) && !defined AMX_NODYNALOAD
+  #if (defined _Windows || defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__) && !defined AMX_NODYNALOAD
     hdr=(AMX_HEADER *)amx->base;
     assert(hdr->magic==AMX_MAGIC);
     numlibraries=NUMENTRIES(hdr,libraries,pubvars);
@@ -1476,14 +1483,14 @@ int AMXAPI amx_Cleanup(AMX *amx)
         strcat(funcname,"Cleanup");
         #if defined _Windows
           libcleanup=(AMX_ENTRY)GetProcAddress((HINSTANCE)lib->address,funcname);
-        #elif defined LINUX || defined __FreeBSD__ || defined __OpenBSD__
+        #elif defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__
           libcleanup=(AMX_ENTRY)dlsym((void*)lib->address,funcname);
         #endif
         if (libcleanup!=NULL)
           libcleanup(amx);
         #if defined _Windows
           FreeLibrary((HINSTANCE)lib->address);
-        #elif defined LINUX || defined __FreeBSD__ || defined __OpenBSD__
+        #elif defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__
           dlclose((void*)lib->address);
         #endif
       } /* if */
@@ -1639,7 +1646,7 @@ int AMXAPI amx_NumPublics(AMX *amx, int *number)
   return AMX_ERR_NONE;
 }
 
-int AMXAPI amx_GetPublic(AMX *amx, int index, char *funcname)
+int AMXAPI amx_GetPublic(AMX *amx, int index, char *funcname, ucell *address)
 {
   AMX_HEADER *hdr;
   AMX_FUNCSTUB *func;
@@ -1652,7 +1659,10 @@ int AMXAPI amx_GetPublic(AMX *amx, int index, char *funcname)
     return AMX_ERR_INDEX;
 
   func=GETENTRY(hdr,publics,index);
-  strcpy(funcname,GETENTRYNAME(hdr,func));
+  if (funcname!=NULL)
+    strcpy(funcname,GETENTRYNAME(hdr,func));
+  if (address!=NULL)
+    *address=func->address;
   return AMX_ERR_NONE;
 }
 
@@ -1667,7 +1677,7 @@ int AMXAPI amx_FindPublic(AMX *amx, const char *name, int *index)
   /* binary search */
   while (first<=last) {
     mid=(first+last)/2;
-    amx_GetPublic(amx,mid,pname);
+    amx_GetPublic(amx,mid,pname,NULL);
     result=strcmp(pname,name);
     if (result>0) {
       last=mid-1;
@@ -2145,7 +2155,6 @@ static const void * const amx_opcodelist[] = {
   cell pri,alt,stk,frm,hea;
   cell reset_stk, reset_hea, *cip;
   cell offs,val;
-  ucell codesize;
   int num,i;
 
   assert(amx!=NULL);
@@ -2548,7 +2557,7 @@ static const void * const amx_opcodelist[] = {
     POP(frm);
     POP(offs);
     /* verify the return address */
-    if ((ucell)offs>=amx->codesize)
+    if ((long)offs>=amx->codesize)
       ABORT(amx,AMX_ERR_MEMACCESS);
     cip=(cell *)(amx->code+(int)offs);
     NEXT(cip);
@@ -2556,7 +2565,7 @@ static const void * const amx_opcodelist[] = {
     POP(frm);
     POP(offs);
     /* verify the return address */
-    if ((ucell)offs>=amx->codesize)
+    if ((long)offs>=amx->codesize)
       ABORT(amx,AMX_ERR_MEMACCESS);
     cip=(cell *)(amx->code+(int)offs);
     stk+= _R(data,stk) + sizeof(cell);  /* remove parameters from the stack */
@@ -2589,7 +2598,7 @@ static const void * const amx_opcodelist[] = {
     /* verify the index */
     stk+=_R(data,stk)+sizeof(cell);   /* remove parameters from the stack */
     num=amx->overlay(amx,amx->ovl_index); /* reload overlay */
-    if (num!=AMX_ERR_NONE || (ucell)offs>=(ucell)amx->codesize)
+    if (num!=AMX_ERR_NONE || (long)offs>=amx->codesize)
       ABORT(amx,AMX_ERR_MEMACCESS);
     cip=(cell *)(amx->code+(int)offs);
     NEXT(cip);
@@ -4044,7 +4053,7 @@ int AMXAPI amx_Exec(AMX *amx, cell *retval, int index)
       POP(frm);
       POP(offs);
       /* verify the return address */
-      if ((ucell)offs>=amx->codesize)
+      if ((long)offs>=amx->codesize)
         ABORT(amx,AMX_ERR_MEMACCESS);
       cip=(cell *)(amx->code+(int)offs);
       break;
@@ -4052,7 +4061,7 @@ int AMXAPI amx_Exec(AMX *amx, cell *retval, int index)
       POP(frm);
       POP(offs);
       /* verify the return address */
-      if ((ucell)offs>=amx->codesize)
+      if ((long)offs>=amx->codesize)
         ABORT(amx,AMX_ERR_MEMACCESS);
       cip=(cell *)(amx->code+(int)offs);
       stk+=_R(data,stk)+sizeof(cell);   /* remove parameters from the stack */
@@ -4085,7 +4094,7 @@ int AMXAPI amx_Exec(AMX *amx, cell *retval, int index)
       /* verify the index */
       stk+=_R(data,stk)+sizeof(cell);   /* remove parameters from the stack */
       num=amx->overlay(amx,amx->ovl_index); /* reload overlay */
-      if (num!=AMX_ERR_NONE || (ucell)offs>=(ucell)amx->codesize)
+      if (num!=AMX_ERR_NONE || (long)offs>=amx->codesize)
         ABORT(amx,AMX_ERR_MEMACCESS);
       cip=(cell *)(amx->code+(int)offs);
       break;

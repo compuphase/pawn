@@ -3,10 +3,6 @@
  * (c) Copyright 2004-2007, ITB CompuPhase
  * This file is provided as is (no warranties).
  */
-#if defined _file_included
-  #endinput
-#endif
-#define _file_included
 #pragma library File
 
 enum filemode
@@ -43,4 +39,4 @@ native       fseek(File: handle, position = 0, seek_whence: whence = seek_start)
 native       flength(File: handle);
 native       fexist(const pattern[]);
 native bool: fmatch(name[], const pattern[], index = 0, size = sizeof name);
-native bool: fstat(name[], &size = 0, &timestamp = 0);
+native bool: fstat(name[], &size = 0, &timestamp = 0, &mode = 0, &inode = 0);
