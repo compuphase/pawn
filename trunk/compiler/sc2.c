@@ -18,7 +18,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: sc2.c 3853 2007-11-26 13:59:01Z thiadmer $
+ *  Version: $Id: sc2.c 3856 2007-11-27 13:55:27Z thiadmer $
  */
 #include <assert.h>
 #include <stdio.h>
@@ -44,7 +44,7 @@ static symbol *find_symbol(const symbol *root,const char *name,int fnumber,int a
 
 static void substallpatterns(unsigned char *line,int buffersize);
 static int match(char *st,int end);
-static int alpha(char c);
+static int alpha(unsigned char c);
 
 #define SKIPMODE      1 /* bit field in "#if" stack */
 #define PARSEMODE     2 /* bit field in "#if" stack */
@@ -2292,7 +2292,7 @@ static cell litchar(const unsigned char **lptr,int flags)
  *  Test if character "c" is alphabetic ("a".."z"), an underscore ("_")
  *  or an "at" sign ("@"). The "@" is an extension to standard C.
  */
-static int alpha(char c)
+static int alpha(unsigned char c)
 {
   return (isalpha(c) || c=='_' || c==PUBLIC_CHAR);
 }
@@ -2301,7 +2301,7 @@ static int alpha(char c)
  *
  *  Test if character "c" is alphanumeric ("a".."z", "0".."9", "_" or "@")
  */
-SC_FUNC int alphanum(char c)
+SC_FUNC int alphanum(unsigned char c)
 {
   return (alpha(c) || isdigit(c));
 }
@@ -2504,7 +2504,7 @@ static symbol *find_symbol(const symbol *root,const char *name,int fnumber,int a
   while (sym!=NULL) {
     if (hash==sym->hash && strcmp(name,sym->name)==0        /* check name */
         && (sym->parent==NULL || sym->ident==iCONSTEXPR)    /* sub-types (hierarchical types) are skipped, except for enum fields */
-        && (sym->fnumber<0 || sym->fnumber==fnumber))       /* check file number for scope */
+        && (sym->fvisible<0 || sym->fvisible==fnumber))       /* check file number for scope */
     {
       assert(sym->states==NULL || sym->states->next!=NULL); /* first element of the state list is the "root" */
       if (sym->ident==iFUNCTN
@@ -2704,7 +2704,8 @@ SC_FUNC symbol *addsym(const char *name,cell addr,int ident,int vclass,int tag,i
   entry.ident=(char)ident;
   entry.tag=tag;
   entry.usage=(char)usage;
-  entry.fnumber=-1;     /* assume global visibility (ignored for local symbols) */
+  entry.fvisible=-1;    /* assume global visibility (ignored for local symbols) */
+  entry.fnumber=fcurrent;
   entry.lnumber=fline;
   entry.numrefers=1;
   entry.refer=refer;

@@ -20,7 +20,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: amxdbg.c 3821 2007-10-15 16:54:20Z thiadmer $
+ *  Version: $Id: amxdbg.c 3856 2007-11-27 13:55:27Z thiadmer $
  */
 #include <assert.h>
 #include <stdio.h>
@@ -67,6 +67,7 @@ int AMXAPI dbg_LoadInfo(AMX_DBG *amxdbg, FILE *fp)
   #if BYTE_ORDER==BIG_ENDIAN
     amx_Align32((uint32_t*)&amxhdr.size);
     amx_Align16(&amxhdr.magic);
+    amx_Align16(&dbghdr.flags);
   #endif
   if (amxhdr.magic != AMX_MAGIC)
     return AMX_ERR_FORMAT;
@@ -80,7 +81,6 @@ int AMXAPI dbg_LoadInfo(AMX_DBG *amxdbg, FILE *fp)
   #if BYTE_ORDER==BIG_ENDIAN
     amx_Align32((uint32_t*)&dbghdr.size);
     amx_Align16(&dbghdr.magic);
-    amx_Align16(&dbghdr.flags);
     amx_Align16(&dbghdr.files);
     amx_Align16(&dbghdr.lines);
     amx_Align16(&dbghdr.symbols);

@@ -1,6 +1,6 @@
 <?xml version="1.0" ?>
 <xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="1.0">
-<!-- Version: $Id: pawndoc.xsl 7 2006-12-03 15:18:02Z thiadmer.riemersma $ -->
+<!-- Version: $Id: pawndoc.xsl 3845 2007-11-16 14:41:29Z thiadmer $ -->
 
 <xsl:template match="/">
 <HTML>
@@ -39,7 +39,7 @@
 	OL { MARGIN-TOP: 0.5em; }
 	SPAN.paraminfo { FONT-WEIGHT:Bold; COLOR: #336699; }
 	H1 { COLOR: #336699; FONT-SIZE: x-large; MARGIN-BOTTOM: 0.5em; MARGIN-TOP: 1em; PADDING-LEFT: 4px }
-	H2 { BORDER-RIGHT: #4e4887 8px solid; BORDER-TOP: #4e4887 2px solid; COLOR: #4e4887; MARGIN-BOTTOM: 0.5em; MARGIN-TOP: 1em; }
+	H2 { BORDER-RIGHT: #4e4887 8px solid; FONT-SIZE: medium; BORDER-TOP: #4e4887 2px solid; COLOR: #4e4887; MARGIN-BOTTOM: 0.5em; MARGIN-TOP: 1em; }
 	H2.general { BORDER: none; }
 	H3 { COLOR: #4e4887; FONT-SIZE: x-small; MARGIN-BOTTOM: 0.5em }
 	H4 { COLOR: #4e4887; FONT-SIZE: x-small; FONT-STYLE: italic; MARGIN-BOTTOM: 0.5em }
@@ -158,6 +158,7 @@
 		<xsl:when test="substring(@name,1,2) = 'F:'">
 			<a><xsl:attribute name="name"><xsl:value-of select="substring(@name,3)"/></xsl:attribute><h2><span style="float:right; padding-right:2px">variable</span><xsl:value-of select="substring(@name,3)"/></h2></a>
 			<xsl:apply-templates select="summary"/>
+			<h3>Syntax</h3><p class="syntax"><xsl:value-of select="@syntax"/></p>
 			<xsl:apply-templates select="tagname"/>
 			<xsl:if test="remarks">
 				<h3>Remarks</h3>

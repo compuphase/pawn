@@ -258,6 +258,7 @@ _amx_exec_asm: ;PROC
         mov     ebx,[eax+_frm]  ; get FRM
         mov     eax,[eax+_pri]  ; get PRI
         add     ebx,edi         ; relocate frame
+        add     esi,code        ; relocate code address
 
         NEXT                    ; start interpreting
 

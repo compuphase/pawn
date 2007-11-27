@@ -2,12 +2,13 @@
  *  memory.
  *
  *  Copyright (c) faluco / http://www.amxmodx.org/, 2006
- *  Version: $Id: memfile.c 3636 2006-08-14 15:42:05Z thiadmer $
+ *  Version: $Id: memfile.c 3856 2007-11-27 13:55:27Z thiadmer $
  */
 
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>
+#include "sc.h"
 #include "memfile.h"
 #if defined FORTIFY
   #include <alloc/fortify.h>
@@ -31,7 +32,7 @@ memfile_t *memfile_creat(const char *name, size_t init)
 	pmf = (memfile_t *)malloc(sizeof(memfile_t));
 	memcpy(pmf, &mf, sizeof(memfile_t));
 
-	pmf->name = strdup(name);
+	pmf->name = duplicatestring(name);
 
 	return pmf;
 }

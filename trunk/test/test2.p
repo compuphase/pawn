@@ -1,7 +1,17 @@
 #include <core>
 #include <console>
 
-
+#if defined PARTIAL_ARRAY_SIZE
+  #include <float>
+  new Array[0.5]
+#endif
+#if defined COUNT_ARRAY_SIZE
+    new Array[][2] =
+        {
+        	{ 123, 456 },
+        	{ 321, 987 }
+        }
+#endif
 
 #if defined ASSERT_LINENO
 /* NOTE: make sure the function heading of ispacked stays at line 10, see
@@ -272,5 +282,13 @@ main()
         new result = 15
         printf "queue: %d%%\n", result
         printf "queue: %d\n"
+    #endif
+
+    #if defined PARTIAL_ARRAY_SIZE
+        Array[Float:0] = 0  /* only to avoid a "symbol not used" warning */
+    #endif
+    #if defined COUNT_ARRAY_SIZE
+        printf !"size: %d x %d\n", sizeof Array, sizeof Array[]
+        Array[0][0] = 0     /* only to avoid a "symbol not used" warning */
     #endif
     }

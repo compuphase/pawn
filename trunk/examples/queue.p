@@ -1,4 +1,5 @@
 /* Priority queue (for simple text strings) */
+#include <string>
 
 enum message
     {

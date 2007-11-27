@@ -25,7 +25,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: sc.h 3853 2007-11-26 13:59:01Z thiadmer $
+ *  Version: $Id: sc.h 3856 2007-11-27 13:55:27Z thiadmer $
  */
 #ifndef SC_H_INCLUDED
 #define SC_H_INCLUDED
@@ -157,8 +157,9 @@ typedef struct s_symbol {
   } dim;                /* for 'dimension', both functions and arrays */
 
   statelist *states;    /* list of state function/state variable ids + addresses */
-  int fnumber;          /* static global variables: file number in which the declaration is visible */
-  int lnumber;          /* line number (in the current source file) for the declaration */
+  int fvisible;         /* static global variables: file number of the declaration (for visibility test) */
+  int fnumber;          /* file number for the declaration */
+  int lnumber;          /* line number (in source file "fnumber") for the declaration */
 
   struct s_symbol **refer;  /* referrer list, functions that "use" this symbol */
   int numrefers;        /* number of entries in the referrer list */
@@ -483,8 +484,8 @@ typedef enum s_optmark {
  * Functions you call from the "driver" program
  */
 int pc_compile(int argc, char **argv);
-int pc_addconstant(char *name,cell value,int tag);
-int pc_addtag(char *name);
+int pc_addconstant(const char *name,cell value,int tag);
+int pc_addtag(const char *name);
 int pc_enablewarning(int number,int enable);
 
 /*
@@ -548,7 +549,7 @@ SC_FUNC int constexpr(cell *val,int *tag,symbol **symptr);
 SC_FUNC constvalue *append_constval(constvalue *table,const char *name,cell val,int index);
 SC_FUNC constvalue *find_constval(constvalue *table,char *name,int index);
 SC_FUNC void delete_consttable(constvalue *table);
-SC_FUNC symbol *add_constant(char *name,cell val,int vclass,int tag,int allow_redef);
+SC_FUNC symbol *add_constant(const char *name,cell val,int vclass,int tag,int allow_redef);
 SC_FUNC void exporttag(int tag);
 SC_FUNC void sc_attachdocumentation(symbol *sym);
 
@@ -573,7 +574,7 @@ SC_FUNC int tokeninfo(cell *val,char **str);
 SC_FUNC int needtoken(int token);
 SC_FUNC void litadd(cell value);
 SC_FUNC void litinsert(cell value,int pos);
-SC_FUNC int alphanum(char c);
+SC_FUNC int alphanum(unsigned char c);
 SC_FUNC int ishex(char c);
 SC_FUNC void delete_symbol(symbol *root,symbol *sym);
 SC_FUNC void delete_symbols(symbol *root,int level,int del_labels,int delete_functions);

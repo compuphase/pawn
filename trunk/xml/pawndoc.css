@@ -1,4 +1,4 @@
-/* Version: $Id: pawndoc.css 7 2006-12-03 15:18:02Z thiadmer.riemersma $ */
+/* Version: $Id: pawndoc.css 3845 2007-11-16 14:41:29Z thiadmer $ */
 
 BODY
 {
@@ -216,6 +216,7 @@ H2
     BORDER-RIGHT: #4e4887 8px solid;
     BORDER-TOP: #4e4887 2px solid;
     COLOR: #4e4887;
+    FONT-SIZE: medium-large;
     MARGIN-BOTTOM: 0.5em;
     MARGIN-TOP: 1em;
 }

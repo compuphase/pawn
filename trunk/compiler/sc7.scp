@@ -1,7 +1,7 @@
 /*  Pawn compiler - Peephole optimizer "sequences" strings (plain
- *                   and compressed formats)
+ *                  and compressed formats)
  *
- *  Copyright (c) ITB CompuPhase, 2000-2006
+ *  Copyright (c) ITB CompuPhase, 2000-2007
  *
  *  This software is provided "as-is", without any express or implied warranty.
  *  In no event will the authors be held liable for any damages arising from
@@ -19,7 +19,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: sc7.sch 3684 2006-12-10 16:16:47Z thiadmer $
+ *  Version: $Id: sc7.sch 3821 2007-10-15 16:54:20Z thiadmer $
  */
 
 SC_FUNC int strexpand(char *dest, unsigned char *source, int maxlen, unsigned char pairtable[128][2]);
@@ -29,14 +29,14 @@ SC_FUNC int strexpand(char *dest, unsigned char *source, int maxlen, unsigned ch
 #define SCPACK_TABLE sequences_table
 /*-*SCPACK start of pair table, do not change or remove this line */
 unsigned char sequences_table[][2] = {
-  {49,33}, {37,128}, {32,129}, {32,37}, {114,105}, {112,132}, {46,133}, {97,100}, {46,97}, {136,108}, {137,116}, {115,104}, {111,135}, {117,139}, {112,141}, {108,140},
-  {131,50}, {144,33}, {46,115}, {59,36}, {138,33}, {134,130}, {143,146}, {115,116}, {134,145}, {114,33}, {110,151}, {111,154}, {99,155}, {112,148}, {135,100}, {134,33},
-  {97,153}, {112,160}, {147,161}, {111,157}, {112,163}, {46,99}, {138,130}, {142,159}, {131,51}, {150,152}, {112,33}, {120,170}, {101,171}, {147,172}, {168,33}, {162,142},
-  {122,101}, {101,113}, {176,114}, {110,100}, {149,167}, {158,114}, {33,164}, {131,49}, {103,33}, {158,33}, {104,184}, {99,186}, {120,187}, {98,111}, {118,101}, {111,190},
-  {109,191}, {130,173}, {131,52}, {115,103}, {115,108}, {106,178}, {138,145}, {180,169}, {192,148}, {108,165}, {166,169}, {143,149}, {115,174}, {117,179}, {139,201}, {205,204},
-  {189,207}, {105,100}, {209,120}, {197,130}, {46,135}, {177,33}, {212,114}, {206,134}, {156,149}, {142,165}, {183,145}, {150,149}, {143,152}, {194,33}, {130,175}, {97,179},
-  {178,111}, {182,185}, {143,46}, {183,144}, {156,152}, {145,175}, {114,101}, {230,102}, {196,101}, {108,231}, {106,110}, {232,115}, {235,115}, {195,114}, {237,116}, {142,148},
-  {105,33}, {156,166}, {177,130}, {215,32}, {243,50}, {143,198}, {156,199}, {181,199}, {181,202}, {108,210}, {46,98}, {244,225}, {122,130}, {238,153}, {224,159}
+  {49,33}, {37,128}, {32,129}, {32,37}, {97,100}, {114,105}, {112,133}, {46,134}, {97,108}, {136,116}, {46,137}, {115,104}, {108,111}, {140,132}, {117,139}, {112,142},
+  {131,50}, {46,115}, {144,33}, {59,36}, {138,33}, {48,33}, {131,149}, {115,116}, {135,130}, {141,145}, {135,146}, {114,33}, {46,99}, {132,100}, {110,151}, {111,158},
+  {99,159}, {112,148}, {135,33}, {97,155}, {112,163}, {147,164}, {111,161}, {112,166}, {138,130}, {112,33}, {120,169}, {101,170}, {147,171}, {143,162}, {131,51}, {153,154},
+  {46,112}, {174,33}, {122,101}, {101,113}, {178,114}, {165,143}, {110,100}, {157,114}, {152,173}, {33,167}, {131,49}, {135,150}, {138,150}, {114,101}, {189,102}, {98,111},
+  {103,33}, {157,33}, {104,192}, {99,194}, {120,195}, {109,111}, {197,118}, {130,172}, {198,101}, {108,156}, {131,52}, {105,100}, {115,103}, {115,108}, {203,120}, {106,180},
+  {138,146}, {184,175}, {117,182}, {139,201}, {191,210}, {212,115}, {46,132}, {200,148}, {168,175}, {214,114}, {141,152}, {213,177}, {108,190}, {180,111}, {207,130}, {179,33},
+  {211,135}, {143,156}, {160,152}, {186,146}, {141,154}, {153,152}, {202,33}, {130,181}, {97,182}, {151,111}, {233,114}, {185,193}, {46,98}, {46,105}, {186,144}, {176,145},
+  {160,154}, {48,48}, {146,181}, {108,206}, {101,99}, {110,99}, {205,101}, {106,110}, {246,115}, {248,115}, {204,114}, {105,245}, {100,244}, {250,116}, {176,150}
 };
 /*-*SCPACK end of pair table, do not change or remove this line */
 
@@ -48,24 +48,24 @@ typedef struct {
 } SEQUENCE;
 static SEQUENCE sequences_cmp[] = {
   /* A very common sequence in four varieties
-   *    load.s.pri n1           load.s.pri n2
-   *    push.pri                load.s.alt n1
-   *    load.s.pri n2           -
+   *    load.s.pri %1           load.s.pri %2
+   *    push.pri                load.s.alt %1
+   *    load.s.pri %2           -
    *    pop.alt                 -
    *    --------------------------------------
-   *    load.pri n1             load.s.pri n2
-   *    push.pri                load.alt n1
-   *    load.s.pri n2           -
+   *    load.pri %1             load.s.pri %2
+   *    push.pri                load.alt %1
+   *    load.s.pri %2           -
    *    pop.alt                 -
    *    --------------------------------------
-   *    load.s.pri n1           load.pri n2
-   *    push.pri                load.s.alt n1
-   *    load.pri n2             -
+   *    load.s.pri %1           load.pri %2
+   *    push.pri                load.s.alt %1
+   *    load.pri %2             -
    *    pop.alt                 -
    *    --------------------------------------
-   *    load.pri n1             load.pri n2
-   *    push.pri                load.alt n1
-   *    load.pri n2             -
+   *    load.pri %1             load.pri %2
+   *    push.pri                load.alt %1
+   *    load.pri %2             -
    *    pop.alt                 -
    */
   {
@@ -73,8 +73,8 @@ static SEQUENCE sequences_cmp[] = {
       "load.s.pri %1!push.pri!load.s.pri %2!pop.alt!",
       "load.s.pri %2!load.s.alt %1!",
     #else
-      "\226\307\244",
-      "\251\226\246",
+      "\231\321\247",
+      "\257\231\250",
     #endif
     seqsize(4,2) - seqsize(2,2)
   },
@@ -83,8 +83,8 @@ static SEQUENCE sequences_cmp[] = {
       "load.pri %1!push.pri!load.s.pri %2!pop.alt!",
       "load.s.pri %2!load.alt %1!",
     #else
-      "\217\307\244",
-      "\251\217\246",
+      "\215\321\247",
+      "\257\215\250",
     #endif
     seqsize(4,2) - seqsize(2,2)
   },
@@ -93,8 +93,8 @@ static SEQUENCE sequences_cmp[] = {
       "load.s.pri %1!push.pri!load.pri %2!pop.alt!",
       "load.pri %2!load.s.alt %1!",
     #else
-      "\226\264\334\244",
-      "\334\226\246",
+      "\231\270\344\247",
+      "\344\231\250",
     #endif
     seqsize(4,2) - seqsize(2,2)
   },
@@ -103,8 +103,8 @@ static SEQUENCE sequences_cmp[] = {
       "load.pri %1!push.pri!load.pri %2!pop.alt!",
       "load.pri %2!load.alt %1!",
     #else
-      "\217\264\334\244",
-      "\334\217\246",
+      "\215\270\344\247",
+      "\344\215\250",
     #endif
     seqsize(4,2) - seqsize(2,2)
   },
@@ -116,8 +116,8 @@ static SEQUENCE sequences_cmp[] = {
       "addr.pri %1!push.pri!load.s.pri %2!pop.alt!",
       "addr.alt %1!load.s.pri %2!",
     #else
-      "\367\244",
-      "\370",
+      "\267\321\247",
+      "\267\330",
     #endif
     seqsize(4,2) - seqsize(2,2)
   },
@@ -126,8 +126,8 @@ static SEQUENCE sequences_cmp[] = {
       "addr.pri %1!push.pri!load.pri %2!pop.alt!",
       "addr.alt %1!load.pri %2!",
     #else
-      "\265\264\334\244",
-      "\265\246\334",
+      "\267\270\344\247",
+      "\267\250\344",
     #endif
     seqsize(4,2) - seqsize(2,2)
   },
@@ -139,8 +139,8 @@ static SEQUENCE sequences_cmp[] = {
       "const.pri %1!push.pri!load.s.pri %2!pop.alt!",
       "load.s.pri %2!const.alt %1!",
     #else
-      "\366\244",
-      "\251\361",
+      "\240\321\247",
+      "\257\240\250",
     #endif
     seqsize(4,2) - seqsize(2,2)
   },
@@ -149,8 +149,8 @@ static SEQUENCE sequences_cmp[] = {
       "const.pri %1!push.pri!load.pri %2!pop.alt!",
       "load.pri %2!const.alt %1!",
     #else
-      "\234\264\334\244",
-      "\334\361",
+      "\240\270\344\247",
+      "\344\240\250",
     #endif
     seqsize(4,2) - seqsize(2,2)
   },
@@ -159,8 +159,8 @@ static SEQUENCE sequences_cmp[] = {
       "load.s.pri %1!push.pri!const.pri %2!pop.alt!",
       "const.pri %2!load.s.alt %1!",
     #else
-      "\226\264\344\244",
-      "\344\226\246",
+      "\231\270\360\247",
+      "\360\231\250",
     #endif
     seqsize(4,2) - seqsize(2,2)
   },
@@ -169,8 +169,8 @@ static SEQUENCE sequences_cmp[] = {
       "load.pri %1!push.pri!const.pri %2!pop.alt!",
       "const.pri %2!load.alt %1!",
     #else
-      "\217\264\344\244",
-      "\344\217\246",
+      "\215\270\360\247",
+      "\360\215\250",
     #endif
     seqsize(4,2) - seqsize(2,2)
   },
@@ -183,8 +183,8 @@ static SEQUENCE sequences_cmp[] = {
       "addr.pri %1!push.pri!const.pri %2!pop.alt!",
       "addr.alt %1!const.pri %2!",
     #else
-      "\265\264\344\244",
-      "\265\246\344",
+      "\267\270\360\247",
+      "\267\250\360",
     #endif
     seqsize(4,2) - seqsize(2,2)
   },
@@ -193,16 +193,16 @@ static SEQUENCE sequences_cmp[] = {
       "addr.pri %1!push.pri!zero.pri!pop.alt!",
       "addr.alt %1!zero.pri!",
     #else
-      "\265\264\376\244",
-      "\265\246\376",
+      "\267\270\335\242\247",
+      "\267\250\335\242",
     #endif
     seqsize(4,1) - seqsize(2,1)
   },
   /* ??? add references */
   /* Chained relational operators can contain sequences like:
-   *    move.pri                load.s.pri n1
+   *    move.pri                load.s.pri %1
    *    push.pri                -
-   *    load.s.pri n1           -
+   *    load.s.pri %1           -
    *    pop.alt                 -
    * The above also accurs for "load.pri" and for "const.pri",
    * so add another two cases.
@@ -212,8 +212,8 @@ static SEQUENCE sequences_cmp[] = {
       "move.pri!push.pri!load.s.pri %1!pop.alt!",
       "load.s.pri %1!",
     #else
-      "\300\237\247\333\244",
-      "\333",
+      "\310\242\255\345\247",
+      "\345",
     #endif
     seqsize(4,1) - seqsize(1,1)
   },
@@ -222,8 +222,8 @@ static SEQUENCE sequences_cmp[] = {
       "move.pri!push.pri!load.pri %1!pop.alt!",
       "load.pri %1!",
     #else
-      "\300\237\247\313\244",
-      "\313",
+      "\310\242\255\332\247",
+      "\332",
     #endif
     seqsize(4,1) - seqsize(1,1)
   },
@@ -232,8 +232,8 @@ static SEQUENCE sequences_cmp[] = {
       "move.pri!push.pri!const.pri %1!pop.alt!",
       "const.pri %1!",
     #else
-      "\300\237\247\330\244",
-      "\330",
+      "\310\242\255\342\247",
+      "\342",
     #endif
     seqsize(4,1) - seqsize(1,1)
   },
@@ -250,13 +250,13 @@ static SEQUENCE sequences_cmp[] = {
    *    xchg                    sless       also for sless, sgeq and sleq
    *    sgrtr                   pop.alt
    *    swap.alt                and
-   *    and                     jzer n1
+   *    and                     jzer %1
    *    pop.alt                 -
-   *    jzer n1                 -
+   *    jzer %1                 -
    *    --------------------------------------
-   *    xchg                    jsgeq  n1   also for sless, sgeq and sleq
+   *    xchg                    jsgeq  %1   also for sless, sgeq and sleq
    *    sgrtr                   ;$exp       (occurs for non-chained comparisons)
-   *    jzer n1                 -
+   *    jzer %1                 -
    *    ;$exp                   -
    *    --------------------------------------
    *    xchg                    sless       also for sless, sgeq and sleq
@@ -268,8 +268,8 @@ static SEQUENCE sequences_cmp[] = {
       "xchg!sgrtr!swap.alt!and!pop.alt!;$exp!",
       "sless!pop.alt!and!;$exp!",
     #else
-      "\274\375swa\235\337\266\255",
-      "\354\266\337!\255",
+      "\304\375\233swa\241\350\271\254",
+      "\371\271\350!\254",
     #endif
     seqsize(5,0) - seqsize(3,0)
   },
@@ -278,8 +278,8 @@ static SEQUENCE sequences_cmp[] = {
       "xchg!sless!swap.alt!and!pop.alt!;$exp!",
       "sgrtr!pop.alt!and!;$exp!",
     #else
-      "\274\354!swa\235\337\266\255",
-      "\375\244\337!\255",
+      "\304\371!swa\241\350\271\254",
+      "\375\233\247\350!\254",
     #endif
     seqsize(5,0) - seqsize(3,0)
   },
@@ -288,8 +288,8 @@ static SEQUENCE sequences_cmp[] = {
       "xchg!sgeq!swap.alt!and!pop.alt!;$exp!",
       "sleq!pop.alt!and!;$exp!",
     #else
-      "\274\303\325swa\235\337\266\255",
-      "\304\261\266\337!\255",
+      "\304\314\337swa\241\350\271\254",
+      "\315\263\271\350!\254",
     #endif
     seqsize(5,0) - seqsize(3,0)
   },
@@ -298,8 +298,8 @@ static SEQUENCE sequences_cmp[] = {
       "xchg!sleq!swap.alt!and!pop.alt!;$exp!",
       "sgeq!pop.alt!and!;$exp!",
     #else
-      "\274\304\325swa\235\337\266\255",
-      "\303\261\266\337!\255",
+      "\304\315\337swa\241\350\271\254",
+      "\314\263\271\350!\254",
     #endif
     seqsize(5,0) - seqsize(3,0)
   },
@@ -308,8 +308,8 @@ static SEQUENCE sequences_cmp[] = {
       "xchg!sgrtr!swap.alt!and!pop.alt!jzer %1!",
       "sless!pop.alt!and!jzer %1!",
     #else
-      "\274\375swa\235\337\266\323",
-      "\354\266\337!\323",
+      "\304\375\233swa\241\350\271\336",
+      "\371\271\350!\336",
     #endif
     seqsize(5,0) - seqsize(3,0)
   },
@@ -318,8 +318,8 @@ static SEQUENCE sequences_cmp[] = {
       "xchg!sless!swap.alt!and!pop.alt!jzer %1!",
       "sgrtr!pop.alt!and!jzer %1!",
     #else
-      "\274\354!swa\235\337\266\323",
-      "\375\244\337!\323",
+      "\304\371!swa\241\350\271\336",
+      "\375\233\247\350!\336",
     #endif
     seqsize(5,0) - seqsize(3,0)
   },
@@ -328,8 +328,8 @@ static SEQUENCE sequences_cmp[] = {
       "xchg!sgeq!swap.alt!and!pop.alt!jzer %1!",
       "sleq!pop.alt!and!jzer %1!",
     #else
-      "\274\303\325swa\235\337\266\323",
-      "\304\261\266\337!\323",
+      "\304\314\337swa\241\350\271\336",
+      "\315\263\271\350!\336",
     #endif
     seqsize(5,0) - seqsize(3,0)
   },
@@ -338,8 +338,8 @@ static SEQUENCE sequences_cmp[] = {
       "xchg!sleq!swap.alt!and!pop.alt!jzer %1!",
       "sgeq!pop.alt!and!jzer %1!",
     #else
-      "\274\304\325swa\235\337\266\323",
-      "\303\261\266\337!\323",
+      "\304\315\337swa\241\350\271\336",
+      "\314\263\271\350!\336",
     #endif
     seqsize(5,0) - seqsize(3,0)
   },
@@ -348,8 +348,8 @@ static SEQUENCE sequences_cmp[] = {
       "xchg!sgrtr!jzer %1!;$exp!",
       "jsgeq %1!;$exp!",
     #else
-      "\274\375\305\301",
-      "j\303\261\301",
+      "\304\375\233\317\307",
+      "j\314\263\307",
     #endif
     seqsize(3,1) - seqsize(1,1)
   },
@@ -358,8 +358,8 @@ static SEQUENCE sequences_cmp[] = {
       "xchg!sless!jzer %1!;$exp!",
       "jsleq %1!;$exp!",
     #else
-      "\274\354!\305\301",
-      "j\304\261\301",
+      "\304\371!\317\307",
+      "j\315\263\307",
     #endif
     seqsize(3,1) - seqsize(1,1)
   },
@@ -368,8 +368,8 @@ static SEQUENCE sequences_cmp[] = {
       "xchg!sgeq!jzer %1!;$exp!",
       "jsgrtr %1!;$exp!",
     #else
-      "\274\303\325\305\301",
-      "j\356r\301",
+      "\304\314\337\317\307",
+      "j\375r\307",
     #endif
     seqsize(3,1) - seqsize(1,1)
   },
@@ -378,8 +378,8 @@ static SEQUENCE sequences_cmp[] = {
       "xchg!sleq!jzer %1!;$exp!",
       "jsless %1!;$exp!",
     #else
-      "\274\304\325\305\301",
-      "j\354\301",
+      "\304\315\337\317\307",
+      "j\371\307",
     #endif
     seqsize(3,1) - seqsize(1,1)
   },
@@ -388,8 +388,8 @@ static SEQUENCE sequences_cmp[] = {
       "xchg!sgrtr!;$exp!",
       "sless!;$exp!",
     #else
-      "\274\375\255",
-      "\354!\255",
+      "\304\375\233\254",
+      "\371!\254",
     #endif
     seqsize(2,0) - seqsize(1,0)
   },
@@ -398,8 +398,8 @@ static SEQUENCE sequences_cmp[] = {
       "xchg!sless!;$exp!",
       "sgrtr!;$exp!",
     #else
-      "\274\354!\255",
-      "\375\255",
+      "\304\371!\254",
+      "\375\233\254",
     #endif
     seqsize(2,0) - seqsize(1,0)
   },
@@ -408,8 +408,8 @@ static SEQUENCE sequences_cmp[] = {
       "xchg!sgeq!;$exp!",
       "sleq!;$exp!",
     #else
-      "\274\303\325\255",
-      "\304\325\255",
+      "\304\314\337\254",
+      "\315\337\254",
     #endif
     seqsize(2,0) - seqsize(1,0)
   },
@@ -418,22 +418,22 @@ static SEQUENCE sequences_cmp[] = {
       "xchg!sleq!;$exp!",
       "sgeq!;$exp!",
     #else
-      "\274\304\325\255",
-      "\303\325\255",
+      "\304\315\337\254",
+      "\314\337\254",
     #endif
     seqsize(2,0) - seqsize(1,0)
   },
   /* The entry to chained operators is also opt to optimization
-   *    load.s.pri n1           load.s.pri n2
-   *    load.s.alt n2           load.s.alt n1
+   *    load.s.pri %1           load.s.pri %2
+   *    load.s.alt %2           load.s.alt %1
    *    xchg                    -
    *    --------------------------------------
-   *    load.s.pri n1           load.pri n2
-   *    load.alt n2             load.s.alt n1
+   *    load.s.pri %1           load.pri %2
+   *    load.alt %2             load.s.alt %1
    *    xchg                    -
    *    --------------------------------------
-   *    load.s.pri n1           const.pri n2
-   *    const.alt n2            load.s.alt n1
+   *    load.s.pri %1           const.pri %2
+   *    const.alt %2            load.s.alt %1
    *    xchg                    -
    *    --------------------------------------
    * and all permutations...
@@ -443,8 +443,8 @@ static SEQUENCE sequences_cmp[] = {
       "load.s.pri %1!load.s.alt %2!xchg!",
       "load.s.pri %2!load.s.alt %1!",
     #else
-      "\333\226\306\274",
-      "\251\226\246",
+      "\345\231\320\304",
+      "\257\231\250",
     #endif
     seqsize(3,2) - seqsize(2,2)
   },
@@ -453,8 +453,8 @@ static SEQUENCE sequences_cmp[] = {
       "load.s.pri %1!load.alt %2!xchg!",
       "load.pri %2!load.s.alt %1!",
     #else
-      "\333\365\274",
-      "\334\226\246",
+      "\345\215\320\304",
+      "\344\231\250",
     #endif
     seqsize(3,2) - seqsize(2,2)
   },
@@ -463,8 +463,8 @@ static SEQUENCE sequences_cmp[] = {
       "load.s.pri %1!const.alt %2!xchg!",
       "const.pri %2!load.s.alt %1!",
     #else
-      "\333\234\306\274",
-      "\344\226\246",
+      "\345\240\320\304",
+      "\360\231\250",
     #endif
     seqsize(3,2) - seqsize(2,2)
   },
@@ -473,8 +473,8 @@ static SEQUENCE sequences_cmp[] = {
       "load.pri %1!load.s.alt %2!xchg!",
       "load.s.pri %2!load.alt %1!",
     #else
-      "\313\226\306\274",
-      "\251\217\246",
+      "\332\231\320\304",
+      "\257\215\250",
     #endif
     seqsize(3,2) - seqsize(2,2)
   },
@@ -483,8 +483,8 @@ static SEQUENCE sequences_cmp[] = {
       "load.pri %1!load.alt %2!xchg!",
       "load.pri %2!load.alt %1!",
     #else
-      "\313\365\274",
-      "\334\217\246",
+      "\332\215\320\304",
+      "\344\215\250",
     #endif
     seqsize(3,2) - seqsize(2,2)
   },
@@ -493,8 +493,8 @@ static SEQUENCE sequences_cmp[] = {
       "load.pri %1!const.alt %2!xchg!",
       "const.pri %2!load.alt %1!",
     #else
-      "\313\234\306\274",
-      "\344\217\246",
+      "\332\240\320\304",
+      "\360\215\250",
     #endif
     seqsize(3,2) - seqsize(2,2)
   },
@@ -503,8 +503,8 @@ static SEQUENCE sequences_cmp[] = {
       "const.pri %1!load.s.alt %2!xchg!",
       "load.s.pri %2!const.alt %1!",
     #else
-      "\330\226\306\274",
-      "\251\361",
+      "\342\231\320\304",
+      "\257\240\250",
     #endif
     seqsize(3,2) - seqsize(2,2)
   },
@@ -513,14 +513,14 @@ static SEQUENCE sequences_cmp[] = {
       "const.pri %1!load.alt %2!xchg!",
       "load.pri %2!const.alt %1!",
     #else
-      "\330\365\274",
-      "\334\361",
+      "\342\215\320\304",
+      "\344\240\250",
     #endif
     seqsize(3,2) - seqsize(2,2)
   },
   /* some sequences where PRI is moved to ALT can be optimized
    * further when considering what follows
-   *    move.alt                const.alt n1
+   *    move.alt                const.alt %1
    *    const.pri %1            -
    *    xchg                    -
    * (also for load.s.pri and load.pri)
@@ -535,8 +535,8 @@ static SEQUENCE sequences_cmp[] = {
       "move.alt!const.pri %1!xchg!",
       "const.alt %1!",
     #else
-      "\310\330\274",
-      "\361",
+      "\327\342\304",
+      "\240\250",
     #endif
     seqsize(3,1) - seqsize(1,1)
   },
@@ -545,8 +545,8 @@ static SEQUENCE sequences_cmp[] = {
       "move.alt!load.pri %1!xchg!",
       "load.alt %1!",
     #else
-      "\310\313\274",
-      "\217\246",
+      "\327\332\304",
+      "\215\250",
     #endif
     seqsize(3,1) - seqsize(1,1)
   },
@@ -555,8 +555,8 @@ static SEQUENCE sequences_cmp[] = {
       "move.alt!load.s.pri %1!xchg!",
       "load.s.alt %1!",
     #else
-      "\310\333\274",
-      "\226\246",
+      "\327\345\304",
+      "\231\250",
     #endif
     seqsize(3,1) - seqsize(1,1)
   },
@@ -566,8 +566,8 @@ static SEQUENCE sequences_cmp[] = {
       "lref.pri %1!move.alt!load.pri %2!",
       "lref.alt %1!load.pri %2!",
     #else
-      "\351\225\310\334",
-      "\351\246\334",
+      "\334\230\327\344",
+      "\334\250\344",
     #endif
     seqsize(3,2) - seqsize(2,2)
   },
@@ -576,8 +576,8 @@ static SEQUENCE sequences_cmp[] = {
       "lref.pri %1!move.alt!load.s.pri %2!",
       "lref.alt %1!load.s.pri %2!",
     #else
-      "\351\225\310\251",
-      "\351\312",
+      "\334\230\327\257",
+      "\334\330",
     #endif
     seqsize(3,2) - seqsize(2,2)
   },
@@ -586,8 +586,8 @@ static SEQUENCE sequences_cmp[] = {
       "lref.pri %1!move.alt!const.pri %2!",
       "lref.alt %1!const.pri %2!",
     #else
-      "\351\225\310\344",
-      "\351\246\344",
+      "\334\230\327\360",
+      "\334\250\360",
     #endif
     seqsize(3,2) - seqsize(2,2)
   },
@@ -596,8 +596,8 @@ static SEQUENCE sequences_cmp[] = {
       "lref.s.pri %1!move.alt!load.pri %2!",
       "lref.s.alt %1!load.pri %2!",
     #else
-      "\351\222\225\310\334",
-      "\351\222\246\334",
+      "\334\221\230\327\344",
+      "\334\221\250\344",
     #endif
     seqsize(3,2) - seqsize(2,2)
   },
@@ -606,8 +606,8 @@ static SEQUENCE sequences_cmp[] = {
       "lref.s.pri %1!move.alt!load.s.pri %2!",
       "lref.s.alt %1!load.s.pri %2!",
     #else
-      "\351\222\225\310\251",
-      "\351\222\312",
+      "\334\221\230\327\257",
+      "\334\221\330",
     #endif
     seqsize(3,2) - seqsize(2,2)
   },
@@ -616,29 +616,29 @@ static SEQUENCE sequences_cmp[] = {
       "lref.s.pri %1!move.alt!const.pri %2!",
       "lref.s.alt %1!const.pri %2!",
     #else
-      "\351\222\225\310\344",
-      "\351\222\246\344",
+      "\334\221\230\327\360",
+      "\334\221\250\360",
     #endif
     seqsize(3,2) - seqsize(2,2)
   },
   /* Array indexing can merit from special instructions.
    * Simple indexed array lookup can be optimized quite
    * a bit.
-   *    addr.pri n1             addr.alt n1
-   *    push.pri                load.s.pri n2
-   *    load.s.pri n2           bounds n3
-   *    bounds n3               lidx.b n4
-   *    shl.c.pri n4            -
+   *    addr.pri %1             addr.alt %1
+   *    push.pri                load.s.pri %2
+   *    load.s.pri %2           bounds %3
+   *    bounds %3               lidx.b %4
+   *    shl.c.pri %4            -
    *    pop.alt                 -
    *    add                     -
    *    load.i                  -
    *
    * And to prepare for storing a value in an array
-   *    addr.pri n1             addr.alt n1
-   *    push.pri                load.s.pri n2
-   *    load.s.pri n2           bounds n3
-   *    bounds n3               idxaddr.b n4
-   *    shl.c.pri n4            -
+   *    addr.pri %1             addr.alt %1
+   *    push.pri                load.s.pri %2
+   *    load.s.pri %2           bounds %3
+   *    bounds %3               idxaddr.b %4
+   *    shl.c.pri %4            -
    *    pop.alt                 -
    *    add                     -
    *
@@ -646,18 +646,18 @@ static SEQUENCE sequences_cmp[] = {
    * 1. instruction addr.pri can also be const.pri (for
    *    global arrays)
    * 2. the bounds instruction can be absent
-   * 3. when "n4" (the shift value) is the 2 (with 32-bit cells), use the
+   * 3. when "%4" (the shift value) is the 2 (with 32-bit cells), use the
    *    even more optimal instructions LIDX and IDDXADDR
    *
    * If the array index is more complex, one can only optimize
    * the last four instructions:
-   *    shl.c.pri n1            pop.alt
-   *    pop.alt                 lidx.b n1
+   *    shl.c.pri %1            pop.alt
+   *    pop.alt                 lidx.b %1
    *    add                     -
    *    loadi                   -
    *    --------------------------------------
-   *    shl.c.pri n1            pop.alt
-   *    pop.alt                 idxaddr.b n1
+   *    shl.c.pri %1            pop.alt
+   *    pop.alt                 idxaddr.b %1
    *    add                     -
    */
 #if !defined BIT16
@@ -667,8 +667,8 @@ static SEQUENCE sequences_cmp[] = {
       "addr.pri %1!push.pri!load.s.pri %2!bounds %3!shl.c.pri 2!pop.alt!add!load.i!",
       "addr.alt %1!load.s.pri %2!bounds %3!lidx!",
     #else
-      "\367\320\373\342\360",
-      "\370\320\371!",
+      "\267\321\333\340 2\353\215\355!",
+      "\267\330\333\363!",
     #endif
     seqsize(8,4) - seqsize(4,3)
   },
@@ -677,8 +677,8 @@ static SEQUENCE sequences_cmp[] = {
       "const.pri %1!push.pri!load.s.pri %2!bounds %3!shl.c.pri 2!pop.alt!add!load.i!",
       "const.alt %1!load.s.pri %2!bounds %3!lidx!",
     #else
-      "\366\320\373\342\360",
-      "\234\312\320\371!",
+      "\240\321\333\340 2\353\215\355!",
+      "\240\330\333\363!",
     #endif
     seqsize(8,4) - seqsize(4,3)
   },
@@ -687,8 +687,8 @@ static SEQUENCE sequences_cmp[] = {
       "addr.pri %1!push.pri!load.s.pri %2!shl.c.pri 2!pop.alt!add!load.i!",
       "addr.alt %1!load.s.pri %2!lidx!",
     #else
-      "\367\373\342\360",
-      "\370\371!",
+      "\267\321\340 2\353\215\355!",
+      "\267\330\363!",
     #endif
     seqsize(7,3) - seqsize(3,2)
   },
@@ -697,8 +697,8 @@ static SEQUENCE sequences_cmp[] = {
       "const.pri %1!push.pri!load.s.pri %2!shl.c.pri 2!pop.alt!add!load.i!",
       "const.alt %1!load.s.pri %2!lidx!",
     #else
-      "\366\373\342\360",
-      "\234\312\371!",
+      "\240\321\340 2\353\215\355!",
+      "\240\330\363!",
     #endif
     seqsize(7,3) - seqsize(3,2)
   },
@@ -709,8 +709,8 @@ static SEQUENCE sequences_cmp[] = {
       "addr.pri %1!push.pri!load.s.pri %2!bounds %3!shl.c.pri %4!pop.alt!add!load.i!",
       "addr.alt %1!load.s.pri %2!bounds %3!lidx.b %4!",
     #else
-      "\367\320\327\302\341\342\360",
-      "\370\320\371\372\335",
+      "\267\321\333\340\312\353\215\355!",
+      "\267\330\333\363\354\346",
     #endif
     seqsize(8,4) - seqsize(4,4)
   },
@@ -719,8 +719,8 @@ static SEQUENCE sequences_cmp[] = {
       "const.pri %1!push.pri!load.s.pri %2!bounds %3!shl.c.pri %4!pop.alt!add!load.i!",
       "const.alt %1!load.s.pri %2!bounds %3!lidx.b %4!",
     #else
-      "\366\320\327\302\341\342\360",
-      "\234\312\320\371\372\335",
+      "\240\321\333\340\312\353\215\355!",
+      "\240\330\333\363\354\346",
     #endif
     seqsize(8,4) - seqsize(4,4)
   },
@@ -729,8 +729,8 @@ static SEQUENCE sequences_cmp[] = {
       "addr.pri %1!push.pri!load.s.pri %2!shl.c.pri %3!pop.alt!add!load.i!",
       "addr.alt %1!load.s.pri %2!lidx.b %3!",
     #else
-      "\367\327\256\244\271\342\360",
-      "\370\371\372\256",
+      "\267\321\340\261\247\301\215\355!",
+      "\267\330\363\354\261",
     #endif
     seqsize(7,3) - seqsize(3,3)
   },
@@ -739,8 +739,8 @@ static SEQUENCE sequences_cmp[] = {
       "const.pri %1!push.pri!load.s.pri %2!shl.c.pri %3!pop.alt!add!load.i!",
       "const.alt %1!load.s.pri %2!lidx.b %3!",
     #else
-      "\366\327\256\244\271\342\360",
-      "\234\312\371\372\256",
+      "\240\321\340\261\247\301\215\355!",
+      "\240\330\363\354\261",
     #endif
     seqsize(7,3) - seqsize(3,3)
   },
@@ -751,8 +751,8 @@ static SEQUENCE sequences_cmp[] = {
       "addr.pri %1!push.pri!load.s.pri %2!bounds %3!shl.c.pri 2!pop.alt!add!",
       "addr.alt %1!load.s.pri %2!bounds %3!idxaddr!",
     #else
-      "\367\320\373",
-      "\370\320\322\236\231",
+      "\267\321\333\340 2\353",
+      "\267\330\333\316\235\233",
     #endif
     seqsize(7,4) - seqsize(4,3)
   },
@@ -761,8 +761,8 @@ static SEQUENCE sequences_cmp[] = {
       "const.pri %1!push.pri!load.s.pri %2!bounds %3!shl.c.pri 2!pop.alt!add!",
       "const.alt %1!load.s.pri %2!bounds %3!idxaddr!",
     #else
-      "\366\320\373",
-      "\234\312\320\322\236\231",
+      "\240\321\333\340 2\353",
+      "\240\330\333\316\235\233",
     #endif
     seqsize(7,4) - seqsize(4,3)
   },
@@ -771,8 +771,8 @@ static SEQUENCE sequences_cmp[] = {
       "addr.pri %1!push.pri!load.s.pri %2!shl.c.pri 2!pop.alt!add!",
       "addr.alt %1!load.s.pri %2!idxaddr!",
     #else
-      "\367\373",
-      "\370\322\236\231",
+      "\267\321\340 2\353",
+      "\267\330\316\235\233",
     #endif
     seqsize(6,3) - seqsize(3,2)
   },
@@ -781,8 +781,8 @@ static SEQUENCE sequences_cmp[] = {
       "const.pri %1!push.pri!load.s.pri %2!shl.c.pri 2!pop.alt!add!",
       "const.alt %1!load.s.pri %2!idxaddr!",
     #else
-      "\366\373",
-      "\234\312\322\236\231",
+      "\240\321\340 2\353",
+      "\240\330\316\235\233",
     #endif
     seqsize(6,3) - seqsize(3,2)
   },
@@ -793,8 +793,8 @@ static SEQUENCE sequences_cmp[] = {
       "addr.pri %1!push.pri!load.s.pri %2!bounds %3!shl.c.pri %4!pop.alt!add!",
       "addr.alt %1!load.s.pri %2!bounds %3!idxaddr.b %4!",
     #else
-      "\367\320\327\302\341",
-      "\370\320\322\265\372\335",
+      "\267\321\333\340\312\353",
+      "\267\330\333\316\267\354\346",
     #endif
     seqsize(7,4) - seqsize(4,4)
   },
@@ -803,8 +803,8 @@ static SEQUENCE sequences_cmp[] = {
       "const.pri %1!push.pri!load.s.pri %2!bounds %3!shl.c.pri %4!pop.alt!add!",
       "const.alt %1!load.s.pri %2!bounds %3!idxaddr.b %4!",
     #else
-      "\366\320\327\302\341",
-      "\234\312\320\322\265\372\335",
+      "\240\321\333\340\312\353",
+      "\240\330\333\316\267\354\346",
     #endif
     seqsize(7,4) - seqsize(4,4)
   },
@@ -813,8 +813,8 @@ static SEQUENCE sequences_cmp[] = {
       "addr.pri %1!push.pri!load.s.pri %2!shl.c.pri %3!pop.alt!add!",
       "addr.alt %1!load.s.pri %2!idxaddr.b %3!",
     #else
-      "\367\327\256\244\271",
-      "\370\322\265\372\256",
+      "\267\321\340\261\247\301",
+      "\267\330\316\267\354\261",
     #endif
     seqsize(6,3) - seqsize(3,3)
   },
@@ -823,8 +823,8 @@ static SEQUENCE sequences_cmp[] = {
       "const.pri %1!push.pri!load.s.pri %2!shl.c.pri %3!pop.alt!add!",
       "const.alt %1!load.s.pri %2!idxaddr.b %3!",
     #else
-      "\366\327\256\244\271",
-      "\234\312\322\265\372\256",
+      "\240\321\340\261\247\301",
+      "\240\330\316\267\354\261",
     #endif
     seqsize(6,3) - seqsize(3,3)
   },
@@ -835,8 +835,8 @@ static SEQUENCE sequences_cmp[] = {
       "shl.c.pri 2!pop.alt!add!loadi!",
       "pop.alt!lidx!",
     #else
-      "\373\217\360",
-      "\244\371!",
+      "\340 2\353\215i!",
+      "\247\363!",
     #endif
     seqsize(4,1) - seqsize(2,0)
   },
@@ -845,8 +845,8 @@ static SEQUENCE sequences_cmp[] = {
       "shl.c.pri 2!pop.alt!add!",
       "pop.alt!idxaddr!",
     #else
-      "\373",
-      "\244\322\236\231",
+      "\340 2\353",
+      "\247\316\235\233",
     #endif
     seqsize(3,1) - seqsize(2,0)
   },
@@ -856,8 +856,8 @@ static SEQUENCE sequences_cmp[] = {
       "shl.c.pri %1!pop.alt!add!loadi!",
       "pop.alt!lidx.b %1!",
     #else
-      "\316\225\244\271\217\360",
-      "\244\371\372\202",
+      "\323\230\247\301\215i!",
+      "\247\363\354\202",
     #endif
     seqsize(4,1) - seqsize(2,1)
   },
@@ -866,17 +866,17 @@ static SEQUENCE sequences_cmp[] = {
       "shl.c.pri %1!pop.alt!add!",
       "pop.alt!idxaddr.b %1!",
     #else
-      "\316\225\244\271",
-      "\244\322\265\372\202",
+      "\323\230\247\301",
+      "\247\316\267\354\202",
     #endif
     seqsize(3,1) - seqsize(2,1)
   },
   /* For packed arrays, there is another case (packed arrays
    * do not take advantage of the LIDX or IDXADDR instructions).
-   *    addr.pri n1             addr.alt n1
-   *    push.pri                load.s.pri n2
-   *    load.s.pri n2           bounds n3
-   *    bounds n3               -
+   *    addr.pri %1             addr.alt %1
+   *    push.pri                load.s.pri %2
+   *    load.s.pri %2           bounds %3
+   *    bounds %3               -
    *    pop.alt                 -
    *
    * Notes (additional cases):
@@ -890,8 +890,8 @@ static SEQUENCE sequences_cmp[] = {
       "addr.pri %1!push.pri!load.s.pri %2!bounds %3!pop.alt!",
       "addr.alt %1!load.s.pri %2!bounds %3!",
     #else
-      "\367\320\244",
-      "\370\320",
+      "\267\321\333\247",
+      "\267\330\333",
     #endif
     seqsize(5,3) - seqsize(3,3)
   },
@@ -900,8 +900,8 @@ static SEQUENCE sequences_cmp[] = {
       "const.pri %1!push.pri!load.s.pri %2!bounds %3!pop.alt!",
       "const.alt %1!load.s.pri %2!bounds %3!",
     #else
-      "\366\320\244",
-      "\234\312\320",
+      "\240\321\333\247",
+      "\240\330\333",
     #endif
     seqsize(5,3) - seqsize(3,3)
   },
@@ -917,25 +917,25 @@ static SEQUENCE sequences_cmp[] = {
       ";$lcl %1 %2!stack -4!const.pri %3!stor.s.pri %2!;$exp!",
       ";$lcl %1 %2!push.c %3!;$exp!",
     #else
-      "\223lcl\332\227ack -4!\234\206\256\227or\222\230\255",
-      "\223lcl\332\331\256\255",
+      "\223lcl\343\227ack -4!\240\207\261\352\221\232\254",
+      "\223lcl\343\341\261\254",
     #endif
     seqsize(3,3) - seqsize(1,1)
   },
   {
     #ifdef SCPACK
       ";$lcl %1 %2!stack -4!zero.pri!stor.s.pri %2!;$exp!",
-      ";$lcl %1 %2!push.c 0!;$exp!",
+      ";$lcl %1 %2!push.c 00000000!;$exp!", //???
     #else
-      "\223lcl\332\227ack -4!\376\227or\222\230\255",
-      "\223lcl\332\331 0!\255",
+      "\223lcl\343\227ack -4!\335\242\352\221\232\254",
+      "\223lcl\343\341 \361\361\3610\225\254",
     #endif
     seqsize(3,2) - seqsize(1,1)
   },
   /* During a calculation, the intermediate result must sometimes
    * be moved from PRI to ALT, like in:
    *    push.pri                move.alt
-   *    load.s.pri n1           load.s.pri n1
+   *    load.s.pri %1           load.s.pri %1
    *    pop.alt                 -
    *
    * The above also accurs for "load.pri" and for "const.pri",
@@ -946,8 +946,8 @@ static SEQUENCE sequences_cmp[] = {
       "push.pri!load.s.pri %1!pop.alt!",
       "move.alt!load.s.pri %1!",
     #else
-      "\247\333\244",
-      "\310\333",
+      "\255\345\247",
+      "\327\345",
     #endif
     seqsize(3,1) - seqsize(2,1)
   },
@@ -956,8 +956,8 @@ static SEQUENCE sequences_cmp[] = {
       "push.pri!load.pri %1!pop.alt!",
       "move.alt!load.pri %1!",
     #else
-      "\247\313\244",
-      "\310\313",
+      "\255\332\247",
+      "\327\332",
     #endif
     seqsize(3,1) - seqsize(2,1)
   },
@@ -966,8 +966,8 @@ static SEQUENCE sequences_cmp[] = {
       "push.pri!const.pri %1!pop.alt!",
       "move.alt!const.pri %1!",
     #else
-      "\247\330\244",
-      "\310\330",
+      "\255\342\247",
+      "\327\342",
     #endif
     seqsize(3,1) - seqsize(2,1)
   },
@@ -976,8 +976,8 @@ static SEQUENCE sequences_cmp[] = {
       "push.pri!zero.pri!pop.alt!",
       "move.alt!zero.pri!",
     #else
-      "\247\376\244",
-      "\310\376",
+      "\255\335\242\247",
+      "\327\335\242",
     #endif
     seqsize(3,0) - seqsize(2,0)
   },
@@ -989,8 +989,8 @@ static SEQUENCE sequences_cmp[] = {
       "push.pri!load.i!pop.alt!",
       "move.alt!load.i!",
     #else
-      "\247\342i\266",
-      "\310\342\360",
+      "\255\215\355\271",
+      "\327\215\355!",
     #endif
     seqsize(3,0) - seqsize(2,0)
   },
@@ -1004,8 +1004,8 @@ static SEQUENCE sequences_cmp[] = {
       "push.pri!pop.alt!",
       "move.alt!",
     #else
-      "\247\244",
-      "\310",
+      "\255\247",
+      "\327",
     #endif
     seqsize(2,0) - seqsize(1,0)
   },
@@ -1016,8 +1016,8 @@ static SEQUENCE sequences_cmp[] = {
       "move.alt!load.s.pri %1!add!",
       "load.s.alt %1!add!",
     #else
-      "\310\333\271",
-      "\226\246\271",
+      "\327\345\301",
+      "\231\250\301",
     #endif
     seqsize(3,1) - seqsize(2,1)
   },
@@ -1026,8 +1026,8 @@ static SEQUENCE sequences_cmp[] = {
       "move.alt!load.pri %1!add!",
       "load.alt %1!add!",
     #else
-      "\310\313\271",
-      "\217\246\271",
+      "\327\332\301",
+      "\215\250\301",
     #endif
     seqsize(3,1) - seqsize(2,1)
   },
@@ -1036,8 +1036,8 @@ static SEQUENCE sequences_cmp[] = {
       "move.alt!const.pri %1!add!",
       "const.alt %1!add!",
     #else
-      "\310\330\271",
-      "\361\271",
+      "\327\342\301",
+      "\240\250\301",
     #endif
     seqsize(3,1) - seqsize(2,1)
   },
@@ -1046,8 +1046,8 @@ static SEQUENCE sequences_cmp[] = {
       "move.alt!load.s.pri %1!sub.alt!",
       "load.s.alt %1!sub!",
     #else
-      "\310\333sub\224",
-      "\226\246sub!",
+      "\327\345sub\224",
+      "\231\250sub!",
     #endif
     seqsize(3,1) - seqsize(2,1)
   },
@@ -1056,8 +1056,8 @@ static SEQUENCE sequences_cmp[] = {
       "move.alt!load.pri %1!sub.alt!",
       "load.alt %1!sub!",
     #else
-      "\310\313sub\224",
-      "\217\246sub!",
+      "\327\332sub\224",
+      "\215\250sub!",
     #endif
     seqsize(3,1) - seqsize(2,1)
   },
@@ -1066,16 +1066,16 @@ static SEQUENCE sequences_cmp[] = {
       "move.alt!const.pri %1!sub.alt!",
       "const.alt %1!sub!",
     #else
-      "\310\330sub\224",
-      "\361sub!",
+      "\327\342sub\224",
+      "\240\250sub!",
     #endif
     seqsize(3,1) - seqsize(2,1)
   },
   /* User-defined operators first load the operands into registers and
    * then have them pushed onto the stack. This can give rise to sequences
    * like:
-   *    const.pri n1            push.c n1
-   *    const.alt n2            push.c n2
+   *    const.pri %1            push.c %1
+   *    const.alt %2            push.c %2
    *    push.pri                -
    *    push.alt                -
    * A similar sequence occurs with the two PUSH.pri/alt instructions inverted.
@@ -1088,8 +1088,8 @@ static SEQUENCE sequences_cmp[] = {
       "const.pri %1!const.alt %2!push.pri!push.alt!",
       "push.c %1!push.c %2!",
     #else
-      "\330\234\306\247\357",
-      "\331\202\331\221",
+      "\342\240\320\255\217\224",
+      "\341\202\341\222",
     #endif
     seqsize(4,2) - seqsize(2,2)
   },
@@ -1098,8 +1098,8 @@ static SEQUENCE sequences_cmp[] = {
       "const.pri %1!const.alt %2!push.alt!push.pri!",
       "push.c %2!push.c %1!",
     #else
-      "\330\234\306\357\247",
-      "\331\221\331\202",
+      "\342\240\320\217\224\255",
+      "\341\222\341\202",
     #endif
     seqsize(4,2) - seqsize(2,2)
   },
@@ -1108,8 +1108,8 @@ static SEQUENCE sequences_cmp[] = {
       "const.pri %1!load.alt %2!push.pri!push.alt!",
       "push.c %1!push %2!",
     #else
-      "\330\365\247\357",
-      "\331\202\216\221",
+      "\342\215\320\255\217\224",
+      "\341\202\217\222",
     #endif
     seqsize(4,2) - seqsize(2,2)
   },
@@ -1118,8 +1118,8 @@ static SEQUENCE sequences_cmp[] = {
       "const.pri %1!load.alt %2!push.alt!push.pri!",
       "push %2!push.c %1!",
     #else
-      "\330\365\357\247",
-      "\216\221\331\202",
+      "\342\215\320\217\224\255",
+      "\217\222\341\202",
     #endif
     seqsize(4,2) - seqsize(2,2)
   },
@@ -1128,8 +1128,8 @@ static SEQUENCE sequences_cmp[] = {
       "load.pri %1!const.alt %2!push.pri!push.alt!",
       "push %1!push.c %2!",
     #else
-      "\313\234\306\247\357",
-      "\216\202\331\221",
+      "\332\240\320\255\217\224",
+      "\217\202\341\222",
     #endif
     seqsize(4,2) - seqsize(2,2)
   },
@@ -1138,8 +1138,8 @@ static SEQUENCE sequences_cmp[] = {
       "load.pri %1!const.alt %2!push.alt!push.pri!",
       "push.c %2!push %1!",
     #else
-      "\313\234\306\357\247",
-      "\331\221\216\202",
+      "\332\240\320\217\224\255",
+      "\341\222\217\202",
     #endif
     seqsize(4,2) - seqsize(2,2)
   },
@@ -1148,8 +1148,8 @@ static SEQUENCE sequences_cmp[] = {
       "load.pri %1!load.alt %2!push.pri!push.alt!",
       "push %1!push %2!",
     #else
-      "\313\365\247\357",
-      "\216\202\216\221",
+      "\332\215\320\255\217\224",
+      "\217\202\217\222",
     #endif
     seqsize(4,2) - seqsize(2,2)
   },
@@ -1158,25 +1158,25 @@ static SEQUENCE sequences_cmp[] = {
       "load.pri %1!load.alt %2!push.alt!push.pri!",
       "push %2!push %1!",
     #else
-      "\313\365\357\247",
-      "\216\221\216\202",
+      "\332\215\320\217\224\255",
+      "\217\222\217\202",
     #endif
     seqsize(4,2) - seqsize(2,2)
   },
   /* Function calls (parameters are passed on the stack)
-   *    load.s.pri n1           push.s n1
+   *    load.s.pri %1           push.s %1
    *    push.pri                -
    *    --------------------------------------
-   *    load.pri n1             push n1
+   *    load.pri %1             push %1
    *    push.pri                -
    *    --------------------------------------
-   *    const.pri n1            push.c n1
+   *    const.pri %1            push.c %1
    *    push.pri                -
    *    --------------------------------------
    *    zero.pri                push.c 0
    *    push.pri                -
    *    --------------------------------------
-   *    addr.pri n1             push.adr n1
+   *    addr.pri %1             push.adr %1
    *    push.pri                -
    *
    * However, PRI must not be needed after this instruction
@@ -1187,8 +1187,8 @@ static SEQUENCE sequences_cmp[] = {
       "load.s.pri %1!push.pri!;$par!",
       "push.s %1!;$par!",
     #else
-      "\226\264\242",
-      "\216\222\202\242",
+      "\231\270\245",
+      "\217\221\202\245",
     #endif
     seqsize(2,1) - seqsize(1,1)
   },
@@ -1197,8 +1197,8 @@ static SEQUENCE sequences_cmp[] = {
       "load.pri %1!push.pri!;$par!",
       "push %1!;$par!",
     #else
-      "\217\264\242",
-      "\216\202\242",
+      "\215\270\245",
+      "\217\202\245",
     #endif
     seqsize(2,1) - seqsize(1,1)
   },
@@ -1207,18 +1207,18 @@ static SEQUENCE sequences_cmp[] = {
       "const.pri %1!push.pri!;$par!",
       "push.c %1!;$par!",
     #else
-      "\234\264\242",
-      "\331\202\242",
+      "\240\270\245",
+      "\341\202\245",
     #endif
     seqsize(2,1) - seqsize(1,1)
   },
   {
     #ifdef SCPACK
       "zero.pri!push.pri!;$par!",
-      "push.c 0!;$par!",
+      "push.c 00000000!;$par!", //???
     #else
-      "\376\247\242",
-      "\331 0!\242",
+      "\335\242\255\245",
+      "\341 \361\361\3610\225\245",
     #endif
     seqsize(2,0) - seqsize(1,1)
   },
@@ -1227,8 +1227,8 @@ static SEQUENCE sequences_cmp[] = {
       "addr.pri %1!push.pri!;$par!",
       "push.adr %1!;$par!",
     #else
-      "\265\264\242",
-      "\216\326\202\242",
+      "\267\270\245",
+      "\217\331\202\245",
     #endif
     seqsize(2,1) - seqsize(1,1)
   },
@@ -1242,24 +1242,24 @@ static SEQUENCE sequences_cmp[] = {
       "move.pri!push.pri!",
       "push.alt!",
     #else
-      "\300\237\247",
-      "\357",
+      "\310\242\255",
+      "\217\224",
     #endif
     seqsize(2,0) - seqsize(1,0)
   },
   /* Simple arithmetic operations on constants. Noteworthy is the
    * subtraction of a constant, since it is converted to the addition
    * of the inverse value.
-   *    const.alt n1            add.c n1
+   *    const.alt %1            add.c %1
    *    add                     -
    *    --------------------------------------
-   *    const.alt n1            add.c -n1
+   *    const.alt %1            add.c -%1
    *    sub                     -
    *    --------------------------------------
-   *    const.alt n1            smul.c n1
+   *    const.alt %1            smul.c %1
    *    smul                    -
    *    --------------------------------------
-   *    const.alt n1            eq.c.pri n1
+   *    const.alt %1            eq.c.pri %1
    *    eq                      -
    */
   {
@@ -1267,8 +1267,8 @@ static SEQUENCE sequences_cmp[] = {
       "const.alt %1!add!",
       "add.c %1!",
     #else
-      "\361\271",
-      "\236\245\202",
+      "\240\250\301",
+      "\235\234\202",
     #endif
     seqsize(2,1) - seqsize(1,1)
   },
@@ -1277,8 +1277,8 @@ static SEQUENCE sequences_cmp[] = {
       "const.alt %1!sub!",
       "add.c -%1!",
     #else
-      "\361sub!",
-      "\236\245 -\201",
+      "\240\250sub!",
+      "\235\234 -\201",
     #endif
     seqsize(2,1) - seqsize(1,1)
   },
@@ -1287,7 +1287,7 @@ static SEQUENCE sequences_cmp[] = {
       "const.alt %1!smul!",
       "smul.c %1!",
     #else
-      "\361smul!",
+      "\240\250smul!",
       "smu\311\202",
     #endif
     seqsize(2,1) - seqsize(1,1)
@@ -1297,19 +1297,19 @@ static SEQUENCE sequences_cmp[] = {
       "const.alt %1!eq!",
       "eq.c.pri %1!",
     #else
-      "\361\325",
-      "\261\245\225",
+      "\240\250\337",
+      "\263\234\230",
     #endif
     seqsize(2,1) - seqsize(1,1)
   },
   /* Some operations use the alternative subtraction operation --these
    * can also be optimized.
-   *    const.pri n1            load.s.pri n2
-   *    load.s.alt n2           add.c -n1
+   *    const.pri %1            load.s.pri %2
+   *    load.s.alt %2           add.c -%1
    *    sub.alt                 -
    *    --------------------------------------
-   *    const.pri n1            load.pri n2
-   *    load.alt n2             add.c -n1
+   *    const.pri %1            load.pri %2
+   *    load.alt %2             add.c -%1
    *    sub.alt                 -
    */
   {
@@ -1317,8 +1317,8 @@ static SEQUENCE sequences_cmp[] = {
       "const.pri %1!load.s.alt %2!sub.alt!",
       "load.s.pri %2!add.c -%1!",
     #else
-      "\330\226\306sub\224",
-      "\251\236\245 -\201",
+      "\342\231\320sub\224",
+      "\257\235\234 -\201",
     #endif
     seqsize(3,2) - seqsize(2,2)
   },
@@ -1327,62 +1327,62 @@ static SEQUENCE sequences_cmp[] = {
       "const.pri %1!load.alt %2!sub.alt!",
       "load.pri %2!add.c -%1!",
     #else
-      "\330\365sub\224",
-      "\334\236\245 -\201",
+      "\342\215\320sub\224",
+      "\344\235\234 -\201",
     #endif
     seqsize(3,2) - seqsize(2,2)
   },
   /* With arrays indexed with constants that come from enumerations, it happens
    * multiple add.c opcodes follow in sequence.
-   *    add.c n1                add.c n1+n2
-   *    add.c n2                -
+   *    add.c %1                add.c %1+%2
+   *    add.c %2                -
    */
   {
     #ifdef SCPACK
       "add.c %1!add.c %2!",
       "add.c %1+%2!",
     #else
-      "\236\245\202\236\245\221",
-      "\236\245\267+%2!",
+      "\235\234\202\235\234\222",
+      "\235\234\272+%2!",
     #endif
     seqsize(2,2) - seqsize(1,1)
   },
   /* Compare and jump
-   *    eq                      jneq n1
-   *    jzer n1                 -
+   *    eq                      jneq %1
+   *    jzer %1                 -
    *    --------------------------------------
-   *    eq                      jeq n1
-   *    jnz n1                  -
+   *    eq                      jeq %1
+   *    jnz %1                  -
    *    --------------------------------------
-   *    neq                     jeq n1
-   *    jzer n1                 -
+   *    neq                     jeq %1
+   *    jzer %1                 -
    *    --------------------------------------
-   *    neq                     jneq n1
-   *    jnz n1                  -
+   *    neq                     jneq %1
+   *    jnz %1                  -
    * An similarly for other relations
-   *    sless                   jsgeq n1
-   *    jzer n1                 -
+   *    sless                   jsgeq %1
+   *    jzer %1                 -
    *    --------------------------------------
-   *    sless                   jsless n1
-   *    jnz n1                  -
+   *    sless                   jsless %1
+   *    jnz %1                  -
    *    --------------------------------------
-   *    sleq                    jsgrtr n1
-   *    jzer n1                 -
+   *    sleq                    jsgrtr %1
+   *    jzer %1                 -
    *    --------------------------------------
-   *    sleq                    jsleq n1
-   *    jnz n1                  -
+   *    sleq                    jsleq %1
+   *    jnz %1                  -
    *    --------------------------------------
-   *    sgrtr                   jsleq n1
-   *    jzer n1                 -
+   *    sgrtr                   jsleq %1
+   *    jzer %1                 -
    *    --------------------------------------
-   *    sgrtr                   jsgrtr n1
-   *    jnz n1                  -
+   *    sgrtr                   jsgrtr %1
+   *    jnz %1                  -
    *    --------------------------------------
-   *    sgeq                    jsless n1
-   *    jzer n1                 -
+   *    sgeq                    jsless %1
+   *    jzer %1                 -
    *    --------------------------------------
-   *    sgeq                    jsgeq n1
-   *    jnz n1                  -
+   *    sgeq                    jsgeq %1
+   *    jnz %1                  -
    * We can relax the optimizations for the unsigned comparisons,
    * because the Pawn compiler currently only generates signed
    * comparisons.
@@ -1392,8 +1392,8 @@ static SEQUENCE sequences_cmp[] = {
       "eq!jzer %1!",
       "jneq %1!",
     #else
-      "\325\323",
-      "\352\362",
+      "\337\336",
+      "\367\263\202",
     #endif
     seqsize(2,1) - seqsize(1,1)
   },
@@ -1402,8 +1402,8 @@ static SEQUENCE sequences_cmp[] = {
       "eq!jnz %1!",
       "jeq %1!",
     #else
-      "\325\352\374",
-      "j\362",
+      "\337\367z\202",
+      "j\263\202",
     #endif
     seqsize(2,1) - seqsize(1,1)
   },
@@ -1412,8 +1412,8 @@ static SEQUENCE sequences_cmp[] = {
       "neq!jzer %1!",
       "jeq %1!",
     #else
-      "n\325\323",
-      "j\362",
+      "n\337\336",
+      "j\263\202",
     #endif
     seqsize(2,1) - seqsize(1,1)
   },
@@ -1422,8 +1422,8 @@ static SEQUENCE sequences_cmp[] = {
       "neq!jnz %1!",
       "jneq %1!",
     #else
-      "n\325\352\374",
-      "\352\362",
+      "n\337\367z\202",
+      "\367\263\202",
     #endif
     seqsize(2,1) - seqsize(1,1)
   },
@@ -1432,8 +1432,8 @@ static SEQUENCE sequences_cmp[] = {
       "sless!jzer %1!",
       "jsgeq %1!",
     #else
-      "\354!\323",
-      "j\303\362",
+      "\371!\336",
+      "j\314\263\202",
     #endif
     seqsize(2,1) - seqsize(1,1)
   },
@@ -1442,8 +1442,8 @@ static SEQUENCE sequences_cmp[] = {
       "sless!jnz %1!",
       "jsless %1!",
     #else
-      "\354!\352\374",
-      "j\354\202",
+      "\371!\367z\202",
+      "j\371\202",
     #endif
     seqsize(2,1) - seqsize(1,1)
   },
@@ -1452,8 +1452,8 @@ static SEQUENCE sequences_cmp[] = {
       "sleq!jzer %1!",
       "jsgrtr %1!",
     #else
-      "\304\325\323",
-      "j\356r\202",
+      "\315\337\336",
+      "j\375r\202",
     #endif
     seqsize(2,1) - seqsize(1,1)
   },
@@ -1462,8 +1462,8 @@ static SEQUENCE sequences_cmp[] = {
       "sleq!jnz %1!",
       "jsleq %1!",
     #else
-      "\304\325\352\374",
-      "j\304\362",
+      "\315\337\367z\202",
+      "j\315\263\202",
     #endif
     seqsize(2,1) - seqsize(1,1)
   },
@@ -1472,8 +1472,8 @@ static SEQUENCE sequences_cmp[] = {
       "sgrtr!jzer %1!",
       "jsleq %1!",
     #else
-      "\375\323",
-      "j\304\362",
+      "\375\233\336",
+      "j\315\263\202",
     #endif
     seqsize(2,1) - seqsize(1,1)
   },
@@ -1482,8 +1482,8 @@ static SEQUENCE sequences_cmp[] = {
       "sgrtr!jnz %1!",
       "jsgrtr %1!",
     #else
-      "\375\352\374",
-      "j\356r\202",
+      "\375\233\367z\202",
+      "j\375r\202",
     #endif
     seqsize(2,1) - seqsize(1,1)
   },
@@ -1492,8 +1492,8 @@ static SEQUENCE sequences_cmp[] = {
       "sgeq!jzer %1!",
       "jsless %1!",
     #else
-      "\303\325\323",
-      "j\354\202",
+      "\314\337\336",
+      "j\371\202",
     #endif
     seqsize(2,1) - seqsize(1,1)
   },
@@ -1502,27 +1502,27 @@ static SEQUENCE sequences_cmp[] = {
       "sgeq!jnz %1!",
       "jsgeq %1!",
     #else
-      "\303\325\352\374",
-      "j\303\362",
+      "\314\337\367z\202",
+      "j\314\263\202",
     #endif
     seqsize(2,1) - seqsize(1,1)
   },
   /* Test for zero (common case, especially for strings)
    * E.g. the test expression of: "for (i=0; str{i}!=0; ++i)"
    *
-   *    zero.alt                jzer n1
-   *    jeq n1                  -
+   *    zero.alt                jzer %1
+   *    jeq %1                  -
    *    --------------------------------------
-   *    zero.alt                jnz n1
-   *    jneq n1                 -
+   *    zero.alt                jnz %1
+   *    jneq %1                 -
    */
   {
     #ifdef SCPACK
       "zero.alt!jeq %1!",
       "jzer %1!",
     #else
-      "\340\224j\362",
-      "\323",
+      "\335\224j\263\202",
+      "\336",
     #endif
     seqsize(2,1) - seqsize(1,1)
   },
@@ -1531,29 +1531,29 @@ static SEQUENCE sequences_cmp[] = {
       "zero.alt!jneq %1!",
       "jnz %1!",
     #else
-      "\340\224\352\362",
-      "\352\374",
+      "\335\224\367\263\202",
+      "\367z\202",
     #endif
     seqsize(2,1) - seqsize(1,1)
   },
   /* Array comparison has a NOT instruction that can sometimes be optimized away
-   *    not                     jnz n1
-   *    jzer n1                 -
+   *    not                     jnz %1
+   *    jzer %1                 -
    *    --------------------------------------
-   *    not                     jzer n1
-   *    jnz n1                  -
+   *    not                     jzer %1
+   *    jnz %1                  -
    * And especially the code below, that essentially does a double NOT before jumping
-   *    eq.c.pri 0              jzer n1
+   *    eq.c.pri 0              jzer %1
    *    not                     -
-   *    jzer n1                 -
+   *    jzer %1                 -
    */
   {
     #ifdef SCPACK
       "eq.c.pri 0!not!jzer %1!",
       "jzer %1!",
     #else
-      "\261\245\206 0!not!\323",
-      "\323",
+      "\263\234\207 \225not!\336",
+      "\336",
     #endif
     seqsize(3,2) - seqsize(1,1)
   },
@@ -1562,8 +1562,8 @@ static SEQUENCE sequences_cmp[] = {
       "not!jzer %1!",
       "jnz %1!",
     #else
-      "not!\323",
-      "\352\374",
+      "not!\336",
+      "\367z\202",
     #endif
     seqsize(2,1) - seqsize(1,1)
   },
@@ -1572,20 +1572,20 @@ static SEQUENCE sequences_cmp[] = {
       "not!jnz %1!",
       "jzer %1!",
     #else
-      "not!\352\374",
-      "\323",
+      "not!\367z\202",
+      "\336",
     #endif
     seqsize(2,1) - seqsize(1,1)
   },
   /* Incrementing and decrementing leaves a value in
    * in PRI which may not be used (for example, as the
    * third expression in a "for" loop).
-   *    inc n1                  inc n1  ; ++n
-   *    load.pri n1             ;$exp
+   *    inc %1                  inc %1  ; ++n
+   *    load.pri %1             ;$exp
    *    ;$exp                   -
    *    --------------------------------------
-   *    load.pri n1             inc n1  ; n++, e.g. "for (n=0; n<10; n++)"
-   *    inc n1                  ;$exp
+   *    load.pri %1             inc %1  ; n++, e.g. "for (n=0; n<10; n++)"
+   *    inc %1                  ;$exp
    *    ;$exp                   -
    * Plus the varieties for stack relative increments
    * and decrements.
@@ -1595,8 +1595,8 @@ static SEQUENCE sequences_cmp[] = {
       "inc %1!load.pri %1!;$exp!",
       "inc %1!;$exp!",
     #else
-      "inc\202\313\255",
-      "inc\301",
+      "\373\202\332\254",
+      "\373\307",
     #endif
     seqsize(2,2) - seqsize(1,1)
   },
@@ -1605,8 +1605,8 @@ static SEQUENCE sequences_cmp[] = {
       "load.pri %1!inc %1!;$exp!",
       "inc %1!;$exp!",
     #else
-      "\313inc\301",
-      "inc\301",
+      "\332\373\307",
+      "\373\307",
     #endif
     seqsize(2,2) - seqsize(1,1)
   },
@@ -1615,8 +1615,8 @@ static SEQUENCE sequences_cmp[] = {
       "inc.s %1!load.s.pri %1!;$exp!",
       "inc.s %1!;$exp!",
     #else
-      "inc\222\202\333\255",
-      "inc\222\301",
+      "\373\221\202\345\254",
+      "\373\221\307",
     #endif
     seqsize(2,2) - seqsize(1,1)
   },
@@ -1625,8 +1625,8 @@ static SEQUENCE sequences_cmp[] = {
       "load.s.pri %1!inc.s %1!;$exp!",
       "inc.s %1!;$exp!",
     #else
-      "\333inc\222\301",
-      "inc\222\301",
+      "\345\373\221\307",
+      "\373\221\307",
     #endif
     seqsize(2,2) - seqsize(1,1)
   },
@@ -1635,8 +1635,8 @@ static SEQUENCE sequences_cmp[] = {
       "dec %1!load.pri %1!;$exp!",
       "dec %1!;$exp!",
     #else
-      "dec\202\313\255",
-      "dec\301",
+      "\374\202\332\254",
+      "\374\307",
     #endif
     seqsize(2,2) - seqsize(1,1)
   },
@@ -1645,8 +1645,8 @@ static SEQUENCE sequences_cmp[] = {
       "load.pri %1!dec %1!;$exp!",
       "dec %1!;$exp!",
     #else
-      "\313dec\301",
-      "dec\301",
+      "\332\374\307",
+      "\374\307",
     #endif
     seqsize(2,2) - seqsize(1,1)
   },
@@ -1655,8 +1655,8 @@ static SEQUENCE sequences_cmp[] = {
       "dec.s %1!load.s.pri %1!;$exp!",
       "dec.s %1!;$exp!",
     #else
-      "dec\222\202\333\255",
-      "dec\222\301",
+      "\374\221\202\345\254",
+      "\374\221\307",
     #endif
     seqsize(2,2) - seqsize(1,1)
   },
@@ -1665,28 +1665,28 @@ static SEQUENCE sequences_cmp[] = {
       "load.s.pri %1!dec.s %1!;$exp!",
       "dec.s %1!;$exp!",
     #else
-      "\333dec\222\301",
-      "dec\222\301",
+      "\345\374\221\307",
+      "\374\221\307",
     #endif
     seqsize(2,2) - seqsize(1,1)
   },
   /* ??? the same (increments and decrements) for references */
   /* Loading the constant zero has a special opcode.
    * When storing zero in memory, the value of PRI must not be later on.
-   *    const.pri 0             zero n1
-   *    stor.pri n1             ;$exp
+   *    const.pri 0             zero %1
+   *    stor.pri %1             ;$exp
    *    ;$exp                   -
    *    --------------------------------------
-   *    const.pri 0             zero.s n1
-   *    stor.s.pri n1           ;$exp
+   *    const.pri 0             zero.s %1
+   *    stor.s.pri %1           ;$exp
    *    ;$exp                   -
    *    --------------------------------------
-   *    zero.pri                zero n1
-   *    stor.pri n1             ;$exp
+   *    zero.pri                zero %1
+   *    stor.pri %1             ;$exp
    *    ;$exp                   -
    *    --------------------------------------
-   *    zero.pri                zero.s n1
-   *    stor.s.pri n1           ;$exp
+   *    zero.pri                zero.s %1
+   *    stor.s.pri %1           ;$exp
    *    ;$exp                   -
    *    --------------------------------------
    *    const.pri 0             zero.pri
@@ -1700,8 +1700,8 @@ static SEQUENCE sequences_cmp[] = {
       "const.pri 0!stor.pri %1!;$exp!",
       "zero %1!;$exp!",
     #else
-      "\234\206 0!\227or\225\255",
-      "\340\301",
+      "\240\207 \225\352\230\254",
+      "\335\307",
     #endif
     seqsize(2,2) - seqsize(1,1)
   },
@@ -1710,8 +1710,8 @@ static SEQUENCE sequences_cmp[] = {
       "const.pri 0!stor.s.pri %1!;$exp!",
       "zero.s %1!;$exp!",
     #else
-      "\234\206 0!\227or\222\225\255",
-      "\340\222\301",
+      "\240\207 \225\352\221\230\254",
+      "\335\221\307",
     #endif
     seqsize(2,2) - seqsize(1,1)
   },
@@ -1720,8 +1720,8 @@ static SEQUENCE sequences_cmp[] = {
       "zero.pri!stor.pri %1!;$exp!",
       "zero %1!;$exp!",
     #else
-      "\376\227or\225\255",
-      "\340\301",
+      "\335\242\352\230\254",
+      "\335\307",
     #endif
     seqsize(2,1) - seqsize(1,1)
   },
@@ -1730,8 +1730,8 @@ static SEQUENCE sequences_cmp[] = {
       "zero.pri!stor.s.pri %1!;$exp!",
       "zero.s %1!;$exp!",
     #else
-      "\376\227or\222\225\255",
-      "\340\222\301",
+      "\335\242\352\221\230\254",
+      "\335\221\307",
     #endif
     seqsize(2,1) - seqsize(1,1)
   },
@@ -1740,8 +1740,8 @@ static SEQUENCE sequences_cmp[] = {
       "const.pri 0!",
       "zero.pri!",
     #else
-      "\234\206 0!",
-      "\376",
+      "\240\207 \225",
+      "\335\242",
     #endif
     seqsize(1,1) - seqsize(1,0)
   },
@@ -1750,12 +1750,13 @@ static SEQUENCE sequences_cmp[] = {
       "const.alt 0!",
       "zero.alt!",
     #else
-      "\234\212 0!",
-      "\340\224",
+      "\240\212 \225",
+      "\335\224",
     #endif
     seqsize(1,1) - seqsize(1,0)
   },
 
+#if !defined AMX_NO_MACRO_INSTR
   /* ------------------ */
   /* Macro instructions */
   /* ------------------ */
@@ -1770,18 +1771,18 @@ static SEQUENCE sequences_cmp[] = {
       "push.c %1!sysreq.c %2!stack %3!",        //note: %3 == %1 + 4
       "sysreq.n %2 %1!",
     #else
-      "\331\202sysr\261\245\221\227ack\256",
-      "sysr\261.n\220\202",
+      "\341\202sysr\263\234\222\227ack\261",
+      "sysr\263.n\220\202",
     #endif
     seqsize(3,3) - seqsize(1,2)
   },
   /* ----- */
   /* Functions with many parameters with the same "type" have sequences like:
-   *    push.c n1               push3.c n1 n2 n3
+   *    push.c %1               push3.c %1 %2 %3
    *    ;$par                   ;$par
-   *    push.c n2               -
+   *    push.c %2               -
    *    ;$par                   -
-   *    push.c n3               -
+   *    push.c %3               -
    *    ;$par                   -
    *    etc.                    etc.
    *
@@ -1792,8 +1793,8 @@ static SEQUENCE sequences_cmp[] = {
       "push.c %1!;$par!push.c %2!;$par!push.c %3!;$par!push.c %4!;$par!push.c %5!;$par!",
       "push5.c %1 %2 %3 %4 %5!",
     #else
-      "\331\336\245\345\245\256\257\245\335\257\245\2035!\242",
-      "\2165\245\343\250\302\2035!",
+      "\341\347\234\362\234\261\265\234\346\265\234\2035!\245",
+      "\2175\234\356\256\312\2035!",
     #endif
     seqsize(5,5) - seqsize(1,5)
   },
@@ -1802,8 +1803,8 @@ static SEQUENCE sequences_cmp[] = {
       "push.c %1!;$par!push.c %2!;$par!push.c %3!;$par!push.c %4!;$par!",
       "push4.c %1 %2 %3 %4!",
     #else
-      "\331\336\245\345\245\256\257\245\335\242",
-      "\2164\245\343\250\335",
+      "\341\347\234\362\234\261\265\234\346\245",
+      "\2174\234\356\256\346",
     #endif
     seqsize(4,4) - seqsize(1,4)
   },
@@ -1812,8 +1813,8 @@ static SEQUENCE sequences_cmp[] = {
       "push.c %1!;$par!push.c %2!;$par!push.c %3!;$par!",
       "push3.c %1 %2 %3!",
     #else
-      "\331\336\245\345\245\256\242",
-      "\2163\245\343\256",
+      "\341\347\234\362\234\261\245",
+      "\2173\234\356\261",
     #endif
     seqsize(3,3) - seqsize(1,3)
   },
@@ -1822,8 +1823,8 @@ static SEQUENCE sequences_cmp[] = {
       "push.c %1!;$par!push.c %2!;$par!",
       "push2.c %1 %2!",
     #else
-      "\331\336\245\221\242",
-      "\2162\245\332",
+      "\341\347\234\222\245",
+      "\2172\234\343",
     #endif
     seqsize(2,2) - seqsize(1,2)
   },
@@ -1833,8 +1834,8 @@ static SEQUENCE sequences_cmp[] = {
       "push %1!;$par!push %2!;$par!push %3!;$par!push %4!;$par!push %5!;$par!",
       "push5 %1 %2 %3 %4 %5!",
     #else
-      "\216\336\345\256\257\335\257\2035!\242",
-      "\2165\343\250\302\2035!",
+      "\217\347\362\261\265\346\265\2035!\245",
+      "\2175\356\256\312\2035!",
     #endif
     seqsize(5,5) - seqsize(1,5)
   },
@@ -1843,8 +1844,8 @@ static SEQUENCE sequences_cmp[] = {
       "push %1!;$par!push %2!;$par!push %3!;$par!push %4!;$par!",
       "push4 %1 %2 %3 %4!",
     #else
-      "\216\336\345\256\257\335\242",
-      "\2164\343\250\335",
+      "\217\347\362\261\265\346\245",
+      "\2174\356\256\346",
     #endif
     seqsize(4,4) - seqsize(1,4)
   },
@@ -1853,8 +1854,8 @@ static SEQUENCE sequences_cmp[] = {
       "push %1!;$par!push %2!;$par!push %3!;$par!",
       "push3 %1 %2 %3!",
     #else
-      "\216\336\345\256\242",
-      "\2163\343\256",
+      "\217\347\362\261\245",
+      "\2173\356\261",
     #endif
     seqsize(3,3) - seqsize(1,3)
   },
@@ -1863,8 +1864,8 @@ static SEQUENCE sequences_cmp[] = {
       "push %1!;$par!push %2!;$par!",
       "push2 %1 %2!",
     #else
-      "\216\336\221\242",
-      "\2162\332",
+      "\217\347\222\245",
+      "\2172\343",
     #endif
     seqsize(2,2) - seqsize(1,2)
   },
@@ -1874,8 +1875,8 @@ static SEQUENCE sequences_cmp[] = {
       "push.s %1!;$par!push.s %2!;$par!push.s %3!;$par!push.s %4!;$par!push.s %5!;$par!",
       "push5.s %1 %2 %3 %4 %5!",
     #else
-      "\216\222\336\222\345\222\256\257\222\335\257\222\2035!\242",
-      "\2165\222\343\250\302\2035!",
+      "\217\221\347\221\362\221\261\265\221\346\265\221\2035!\245",
+      "\2175\221\356\256\312\2035!",
     #endif
     seqsize(5,5) - seqsize(1,5)
   },
@@ -1884,8 +1885,8 @@ static SEQUENCE sequences_cmp[] = {
       "push.s %1!;$par!push.s %2!;$par!push.s %3!;$par!push.s %4!;$par!",
       "push4.s %1 %2 %3 %4!",
     #else
-      "\216\222\336\222\345\222\256\257\222\335\242",
-      "\2164\222\343\250\335",
+      "\217\221\347\221\362\221\261\265\221\346\245",
+      "\2174\221\356\256\346",
     #endif
     seqsize(4,4) - seqsize(1,4)
   },
@@ -1894,8 +1895,8 @@ static SEQUENCE sequences_cmp[] = {
       "push.s %1!;$par!push.s %2!;$par!push.s %3!;$par!",
       "push3.s %1 %2 %3!",
     #else
-      "\216\222\336\222\345\222\256\242",
-      "\2163\222\343\256",
+      "\217\221\347\221\362\221\261\245",
+      "\2173\221\356\261",
     #endif
     seqsize(3,3) - seqsize(1,3)
   },
@@ -1904,8 +1905,8 @@ static SEQUENCE sequences_cmp[] = {
       "push.s %1!;$par!push.s %2!;$par!",
       "push2.s %1 %2!",
     #else
-      "\216\222\336\222\221\242",
-      "\2162\222\332",
+      "\217\221\347\221\222\245",
+      "\2172\221\343",
     #endif
     seqsize(2,2) - seqsize(1,2)
   },
@@ -1915,8 +1916,8 @@ static SEQUENCE sequences_cmp[] = {
       "push.adr %1!;$par!push.adr %2!;$par!push.adr %3!;$par!push.adr %4!;$par!push.adr %5!;$par!",
       "push5.adr %1 %2 %3 %4 %5!",
     #else
-      "\216\326\336\326\345\326\256\257\326\335\257\326\2035!\242",
-      "\2165\326\343\250\302\2035!",
+      "\217\331\347\331\362\331\261\265\331\346\265\331\2035!\245",
+      "\2175\331\356\256\312\2035!",
     #endif
     seqsize(5,5) - seqsize(1,5)
   },
@@ -1925,8 +1926,8 @@ static SEQUENCE sequences_cmp[] = {
       "push.adr %1!;$par!push.adr %2!;$par!push.adr %3!;$par!push.adr %4!;$par!",
       "push4.adr %1 %2 %3 %4!",
     #else
-      "\216\326\336\326\345\326\256\257\326\335\242",
-      "\2164\326\343\250\335",
+      "\217\331\347\331\362\331\261\265\331\346\245",
+      "\2174\331\356\256\346",
     #endif
     seqsize(4,4) - seqsize(1,4)
   },
@@ -1935,8 +1936,8 @@ static SEQUENCE sequences_cmp[] = {
       "push.adr %1!;$par!push.adr %2!;$par!push.adr %3!;$par!",
       "push3.adr %1 %2 %3!",
     #else
-      "\216\326\336\326\345\326\256\242",
-      "\2163\326\343\256",
+      "\217\331\347\331\362\331\261\245",
+      "\2173\331\356\261",
     #endif
     seqsize(3,3) - seqsize(1,3)
   },
@@ -1945,31 +1946,31 @@ static SEQUENCE sequences_cmp[] = {
       "push.adr %1!;$par!push.adr %2!;$par!",
       "push2.adr %1 %2!",
     #else
-      "\216\326\336\326\221\242",
-      "\2162\326\332",
+      "\217\331\347\331\222\245",
+      "\2172\331\343",
     #endif
     seqsize(2,2) - seqsize(1,2)
   },
   /* Loading two registers at a time
-   *    load.pri n1             load.both n1 n2
-   *    load.alt n2             -
+   *    load.pri %1             load.both %1 %2
+   *    load.alt %2             -
    *    --------------------------------------
-   *    load.alt n2             load.both n1 n2
-   *    load.pri n1             -
+   *    load.alt %2             load.both %1 %2
+   *    load.pri %1             -
    *    --------------------------------------
-   *    load.s.pri n1           load.s.both n1 n2
-   *    load.s.alt n2           -
+   *    load.s.pri %1           load.s.both %1 %2
+   *    load.s.alt %2           -
    *    --------------------------------------
-   *    load.s.alt n2           load.s.both n1 n2
-   *    load.s.pri n1           -
+   *    load.s.alt %2           load.s.both %1 %2
+   *    load.s.pri %1           -
    */
   {
     #ifdef SCPACK
       "load.pri %1!load.alt %2!",
       "load.both %1 %2!",
     #else
-      "\313\365",
-      "\342\275th\332",
+      "\332\215\320",
+      "\215.\277th\343",
     #endif
     seqsize(2,2) - seqsize(1,2)
   },
@@ -1978,8 +1979,8 @@ static SEQUENCE sequences_cmp[] = {
       "load.alt %2!load.pri %1!",
       "load.both %1 %2!",
     #else
-      "\365\313",
-      "\342\275th\332",
+      "\215\320\332",
+      "\215.\277th\343",
     #endif
     seqsize(2,2) - seqsize(1,2)
   },
@@ -1988,8 +1989,8 @@ static SEQUENCE sequences_cmp[] = {
       "load.s.pri %1!load.s.alt %2!",
       "load.s.both %1 %2!",
     #else
-      "\333\226\306",
-      "\226.\275th\332",
+      "\345\231\320",
+      "\231.\277th\343",
     #endif
     seqsize(2,2) - seqsize(1,2)
   },
@@ -1998,17 +1999,17 @@ static SEQUENCE sequences_cmp[] = {
       "load.s.alt %2!load.s.pri %1!",
       "load.s.both %1 %2!",
     #else
-      "\226\306\333",
-      "\226.\275th\332",
+      "\231\320\345",
+      "\231.\277th\343",
     #endif
     seqsize(2,2) - seqsize(1,2)
   },
   /* Loading two registers and then pushing them occurs with user operators
-   *    load.both n1 n2         push2 n1 n2
+   *    load.both %1 %2         push2 %1 %2
    *    push.pri                -
    *    push.alt                -
    *    --------------------------------------
-   *    load.s.both n1 n2       push2.s n1 n2
+   *    load.s.both %1 %2       push2.s %1 %2
    *    push.pri                -
    *    push.alt                -
    */
@@ -2017,8 +2018,8 @@ static SEQUENCE sequences_cmp[] = {
       "load.both %1 %2!push.pri!push.alt!",
       "push2 %1 %2!",
     #else
-      "\342\275th\332\247\357",
-      "\2162\332",
+      "\215.\277th\343\255\217\224",
+      "\2172\343",
     #endif
     seqsize(3,2) - seqsize(1,2)
   },
@@ -2027,38 +2028,565 @@ static SEQUENCE sequences_cmp[] = {
       "load.s.both %1 %2!push.pri!push.alt!",
       "push2.s %1 %2!",
     #else
-      "\226.\275th\332\247\357",
-      "\2162\222\332",
+      "\231.\277th\343\255\217\224",
+      "\2172\221\343",
     #endif
     seqsize(3,2) - seqsize(1,2)
   },
   /* Load a constant in a variable
-   *    const.pri n1            const n2 n1
-   *    stor.pri n2             -
+   *    const.pri %1            const %2 %1
+   *    stor.pri %2             ;$exp
+   *    ;$exp                   -
    *    --------------------------------------
-   *    const.pri n1            const.s n2 n1
-   *    stor.s.pri n2           -
+   *    const.pri %1            const.s %2 %1
+   *    stor.s.pri %2           ;$exp
+   *    ;$exp                   -
    */
   {
     #ifdef SCPACK
-      "const.pri %1!stor.pri %2!",
-      "const %2 %1!",
+      "const.pri %1!stor.pri %2!;$exp!",
+      "const %2 %1!;$exp!",
     #else
-      "\330\227or\230",
-      "\234\220\202",
+      "\342\352\232\254",
+      "\240\220\307",
     #endif
     seqsize(2,2) - seqsize(1,2)
   },
   {
     #ifdef SCPACK
-      "const.pri %1!stor.s.pri %2!",
-      "const.s %2 %1!",
+      "const.pri %1!stor.s.pri %2!;$exp!",
+      "const.s %2 %1!;$exp!",
     #else
-      "\330\227or\222\230",
-      "\234\222\220\202",
+      "\342\352\221\232\254",
+      "\240\221\220\307",
     #endif
     seqsize(2,2) - seqsize(1,2)
   },
+#endif /* !defined AMX_NO_MACRO_INSTR */
+
+#if !defined AMX_NO_PACKED_OPC
+  /* ------------------ */
+  /* Packed opcodes     */
+  /* ------------------ */
+  /* If %0 is in the range cell_min .. cell_max, do conversions like:
+   *    add.c %0                add.p.c %0
+   *
+   * Rules in this section may only use %0 (a special symbol which matches
+   * a numeric cell in a restricted range and replaces it with a shorter
+   * representation of the same value).
+   */
+  {
+    #ifdef SCPACK
+      "add.c %0!",
+      "add.p.c %0!",
+    #else
+      "\235\234\226",
+      "\235\260\234\226",
+    #endif
+    seqsize(1,1) - seqsize(1,0)
+  },
+  {
+    #ifdef SCPACK
+      "addr.alt %0!",
+      "addr.p.alt %0!",
+    #else
+      "\267\274",
+      "\267\260\274",
+    #endif
+    seqsize(1,1) - seqsize(1,0)
+  },
+  {
+    #ifdef SCPACK
+      "addr.pri %0!",
+      "addr.p.pri %0!",
+    #else
+      "\267\273",
+      "\267\260\273",
+    #endif
+    seqsize(1,1) - seqsize(1,0)
+  },
+  {
+    #ifdef SCPACK
+      "align.alt %0!",
+      "align.p.alt %0!",
+    #else
+      "\210ign\274",
+      "\210ign\260\274",
+    #endif
+    seqsize(1,1) - seqsize(1,0)
+  },
+  {
+    #ifdef SCPACK
+      "align.pri %0!",
+      "align.p.pri %0!",
+    #else
+      "\210ign\273",
+      "\210ign\260\273",
+    #endif
+    seqsize(1,1) - seqsize(1,0)
+  },
+  {
+    #ifdef SCPACK
+      "bounds %0!",
+      "bounds.p %0!",
+    #else
+      "\325\226",
+      "\325\376",
+    #endif
+    seqsize(1,1) - seqsize(1,0)
+  },
+  {
+    #ifdef SCPACK
+      "cmps %0!",
+      "cmps.p %0!",
+    #else
+      "cmps\226",
+      "cmps\376",
+    #endif
+    seqsize(1,1) - seqsize(1,0)
+  },
+  {
+    #ifdef SCPACK
+      "const.alt %0!",
+      "const.p.alt %0!",
+    #else
+      "\240\274",
+      "\240\260\274",
+    #endif
+    seqsize(1,1) - seqsize(1,0)
+  },
+  {
+    #ifdef SCPACK
+      "const.pri %0!",
+      "const.p.pri %0!",
+    #else
+      "\240\273",
+      "\240\260\273",
+    #endif
+    seqsize(1,1) - seqsize(1,0)
+  },
+  {
+    #ifdef SCPACK
+      "dec %0!",
+      "dec.p %0!",
+    #else
+      "\374\226",
+      "\374\376",
+    #endif
+    seqsize(1,1) - seqsize(1,0)
+  },
+  {
+    #ifdef SCPACK
+      "dec.s %0!",
+      "dec.p.s %0!",
+    #else
+      "\374\221\226",
+      "\374\357\226",
+    #endif
+    seqsize(1,1) - seqsize(1,0)
+  },
+  {
+    #ifdef SCPACK
+      "eq.c.alt %0!",
+      "eq.p.c.alt %0!",
+    #else
+      "\263\234\274",
+      "\263\260\234\274",
+    #endif
+    seqsize(1,1) - seqsize(1,0)
+  },
+  {
+    #ifdef SCPACK
+      "eq.c.pri %0!",
+      "eq.p.c.pri %0!",
+    #else
+      "\263\234\273",
+      "\263\260\234\273",
+    #endif
+    seqsize(1,1) - seqsize(1,0)
+  },
+  {
+    #ifdef SCPACK
+      "fill %0!",
+      "fill.p %0!",
+    #else
+      "fill\226",
+      "fill\376",
+    #endif
+    seqsize(1,1) - seqsize(1,0)
+  },
+  {
+    #ifdef SCPACK
+      "halt %0!",
+      "halt.p %0!",
+    #else
+      "h\211\226",
+      "h\211\376",
+    #endif
+    seqsize(1,1) - seqsize(1,0)
+  },
+  {
+    #ifdef SCPACK
+      "heap %0!",
+      "heap.p %0!",
+    #else
+      "heap\226",
+      "heap\376",
+    #endif
+    seqsize(1,1) - seqsize(1,0)
+  },
+  {
+    #ifdef SCPACK
+      "idxaddr.b %0!",
+      "idxaddr.p.b %0!",
+    #else
+      "\316\267\354\226",
+      "\316\267\260\354\226",
+    #endif
+    seqsize(1,1) - seqsize(1,0)
+  },
+  {
+    #ifdef SCPACK
+      "inc %0!",
+      "inc.p %0!",
+    #else
+      "\373\226",
+      "\373\376",
+    #endif
+    seqsize(1,1) - seqsize(1,0)
+  },
+  {
+    #ifdef SCPACK
+      "inc.s %0!",
+      "inc.p.s %0!",
+    #else
+      "\373\221\226",
+      "\373\357\226",
+    #endif
+    seqsize(1,1) - seqsize(1,0)
+  },
+  {
+    #ifdef SCPACK
+      "lidx.b %0!",
+      "lidx.p.b %0!",
+    #else
+      "\363\354\226",
+      "\363\260\354\226",
+    #endif
+    seqsize(1,1) - seqsize(1,0)
+  },
+  {
+    #ifdef SCPACK
+      "load.alt %0!",
+      "load.p.alt %0!",
+    #else
+      "\215\274",
+      "\215\260\274",
+    #endif
+    seqsize(1,1) - seqsize(1,0)
+  },
+  {
+    #ifdef SCPACK
+      "load.pri %0!",
+      "load.p.pri %0!",
+    #else
+      "\215\273",
+      "\215\260\273",
+    #endif
+    seqsize(1,1) - seqsize(1,0)
+  },
+  {
+    #ifdef SCPACK
+      "load.s.alt %0!",
+      "load.p.s.alt %0!",
+    #else
+      "\231\274",
+      "\215\357\274",
+    #endif
+    seqsize(1,1) - seqsize(1,0)
+  },
+  {
+    #ifdef SCPACK
+      "load.s.pri %0!",
+      "load.p.s.pri %0!",
+    #else
+      "\231\273",
+      "\215\357\273",
+    #endif
+    seqsize(1,1) - seqsize(1,0)
+  },
+  {
+    #ifdef SCPACK
+      "lodb.i %0!",
+      "lodb.p.i %0!",
+    #else
+      "\214db\355\226",
+      "\214db\260\355\226",
+    #endif
+    seqsize(1,1) - seqsize(1,0)
+  },
+  {
+    #ifdef SCPACK
+      "lref.alt %0!",
+      "lref.p.alt %0!",
+    #else
+      "\334\274",
+      "\334\260\274",
+    #endif
+    seqsize(1,1) - seqsize(1,0)
+  },
+  {
+    #ifdef SCPACK
+      "lref.pri %0!",
+      "lref.p.pri %0!",
+    #else
+      "\334\273",
+      "\334\260\273",
+    #endif
+    seqsize(1,1) - seqsize(1,0)
+  },
+  {
+    #ifdef SCPACK
+      "lref.s.alt %0!",
+      "lref.p.s.alt %0!",
+    #else
+      "\334\221\274",
+      "\334\357\274",
+    #endif
+    seqsize(1,1) - seqsize(1,0)
+  },
+  {
+    #ifdef SCPACK
+      "lref.s.pri %0!",
+      "lref.p.s.pri %0!",
+    #else
+      "\334\221\273",
+      "\334\357\273",
+    #endif
+    seqsize(1,1) - seqsize(1,0)
+  },
+  {
+    #ifdef SCPACK
+      "movs %0!",
+      "movs.p %0!",
+    #else
+      "\306s\226",
+      "\306s\376",
+    #endif
+    seqsize(1,1) - seqsize(1,0)
+  },
+  {
+    #ifdef SCPACK
+      "push %0!",
+      "push.p %0!",
+    #else
+      "\217\226",
+      "\217\376",
+    #endif
+    seqsize(1,1) - seqsize(1,0)
+  },
+  {
+    #ifdef SCPACK
+      "push.adr %0!",
+      "push.p.adr %0!",
+    #else
+      "\217\331\226",
+      "\217\260\331\226",
+    #endif
+    seqsize(1,1) - seqsize(1,0)
+  },
+  {
+    #ifdef SCPACK
+      "push.c %0!",
+      "push.p.c %0!",
+    #else
+      "\341\226",
+      "\217\260\234\226",
+    #endif
+    seqsize(1,1) - seqsize(1,0)
+  },
+  {
+    #ifdef SCPACK
+      "push.s %0!",
+      "push.p.s %0!",
+    #else
+      "\217\221\226",
+      "\217\357\226",
+    #endif
+    seqsize(1,1) - seqsize(1,0)
+  },
+  {
+    #ifdef SCPACK
+      "shl.c.alt %0!",
+      "shl.p.c.alt %0!",
+    #else
+      "\323\274",
+      "\213l\260\234\274",
+    #endif
+    seqsize(1,1) - seqsize(1,0)
+  },
+  {
+    #ifdef SCPACK
+      "shl.c.pri %0!",
+      "shl.p.c.pri %0!",
+    #else
+      "\323\273",
+      "\213l\260\234\273",
+    #endif
+    seqsize(1,1) - seqsize(1,0)
+  },
+  {
+    #ifdef SCPACK
+      "shr.c.alt %0!",
+      "shr.p.c.alt %0!",
+    #else
+      "\213r\234\274",
+      "\213r\260\234\274",
+    #endif
+    seqsize(1,1) - seqsize(1,0)
+  },
+  {
+    #ifdef SCPACK
+      "shr.c.pri %0!",
+      "shr.p.c.pri %0!",
+    #else
+      "\213r\234\273",
+      "\213r\260\234\273",
+    #endif
+    seqsize(1,1) - seqsize(1,0)
+  },
+  {
+    #ifdef SCPACK
+      "smul.c %0!",
+      "smul.p.c %0!",
+    #else
+      "smu\311\226",
+      "smul\260\234\226",
+    #endif
+    seqsize(1,1) - seqsize(1,0)
+  },
+  {
+    #ifdef SCPACK
+      "sref.alt %0!",
+      "sref.p.alt %0!",
+    #else
+      "s\276\274",
+      "s\276\260\274",
+    #endif
+    seqsize(1,1) - seqsize(1,0)
+  },
+  {
+    #ifdef SCPACK
+      "sref.pri %0!",
+      "sref.p.pri %0!",
+    #else
+      "s\276\273",
+      "s\276\260\273",
+    #endif
+    seqsize(1,1) - seqsize(1,0)
+  },
+  {
+    #ifdef SCPACK
+      "sref.s.alt %0!",
+      "sref.p.s.alt %0!",
+    #else
+      "s\276\221\274",
+      "s\276\357\274",
+    #endif
+    seqsize(1,1) - seqsize(1,0)
+  },
+  {
+    #ifdef SCPACK
+      "sref.s.pri %0!",
+      "sref.p.s.pri %0!",
+    #else
+      "s\276\221\273",
+      "s\276\357\273",
+    #endif
+    seqsize(1,1) - seqsize(1,0)
+  },
+  {
+    #ifdef SCPACK
+      "stack %0!",
+      "stack.p %0!",
+    #else
+      "\227ack\226",
+      "\227ack\376",
+    #endif
+    seqsize(1,1) - seqsize(1,0)
+  },
+  {
+    #ifdef SCPACK
+      "stor.alt %0!",
+      "stor.p.alt %0!",
+    #else
+      "\352\274",
+      "\352\260\274",
+    #endif
+    seqsize(1,1) - seqsize(1,0)
+  },
+  {
+    #ifdef SCPACK
+      "stor.pri %0!",
+      "stor.p.pri %0!",
+    #else
+      "\352\273",
+      "\352\260\273",
+    #endif
+    seqsize(1,1) - seqsize(1,0)
+  },
+  {
+    #ifdef SCPACK
+      "stor.s.alt %0!",
+      "stor.p.s.alt %0!",
+    #else
+      "\352\221\274",
+      "\352\357\274",
+    #endif
+    seqsize(1,1) - seqsize(1,0)
+  },
+  {
+    #ifdef SCPACK
+      "stor.s.pri %0!",
+      "stor.p.s.pri %0!",
+    #else
+      "\352\221\273",
+      "\352\357\273",
+    #endif
+    seqsize(1,1) - seqsize(1,0)
+  },
+  {
+    #ifdef SCPACK
+      "strb.i %0!",
+      "strb.p.i %0!",
+    #else
+      "\227rb\355\226",
+      "\227rb\260\355\226",
+    #endif
+    seqsize(1,1) - seqsize(1,0)
+  },
+  {
+    #ifdef SCPACK
+      "zero %0!",
+      "zero.p %0!",
+    #else
+      "\335\226",
+      "\335\376",
+    #endif
+    seqsize(1,1) - seqsize(1,0)
+  },
+  {
+    #ifdef SCPACK
+      "zero.s %0!",
+      "zero.p.s %0!",
+    #else
+      "\335\221\226",
+      "\335\357\226",
+    #endif
+    seqsize(1,1) - seqsize(1,0)
+  },
+#endif /* !defined AMX_NO_PACKED_OPC */
+
   /* ----- */
   { NULL, NULL, 0 }
 };

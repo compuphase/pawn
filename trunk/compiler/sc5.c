@@ -19,7 +19,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: sc5.c 3853 2007-11-26 13:59:01Z thiadmer $
+ *  Version: $Id: sc5.c 3856 2007-11-27 13:55:27Z thiadmer $
  */
 #include <assert.h>
 #if defined	__WIN32__ || defined _WIN32 || defined __MSDOS__
@@ -188,7 +188,7 @@ static short lastfile;
 SC_FUNC int error_suggest(int number,const char *name,int ident)
 {
   symbol *closestsym=find_closestsymbol(name,ident);
-  if (closestsym!=NULL)
+  if (closestsym!=NULL && strcmp(name,closestsym->name)!=0)
     error(makelong(number,1),name,closestsym->name);
   else
     error(number,name);
@@ -308,10 +308,14 @@ static int find_closestsymbol_table(const char *name,const symbol *root,int symb
   int dist,closestdist=INT_MAX;
   char symname[2*sNAMEMAX+16];
   symbol *sym=root->next;
-  int ident;
+  int ident,critdist;
 
   assert(closestsym!=NULL);
   *closestsym=NULL;
+  assert(name!=NULL);
+  critdist=strlen(name)/2;  /* for short names, allow only a single edit */
+  if (critdist>MAX_EDIT_DIST)
+    critdist=MAX_EDIT_DIST;
   while (sym!=NULL) {
     funcdisplayname(symname,sym->name);
     ident=sym->ident;
@@ -319,7 +323,7 @@ static int find_closestsymbol_table(const char *name,const symbol *root,int symb
       ident=iVARIABLE;
     if (symboltype==ident || (symboltype==iVARIABLE && ident==iFUNCTN)) {
       dist=levenshtein_distance(name,symname);
-      if (dist<closestdist && dist<=MAX_EDIT_DIST) {
+      if (dist<closestdist && dist<=critdist) {
         *closestsym=sym;
         closestdist=dist;
       } /* if */

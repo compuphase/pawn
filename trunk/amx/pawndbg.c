@@ -33,7 +33,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: pawndbg.c 3845 2007-11-16 14:41:29Z thiadmer $
+ *  Version: $Id: pawndbg.c 3856 2007-11-27 13:55:27Z thiadmer $
  *
  *
  *  Command line options:
@@ -89,6 +89,8 @@
 #if !defined AMX_NODYNALOAD && (defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__)
   #include <binreloc.h> /* from BinReloc, see www.autopackage.org */
 #endif
+
+extern int chdir(const char *path); /* position of this function in header files depends on the compiler */
 
 
 #define MAXSTACKTRACE   128
@@ -998,7 +1000,7 @@ static int remote_rs232(int port,int baud)
     remote_pendingsize=size-1;
     memcpy(remote_pendingbuf,buffer+1,remote_pendingsize);
     /* give a "sync time" command, so that the device has the same time as the computer */
-    settimestamp_rs232(time(NULL));
+    settimestamp_rs232((unsigned long)time(NULL));
   } /* if */
 
   remote=REMOTE_RS232;
@@ -1216,7 +1218,7 @@ static int remote_transfer_rs232(const char *filename)
       chksum=(chksum&0xff)+(chksum>>8);
     do {
       /* send block */
-      send_rs232((char*)buffer,bytes+1); /* also send the ACK/NAK prefix */
+      send_rs232((const char*)buffer,bytes+1); /* also send the ACK/NAK prefix */
       getresponse_rs232(str,sizeof str,100);
       err=(str[0]!='\0') ? strtol(str+1,NULL,16) : 0;
       assert(err>=0 && err<=255);
@@ -1232,7 +1234,7 @@ static int remote_transfer_rs232(const char *filename)
       block=size;
   } /* while */
   buffer[0]=ACK;
-  send_rs232(buffer,1); /* ACK the last block */
+  send_rs232((const char*)buffer,1); /* ACK the last block */
 
   free(buffer);
   fclose(fp);
@@ -1445,7 +1447,7 @@ static void printvalue(long value, int disptype)
 
 static void display_variable(AMX *amx,AMX_DBG *amxdbg,AMX_DBG_SYMBOL *sym,int index[3],int idxlevel)
 {
-  const AMX_DBG_SYMDIM *symdim;
+  const AMX_DBG_SYMDIM *symdim=NULL;
   cell value;
 
   assert(index!=NULL);
@@ -1478,10 +1480,11 @@ static void display_variable(AMX *amx,AMX_DBG *amxdbg,AMX_DBG_SYMBOL *sym,int in
     } /* if */
   } /* if */
 
-  if ((sym->ident==iARRAY || sym->ident==iREFARRAY)) {
+  if (sym->ident==iARRAY || sym->ident==iREFARRAY) {
     int dim;
     dbg_GetArrayDim(amxdbg, sym, &symdim);
     /* check whether any of the indices are out of range */
+    assert(symdim!=NULL);
     for (dim=0; dim<idxlevel; dim++)
       if (symdim[dim].size>0 && (ucell)index[dim]>=symdim[dim].size)
         break;
@@ -1496,6 +1499,7 @@ static void display_variable(AMX *amx,AMX_DBG *amxdbg,AMX_DBG_SYMBOL *sym,int in
       amx_printf("\"%s\"", get_string(amx,sym,40));
     } else if (sym->dim==1) {
       ucell len,i;
+      assert(symdim!=NULL); /* set in the previous block */
       len=symdim[0].size;
       if (len>5)
         len=5;
@@ -2167,7 +2171,7 @@ static char lastcommand[32] = "";
           } /* if */
         } /* for */
       } else if (stricmp(params,"states")==0) {
-        const char *statename;
+        const char *statename=NULL;
         cell *cptr;
         if (amxdbg->hdr->automatons==0) {
           scroll_cmdwin(1);
@@ -2573,7 +2577,8 @@ static long lastline;
   dbg_LookupFile(amxdbg,amx->cip,&filename);
 
   /* check breakpoints */
-  msg=NULL;
+  msg="";
+  i=0;
   if (breaknr==0) {
     msg="STOPPED at line %d\n";
     i=(int)line+1;
@@ -2718,7 +2723,6 @@ extern AMX_NATIVE_INFO console_Natives[];
   } /* if */
   /* switch the current directory to that of the debugged script */
   if ((ptr=strrchr(amx_filename,DIRSEP_CHAR))!=NULL) {
-    extern int chdir(const char *path);
     char dir[_MAX_PATH];
     int len=(int)(ptr-amx_filename);
     if (len<sizeof dir) {

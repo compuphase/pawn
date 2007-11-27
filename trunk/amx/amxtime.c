@@ -18,7 +18,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: amxtime.c 3764 2007-05-22 10:29:16Z thiadmer $
+ *  Version: $Id: amxtime.c 3856 2007-11-27 13:55:27Z thiadmer $
  */
 #include <time.h>
 #include <assert.h>
@@ -71,10 +71,13 @@ static unsigned long gettimestamp(void)
   #if defined __WIN32__ || defined _WIN32 || defined WIN32
     value=timeGetTime();        /* this value is already in milliseconds */
   #else
-    value=(cell)clock();
-    #if CLOCKS_PER_SEC!=1000
+    value=clock();
+    #if CLOCKS_PER_SEC<1000
       /* convert to milliseconds */
-      value=(cell)((1000L * (value+CLOCKS_PER_SEC/2)) / CLOCKS_PER_SEC);
+      value=(cell)((1000L * value) / CLOCKS_PER_SEC);
+    #elif CLOCKS_PER_SEC>1000
+      /* convert to milliseconds */
+      value=(cell)(value/(CLOCKS_PER_SEC/1000));
     #endif
   #endif
   return value;
