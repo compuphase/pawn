@@ -18,7 +18,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: amxgc.c 3660 2006-11-05 13:05:09Z thiadmer $
+ *  Version: $Id: amxgc.c 3856 2007-11-27 13:55:27Z thiadmer $
  */
 #include <assert.h>
 #include <limits.h>
@@ -135,7 +135,7 @@ int gc_tablestat(int *exponent,int *percentage)
 {
   if (exponent!=NULL)
     *exponent=SharedGC.exponent;
-  if (*percentage!=NULL) {
+  if (percentage!=NULL) {
     int size=(1L<<SharedGC.exponent);
     /* calculate with floating point to avoid integer overflow */
     double p=100.0*SharedGC.count/size;

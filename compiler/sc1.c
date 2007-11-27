@@ -20,7 +20,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: sc1.c 3853 2007-11-26 13:59:01Z thiadmer $
+ *  Version: $Id: sc1.c 3856 2007-11-27 13:55:27Z thiadmer $
  */
 #include <assert.h>
 #include <ctype.h>
@@ -785,7 +785,7 @@ cleanup:
 #if defined __cplusplus
   extern "C"
 #endif
-int pc_addconstant(char *name,cell value,int tag)
+int pc_addconstant(const char *name,cell value,int tag)
 {
   errorset(sFORCESET,0);        /* make sure error engine is silenced */
   sc_status=statIDLE;
@@ -799,7 +799,7 @@ int pc_addconstant(char *name,cell value,int tag)
 #if defined __cplusplus
   extern "C"
 #endif
-int pc_addtag(char *name)
+int pc_addtag(const char *name)
 {
   cell val;
   constvalue *ptr;
@@ -807,7 +807,7 @@ int pc_addtag(char *name)
 
   if (name==NULL) {
     /* no tagname was given, check for one */
-    if (lex(&val,&name)!=tLABEL) {
+    if (lex(&val,(char**)&name)!=tLABEL) {
       lexpush();
       return 0;         /* untagged */
     } /* if */
@@ -1902,7 +1902,7 @@ static void declglb(char *firstname,int firsttag,int fpublic,int fstatic,int fst
   int numdim;
   short filenum;
   symbol *sym;
-  constvalue *enumroot;
+  constvalue *enumroot=NULL;
   #if !defined NDEBUG
     cell glbdecl=0;
   #endif
@@ -2127,7 +2127,7 @@ static void declglb(char *firstname,int firsttag,int fpublic,int fstatic,int fst
     if (fstock)
       sym->usage|=uSTOCK;
     if (fstatic)
-      sym->fnumber=filenum;
+      sym->fvisible=filenum;
     sc_attachdocumentation(sym);/* attach any documenation to the variable */
     if (sc_status==statSKIP) {
       sc_status=statWRITE;
@@ -2330,6 +2330,8 @@ static cell calc_arraysize(int dim[],int numdim,int cur)
     return 0;
   subsize=calc_arraysize(dim,numdim,cur+1);
   newsize=dim[cur]+dim[cur]*subsize;
+  if (newsize==0)
+    return 0;
   if ((ucell)subsize>=CELL_MAX || newsize>=CELL_MAX || newsize<(ucell)subsize
       || newsize*sizeof(cell)>=CELL_MAX)
     return CELL_MAX;
@@ -2699,9 +2701,9 @@ static cell needsub(int *tag,constvalue **enumroot)
     return 0;               /* zero size (like "char msg[]") */
 
   constexpr(&val,tag,&sym); /* get value (must be constant expression) */
-  if (val<0) {
-    error(9);               /* negative array size is invalid; assumed zero */
-    val=0;
+  if (val<0 || sc_rationaltag!=0 && *tag==sc_rationaltag) {
+    error(9);               /* negative array size is invalid; so is rational value */
+    val=1;                  /* assume a valid array size */
   } /* if */
   needtoken(']');
 
@@ -3513,7 +3515,7 @@ static int newfunc(char *firstname,int firsttag,int fpublic,int fstatic,int stoc
   if (fpublic)
     sym->usage|=uPUBLIC;
   if (fstatic)
-    sym->fnumber=filenum;
+    sym->fvisible=filenum;
   /* if the function was used before being declared, and it has a tag for the
    * result, add a third pass (as second "skimming" parse) because the function
    * result may have been used with user-defined operators, which have now
@@ -3868,7 +3870,7 @@ static int declargs(symbol *sym,int chkshadow)
       for (altidx=0; altidx<argcnt && strcmp(ptr,arglist[altidx].name)!=0; altidx++)
         /* nothing */;
       if (altidx>=argcnt) {
-        error(17,ptr);                  /* undefined symbol */ //??? search through argument names
+        error(17,ptr);                  /* undefined symbol */ //??? search through argument names, see sc3.c
       } else {
         assert(arglist[idx].defvalue.size.symname!=NULL);
         /* check the level against the number of dimensions */
@@ -4847,7 +4849,7 @@ static constvalue *insert_constval(constvalue *prev,constvalue *next,const char 
     error(103);       /* insufficient memory (fatal error) */
   memset(cur,0,sizeof(constvalue));
   if (name!=NULL) {
-    assert(strlen(name)<sNAMEMAX);
+    assert(strlen(name)<=sNAMEMAX);
     strcpy(cur->name,name);
   } /* if */
   cur->value=val;
@@ -4926,7 +4928,7 @@ SC_FUNC void delete_consttable(constvalue *table)
  *
  *  Adds a symbol to the symbol table. Returns NULL on failure.
  */
-SC_FUNC symbol *add_constant(char *name,cell val,int vclass,int tag,int allow_redef)
+SC_FUNC symbol *add_constant(const char *name,cell val,int vclass,int tag,int allow_redef)
 {
   symbol *sym;
 
@@ -5936,10 +5938,10 @@ static void dostate(void)
   statelist *stlist;
   int flabel,result;
   symbol *sym;
+  constvalue dummyautomaton,dummystate;
   #if !defined PAWN_LIGHT
     int length,index,listid,listindex,stateindex;
     char *doc;
-    constvalue dummystate;
   #endif
 
   /* check for an optional condition */
@@ -5959,20 +5961,17 @@ static void dostate(void)
     /* create a dummy state, so that the transition table can be built in the
      * report
      */
-    #if !defined PAWN_LIGHT
-      if (sc_status==statFIRST) {
-        memset(&dummystate,0,sizeof dummystate);
-        assert(strlen(name)<=sNAMEMAX);
-        strcpy(dummystate.name,name);
-        state=&dummystate;
-      } else {
-        delete_autolisttable();
-        return;
-      } /* if */
-    #else
+    if (sc_status==statFIRST) {
+      memset(&dummyautomaton,0,sizeof dummyautomaton);
+      automaton=&dummyautomaton;
+      memset(&dummystate,0,sizeof dummystate);
+      assert(strlen(name)<=sNAMEMAX);
+      strcpy(dummystate.name,name);
+      state=&dummystate;
+    } else {
       delete_autolisttable();
       return;
-    #endif
+    } /* if */
   } /* if */
 
   /* store the new state id */

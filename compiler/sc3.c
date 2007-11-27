@@ -18,7 +18,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: sc3.c 3848 2007-11-20 11:48:34Z thiadmer $
+ *  Version: $Id: sc3.c 3856 2007-11-27 13:55:27Z thiadmer $
  */
 #include <assert.h>
 #include <stdio.h>
@@ -1882,14 +1882,18 @@ static int primary(value *lval,int *symtok)
       } /* if */
     } /* if */
     /* now try a global variable */
-    if ((sym=findglb(st,sSTATEVAR))!=0) {
+    if ((sym=findglb(st,sSTATEVAR))!=NULL) {
       if (sym->ident==iFUNCTN || sym->ident==iREFFUNC) {
         /* if the function is only in the table because it was inserted as a
          * stub in the first pass (i.e. it was "used" but never declared or
          * implemented, issue an error
          */
-        if ((sym->usage & uPROTOTYPED)==0)
-          return error_suggest(17,st,iVARIABLE); /* undefined symbol */
+        if ((sym->usage & uPROTOTYPED)==0) {
+          error_suggest(17,st,iVARIABLE); /* undefined symbol */
+          if (!matchtoken('('))
+            return FALSE; /* undefined symbol, no indication that this is a funtion call */
+          lexpush();      /* restore '(' */
+        } /* if */
       } else {
         if ((sym->usage & uDEFINE)==0)
           error_suggest(17,st,iVARIABLE); /* undefined symbol */

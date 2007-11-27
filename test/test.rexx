@@ -21,7 +21,7 @@ say '   2. PAWNRUN includes AMXDBG to parse debug information (test 3)'
 say '   2. everything is compiled with assertions (test 40)'
 say '   3. AMXCONS includes floating point support (tests 41, 43, 44, 46)'
 say '   4. AMXCONS includes fixed point support (test 62)'
-say '   5. DLLs/shared libraries "amxFixed" and "amxFloat" are present'
+say '   5. DLLs/shared libraries (a.o. "amxFixed", "amxFloat") are present'
 say '   6. the compiler uses FORTIFY for memory leakage checks (e.g. test 64)'
 say 'For example builds (for Borland C++), see the comments in this REXX file.'
 say 'You can abort the test run by entering "BYE" at any "test#" prompt.'
@@ -1286,7 +1286,7 @@ test100:
   say '         Passed a Sentient 2'
   say '         Passed a Foo 1'
   say '         Passed something else 0'
-  say ''   
+  say ''
   say '     The tagof operator with functions accepting multiple tags.'
   say ''
   say 'Symptoms of detected bug: tag was taken from a variable, not of an expression.'
@@ -1353,8 +1353,8 @@ test106:
   say ''
   say '        %1test'
   say ''
-  say '     A pre-processor macro that contains a % in a string, which should be copied'
-  say '     literally.'
+  say '     A pre-processor macro that contains a % in a string, which should be'
+  say '     copied literally.'
   say ''
   say 'Symptoms of detected bug: the parameter was replaced (by an empty string).'
   say '-----'
@@ -1475,8 +1475,8 @@ test115:
   return
 
 test116:
-  say '116. The following test compile successfully and run without errors (there is'
-  say '     no output).'
+  say '116. The following test should compile successfully and run without errors'
+  say '     (there is no output).'
   say ''
   say '     Chained assignement (a = b = 3)'
   say ''
@@ -1485,4 +1485,28 @@ test116:
   say '-----'
   pawncc ' CHAINED_ASSIGN= -O2 test1'
   pawnrun ' test1.amx'
+  return
+
+test117:
+  say '117. The following test should issue error 009 (invalid array size).'
+  say ''
+  say '     Declaring a partial cell size for an array, e.g.: Array[0.5]'
+  say ''
+  say 'Symptoms of detected bug: no error message; the compiler created a huge literal.'
+  say 'pool for the array.'
+  say '-----'
+  pawncc ' PARTIAL_ARRAY_SIZE= test2'
+  return
+
+test118:
+  say '118. The following test should compile successfully; when run, it should print'
+  say ''
+  say '         size: 2 x 2'
+  say ''
+  say '     Declaring an array with a zero-sized major dimension and initiallers'
+  say ''
+  say 'Symptoms of detected bug: incorrect size determination by the compiler.'
+  say '-----'
+  pawncc ' COUNT_ARRAY_SIZE= test2'
+  pawnrun ' test2.amx'
   return

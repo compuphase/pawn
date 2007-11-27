@@ -18,7 +18,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: amx.h 3853 2007-11-26 13:59:01Z thiadmer $
+ *  Version: $Id: amx.h 3856 2007-11-27 13:55:27Z thiadmer $
  */
 
 #ifndef AMX_H_INCLUDED
@@ -100,10 +100,11 @@
 #if !defined assert_static
   /* see "Compile-Time Assertions" by Ralf Holly,
    * C/C++ Users Journal, November 2004
+   * with modification from Søren Hannibal
    */
   #define assert_static(e) \
     do { \
-      enum { assert_static__ = 1/(e) }; \
+      enum { assert_static__ = 1/((e)?1:0) }; \
     } while (0)
 #endif
 

@@ -18,7 +18,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: amxstring.c 3831 2007-10-19 17:25:41Z thiadmer $
+ *  Version: $Id: amxstring.c 3856 2007-11-27 13:55:27Z thiadmer $
  */
 #include <limits.h>
 #include <string.h>
@@ -378,7 +378,7 @@ static cell AMX_NATIVE_CALL n_strcmp(AMX *amx,const cell *params)
   if (len>params[4])
     len=params[4];
   if (len==0)
-    return 0;
+    return (params[4]==0) ? 0 : len1-len2;
 
   result=compare(cstr1,cstr2,params[3],len,0);
   if (result==0 && len!=params[4])

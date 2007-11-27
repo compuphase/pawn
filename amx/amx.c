@@ -18,7 +18,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: amx.c 3853 2007-11-26 13:59:01Z thiadmer $
+ *  Version: $Id: amx.c 3856 2007-11-27 13:55:27Z thiadmer $
  */
 
 #if BUILD_PLATFORM == WINDOWS && BUILD_TYPE == RELEASE && BUILD_COMPILER == MSVC && PAWN_CELL_SIZE == 64
@@ -1010,7 +1010,7 @@ static int VerifyPcode(AMX *amx)
       /* only either type of system request opcode should be found (otherwise,
        * we probably have a non-conforming compiler
        */
-      #if (defined __GNUC__ || defined __ICC || defined ASM32 || defined JIT) && !(defined __64BIT__ || defined AMX_TOKENTHREADING)
+      #if (defined __GNUC__ || defined __ICC || defined ASM32 || defined JIT) && !defined AMX_TOKENTHREADING
         /* to use direct system requests, a function pointer must fit in a cell;
          * because the native function's address will be stored as the parameter
          * of SYSREQ.D
@@ -3743,6 +3743,7 @@ int AMXAPI amx_Exec(AMX *amx, cell *retval, int index)
   /* start running */
 #if defined ASM32 || defined JIT
   /* either the ARM or 80x86 assembler abstract machine or the JIT */
+  amx->error=0;
   amx->stk=stk;
   #if defined ASM32 && defined JIT
     if ((amx->flags & AMX_FLAG_JITC)!=0)

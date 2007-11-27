@@ -43,7 +43,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: scstate.c 3848 2007-11-20 11:48:34Z thiadmer $
+ *  Version: $Id: scstate.c 3856 2007-11-27 13:55:27Z thiadmer $
  */
 #include <assert.h>
 #include <limits.h>
@@ -83,7 +83,7 @@ static constvalue *find_automaton(const char *name,int *last,char *closestmatch)
   while (ptr!=NULL) {
     if (strcmp(name,ptr->name)==0)
       return ptr;
-    if (closestmatch!=NULL) {
+    if (closestmatch!=NULL && strlen(ptr->name)>0) {
       dist=levenshtein_distance(name,ptr->name);
       if (dist<closestdist && dist<=MAX_EDIT_DIST) {
         strcpy(closestmatch,ptr->name);
@@ -140,7 +140,7 @@ static constvalue *find_state(const char *name,int fsa,int *last,char *closestma
     if (ptr->index==fsa) {
       if (strcmp(name,ptr->name)==0)
         return ptr;
-      if (closestmatch!=NULL) {
+      if (closestmatch!=NULL && strlen(ptr->name)>0) {
         dist=levenshtein_distance(name,ptr->name);
         if (dist<closestdist && dist<=MAX_EDIT_DIST) {
           strcpy(closestmatch,ptr->name);
