@@ -18,7 +18,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: sc2.c 3856 2007-11-27 13:55:27Z thiadmer $
+ *  Version: $Id: sc2.c 3872 2007-12-17 12:14:36Z thiadmer $
  */
 #include <assert.h>
 #include <stdio.h>
@@ -157,15 +157,17 @@ static char *extensions[] = { ".inc", ".p", ".pawn" };
   PUSHSTK_I(fline);
   inpfname=duplicatestring(name);/* set name of include file */
   if (inpfname==NULL)
-    error(103);             /* insufficient memory */
-  inpf=fp;                  /* set input file pointer to include file */
+    error(103);                 /* insufficient memory */
+  inpf=fp;                      /* set input file pointer to include file */
   fnumber++;
-  fline=0;                  /* set current line number to 0 */
+  fline=0;                      /* set current line number to 0 */
   fcurrent=fnumber;
-  icomment=0;               /* not in a comment */
-  insert_dbgfile(inpfname);
-  setfiledirect(inpfname);
-  listline=-1;              /* force a #line directive when changing the file */
+  icomment=0;                   /* not in a comment */
+  insert_dbgfile(inpfname);     /* attach to debug information */
+  insert_inputfile(inpfname);   /* save for the error system */
+  assert(sc_status==statFIRST || strcmp(get_inputfile(fcurrent),inpfname)==0);
+  setfiledirect(inpfname);      /* (optionally) set in the list file */
+  listline=-1;                  /* force a #line directive when changing the file */
   sc_is_utf8=(short)scan_utf8(inpf,name);
   return TRUE;
 }
@@ -349,6 +351,7 @@ static void readline(unsigned char *line)
       //??? if sc_status==statSKIP, we should first finish the function to reset code_idx
       insert_dbgfile(inpfname);
       setfiledirect(inpfname);
+      assert(sc_status==statFIRST || strcmp(get_inputfile(fcurrent),inpfname)==0);
       listline=-1;              /* force a #line directive when changing the file */
     } /* if */
 
@@ -1946,10 +1949,22 @@ SC_FUNC int lex(cell *lexvalue,char **lexsym)
     lptr+=1;            /* skip quote */
     _lextok=tNUMBER;
     *lexvalue=_lexval=litchar(&lptr,UTF8MODE);
-    if (*lptr=='\'')
+    if (*lptr=='\'') {
       lptr+=1;          /* skip final quote */
-    else
-      error(27);        /* invalid character constant (must be one character) */
+    } else {
+      /* try to skip up to the next quote (this may be a user mixing up
+       * single and double quotes)
+       */
+      const char *ptr=lptr;
+      while (*ptr!='\0' && *ptr!='\'')
+        ptr++;
+      if (*ptr=='\'') {
+        error(makelong(27,2));  /* invalid character constant (or use double quotes) */
+        lptr=ptr+1;     /* skip entire lot */
+      } else {
+        error(27);      /* invalid character constant (must be one character) */
+      } /* if */
+    } /* if */
   } else if (*lptr==';') {      /* semicolumn resets "error" flag */
     _lextok=';';
     lptr+=1;
@@ -2599,7 +2614,7 @@ SC_FUNC void markusage(symbol *sym,int usage)
   if ((usage & (uREAD | uWRITTEN))!=0) {
     /* only do this for global symbols */
     if (sym->vclass==sGLOBAL) {
-      /* "curfunc" should always be valid, since statements may not occurs
+      /* "curfunc" should always be valid, since statements may not occur
        * outside functions; in the case of syntax errors, however, the
        * compiler may arrive through this function
        */

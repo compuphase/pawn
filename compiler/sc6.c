@@ -18,7 +18,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: sc6.c 3845 2007-11-16 14:41:29Z thiadmer $
+ *  Version: $Id: sc6.c 3872 2007-12-17 12:14:36Z thiadmer $
  */
 #include <assert.h>
 #include <stdio.h>
@@ -781,12 +781,14 @@ SC_FUNC int assemble(FILE *fout,FILE *fin)
      * for a non-existant opcode)
      */
     {
-      unsigned char opcodearray[sizeof opcodelist / sizeof opcodelist[0]];
+      #define MAX_OPCODE 212
+      unsigned char opcodearray[MAX_OPCODE+1];
       assert(opcodelist[1].name!=NULL);
       memset(opcodearray,0,sizeof opcodearray);
       for (i=2; i<(sizeof opcodelist / sizeof opcodelist[0]); i++) {
         assert(opcodelist[i].name!=NULL);
         assert(stricmp(opcodelist[i].name,opcodelist[i-1].name)>0);
+        assert((int)opcodelist[i].opcode<=MAX_OPCODE);
         assert(opcodelist[i].opcode==0 || opcodearray[(int)opcodelist[i].opcode]==0);
         /* also verify that no opcode number appears twice */
         opcodearray[(int)opcodelist[i].opcode] += 1;
@@ -1088,8 +1090,8 @@ SC_FUNC int assemble(FILE *fout,FILE *fin)
           && (sym->usage & uDEFINE)!=0)
       {
         assert(sym->vclass==sGLOBAL);
-        assert(sym->index==count++);/* overlay indices must be in sequential order */
-        assert(sym->addr<sym->codeaddr);
+        assert(strcmp(sym->name,uENTRYFUNC)==0 || sym->index==count++);/* overlay indices must be in sequential order */
+        assert(strcmp(sym->name,uENTRYFUNC)==0 || sym->addr<sym->codeaddr);
         info.offset=sym->addr;
         info.size=sym->codeaddr - sym->addr;
         #if BYTE_ORDER==BIG_ENDIAN
@@ -1267,7 +1269,7 @@ static void append_dbginfo(FILE *fout)
         if (prevstr!=NULL) {
           assert(prevname!=NULL);
           dbghdr.files++;
-          dbghdr.size+=sizeof(cell)+strlen(prevname)+1;
+          dbghdr.size+=sizeof(AMX_DBG_FILE)+strlen(prevname);
         } /* if */
         previdx=codeidx;
       } /* if */
@@ -1278,7 +1280,7 @@ static void append_dbginfo(FILE *fout)
   if (prevstr!=NULL) {
     assert(prevname!=NULL);
     dbghdr.files++;
-    dbghdr.size+=sizeof(cell)+strlen(prevname)+1;
+    dbghdr.size+=sizeof(AMX_DBG_FILE)+strlen(prevname);
   } /* if */
 
   /* line number table */
@@ -1297,9 +1299,14 @@ static void append_dbginfo(FILE *fout)
     assert(str[0]!='\0' && str[1]==':');
     if (str[0]=='S') {
       dbghdr.symbols++;
-      name=strchr(str+2,':');
-      assert(name!=NULL);
-      dbghdr.size+=sizeof(AMX_DBG_SYMBOL)+strlen(skipwhitespace(name+1));
+      str=strchr(str+2,':');
+      assert(str!=NULL);
+      name=skipwhitespace(str+1);
+      str=strchr(name,' ');
+      assert(str!=NULL);
+      assert((int)(str-name)<sizeof symname);
+      strlcpy(symname,name,(int)(str-name)+1);
+      dbghdr.size+=sizeof(AMX_DBG_SYMBOL)+strlen(symname);
       if ((prevstr=strchr(name,'['))!=NULL)
         while ((prevstr=strchr(prevstr+1,':'))!=NULL)
           dbghdr.size+=sizeof(AMX_DBG_SYMDIM);

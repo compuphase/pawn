@@ -55,58 +55,64 @@ static unsigned short pool_lru;
 /* amx_poolinit() initializes the memory pool for the allocated blocks. */
 void amx_poolinit(void *pool, unsigned size)
 {
-  ARENA *hdr;
-
   assert(pool!=NULL);
   assert(size>sizeof(ARENA));
 
-  /* save parameters in global variables */
+  /* save parameters in global variables, then "free" the entire pool */
   pool_base=pool;
   pool_size=size;
   pool_lru=0;
-
-  /* store an arena header at the start of the pool */
-  hdr=(ARENA*)pool_base;
-  hdr->blocksize=pool_size-sizeof(ARENA);
-  hdr->index=-1;
-  hdr->lru=0;
+  amx_poolfree(NULL);
 }
 
 /* amx_poolfree() releases a block allocated earlier. The parameter must have
  * the same value as that returned by an earlier call to amx_poolalloc(). That
  * is, the "block" parameter must point directly behind the arena header of the
- * block;
+ * block.
+ * When parameter "block" is NULL, the pool is re-initialized (meaning that
+ * all blocks are freed).
  */
 void amx_poolfree(void *block)
 {
   ARENA *hdr,*hdr2;
   unsigned sz;
 
-  assert(block!=NULL);
-  hdr=(ARENA*)((char*)block-sizeof(ARENA));
-  assert((char*)hdr>=(char*)pool_base && (char*)hdr<(char*)pool_base+pool_size);
-  assert(hdr->blocksize<pool_size);
+  assert(pool_base!=NULL);
+  assert(pool_size>sizeof(ARENA));
 
-  /* free this block */
-  hdr->index=-1;
+  /* special case: if "block" is NULL, create a single free space */
+  if (block==NULL) {
+    /* store an arena header at the start of the pool */
+    hdr=(ARENA*)pool_base;
+    hdr->blocksize=pool_size-sizeof(ARENA);
+    hdr->index=-1;
+    hdr->lru=0;
+  } else {
+    hdr=(ARENA*)((char*)block-sizeof(ARENA));
+    assert((char*)hdr>=(char*)pool_base && (char*)hdr<(char*)pool_base+pool_size);
+    assert(hdr->blocksize<pool_size);
 
-  /* try to coalesce with the next block */
-  hdr2=(ARENA*)((char*)hdr+hdr->blocksize+sizeof(ARENA));
-  if (hdr2->index==-1)
-    hdr->blocksize+=hdr2->blocksize+sizeof(ARENA);
+    /* free this block */
+    hdr->index=-1;
 
-  /* try to coalesce with the previous block */
-  if ((void*)hdr!=pool_base) {
-    sz=pool_size;
-    hdr2=(ARENA*)pool_base;
-    while (sz>0 && (char*)hdr2+hdr2->blocksize+sizeof(ARENA)!=(char*)hdr) {
-      assert(sz<=pool_size);
-      sz-=hdr2->blocksize+sizeof(ARENA);
-      hdr2=(ARENA*)((char*)hdr2+hdr2->blocksize+sizeof(ARENA));
-    } /* while */
-    assert((char*)hdr2+hdr2->blocksize+sizeof(ARENA)==(char*)hdr);
+    /* try to coalesce with the next block */
+    hdr2=(ARENA*)((char*)hdr+hdr->blocksize+sizeof(ARENA));
     if (hdr2->index==-1)
-      hdr2->blocksize+=hdr->blocksize+sizeof(ARENA);
+      hdr->blocksize+=hdr2->blocksize+sizeof(ARENA);
+
+    /* try to coalesce with the previous block */
+    if ((void*)hdr!=pool_base) {
+      sz=pool_size;
+      hdr2=(ARENA*)pool_base;
+      while (sz>0 && (char*)hdr2+hdr2->blocksize+sizeof(ARENA)!=(char*)hdr) {
+        assert(sz<=pool_size);
+        sz-=hdr2->blocksize+sizeof(ARENA);
+        hdr2=(ARENA*)((char*)hdr2+hdr2->blocksize+sizeof(ARENA));
+      } /* while */
+      assert((char*)hdr2+hdr2->blocksize+sizeof(ARENA)==(char*)hdr);
+      if (hdr2->index==-1)
+        hdr2->blocksize+=hdr->blocksize+sizeof(ARENA);
+    } /* if */
   } /* if */
 }
 

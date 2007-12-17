@@ -199,7 +199,7 @@ JUMPREL MACRO
 GETPARAM_P MACRO reg
         ; ??? verify that reg != esi
         mov     reg,[esi]
-        shr     reg,16
+        sar     reg,16          ; shift-right, keeping the sign
         ENDM
 
 _CHKSTACK MACRO

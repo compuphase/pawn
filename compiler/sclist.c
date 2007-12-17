@@ -24,7 +24,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: sclist.c 3856 2007-11-27 13:55:27Z thiadmer $
+ *  Version: $Id: sclist.c 3872 2007-12-17 12:14:36Z thiadmer $
  */
 #include <assert.h>
 #include <limits.h>
@@ -325,7 +325,7 @@ SC_FUNC void delete_substtable(void)
 #endif /* !defined NO_SUBST */
 
 
-/* ----- input file list ----------------------------------------- */
+/* ----- input file list (explicit files) ------------------------ */
 static stringlist sourcefiles = {NULL, NULL};
 
 SC_FUNC stringlist *insert_sourcefile(char *string)
@@ -342,6 +342,28 @@ SC_FUNC void delete_sourcefiletable(void)
 {
   delete_stringtable(&sourcefiles);
   assert(sourcefiles.next==NULL);
+}
+
+
+/* ----- parsed file list (explicit + included files) ------------ */
+static stringlist inputfiles = {NULL, NULL};
+
+SC_FUNC stringlist *insert_inputfile(char *string)
+{
+  if (sc_status!=statFIRST)
+    return insert_string(&inputfiles,string,1);
+  return NULL;
+}
+
+SC_FUNC char *get_inputfile(int index)
+{
+  return get_string(&inputfiles,index);
+}
+
+SC_FUNC void delete_inputfiletable(void)
+{
+  delete_stringtable(&inputfiles);
+  assert(inputfiles.next==NULL);
 }
 
 

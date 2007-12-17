@@ -20,7 +20,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: sc1.c 3856 2007-11-27 13:55:27Z thiadmer $
+ *  Version: $Id: sc1.c 3872 2007-12-17 12:14:36Z thiadmer $
  */
 #include <assert.h>
 #include <ctype.h>
@@ -61,11 +61,15 @@
   #include <windows.h>
 #endif
 
+#if defined __WIN32__ || defined _WIN32 || defined WIN32 || defined __NT__
+  #define DLLEXPORT __declspec (dllexport)
+#endif
+
 #include "lstring.h"
 #include "sc.h"
 #include "svnrev.h"
-#define VERSION_STR "4.0." SVN_REVSTR
-#define VERSION_INT 0x0400
+#define VERSION_STR "3.3." SVN_REVSTR
+#define VERSION_INT 0x0303
 
 static void resetglobals(void);
 static void initglobals(void);
@@ -394,9 +398,7 @@ long pc_lengthbin(void *handle)
 
 /*  "main" of the compiler
  */
-# if defined __WIN32__ || defined _WIN32 || defined WIN32 || defined __NT__
-  __declspec (dllexport)
-#endif
+DLLEXPORT
 #if defined __cplusplus
   extern "C"
 #endif
@@ -634,7 +636,8 @@ int pc_compile(int argc, char *argv[])
   writestatetables(&glbtab,i);  /* create state tables and additional overlay information */
   /* reset "defined" flag of all functions and global variables */
   delete_symbols(&glbtab,0,TRUE,FALSE);
-  insert_dbgfile(inpfname);
+  insert_dbgfile(inpfname);     /* attach to debug information */
+  insert_inputfile(inpfname);   /* save for the error system */
   if (strlen(incfname)>0) {
     if (strcmp(incfname,sDEF_PREFIX)==0)
       plungefile(incfname,FALSE,TRUE);  /* parse "default.inc" (again) */
@@ -725,7 +728,16 @@ cleanup:
 
   if (tmpname!=NULL) {
     remove(tmpname);
+    #if defined FORTIFY
+      /* Fortify does not know about the memory allocated by tempnam(), so
+       * it should not check the "free()" call for that memory
+       */
+      Fortify_Enable(FORTIFY_OFF);
+    #endif
     free(tmpname);
+    #if defined FORTIFY
+      Fortify_Enable(FORTIFY_ENABLED);
+    #endif
   } /* if */
   if (inpfname!=NULL)
     free(inpfname);
@@ -747,6 +759,7 @@ cleanup:
   delete_aliastable();
   delete_pathtable();
   delete_sourcefiletable();
+  delete_inputfiletable();
   delete_dbgstringtable();
   #if !defined NO_DEFINE
     delete_substtable();
@@ -779,9 +792,7 @@ cleanup:
   return retcode;
 }
 
-# if defined __WIN32__ || defined _WIN32 || defined WIN32 || defined __NT__
-  __declspec (dllexport)
-#endif
+DLLEXPORT
 #if defined __cplusplus
   extern "C"
 #endif
@@ -793,9 +804,7 @@ int pc_addconstant(const char *name,cell value,int tag)
   return 1;
 }
 
-# if defined __WIN32__ || defined _WIN32 || defined WIN32 || defined __NT__
-  __declspec (dllexport)
-#endif
+DLLEXPORT
 #if defined __cplusplus
   extern "C"
 #endif
@@ -1286,12 +1295,6 @@ static void setopt(int argc,char **argv,char *oname,char *ename,char *pname,
   *rname='\0';
   *codepage='\0';
   strcpy(pname,sDEF_PREFIX);
-
-  #if 0 /* needed to test with BoundsChecker for DOS (it does not pass
-         * through arguments) */
-    insert_sourcefile("test.p");
-    strcpy(oname,"test.asm");
-  #endif
 
   #if !defined PAWNC_LIGHT
     /* first parse a "config" file with default options */
@@ -1921,8 +1924,10 @@ static void declglb(char *firstname,int firsttag,int fpublic,int fstatic,int fst
       firstname=NULL;
     } else {
       tag=pc_addtag(NULL);
-      if (lex(&val,&str)!=tSYMBOL)      /* read in (new) token */
+      if (lex(&val,&str)!=tSYMBOL) {    /* read in (new) token */
         error(20,str);                  /* invalid symbol name */
+        litidx=0;                       /* clear literal pool (in case there is a string constant instead of a symbol name) */
+      } /* if */
       assert(strlen(str)<=sNAMEMAX);
       strcpy(name,str);                 /* save symbol name */
     } /* if */
@@ -2107,6 +2112,8 @@ static void declglb(char *firstname,int firsttag,int fpublic,int fstatic,int fst
       dumpzero((int)size-litidx);
     } /* if */
     litidx=0;
+    if (strlen(name)==0)
+      continue;
     if (sym==NULL) {    /* define only if not yet defined */
       sym=addvariable(name,address,ident,sGLOBAL,tag,dim,numdim,idxtag);
       if (sc_curstates>0)
@@ -2173,6 +2180,7 @@ static int declloc(int fstatic)
     tag=pc_addtag(NULL);
     if (!needtoken(tSYMBOL)) {
       lexclr(TRUE);                     /* drop the rest of the line... */
+      litidx=0;                         /* ...clear literal pool... */
       return 0;                         /* ...and quit */
     } /* if */
     tokeninfo(&val,&str);
@@ -2469,7 +2477,7 @@ static void initials(int ident,int tag,cell *size,int dim[],int numdim,
           err++;
         } /* if */
       } /* for */
-      if (numdim>1 && dim[numdim-1]==0) {
+      if (numdim>1 && dim[numdim-1]==0 && !errorfound) {
         /* also look whether, by any chance, all "counted" final dimensions are
          * the same value; if so, we can store this
          */
@@ -4541,7 +4549,12 @@ static void gen_ovlinfo(symbol *root)
           && (sym->usage & uNATIVE)==0 && (sym->usage & (uREAD | uPUBLIC))!=0
           && (sym->usage & uDEFINE)!=0)
       {
-        sym->index=idx++;
+        /* state entry functions are called directly for the states, but there
+         * is no function stub -> no overlay index should be assigned for this
+         * special case
+         */
+        if (strcmp(sym->name,uENTRYFUNC)!=0)
+          sym->index=idx++;
         if (sym->states!=NULL) {
           /* for functions with states, allocate an index for every implementation */
           statelist *stateptr;
@@ -4575,7 +4588,8 @@ static long max_stacksize_recurse(symbol **sourcesym,symbol *sym,long basesize,i
           if ((sc_debug & sSYMBOLIC)!=0 || verbosity>=2) {
             char symname[2*sNAMEMAX+16];/* allow space for user defined operators */
             funcdisplayname(symname,sym->name);
-            errorset(sSETPOS,sym->lnumber);
+            errorset(sSETFILE,sym->fnumber);
+            errorset(sSETLINE,sym->lnumber);
             error(237,symname);         /* recursive function */
           } /* if */
           *recursion=1;
@@ -4610,6 +4624,9 @@ static long max_stacksize_recurse(symbol **sourcesym,symbol *sym,long basesize,i
     if (count>*pubfuncparams)
       *pubfuncparams=count;
   } /* if */
+
+  errorset(sEXPRRELEASE,0); /* clear error data */
+  errorset(sRESET,0);
 
   return maxsize+basesize;
 }
@@ -4713,7 +4730,8 @@ static int testsymbols(symbol *root,int level,int testlabs,int testconst)
         if ((sym->usage & uDEFINE)==0) {
           error_suggest(19,sym->name,iLABEL);  /* not a label: ... */
         } else if ((sym->usage & uREAD)==0) {
-          errorset(sSETPOS,sym->lnumber);
+          errorset(sSETFILE,sym->fnumber);
+          errorset(sSETLINE,sym->lnumber);
           error(203,sym->name);     /* symbol isn't used: ... */
         } /* if */
       } /* if */
@@ -4722,7 +4740,8 @@ static int testsymbols(symbol *root,int level,int testlabs,int testconst)
       if ((sym->usage & (uDEFINE | uREAD | uNATIVE | uSTOCK | uPUBLIC))==uDEFINE) {
         funcdisplayname(symname,sym->name);
         if (strlen(symname)>0) {
-          errorset(sSETPOS,sym->lnumber);
+          errorset(sSETFILE,sym->fnumber);
+          errorset(sSETLINE,sym->lnumber);
           error(203,symname);       /* symbol isn't used ... (and not public/native/stock) */
         } /* if */
       } /* if */
@@ -4735,7 +4754,8 @@ static int testsymbols(symbol *root,int level,int testlabs,int testconst)
       break;
     case iCONSTEXPR:
       if (testconst && (sym->usage & uREAD)==0) {
-        errorset(sSETPOS,sym->lnumber);
+        errorset(sSETFILE,sym->fnumber);
+        errorset(sSETLINE,sym->lnumber);
         error(203,sym->name);       /* symbol isn't used: ... */
       } /* if */
       break;
@@ -4744,15 +4764,17 @@ static int testsymbols(symbol *root,int level,int testlabs,int testconst)
       if (sym->parent!=NULL)
         break;                      /* hierarchical data type */
       if ((sym->usage & (uWRITTEN | uREAD | uSTOCK))==0) {
-        if (testconst)
-          errorset(sSETPOS,sym->lnumber);
+        errorset(sSETFILE,sym->fnumber);
+        errorset(sSETLINE,sym->lnumber);
         error(203,sym->name,sym->lnumber);  /* symbol isn't used (and not stock) */
       } else if ((sym->usage & (uREAD | uSTOCK | uPUBLIC))==0) {
-        errorset(sSETPOS,sym->lnumber);
+        errorset(sSETFILE,sym->fnumber);
+        errorset(sSETLINE,sym->lnumber);
         error(204,sym->name);       /* value assigned to symbol is never used */
 #if 0 // ??? not sure whether it is a good idea to force people use "const"
       } else if ((sym->usage & (uWRITTEN | uPUBLIC | uCONST))==0 && sym->ident==iREFARRAY) {
-        errorset(sSETPOS,sym->lnumber);
+        errorset(sSETFILE,sym->fnumber);
+        errorset(sSETLINE,sym->lnumber);
         error(214,sym->name);       /* make array argument "const" */
 #endif
       } /* if */
@@ -4763,6 +4785,8 @@ static int testsymbols(symbol *root,int level,int testlabs,int testconst)
     sym=sym->next;
   } /* while */
 
+  errorset(sEXPRRELEASE,0); /* clear error data */
+  errorset(sRESET,0);
   return entry;
 }
 
@@ -5748,6 +5772,11 @@ static void doreturn(void)
       error(78);                        /* mix "return;" and "return value;" */
     ident=doexpr(TRUE,FALSE,TRUE,FALSE,&tag,&sym,TRUE);
     needtoken(tTERM);
+    if (ident==iARRAY && sym==NULL) {
+      /* returning a literal string is not supported (it must be a variable) */
+      error(39);
+      ident=iCONSTEXPR;                 /* avoid handling an "array" case */
+    } /* if */
     /* see if this function already has a sub type (an array attached) */
     sub=finddepend(curfunc);
     assert(sub==NULL || sub->ident==iREFARRAY);

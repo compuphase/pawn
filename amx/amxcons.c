@@ -22,7 +22,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: amxcons.c 3853 2007-11-26 13:59:01Z thiadmer $
+ *  Version: $Id: amxcons.c 3860 2007-12-04 11:49:34Z thiadmer $
  */
 
 #if defined _UNICODE || defined __UNICODE__ || defined UNICODE
@@ -671,7 +671,11 @@ static int dochar(AMX *amx,TCHAR ch,cell param,TCHAR sign,TCHAR decpoint,int wid
       _stprintf(formatstring+_tcslen(formatstring),__T("%d"),width);
     _stprintf(formatstring+_tcslen(formatstring),__T(".%df"),digits);
     amx_GetAddr(amx,param,&cptr);
-    _stprintf(buffer,formatstring,*(float*)cptr);
+    #if PAWN_CELL_SIZE == 64
+      _stprintf(buffer,formatstring,*(double*)cptr);
+    #else
+      _stprintf(buffer,formatstring,*(float*)cptr);
+    #endif
     if (decpoint==__T(',')) {
       TCHAR *ptr=_tcschr(buffer,__T('.'));
       if (ptr!=NULL)

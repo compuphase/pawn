@@ -18,7 +18,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: amx.c 3856 2007-11-27 13:55:27Z thiadmer $
+ *  Version: $Id: amx.c 3872 2007-12-17 12:14:36Z thiadmer $
  */
 
 #if BUILD_PLATFORM == WINDOWS && BUILD_TYPE == RELEASE && BUILD_COMPILER == MSVC && PAWN_CELL_SIZE == 64
@@ -1105,6 +1105,7 @@ int AMXAPI amx_Init(AMX *amx,void *program)
   int err,i;
   unsigned char *data;
   #if (defined _Windows || defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__) && !defined AMX_NODYNALOAD
+    typedef int AMXEXPORT (FAR *AMX_ENTRY)(AMX FAR *amx);
     #if defined _Windows
       char libname[sNAMEMAX+8]; /* +1 for '\0', +3 for 'amx' prefix, +4 for extension */
       typedef int (FAR WINAPI *AMX_ENTRY)(AMX _FAR *amx);
@@ -1422,19 +1423,15 @@ int AMXAPI amx_InitJIT(AMX *amx, void *reloc_table, void *native_code)
     /* update the required memory size (the previous value was a
      * conservative estimate, now we know the exact size)
      */
-    amx->codesize = (hdr->dat + hdr->stp + 3) & ~3;
+    amx->codesize = (hdr->dat + hdr->stp + sizeof(cell)) & ~(sizeof(cell)-1);
     /* The compiled code is relocatable, since only relative jumps are
-     * used for destinations within the generated code and absoulute
-     * addresses for jumps into the runtime, which is fixed in memory.
+     * used for destinations within the generated code, and absolute
+     * addresses are only for jumps into the runtime, which is fixed
+     * in memory.
      */
+    /* set the new pointers */
     amx->base = (unsigned char*) native_code;
     amx->cip = hdr->cip;
-    amx->hea = hdr->hea;
-    amx->hlw = hdr->hea;
-    amx->stp = hdr->stp - sizeof(cell);
-    /* also put a sentinel for strings at the top the stack */
-    *(cell *)((char*)native_code + hdr->dat + hdr->stp - sizeof(cell)) = 0;
-    amx->stk = amx->stp;
   } /* if */
 
   return (res == 0) ? AMX_ERR_NONE : AMX_ERR_INIT_JIT;
@@ -1458,11 +1455,7 @@ int AMXAPI amx_InitJIT(AMX *amx,void *compiled_program,void *reloc_table)
 int AMXAPI amx_Cleanup(AMX *amx)
 {
   #if (defined _Windows || defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__) && !defined AMX_NODYNALOAD
-    #if defined _Windows
-      typedef int (FAR WINAPI *AMX_ENTRY)(AMX FAR *amx);
-    #elif defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__
-      typedef int (*AMX_ENTRY)(AMX *amx);
-    #endif
+    typedef int AMXEXPORT (FAR *AMX_ENTRY)(AMX FAR *amx);
     AMX_HEADER *hdr;
     int numlibraries,i;
     AMX_FUNCSTUB *lib;
@@ -2057,7 +2050,7 @@ int AMXAPI amx_PushString(AMX *amx, cell *amx_addr, cell **phys_addr, const char
   #endif
 #endif
 #if !defined GETPARAM_P
-  #define GETPARAM_P(v,o) ( v=((cell)(o) >> sizeof(cell)*4) )
+  #define GETPARAM_P(v,o) ( v=((cell)(o) >> (int)(sizeof(cell)*4)) )
 #endif
 
 /* PUSH() and POP() are defined in terms of the _R() and _W() macros */
@@ -2191,6 +2184,7 @@ static const void * const amx_opcodelist[] = {
   reset_hea=hea;
   alt=frm=pri=0;/* just to avoid compiler warnings */
   num=0;        /* just to avoid compiler warnings */
+  amx->error=AMX_ERR_NONE;
 
   /* get the start address */
   if (index==AMX_EXEC_MAIN) {
@@ -3653,6 +3647,7 @@ int AMXAPI amx_Exec(AMX *amx, cell *retval, int index)
   reset_stk=stk;
   reset_hea=hea;
   alt=frm=pri=0;/* just to avoid compiler warnings */
+  amx->error=AMX_ERR_NONE;
 
   /* get the start address */
   if (index==AMX_EXEC_MAIN) {
@@ -5253,14 +5248,19 @@ int AMXAPI amx_GetString(char *dest,const cell *source,int use_wchar,size_t size
         c=*source++;
       #if defined AMX_ANSIONLY
         dest[len++]=(char)(c >> i*CHARBITS);
+        if (dest[len-1]=='\0')
+          break;        /* terminating zero character found */
       #else
-        if (use_wchar)
+        if (use_wchar) {
           ((wchar_t*)dest)[len++]=(char)(c >> i*CHARBITS);
-        else
+          if (((wchar_t*)dest)[len-1]=='\0')
+            break;      /* terminating zero character found */
+        } else {
           dest[len++]=(char)(c >> i*CHARBITS);
+          if (dest[len-1]=='\0')
+            break;      /* terminating zero character found */
+        } /* if */
       #endif
-      if (dest[len-1]=='\0')
-        break;          /* terminating zero character found */
       i=(i+sizeof(cell)-1) % sizeof(cell);
     } /* while */
   } else {
