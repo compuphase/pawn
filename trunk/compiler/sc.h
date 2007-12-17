@@ -25,7 +25,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: sc.h 3856 2007-11-27 13:55:27Z thiadmer $
+ *  Version: $Id: sc.h 3872 2007-12-17 12:14:36Z thiadmer $
  */
 #ifndef SC_H_INCLUDED
 #define SC_H_INCLUDED
@@ -441,7 +441,8 @@ typedef struct s_valuepair {
 #define sFORCESET       1       /* force error flag on */
 #define sEXPRMARK       2       /* mark start of expression */
 #define sEXPRRELEASE    3       /* mark end of expression */
-#define sSETPOS         4       /* set line number for the error */
+#define sSETLINE        4       /* set line number for the error */
+#define sSETFILE        5       /* set file number for the error */
 
 enum {
   sOPTIMIZE_NONE,               /* no optimization */
@@ -479,14 +480,17 @@ typedef enum s_optmark {
 #if defined __cplusplus
   extern "C" {
 #endif
+#if !defined DLLEXPORT
+  #define DLLEXPORT
+#endif
 
 /*
  * Functions you call from the "driver" program
  */
-int pc_compile(int argc, char **argv);
-int pc_addconstant(const char *name,cell value,int tag);
-int pc_addtag(const char *name);
-int pc_enablewarning(int number,int enable);
+DLLEXPORT int pc_compile(int argc, char **argv);
+DLLEXPORT int pc_addconstant(const char *name,cell value,int tag);
+DLLEXPORT int pc_addtag(const char *name);
+DLLEXPORT int pc_enablewarning(int number,int enable);
 
 /*
  * Functions called from the compiler (to be implemented by you)
@@ -732,6 +736,9 @@ SC_FUNC void delete_substtable(void);
 SC_FUNC stringlist *insert_sourcefile(char *string);
 SC_FUNC char *get_sourcefile(int index);
 SC_FUNC void delete_sourcefiletable(void);
+SC_FUNC stringlist *insert_inputfile(char *string);
+SC_FUNC char *get_inputfile(int index);
+SC_FUNC void delete_inputfiletable(void);
 SC_FUNC stringlist *insert_docstring(char *string,int append);
 SC_FUNC char *get_docstring(int index);
 SC_FUNC void delete_docstring(int index);
@@ -834,8 +841,8 @@ SC_VDECL cell pc_amxlimit;    /* abstract machine size limit (code + data, or on
 SC_VDECL cell pc_amxram;      /* abstract machine data size limit */
 SC_VDECL int freading;        /* is there an input file ready for reading? */
 SC_VDECL int fline;           /* the line number in the current file */
-SC_VDECL short fnumber;       /* number of files in the file table (debugging) */
-SC_VDECL short fcurrent;      /* current file being processed (debugging) */
+SC_VDECL short fnumber;       /* number of files in the input file table */
+SC_VDECL short fcurrent;      /* current file being processed */
 SC_VDECL short sc_intest;     /* true if inside a test */
 SC_VDECL int pc_sideeffect;   /* true if an expression causes a side-effect */
 SC_VDECL int stmtindent;      /* current indent of the statement */

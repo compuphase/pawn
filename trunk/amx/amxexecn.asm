@@ -153,7 +153,7 @@
 %macro  GETPARAM_P 1
         ; ??? verify that %1 != esi
         mov     %1,[esi]
-        shr     %1,16
+        sar     %1,16             ; shift-right, keeping the sign
 %endmacro
 
 %macro  _CHKSTACK 0

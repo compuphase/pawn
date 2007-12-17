@@ -18,7 +18,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: amx.h 3856 2007-11-27 13:55:27Z thiadmer $
+ *  Version: $Id: amx.h 3872 2007-12-17 12:14:36Z thiadmer $
  */
 
 #ifndef AMX_H_INCLUDED
@@ -119,6 +119,9 @@ extern  "C" {
   #if !defined AMXAPI
     #define AMXAPI          __stdcall
   #endif
+  #if !defined AMXEXPORT
+    #define AMXEXPORT       __declspec(dllexport) __stdcall
+  #endif
 #endif
 
 /* calling convention for native functions */
@@ -132,7 +135,7 @@ extern  "C" {
   #elif defined CDECL
     #define AMXAPI      __cdecl
   #elif defined GCC_HASCLASSVISIBILITY
-    #define AMXAPI __attribute__ ((visibility("default")))
+    #define AMXAPI      __attribute__((visibility("default")))
   #else
     #define AMXAPI
   #endif

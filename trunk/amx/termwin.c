@@ -18,7 +18,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: termwin.c 3693 2007-01-02 13:36:50Z thiadmer $
+ *  Version: $Id: termwin.c 3860 2007-12-04 11:49:34Z thiadmer $
  */
 
 #if defined _UNICODE || defined __UNICODE__ || defined UNICODE
@@ -91,7 +91,7 @@ static BOOL InitWindowClass(HINSTANCE hinst)
     wc.lpfnWndProc=(WNDPROC)ConsoleFunc;
     wc.hInstance=hinst;
     wc.hCursor=LoadCursor(NULL, IDC_ARROW);
-    wc.hIcon=LoadIcon(GetModuleHandle(NULL), "AppIcon");
+    wc.hIcon=LoadIcon(GetModuleHandle(NULL), __T("AppIcon"));
     wc.hbrBackground=(HBRUSH)(COLOR_WINDOW+1);
     wc.lpszClassName=__T("TermWin:Console");
     initok=RegisterClass(&wc);

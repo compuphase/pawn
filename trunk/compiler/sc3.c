@@ -18,7 +18,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: sc3.c 3856 2007-11-27 13:55:27Z thiadmer $
+ *  Version: $Id: sc3.c 3870 2007-12-13 15:12:03Z thiadmer $
  */
 #include <assert.h>
 #include <stdio.h>
@@ -2167,8 +2167,8 @@ static int nesting=0;
          */
       } else {
         arglist[argpos]=ARG_DONE; /* flag argument as "present" */
-        if (arg[argidx].numtags==1)     /* set the expected tag, if any */
-          lval.cmptag=arg[argidx].tags[0];
+        if (arg[argidx].ident!=0 && arg[argidx].numtags==1)
+          lval.cmptag=arg[argidx].tags[0];  /* set the expected tag, if any */
         lvalue=hier14(&lval);
         assert(sc_status==statFIRST || arg[argidx].ident== 0 || arg[argidx].tags!=NULL);
         switch (arg[argidx].ident) {
@@ -2469,8 +2469,12 @@ static int nesting=0;
   delete_consttable(&arrayszlst);     /* clear list of array sizes */
   delete_consttable(&taglst);   /* clear list of parameter tags */
 
-  /* maintain max. amount of memory used */
-  {
+  /* maintain max. amount of memory used
+   * "curfunc" should always be valid, since expression statements (like a
+   * function call) may not occur outside functions; in the case of syntax
+   * errors, however, the compiler may arrive through this function
+   */
+  if (curfunc!=NULL) {
     long totalsize;
     totalsize=declared+decl_heap+1;   /* local variables & return value size,
                                        * +1 for PROC opcode */
@@ -2482,13 +2486,13 @@ static int nesting=0;
     assert(curfunc!=NULL);
     if (curfunc->x.stacksize<totalsize)
       curfunc->x.stacksize=totalsize;
-    nest_stkusage-=nargs+heapalloc+1; /* stack/heap space, +1 for argcount param */
-    /* if there is a syntax error in the script, the stack calculation is
-     * probably incorrect; but we may not allow it to drop below zero
-     */
-    if (nest_stkusage<0)
-      nest_stkusage=0;
-  }
+  } /* if */
+  nest_stkusage-=nargs+heapalloc+1;   /* stack/heap space, +1 for argcount param */
+  /* if there is a syntax error in the script, the stack calculation is
+   * probably incorrect; but we may not allow it to drop below zero
+   */
+  if (nest_stkusage<0)
+    nest_stkusage=0;
 
   /* scrap any arrays left on the heap, with the exception of the array that
    * this function has as a result (in other words, scrap all arrays on the

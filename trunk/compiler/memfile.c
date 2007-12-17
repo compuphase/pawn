@@ -2,14 +2,14 @@
  *  memory.
  *
  *  Copyright (c) faluco / http://www.amxmodx.org/, 2006
- *  Version: $Id: memfile.c 3856 2007-11-27 13:55:27Z thiadmer $
+ *  Version: $Id: memfile.c 3860 2007-12-04 11:49:34Z thiadmer $
  */
 
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>
-#include "sc.h"
 #include "memfile.h"
+#include "sc.h"
 #if defined FORTIFY
   #include <alloc/fortify.h>
 #endif
