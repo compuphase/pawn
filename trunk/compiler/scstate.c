@@ -43,7 +43,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: scstate.c 3856 2007-11-27 13:55:27Z thiadmer $
+ *  Version: $Id: scstate.c 3873 2007-12-17 15:42:10Z thiadmer $
  */
 #include <assert.h>
 #include <limits.h>
@@ -205,7 +205,7 @@ SC_FUNC void state_buildlist(int **list,int *listsize,int *count,int stateid)
   } /* if */
 
   /* find the insertion point (the list has to stay sorted) */
-  for (idx=0; idx<*count && *list[idx]<stateid; idx++)
+  for (idx=0; idx<*count && (*list)[idx]<stateid; idx++)
     /* nothing */;
   if (idx<*count)
     memmove(&(*list)[idx+1],&(*list)[idx],(int)((*count-idx+1)*sizeof(int)));

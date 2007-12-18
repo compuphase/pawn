@@ -18,12 +18,12 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: amxtime.c 3856 2007-11-27 13:55:27Z thiadmer $
+ *  Version: $Id: amxtime.c 3873 2007-12-17 15:42:10Z thiadmer $
  */
 #include <time.h>
 #include <assert.h>
 #include "amx.h"
-#if defined __WIN32__ || defined _WIN32
+#if defined __WIN32__ || defined _WIN32 || defined _Windows
   #include <windows.h>
   #include <mmsystem.h>
 #endif
@@ -348,7 +348,7 @@ static cell AMX_NATIVE_CALL n_gettimer(AMX *amx, const cell *params)
 /* settimestamp(seconds1970) sets the date and time from a single parameter: the
  * number of seconds since 1 January 1970.
  */
-static cell n_settimestamp(AMX *amx, const cell *params)
+static cell AMX_NATIVE_CALL n_settimestamp(AMX *amx, const cell *params)
 {
   #if defined __WIN32__ || defined _WIN32 || defined WIN32
     int year, month, day, hour, minute, second;
@@ -372,7 +372,7 @@ static cell n_settimestamp(AMX *amx, const cell *params)
 
 /* cvttimestamp(seconds1970, &year, &month, &day, &hour, &minute, &second)
  */
-static cell n_cvttimestamp(AMX *amx, const cell *params)
+static cell AMX_NATIVE_CALL n_cvttimestamp(AMX *amx, const cell *params)
 {
   int year, month, day, hour, minute, second;
 

@@ -19,7 +19,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: sc5.c 3872 2007-12-17 12:14:36Z thiadmer $
+ *  Version: $Id: sc5.c 3873 2007-12-17 15:42:10Z thiadmer $
  */
 #include <assert.h>
 #if defined	__WIN32__ || defined _WIN32 || defined __MSDOS__
@@ -102,8 +102,11 @@ static short lastfile;
   if (number>=200) {
     int index=(number-200)/8;
     int mask=1 << ((number-200)%8);
-    if ((warndisable[index] & mask)!=0)
+    if ((warndisable[index] & mask)!=0) {
+      errline=-1;
+      errfile=-1;
       return 0;
+    } /* if */
   } /* if */
 
   if (number<100){

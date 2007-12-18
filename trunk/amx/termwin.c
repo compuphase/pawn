@@ -18,7 +18,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: termwin.c 3860 2007-12-04 11:49:34Z thiadmer $
+ *  Version: $Id: termwin.c 3873 2007-12-17 15:42:10Z thiadmer $
  */
 
 #if defined _UNICODE || defined __UNICODE__ || defined UNICODE
@@ -498,14 +498,16 @@ long CALLBACK EXPORT ConsoleFunc(HWND hwnd,unsigned message,WPARAM wParam,
       if (con->winlines<con->lines)
         rect.right+=GetSystemMetrics(SM_CXVSCROLL);
       ClampToScreen(&rect);
-      SetWindowPos(hwnd,NULL,rect.left,rect.top,rect.right-rect.left,rect.bottom-rect.top,
-                   SWP_NOZORDER);
+      SetWindowPos(hwnd,NULL,rect.left,rect.top,rect.right-rect.left,rect.bottom-rect.top,0);
     } /* if */
     break;
 
   case WM_DESTROY:
     if ((con=Hwnd2Console(hwnd))!=NULL)
       DoDeleteConsole(con);
+    /* if there are no consoles left, abort the program */
+    if (consoleroot.next==NULL)
+      ExitProcess(0);
     break;
 
   case WM_GETMINMAXINFO:
@@ -864,6 +866,18 @@ int amx_putchar(int c)
           con->buffer[pos]=__T(' ');
           con->buffer[pos+1]=con->attrib;
         } /* if */
+      } else if (c==__T('\t')) {
+        while (con->csrx % 8!=0 && con->csrx<con->columns) {
+          con->buffer[pos]=' ';
+          con->buffer[pos+1]=con->attrib;
+          con->csrx+=1;
+          if (con->csrx>=con->columns && con->autowrap) {
+            con->csrx=0;
+            con->csry++;
+            if (con->csry>=con->lines)
+              ScrollScreen(con,0,1);
+          } /* if */
+        } /* while */
       } else {
         con->buffer[pos]=(TCHAR)c;
         con->buffer[pos+1]=con->attrib;

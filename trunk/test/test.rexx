@@ -1492,7 +1492,7 @@ test117:
   say ''
   say '     Declaring a partial cell size for an array, e.g.: Array[0.5]'
   say ''
-  say 'Symptoms of detected bug: no error message; the compiler created a huge literal.'
+  say 'Symptoms of detected bug: no error message; the compiler created a huge literal'
   say 'pool for the array.'
   say '-----'
   pawncc ' PARTIAL_ARRAY_SIZE= test2'
@@ -1510,3 +1510,27 @@ test118:
   pawncc ' COUNT_ARRAY_SIZE= test2'
   pawnrun ' test2.amx'
   return
+
+test119:
+  say '119. The following test should issue error 054 (unmatched closing brace).'
+  say ''
+  say '     Unbalanced braces terminate a function in the middle.'
+  say ''
+  say 'Symptoms of detected bug: an assertion in the maintenance of the stack usage'
+  say 'of the function.'
+  say '-----'
+  pawncc ' UNBALANCED_BRACES= test2'
+  return
+
+test120:
+  say '120. The following test should issue warning 203 (unused symbol) and report it'
+  say '     in the file "menu.inc" (not in "test2.p").'
+  say ''
+  say '     An unused variable is declared in an include file; the error message'
+  say '     should report the correct filename and line number.'
+  say ''
+  say 'Symptoms of detected bug: the filename reported was the main file.'
+  say '-----'
+  pawncc ' DECLARATION_POSITION= test2'
+  return
+

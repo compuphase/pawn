@@ -17,10 +17,15 @@ AppIcon ICON "../bin/pawn.ico"
 #define REVISION             3
 #define BUILD                SVN_REV
 #define VERSIONSTR           "3.3." SVN_REVSTR "\0"
-#if defined STAND_ALONE
+#if defined PAWNCC
 #define VERSIONNAME          "pawncc.exe\0"
 #define VERSIONDESCRIPTION   "Pawn Compiler\0"
 #define VERSIONPRODUCTNAME   "pawncc\0"
+#elif defined PAWNRUN
+#define VERSIONNAME          "pawnrun.exe\0"
+#define VERSIONDESCRIPTION   "Pawn run-time\0"
+#define VERSIONPRODUCTNAME   "pawnrun\0"
+#endif
 #else
 #define VERSIONNAME          "libpawnc.dll\0"
 #define VERSIONDESCRIPTION   "Pawn Compiler library\0"

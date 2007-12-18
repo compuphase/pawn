@@ -20,7 +20,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: sc1.c 3872 2007-12-17 12:14:36Z thiadmer $
+ *  Version: $Id: sc1.c 3875 2007-12-17 18:09:23Z thiadmer $
  */
 #include <assert.h>
 #include <ctype.h>
@@ -33,11 +33,6 @@
 #if defined	__WIN32__ || defined _WIN32 || defined __MSDOS__
   #include <conio.h>
   #include <io.h>
-#endif
-
-#if defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__
-  #include <sclinux.h>
-  #include <binreloc.h> /* from BinReloc, see www.autopackage.org */
 #endif
 
 #if defined FORTIFY
@@ -67,6 +62,11 @@
 
 #include "lstring.h"
 #include "sc.h"
+#if defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__
+  #include <sclinux.h>
+  #include <binreloc.h> /* from BinReloc, see www.autopackage.org */
+#endif
+
 #include "svnrev.h"
 #define VERSION_STR "3.3." SVN_REVSTR
 #define VERSION_INT 0x0303
