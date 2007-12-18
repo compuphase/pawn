@@ -1,6 +1,16 @@
 #include <core>
 #include <console>
 
+
+
+#if defined ASSERT_LINENO
+/* NOTE: make sure the function heading of ispacked stays at line 10, see
+ *       test 3 in TEST.BAT (and ASSERT_LINENO below)
+ */
+bool: ispacked(string[])        /* line 10 */
+    return bool: (string[0] > charmax);
+#endif
+
 #if defined PARTIAL_ARRAY_SIZE
   #include <float>
   new Array[0.5]
@@ -13,14 +23,13 @@
         }
 #endif
 
-#if defined ASSERT_LINENO
-/* NOTE: make sure the function heading of ispacked stays at line 10, see
- *       test 3 in TEST.BAT (and ASSERT_LINENO below)
- */
-bool: ispacked(string[])        /* line 10 */
-    return bool: (string[0] > charmax);
+#if defined DECLARATION_POSITION
+  #include "menu.inc"
 #endif
 
+#if defined UNBALANCED_BRACES
+  native clam();
+#endif
 
 #if defined REFERENCE_ARG
 func(&va)
@@ -290,5 +299,19 @@ main()
     #if defined COUNT_ARRAY_SIZE
         printf !"size: %d x %d\n", sizeof Array, sizeof Array[]
         Array[0][0] = 0     /* only to avoid a "symbol not used" warning */
+    #endif
+
+    #if defined DECLARATION_POSITION
+        printf "hello...\n"
+    #endif
+
+    #if defined UNBALANCED_BRACES
+        new b=1, c=0
+    	if (b)
+    	{
+    	} else if (c)
+    		clam();
+    	}
+    	new e = clam();
     #endif
     }

@@ -18,7 +18,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: amxargs.c 3853 2007-11-26 13:59:01Z thiadmer $
+ *  Version: $Id: amxargs.c 3875 2007-12-17 18:09:23Z thiadmer $
  */
 #if defined _UNICODE || defined __UNICODE__ || defined UNICODE
 # if !defined UNICODE   /* for Windows */
@@ -92,7 +92,7 @@ static const TCHAR *rawcmdline(void)
   #if defined __WIN32__ || defined _WIN32 || defined WIN32
   #elif defined _Windows || defined __MSDOS__
     static char cmdbuffer[128];   /* DOS & Windows 3.1 are never in Unicode mode */
-  #elif defined LINUX
+  #elif defined __LINUX__
     static char cmdbuffer[1024];  /* some arbitrary maximum */
   #endif
   const TCHAR *ptr;
@@ -115,7 +115,7 @@ static const TCHAR *rawcmdline(void)
       if ((cmd == strchr(cmdbuffer, '\r')) != NULL)
         *cmd = '\0';    /* also erase \r after the last option (if any) */
       cmdline = cmdbuffer;
-    #elif defined LINUX
+    #elif defined __LINUX__
       /* Options in /proc/<pid>/cmdline are delimited with '\0' characters
        * rather than spaces.
        */

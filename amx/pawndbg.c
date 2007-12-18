@@ -33,7 +33,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: pawndbg.c 3856 2007-11-27 13:55:27Z thiadmer $
+ *  Version: $Id: pawndbg.c 3873 2007-12-17 15:42:10Z thiadmer $
  *
  *
  *  Command line options:
@@ -428,10 +428,12 @@ static void term_open(int columns,int lines)
     amx_printf("\033)0");                  /* select graphics codes for set G1 */
   #endif
   #if defined WIN32_CONSOLE
-    #define ENABLE_INSERT_MODE      0x0020
-    #define ENABLE_QUICK_EDIT_MODE  0x0040
-    #define ENABLE_EXTENDED_FLAGS   0x0080
-    #define ENABLE_AUTO_POSITION    0x0100
+    #if !defined ENABLE_INSERT_MODE || !defined ENABLE_QUICK_EDIT_MODE
+      #define ENABLE_INSERT_MODE      0x0020
+      #define ENABLE_QUICK_EDIT_MODE  0x0040
+      #define ENABLE_EXTENDED_FLAGS   0x0080
+      #define ENABLE_AUTO_POSITION    0x0100
+    #endif
     win32_getscreensize(&screencolumns,&screenlines);
     screenlines--;      /* keep last line empty */
     SetConsoleMode(GetStdHandle(STD_OUTPUT_HANDLE),

@@ -37,7 +37,7 @@ native Float:floatmul(Float:oper1, Float:oper2);
 
 /**************************************************/
 /* Divide the dividend float by the divisor float */
-native Float:floatdiv(Float:dividend, Float:divisor);
+native Float:floatdiv(Float:oper1, Float:oper2);
 
 /**************************************************/
 /* Add two floats together */

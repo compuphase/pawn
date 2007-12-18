@@ -20,9 +20,10 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: amxdgram.c 3845 2007-11-16 14:41:29Z thiadmer $
+ *  Version: $Id: amxdgram.c 3873 2007-12-17 15:42:10Z thiadmer $
  */
 #include <assert.h>
+#include <ctype.h>
 #include <stdio.h>
 #include <string.h>
 #include "osdefs.h"
