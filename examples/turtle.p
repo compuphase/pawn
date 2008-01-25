@@ -21,6 +21,6 @@
 moveturtle(x, y)
     {
     gotoxy x, y
-    print '*'
+    print "*"
     gotoxy x, y
     }

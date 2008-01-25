@@ -1,6 +1,6 @@
 /* Text file I/O module for the Pawn Abstract Machine
  *
- *  Copyright (c) ITB CompuPhase, 2003-2007
+ *  Copyright (c) ITB CompuPhase, 2003-2008
  *
  *  This software is provided "as-is", without any express or implied warranty.
  *  In no event will the authors be held liable for any damages arising from
@@ -18,7 +18,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: amxfile.c 3845 2007-11-16 14:41:29Z thiadmer $
+ *  Version: $Id: amxfile.c 3902 2008-01-23 17:40:01Z thiadmer $
  */
 #if defined _UNICODE || defined __UNICODE__ || defined UNICODE
 # if !defined UNICODE   /* for Windows */

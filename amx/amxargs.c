@@ -1,6 +1,6 @@
 /*  Script Arguments support module for the Pawn Abstract Machine
  *
- *  Copyright (c) ITB CompuPhase, 2005-2007
+ *  Copyright (c) ITB CompuPhase, 2005-2008
  *
  *  This software is provided "as-is", without any express or implied warranty.
  *  In no event will the authors be held liable for any damages arising from
@@ -18,7 +18,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: amxargs.c 3875 2007-12-17 18:09:23Z thiadmer $
+ *  Version: $Id: amxargs.c 3902 2008-01-23 17:40:01Z thiadmer $
  */
 #if defined _UNICODE || defined __UNICODE__ || defined UNICODE
 # if !defined UNICODE   /* for Windows */

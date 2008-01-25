@@ -2,7 +2,7 @@
  *
  *  A "glue file" for building the Pawn compiler as a DLL or shared library.
  *
- *  Copyright (c) ITB CompuPhase, 2000-2007
+ *  Copyright (c) ITB CompuPhase, 2000-2008
  *
  *  This software is provided "as-is", without any express or implied warranty.
  *  In no event will the authors be held liable for any damages arising from
@@ -20,7 +20,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: libpawnc.c 3612 2006-07-22 09:59:46Z thiadmer $
+ *  Version: $Id: libpawnc.c 3902 2008-01-23 17:40:01Z thiadmer $
  */
 #include <assert.h>
 #include <stdio.h>

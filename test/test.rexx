@@ -6,7 +6,7 @@
  *   bcc32 -w -w-amb -tWD -DAMXEXPORT="__stdcall _export" -DAMX_NATIVE_CALL=__stdcall amxfile.c amx.c
  *   bcc32 -w -w-amb -tWD -DAMXEXPORT="__stdcall _export" -DAMX_NATIVE_CALL=__stdcall -DAMX_NOSTRFMT amxstring.c amx.c
  * Create PAWNRUN with:
- *   bcc32 -w -DFLOATPOINT;FIXEDPOINT -DAMX_NATIVE_CALL=__stdcall -DAMXDBG pawnrun.c amx.c amxcore.c amxcons.c amxdbg.c
+ *   bcc32 -w -DFLOATPOINT;FIXEDPOINT -DPAWN_DLL -DAMXDBG pawnrun.c amx.c amxcore.c amxcons.c amxdbg.c
  */
 
 say 'This REXX file does several tests on the compiler and the abstract machine.'
@@ -1532,5 +1532,16 @@ test120:
   say 'Symptoms of detected bug: the filename reported was the main file.'
   say '-----'
   pawncc ' DECLARATION_POSITION= test2'
+  return
+
+test121:
+  say '121. The following test should compile successfully.'
+  say ''
+  say '     Native function returning a (packed) array.'
+  say ''
+  say 'Symptoms of detected bug: assertion failures in the compiler.'
+  say '-----'
+  pawncc ' NATIVE_RET_ARRAY= test2'
+  /*??? should also run this example, but need a native function that returns an array */
   return
 

@@ -7,7 +7,7 @@
  *
  *  Copyright R. Cain, 1980
  *  Copyright J.E. Hendrix, 1982, 1983
- *  Copyright ITB CompuPhase, 1997-2007
+ *  Copyright ITB CompuPhase, 1997-2008
  *
  *  This software is provided "as-is", without any express or implied warranty.
  *  In no event will the authors be held liable for any damages arising from
@@ -25,7 +25,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: sc.h 3872 2007-12-17 12:14:36Z thiadmer $
+ *  Version: $Id: sc.h 3902 2008-01-23 17:40:01Z thiadmer $
  */
 #ifndef SC_H_INCLUDED
 #define SC_H_INCLUDED
@@ -232,6 +232,7 @@ typedef struct s_symbol {
 #define uENUMFIELD 0x040
 #define uMISSING  0x080
 #define uFORWARD  0x100
+#define uVISITED  0x200 /* temporary flag, to mark fields as "visited" in recursive loops */
 /* uRETNONE is not stored in the "usage" field of a symbol. It is
  * used during parsing a function, to detect a mix of "return;" and
  * "return value;" in a few special cases.

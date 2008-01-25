@@ -2,7 +2,7 @@
  *
  *  Global (cross-module) variables.
  *
- *  Copyright (c) ITB CompuPhase, 1997-2007
+ *  Copyright (c) ITB CompuPhase, 1997-2008
  *
  *  This software is provided "as-is", without any express or implied warranty.
  *  In no event will the authors be held liable for any damages arising from
@@ -20,7 +20,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: scvars.c 3821 2007-10-15 16:54:20Z thiadmer $
+ *  Version: $Id: scvars.c 3902 2008-01-23 17:40:01Z thiadmer $
  */
 #include <stdio.h>
 #include <stdlib.h>     /* for _MAX_PATH */

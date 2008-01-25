@@ -1,7 +1,7 @@
 /*  Pawn compiler - Error message system
  *  In fact a very simple system, using only 'panic mode'.
  *
- *  Copyright (c) ITB CompuPhase, 1997-2007
+ *  Copyright (c) ITB CompuPhase, 1997-2008
  *
  *  This software is provided "as-is", without any express or implied warranty.
  *  In no event will the authors be held liable for any damages arising from
@@ -19,7 +19,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: sc5.c 3873 2007-12-17 15:42:10Z thiadmer $
+ *  Version: $Id: sc5.c 3902 2008-01-23 17:40:01Z thiadmer $
  */
 #include <assert.h>
 #if defined	__WIN32__ || defined _WIN32 || defined __MSDOS__
@@ -65,7 +65,7 @@ static int errline;     /* forced line number for the error message */
  *
  *  Outputs an error message (note: msg is passed optionally).
  *  If an error is found, the variable "errflag" is set and subsequent
- *  errors are ignored until lex() finds a semicolumn or a keyword
+ *  errors are ignored until lex() finds a semicolon or a keyword
  *  (lex() resets "errflag" in that case).
  *
  *  Global references: inpfname   (reffered to only)

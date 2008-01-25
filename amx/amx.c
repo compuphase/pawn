@@ -1,6 +1,6 @@
 /*  Pawn Abstract Machine (for the Pawn language)
  *
- *  Copyright (c) ITB CompuPhase, 1997-2007
+ *  Copyright (c) ITB CompuPhase, 1997-2008
  *
  *  This software is provided "as-is", without any express or implied warranty.
  *  In no event will the authors be held liable for any damages arising from
@@ -18,7 +18,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: amx.c 3875 2007-12-17 18:09:23Z thiadmer $
+ *  Version: $Id: amx.c 3903 2008-01-25 16:28:56Z thiadmer $
  */
 
 #if BUILD_PLATFORM == WINDOWS && BUILD_TYPE == RELEASE && BUILD_COMPILER == MSVC && PAWN_CELL_SIZE == 64
@@ -4677,6 +4677,7 @@ int AMXAPI amx_Exec(AMX *amx, cell *retval, int index)
         if (num==AMX_ERR_SLEEP) {
           amx->pri=pri;
           amx->alt=alt;
+          amx->stk=stk;
           amx->reset_stk=reset_stk;
           amx->reset_hea=reset_hea;
           return num;
@@ -5084,6 +5085,7 @@ int AMXAPI amx_Exec(AMX *amx, cell *retval, int index)
         if (amx->error==AMX_ERR_SLEEP) {
           amx->pri=pri;
           amx->alt=alt;
+          amx->stk=stk;
           amx->reset_stk=reset_stk;
           amx->reset_hea=reset_hea;
           return AMX_ERR_SLEEP;

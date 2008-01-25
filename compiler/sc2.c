@@ -1,6 +1,6 @@
 /*  Pawn compiler - File input, preprocessing and lexical analysis functions
  *
- *  Copyright (c) ITB CompuPhase, 1997-2007
+ *  Copyright (c) ITB CompuPhase, 1997-2008
  *
  *  This software is provided "as-is", without any express or implied warranty.
  *  In no event will the authors be held liable for any damages arising from
@@ -18,7 +18,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: sc2.c 3872 2007-12-17 12:14:36Z thiadmer $
+ *  Version: $Id: sc2.c 3902 2008-01-23 17:40:01Z thiadmer $
  */
 #include <assert.h>
 #include <stdio.h>
@@ -1965,7 +1965,7 @@ SC_FUNC int lex(cell *lexvalue,char **lexsym)
         error(27);      /* invalid character constant (must be one character) */
       } /* if */
     } /* if */
-  } else if (*lptr==';') {      /* semicolumn resets "error" flag */
+  } else if (*lptr==';') {      /* semicolon resets "error" flag */
     _lextok=';';
     lptr+=1;
     errorset(sRESET,0); /* reset error flag (clear the "panic mode")*/
@@ -2417,16 +2417,23 @@ SC_FUNC void delete_symbol(symbol *root,symbol *sym)
 
 SC_FUNC void delete_symbols(symbol *root,int level,int delete_labels,int delete_functions)
 {
-  symbol *sym,*parent_sym;
+  symbol *base;
+  symbol *sym,*parent_sym,*child_sym;
   statelist *stateptr;
   int mustdelete;
 
   /* erase only the symbols with a deeper nesting level than the
-   * specified nesting level */
-  while (root->next!=NULL) {
-    sym=root->next;
+   * specified nesting level
+   */
+  base=root;
+  while (base->next!=NULL) {
+    sym=base->next;
     if (sym->compound<level)
       break;
+    if ((sym->usage & uVISITED)!=0) {
+      base=sym;                 /* skip the symbol */
+      continue;
+    } /* if */
     switch (sym->ident) {
     case iLABEL:
       mustdelete=delete_labels;
@@ -2472,8 +2479,20 @@ SC_FUNC void delete_symbols(symbol *root,int level,int delete_labels,int delete_
       break;
     } /* switch */
     if (mustdelete) {
-      root->next=sym->next;
-      free_symbol(sym);
+      /* first delete children, if any */
+      int count=0;
+      while ((child_sym=finddepend(sym))!=NULL) {
+        delete_symbol(root,child_sym);
+        count++;
+      } /* while */
+      if (count==0) {
+        base->next=sym->next;
+        free_symbol(sym);
+      } else {
+        /* chain has changed */
+        delete_symbol(root,sym);
+        base=root;      /* restart */
+      } /* if */
     } else {
       /* if the function was prototyped, but not implemented in this source,
        * mark it as such, so that its use can be flagged
@@ -2491,9 +2510,15 @@ SC_FUNC void delete_symbols(symbol *root,int level,int delete_labels,int delete_
        */
       if (sym->ident==iFUNCTN && !alpha(*sym->name))
         sym->usage &= ~uPROTOTYPED;
-      root=sym;                 /* skip the symbol */
+      /* mark the symbol as "visited", so we won't process it twice */
+      sym->usage |= uVISITED;
+      base=sym;                 /* skip the symbol */
     } /* if */
   } /* if */
+
+  /* go through the symbols again to erase any "visited" marks */
+  for (sym=root->next; sym!=NULL; sym=sym->next)
+    sym->usage &= ~uVISITED;
 }
 
 /* The purpose of the hash is to reduce the frequency of a "name"
@@ -2745,7 +2770,7 @@ SC_FUNC symbol *addvariable(const char *name,cell addr,int ident,int vclass,int 
    * the symbol without states if no symbol with states exists).
    */
   assert(vclass!=sGLOBAL || (sym=findglb(name,sGLOBAL))==NULL || (sym->usage & uDEFINE)==0
-         || sym->ident==iFUNCTN && sym==curfunc
+         || sym->ident==iFUNCTN && (sym==curfunc || (sym->usage & uNATIVE)!=0)
          || sym->states==NULL && sc_curstates>0);
 
   if (ident==iARRAY || ident==iREFARRAY) {
