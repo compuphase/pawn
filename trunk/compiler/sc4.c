@@ -1,6 +1,6 @@
 /*  Pawn compiler - code generation (unoptimized "assembler" code)
  *
- *  Copyright (c) ITB CompuPhase, 1997-2007
+ *  Copyright (c) ITB CompuPhase, 1997-2008
  *
  *  This software is provided "as-is", without any express or implied warranty.
  *  In no event will the authors be held liable for any damages arising from
@@ -18,7 +18,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: sc4.c 3830 2007-10-19 15:03:32Z thiadmer $
+ *  Version: $Id: sc4.c 3902 2008-01-23 17:40:01Z thiadmer $
  */
 #include <assert.h>
 #include <ctype.h>

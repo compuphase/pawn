@@ -15,7 +15,7 @@
  *  - ability to do remote debugging over an RS232 connection
  *
  *
- *  Copyright (c) ITB CompuPhase, 1998-2007
+ *  Copyright (c) ITB CompuPhase, 1998-2008
  *
  *  This software is provided "as-is", without any express or implied warranty.
  *  In no event will the authors be held liable for any damages arising from
@@ -33,7 +33,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: pawndbg.c 3873 2007-12-17 15:42:10Z thiadmer $
+ *  Version: $Id: pawndbg.c 3902 2008-01-23 17:40:01Z thiadmer $
  *
  *
  *  Command line options:

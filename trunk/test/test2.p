@@ -101,6 +101,10 @@ native RegPublicFunction(ParameterCount, ...);
         }
 #endif
 
+#if defined NATIVE_RET_ARRAY
+    native [1]netsocket(value);
+#endif
+
 main()
     {
     #if defined ASSERT_LINENO
@@ -313,5 +317,11 @@ main()
     		clam();
     	}
     	new e = clam();
+    #endif
+
+    #if defined NATIVE_RET_ARRAY
+        new addr[4 char]
+        addr = netsocket(25)
+        print addr
     #endif
     }

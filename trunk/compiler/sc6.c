@@ -1,6 +1,6 @@
 /*  Pawn compiler - Binary code generation (the "assembler")
  *
- *  Copyright (c) ITB CompuPhase, 1997-2007
+ *  Copyright (c) ITB CompuPhase, 1997-2008
  *
  *  This software is provided "as-is", without any express or implied warranty.
  *  In no event will the authors be held liable for any damages arising from
@@ -18,7 +18,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: sc6.c 3872 2007-12-17 12:14:36Z thiadmer $
+ *  Version: $Id: sc6.c 3902 2008-01-23 17:40:01Z thiadmer $
  */
 #include <assert.h>
 #include <stdio.h>

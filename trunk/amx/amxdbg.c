@@ -2,7 +2,7 @@
  *
  *  Support functions for debugger applications
  *
- *  Copyright (c) ITB CompuPhase, 2005-2007
+ *  Copyright (c) ITB CompuPhase, 2005-2008
  *
  *  This software is provided "as-is", without any express or implied warranty.
  *  In no event will the authors be held liable for any damages arising from
@@ -20,7 +20,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: amxdbg.c 3856 2007-11-27 13:55:27Z thiadmer $
+ *  Version: $Id: amxdbg.c 3902 2008-01-23 17:40:01Z thiadmer $
  */
 #include <assert.h>
 #include <stdio.h>

@@ -2,7 +2,7 @@
  *
  *  Function and variable definition and declaration, statement parser.
  *
- *  Copyright (c) ITB CompuPhase, 1997-2007
+ *  Copyright (c) ITB CompuPhase, 1997-2008
  *
  *  This software is provided "as-is", without any express or implied warranty.
  *  In no event will the authors be held liable for any damages arising from
@@ -20,7 +20,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: sc1.c 3875 2007-12-17 18:09:23Z thiadmer $
+ *  Version: $Id: sc1.c 3902 2008-01-23 17:40:01Z thiadmer $
  */
 #include <assert.h>
 #include <ctype.h>
@@ -1399,7 +1399,7 @@ static void setconfig(char *root)
 
 static void setcaption(void)
 {
-  pc_printf("Pawn compiler %-25s Copyright (c) 1997-2007, ITB CompuPhase\n\n",VERSION_STR);
+  pc_printf("Pawn compiler %-25s Copyright (c) 1997-2008, ITB CompuPhase\n\n",VERSION_STR);
 }
 
 static void about(void)
@@ -2144,7 +2144,7 @@ static void declglb(char *firstname,int firsttag,int fpublic,int fstatic,int fst
       glb_declared+=glb_incr;   /* add total number of cells (if added to the end) */
     } /* if */
   } while (matchtoken(',')); /* enddo */   /* more? */
-  needtoken(tTERM);    /* if not comma, must be semicolumn */
+  needtoken(tTERM);    /* if not comma, must be semicolon */
 }
 
 /*  declloc     - declare local symbols
@@ -2320,7 +2320,7 @@ static int declloc(int fstatic)
       } /* if */
     } /* if */
   } while (matchtoken(',')); /* enddo */   /* more? */
-  needtoken(tTERM);    /* if not comma, must be semicolumn */
+  needtoken(tTERM);    /* if not comma, must be semicolon */
   return ident;
 }
 
@@ -3196,6 +3196,7 @@ static int operatoradjust(int opertok,symbol *sym,char *opername,int resulttag)
       error(21,errname);        /* symbol already defined */
     } /* if */
     sym->usage|=oldsym->usage;  /* copy flags from the previous definition */
+    sym->index=oldsym->index;	/* copy overlay index */
     for (i=0; i<oldsym->numrefers; i++)
       if (oldsym->refer[i]!=NULL)
         refer_symbol(sym,oldsym->refer[i]);
@@ -3442,7 +3443,7 @@ static void funcstub(int fnative)
   /* attach the array to the function symbol */
   if (numdim>0) {
     assert(sym!=NULL);
-    sub=addvariable(symbolname,0,iARRAY,sGLOBAL,tag,dim,numdim,idxtag);
+    sub=addvariable(symbolname,0,iREFARRAY,sGLOBAL,tag,dim,numdim,idxtag);
     sub->parent=sym;
   } /* if */
 
@@ -3560,7 +3561,7 @@ static int newfunc(char *firstname,int firsttag,int fpublic,int fstatic,int stoc
   if (matchtoken(';')) {
     sym->usage|=uFORWARD;
     if (!sc_needsemicolon)
-      error(218);       /* old style prototypes used with optional semicolumns */
+      error(218);       /* old style prototypes used with optional semicolons */
     delete_symbols(&loctab,0,TRUE,TRUE);  /* prototype is done; forget everything */
     return TRUE;
   } /* if */
