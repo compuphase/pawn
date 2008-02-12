@@ -473,6 +473,7 @@ static cell checkarrays(value *lval1,value *lval2)
   assert(lval1!=NULL);
   assert(lval2!=NULL);
   assert(IS_STD_ARRAY(*lval1) || IS_ENUM_ARRAY(*lval1));
+  assert(lval1->sym!=NULL);
   assert(lval1->sym->name!=NULL);
 
   ltlength=(int)lval1->sym->dim.array.length;
@@ -1109,7 +1110,27 @@ static int hier14(value *lval1)
       error(6);         /* must be assigned to an array */
   } /* if */
   if (leftarray) {
-    memcopy(val*sizeof(cell));
+    /* If the arrays are single-dimensional, we can simply copy the data; if
+     * both arrays are at their roots (like "a = b", where "a" and "b" are
+     * arrays), a copy of the full array (including the indirection vectors)
+     * can also be done. However, when doing somthing like "a[2] = b" where
+     * "b" is two-dimensional, we need to be caureful about the indirection
+     * vectors in "a": we cannot copy the indirection vector of "b", because
+     * the corresponding one of "a" is at a different offset.
+     */
+    assert(lval3.sym!=NULL);
+    if (lval3.sym->dim.array.level==0
+        || (lval2.sym!=NULL && lval3.sym->parent==NULL && lval2.sym->parent==NULL))
+    {
+      memcopy(val*sizeof(cell));
+    } else {
+      symbol *subsym=finddepend(lval3.sym);
+      assert(subsym!=NULL);
+      copyarray2d(lval3.sym->dim.array.length,subsym->dim.array.length);
+      #if sDIMEN_MAX > 3
+        #error Copying partial arrays with more than 2 dimensions is not yet implemented
+      #endif
+    } /* if */
   } else {
     check_userop(NULL,lval2.tag,lval3.tag,2,&lval3,&lval2.tag);
     store(&lval3);      /* now, store the expression result */

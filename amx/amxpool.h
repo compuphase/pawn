@@ -28,5 +28,6 @@ void  amx_poolinit(void *pool, unsigned size);
 void *amx_poolalloc(unsigned size, int index);
 void  amx_poolfree(void *block);
 void *amx_poolfind(int index);
+int   amx_poolprotect(int index);
 
 #endif /* AMXALLOC_H_INCLUDED */

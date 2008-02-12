@@ -663,13 +663,11 @@ OP_PUSH_ALT:
         NEXT
 
 
-OP_PUSH_R_PRI:
-        mov     ebp,[esi+4]
+OP_PICK:
+        mov     eax,[esi+4]
         add     esi,8
-    push_loop:
-        _PUSH   eax
-        dec     ebp
-        jnz     short push_loop
+        add     eax,ecx
+        mov     eax,[edi+eax]
         NEXT
 
 
@@ -2633,7 +2631,7 @@ _amx_opcodelist DD OP_INVALID
         DD      OP_XCHG
         DD      OP_PUSH_PRI
         DD      OP_PUSH_ALT
-        DD      OP_PUSH_R_PRI   ; obsolete
+        DD      OP_PICK
         DD      OP_PUSH_C
         DD      OP_PUSH
         DD      OP_PUSH_S

@@ -625,7 +625,7 @@ SC_FUNC void store(value *lval);
 SC_FUNC void loadreg(cell address,regid reg);
 SC_FUNC void storereg(cell address,regid reg);
 SC_FUNC void memcopy(cell size);
-SC_FUNC void copyarray(symbol *sym,cell size);
+SC_FUNC void copyarray2d(int majordim,int minordim);
 SC_FUNC void fillarray(symbol *sym,cell size,cell value);
 SC_FUNC void ldconst(cell val,regid reg);
 SC_FUNC void moveto1(void);

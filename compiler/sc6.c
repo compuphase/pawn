@@ -616,6 +616,7 @@ static OPCODE opcodelist[] = {
   {134, "nop",        sIN_CSEG, parm0 },        /* version 6 */
   { 84, "not",        sIN_CSEG, parm0 },
   { 82, "or",         sIN_CSEG, parm0 },
+  { 38, "pick",       sIN_CSEG, parm1 },        /* version 10 */
   { 43, "pop.alt",    sIN_CSEG, parm0 },
   { 42, "pop.pri",    sIN_CSEG, parm0 },
   { 46, "proc",       sIN_CSEG, parm0 },
@@ -628,7 +629,6 @@ static OPCODE opcodelist[] = {
   {188, "push.p.c",   sIN_CSEG, parm1_p },
   {190, "push.p.s",   sIN_CSEG, parm1_p },
   { 36, "push.pri",   sIN_CSEG, parm0 },
-/*{ 38, "push.r",     sIN_CSEG, parm1 },  obsolete (never generated) */
   { 41, "push.s",     sIN_CSEG, parm1 },
   {139, "push2",      sIN_CSEG, parm2 },        /* version 9 */
   {141, "push2.adr",  sIN_CSEG, parm2 },        /* version 9 */

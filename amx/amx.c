@@ -179,7 +179,7 @@ typedef enum {
   OP_XCHG,
   OP_PUSH_PRI,
   OP_PUSH_ALT,
-  OP_PUSH_R,
+  OP_PICK,
   OP_PUSH_C,
   OP_PUSH,
   OP_PUSH_S,
@@ -841,7 +841,7 @@ static int VerifyPcode(AMX *amx)
     case OP_ALIGN_ALT:
     case OP_LCTRL:
     case OP_SCTRL:
-    case OP_PUSH_R:
+    case OP_PICK:
     case OP_PUSH_C:
     case OP_PUSH:
     case OP_PUSH_S:
@@ -2152,7 +2152,7 @@ static const void * const amx_opcodelist[] = {
         &&op_strb_i,    &&op_lidx,      &&op_lidx_b,    &&op_idxaddr,
         &&op_idxaddr_b, &&op_align_pri, &&op_align_alt, &&op_lctrl,
         &&op_sctrl,     &&op_move_pri,  &&op_move_alt,  &&op_xchg,
-        &&op_push_pri,  &&op_push_alt,  &&op_push_r,    &&op_push_c,
+        &&op_push_pri,  &&op_push_alt,  &&op_pick,      &&op_push_c,
         &&op_push,      &&op_push_s,    &&op_pop_pri,   &&op_pop_alt,
         &&op_stack,     &&op_heap,      &&op_proc,      &&op_ret,
         &&op_retn,      &&op_call,      &&op_call_pri,  &&op_jump,
@@ -2255,9 +2255,8 @@ static const void * const amx_opcodelist[] = {
     if (hdr->file_version>=10 && hdr->overlays!=hdr->nametable) {
       assert(hdr->overlays!=0);
       amx->ovl_index=(int)hdr->cip;
-      num=amx->overlay(amx,amx->ovl_index);
-      if (num!=AMX_ERR_NONE)
-        return 0;
+      if ((num=amx->overlay(amx,amx->ovl_index))!=AMX_ERR_NONE)
+        return num;
       cip=(cell*)amx->code;
     } /* if */
   } else if (index==AMX_EXEC_CONT) {
@@ -2269,6 +2268,11 @@ static const void * const amx_opcodelist[] = {
     alt=amx->alt;
     reset_stk=amx->reset_stk;
     reset_hea=amx->reset_hea;
+    if (hdr->file_version>=10 && hdr->overlays!=hdr->nametable) {
+      assert(hdr->overlays!=0);
+      if ((num=amx->overlay(amx,amx->ovl_index))!=AMX_ERR_NONE)
+        return num;
+    } /* if */
     cip=(cell *)(amx->code + (int)amx->cip);
   } else if (index<0) {
     return AMX_ERR_INDEX;
@@ -2280,9 +2284,8 @@ static const void * const amx_opcodelist[] = {
     if (hdr->file_version>=10 && hdr->overlays!=hdr->nametable) {
       assert(hdr->overlays!=0);
       amx->ovl_index=func->address;
-      num=amx->overlay(amx,amx->ovl_index);
-      if (num!=AMX_ERR_NONE)
-        return 0;
+      if ((num=amx->overlay(amx,amx->ovl_index))!=AMX_ERR_NONE)
+        return num;
       cip=(cell*)amx->code;
     } /* if */
   } /* if */
@@ -2570,10 +2573,9 @@ static const void * const amx_opcodelist[] = {
     GETPARAM(offs);
     PUSH(offs);
     NEXT(cip,op);
-  op_push_r:
+  op_pick:
     GETPARAM(offs);
-    while (offs--)
-      PUSH(pri);
+    pri=_R(data,stk+offs);
     NEXT(cip,op);
   op_push:
     GETPARAM(offs);
@@ -2639,8 +2641,7 @@ static const void * const amx_opcodelist[] = {
     PUSH((offs<<(sizeof(cell)*4)) | amx->ovl_index);
     amx->ovl_index=(int)*cip;
     assert(amx->overlay!=NULL);
-    num=amx->overlay(amx,amx->ovl_index);
-    if (num!=AMX_ERR_NONE)
+    if ((num=amx->overlay(amx,amx->ovl_index))!=AMX_ERR_NONE)
       ABORT(amx,num);
     cip=(cell*)amx->code;
     NEXT(cip,op);
@@ -2666,8 +2667,7 @@ static const void * const amx_opcodelist[] = {
     if (num>0)
       amx->ovl_index=*(cptr+1); /* case found */
     assert(amx->overlay!=NULL);
-    num=amx->overlay(amx,amx->ovl_index);
-    if (num!=AMX_ERR_NONE)
+    if ((num=amx->overlay(amx,amx->ovl_index))!=AMX_ERR_NONE)
       ABORT(amx,num);
     cip=(cell*)amx->code;
     NEXT(cip,op);
@@ -3185,6 +3185,7 @@ static const void * const amx_opcodelist[] = {
       if (num==AMX_ERR_SLEEP) {
         amx->pri=pri;
         amx->alt=alt;
+        amx->stk=stk;
         amx->reset_stk=reset_stk;
         amx->reset_hea=reset_hea;
         return num;
@@ -3592,6 +3593,7 @@ static const void * const amx_opcodelist[] = {
       if (amx->error==AMX_ERR_SLEEP) {
         amx->pri=pri;
         amx->alt=alt;
+        amx->stk=stk;
         amx->reset_stk=reset_stk;
         amx->reset_hea=reset_hea;
         return AMX_ERR_SLEEP;
@@ -3719,14 +3721,13 @@ int AMXAPI amx_Exec(AMX *amx, cell *retval, int index)
     if (hdr->file_version>=10 && hdr->overlays!=hdr->nametable) {
       assert(hdr->overlays!=0);
       amx->ovl_index=(int)hdr->cip;
-      num=amx->overlay(amx,amx->ovl_index);
-      if (num!=AMX_ERR_NONE)
-        return 0;
+      if ((num=amx->overlay(amx,amx->ovl_index))!=AMX_ERR_NONE)
+        return num;
       amx->cip=0;
       cip=(cell*)amx->code;
     } /* if */
   } else if (index==AMX_EXEC_CONT) {
-    /* all registers: pri, alt, frm, cip, hea, stk, reset_stk, reset_hea */
+    /* restore all registers: pri, alt, frm, cip, hea, stk, reset_stk, reset_hea */
     frm=amx->frm;
     stk=amx->stk;
     hea=amx->hea;
@@ -3734,6 +3735,11 @@ int AMXAPI amx_Exec(AMX *amx, cell *retval, int index)
     alt=amx->alt;
     reset_stk=amx->reset_stk;
     reset_hea=amx->reset_hea;
+    if (hdr->file_version>=10 && hdr->overlays!=hdr->nametable) {
+      assert(hdr->overlays!=0);
+      if ((num=amx->overlay(amx,amx->ovl_index))!=AMX_ERR_NONE)
+        return num;
+    } /* if */
     cip=(cell *)(amx->code+(int)amx->cip);
   } else if (index<0) {
     return AMX_ERR_INDEX;
@@ -3746,9 +3752,8 @@ int AMXAPI amx_Exec(AMX *amx, cell *retval, int index)
     if (hdr->file_version>=10 && hdr->overlays!=hdr->nametable) {
       assert(hdr->overlays!=0);
       amx->ovl_index=func->address;
-      num=amx->overlay(amx,amx->ovl_index);
-      if (num!=AMX_ERR_NONE)
-        return 0;
+      if ((num=amx->overlay(amx,amx->ovl_index))!=AMX_ERR_NONE)
+        return num;
       amx->cip=0;
       cip=(cell*)amx->code;
     } /* if */
@@ -4068,10 +4073,9 @@ int AMXAPI amx_Exec(AMX *amx, cell *retval, int index)
       GETPARAM(offs);
       PUSH(offs);
       break;
-    case OP_PUSH_R:
+    case OP_PICK:
       GETPARAM(offs);
-      while (offs--)
-        PUSH(pri);
+      pri=_R(data,stk+offs);
       break;
     case OP_PUSH:
       GETPARAM(offs);
@@ -4137,8 +4141,7 @@ int AMXAPI amx_Exec(AMX *amx, cell *retval, int index)
       PUSH((offs<<(sizeof(cell)*4)) | amx->ovl_index);
       amx->ovl_index=(int)*cip;
       assert(amx->overlay!=NULL);
-      num=amx->overlay(amx,amx->ovl_index);
-      if (num!=AMX_ERR_NONE)
+      if ((num=amx->overlay(amx,amx->ovl_index))!=AMX_ERR_NONE)
         ABORT(amx,num);
       cip=(cell*)amx->code;
       break;
@@ -4639,8 +4642,7 @@ int AMXAPI amx_Exec(AMX *amx, cell *retval, int index)
       if (num>0)
         amx->ovl_index=*(cptr+1); /* case found */
       assert(amx->overlay!=NULL);
-      num=amx->overlay(amx,amx->ovl_index);
-      if (num!=AMX_ERR_NONE)
+      if ((num=amx->overlay(amx,amx->ovl_index))!=AMX_ERR_NONE)
         ABORT(amx,num);
       cip=(cell*)amx->code;
       break;

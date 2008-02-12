@@ -180,6 +180,7 @@ int pc_printf(const char *message,...)
   va_start(argptr,message);
   ret=vprintf(message,argptr);
   va_end(argptr);
+  fflush(stdout);
 
   return ret;
 }
@@ -1715,8 +1716,10 @@ static void dumplits(void)
 }
 
 /*  dumpzero
- *
- *  Dump zero's for default initial values
+ *  Dump zero's for default initial values of elements of global arrays.
+ *  Elements of local arrays do not need to be dumped, because they are
+ *  allocated on the stack (and the stack is cleared when creating a new
+ *  variable).
  */
 static void dumpzero(int count)
 {
@@ -2313,9 +2316,12 @@ static int declloc(int fstatic)
             litidx=cur_lit;     /* reset literal table */
           } else {
             /* copy the literals to the array */
-            ldconst((cur_lit+glb_declared)*sizeof(cell),sPRI);
-            copyarray(sym,(litidx-cur_lit)*sizeof(cell));
+            ldconst((cur_lit+glb_declared)*sizeof(cell),sPRI);  /* PRI = source */
+            address(sym,sALT);                                  /* ALT = dest */
+            sym->usage &= ~uREAD; /* clear this flag that address() implicitly sets */
+            memcopy((litidx-cur_lit)*sizeof(cell));
           } /* if */
+          markusage(sym,uWRITTEN);
         } /* if */
       } /* if */
     } /* if */
