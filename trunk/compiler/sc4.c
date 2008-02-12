@@ -601,7 +601,7 @@ SC_FUNC void storereg(cell address,regid reg)
   code_idx+=opcodes(1)+opargs(1);
 }
 
-/* source must in PRI, destination address in ALT. The "size"
+/* Source must be in PRI, destination address in ALT. The "size"
  * parameter is in bytes, not cells.
  */
 SC_FUNC void memcopy(cell size)
@@ -612,31 +612,44 @@ SC_FUNC void memcopy(cell size)
   code_idx+=opcodes(1)+opargs(1);
 }
 
-/* Address of the source must already have been loaded in PRI
- * "size" is the size in bytes (not cells).
+/* Address of the source must already have been loaded in PRI, the
+ * destination address in ALT.
+ * This routine makes a loop that copies the minor dimension vector
+ * by vector.
  */
-SC_FUNC void copyarray(symbol *sym,cell size)
+SC_FUNC void copyarray2d(int majordim,int minordim)
 {
-  assert(sym!=NULL);
-  /* the symbol can be a local array, a global array, or an array
-   * that is passed by reference.
-   */
-  if (sym->ident==iREFARRAY) {
-    /* reference to an array; currently this is always a local variable */
-    assert(sym->vclass==sLOCAL);        /* symbol must be stack relative */
-    stgwrite("\tload.s.alt ");
-  } else {
-    /* a local or global array */
-    if (sym->vclass==sLOCAL)
-      stgwrite("\taddr.alt ");
-    else
-      stgwrite("\tconst.alt ");
-  } /* if */
-  outval(sym->addr,TRUE,TRUE);
-  markusage(sym,uWRITTEN);
+  int looplbl=getlabel();
 
-  code_idx+=opcodes(1)+opargs(1);
-  memcopy(size);
+  stgwrite("\tpush.alt\n");
+  stgwrite("\tpush.pri\n");
+  stgwrite("\tzero.alt\n"); /* ALT = index = 0 */
+  setlabel(looplbl);
+  stgwrite("\tpush.alt\n"); /* save index */
+  stgwrite("\tpick 8\n");   /* PRI = dest */
+  stgwrite("\txchg\n");     /* ALT = dest, PRI = index */
+  stgwrite("\tidxaddr\n");  /* PRI = dest + index * sizeof(cell) */
+  stgwrite("\tmove.alt\n"); /* ALT = dest + index * sizeof(cell) */
+  stgwrite("\tload.i\n");   /* PRI = dest[index * sizeof(cell)] */
+  stgwrite("\tadd\n");      /* PRI = dest + index * sizeof(cell) + dest[index * sizeof(cell)] */
+  stgwrite("\tpush.pri\n");
+  stgwrite("\tpick 8\n");   /* PRI = source */
+  stgwrite("\tmove.alt\n"); /* ALT = source */
+  stgwrite("\tpick 4\n");   /* PRI = index */
+  stgwrite("\tidxaddr\n");  /* PRI = source + index * sizeof(cell) */
+  stgwrite("\tmove.alt\n"); /* ALT = source + index * sizeof(cell) */
+  stgwrite("\tload.i\n");   /* PRI = source[index * sizeof(cell)] */
+  stgwrite("\tadd\n");      /* PRI = source + index * sizeof(cell) + source[index * sizeof(cell)] */
+  stgwrite("\tpop.alt\n");  /* ALT = source + index * sizeof(cell) + source[index * sizeof(cell)] */
+  stgwrite("\tmovs "); outval(minordim*sizeof(cell),TRUE,TRUE);
+  stgwrite("\tpop.alt\n");  /* ALT = saved index */
+  stgwrite("\tinc.alt\n");  /* ALT = index + 1 */
+  stgwrite("\teq.c.alt "); outval(majordim,TRUE,TRUE);
+  stgwrite("\tjzer "); outval(looplbl,TRUE,TRUE);
+  stgwrite("\tpop.pri\n");  /* restore stack & registers */
+  stgwrite("\tpop.alt\n");
+
+  code_idx+=opcodes(26)+opargs(6);
 }
 
 SC_FUNC void fillarray(symbol *sym,cell size,cell value)
@@ -659,7 +672,6 @@ SC_FUNC void fillarray(symbol *sym,cell size,cell value)
       stgwrite("\tconst.alt ");
   } /* if */
   outval(sym->addr,TRUE,TRUE);
-  markusage(sym,uWRITTEN);
 
   assert(size>0);
   stgwrite("\tfill ");
@@ -995,12 +1007,13 @@ SC_FUNC void setheap(cell value)
  */
 SC_FUNC void cell2addr(void)
 {
+  stgwrite("\tshl.c.pri ");
   #if PAWN_CELL_SIZE==16
-    stgwrite("\tshl.c.pri 1\n");
+    outval(1,TRUE,TRUE);
   #elif PAWN_CELL_SIZE==32
-    stgwrite("\tshl.c.pri 2\n");
+    outval(2,TRUE,TRUE);
   #elif PAWN_CELL_SIZE==64
-    stgwrite("\tshl.c.pri 3\n");
+    outval(3,TRUE,TRUE);
   #else
     #error Unsupported cell size
   #endif

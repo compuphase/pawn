@@ -128,7 +128,7 @@ amx_opcodelist:
     .word   .OP_XCHG
     .word   .OP_PUSH_PRI
     .word   .OP_PUSH_ALT
-    .word   .OP_PUSH_R_PRI       @ obsolete
+    .word   .OP_PICK
     .word   .OP_PUSH_C
     .word   .OP_PUSH
     .word   .OP_PUSH_S
@@ -1400,7 +1400,11 @@ amx_exec_asm:
     bne .amx_exit               @ yes -> quit
     NEXT
 
-.OP_PUSH_R_PRI:
+.OP_PICK:
+    GETPARAM r11
+    ldr r0, [r6, r11]
+    NEXT
+
 .OP_JREL:
 .OP_FILE:
 .OP_LINE:

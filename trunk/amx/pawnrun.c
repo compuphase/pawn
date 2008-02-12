@@ -1,7 +1,7 @@
 /*  Simple "run-time" for the Pawn Abstract Machine, with optional support
  *  for debugging information and overlays.
  *
- *  Copyright (c) ITB CompuPhase, 1997-2007
+ *  Copyright (c) ITB CompuPhase, 1997-2008
  *
  *  This software is provided "as-is", without any express or implied warranty.
  *  In no event will the authors be held liable for any damages arising from
@@ -62,7 +62,7 @@ static int abortflagged = 0;
 void sigabort(int sig)
 {
   /* install the debug hook procedure if this was not done already */
-  amx_SetDebugHook(global_amx, prun_Monitor);
+  amx_SetDebugHook(global_amx,prun_Monitor);
   abortflagged=1;
   signal(sig,sigabort); /* re-install the signal handler */
 }
@@ -248,7 +248,7 @@ static char *messages[] = {
       /* AMX_ERR_NATIVE    */ "Native function failed",
       /* AMX_ERR_DIVIDE    */ "Divide by zero",
       /* AMX_ERR_SLEEP     */ "(sleep mode)",
-      /* 13 */                "(reserved)",
+      /* AMX_ERR_INVSTATE  */ "Invalid state",
       /* 14 */                "(reserved)",
       /* 15 */                "(reserved)",
       /* AMX_ERR_MEMORY    */ "Out of memory",
@@ -261,9 +261,9 @@ static char *messages[] = {
       /* AMX_ERR_USERDATA  */ "Unable to set user data field (table full)",
       /* AMX_ERR_INIT_JIT  */ "Cannot initialize the JIT",
       /* AMX_ERR_PARAMS    */ "Parameter error",
-      /* AMX_ERR_DOMAIN    */ "domain error, expression result does not fit in range",
-      /* AMX_ERR_GENERAL   */ "general error (unknown or unspecific error)",
-      /* AMX_ERR_OVERLAY   */ "overlays are unsupported (JIT) or uninitialized",
+      /* AMX_ERR_DOMAIN    */ "Domain error, expression result does not fit in range",
+      /* AMX_ERR_GENERAL   */ "General error (unknown or unspecific error)",
+      /* AMX_ERR_OVERLAY   */ "Overlays are unsupported (JIT) or uninitialized",
     };
   if (errnum < 0 || errnum >= sizeof messages / sizeof messages[0])
     return "(unknown)";

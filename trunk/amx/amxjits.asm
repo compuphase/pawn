@@ -806,23 +806,18 @@ OP_PUSH_PRI:
 ;good
 OP_PUSH_ALT:
 ;nop;
-        GO_ON   j_push_alt, OP_PUSH_R_PRI
+        GO_ON   j_push_alt, OP_PICK
 
         j_push_alt:
         _PUSH   edx
 
-OP_PUSH_R_PRI:
+OP_PICK:
 ;nop;
-        putval  j_push_r_pri+1
-        GO_ON   j_push_r_pri, OP_PUSH_C, 8
+        putval  j_pick+2
+        GO_ON   j_pick, OP_PUSH_C, 8
 
-    j_push_r_pri:
-        mov     ecx,12345678h
-        j_push_loop:
-        _PUSH   eax
-        loop    j_push_loop
-        ;dec     ecx
-        ;jnz     j_push_loop
+    j_pick:
+        mov     eax,[esp+12345678h]
 
 ;good
 OP_PUSH_C:
@@ -1704,7 +1699,7 @@ _amx_exec_jit   PROC
 
         sub     esp,4*3         ; place for PRI, ALT & STK at SYSREQs
 
-        push    DWORD ptr [eax+_code]       ; store pointer to code segment
+        push    DWORD ptr [eax+_codeseg]    ; store pointer to code segment
         push    eax                         ; store pointer to AMX
         push    edx                         ; store address of retval
         push    DWORD ptr [eax+_stp]        ; store STP
@@ -2158,7 +2153,7 @@ _amx_opcodelist_jit:
         DD      OP_XCHG
         DD      OP_PUSH_PRI
         DD      OP_PUSH_ALT
-        DD      OP_PUSH_R_PRI
+        DD      OP_PICK
         DD      OP_PUSH_C
         DD      OP_PUSH
         DD      OP_PUSH_S
