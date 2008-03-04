@@ -20,7 +20,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: sc1.c 3902 2008-01-23 17:40:01Z thiadmer $
+ *  Version: $Id: sc1.c 3925 2008-03-03 16:08:45Z thiadmer $
  */
 #include <assert.h>
 #include <ctype.h>
@@ -261,16 +261,6 @@ void pc_closesrc(void *handle)
   fclose((FILE*)handle);
 }
 
-/* pc_resetsrc()
- * "position" may only hold a pointer that was previously obtained from
- * pc_getpossrc()
- */
-void pc_resetsrc(void *handle,void *position)
-{
-  assert(handle!=NULL);
-  fsetpos((FILE*)handle,(fpos_t *)position);
-}
-
 /* pc_readsrc()
  * Reads a single line from the source file (or up to a maximum number of
  * characters if the line in the input file is too long).
@@ -289,12 +279,40 @@ int pc_writesrc(void *handle,const unsigned char *source)
   return fputs((char*)source,(FILE*)handle) >= 0;
 }
 
-void *pc_getpossrc(void *handle)
-{
-  static fpos_t lastpos;  /* may need to have a LIFO stack of such positions */
+#define MAXPOSITIONS  4
+static fpos_t srcpositions[MAXPOSITIONS];
+static unsigned char srcposalloc[MAXPOSITIONS];
 
-  fgetpos((FILE*)handle,&lastpos);
-  return &lastpos;
+void *pc_getpossrc(void *handle,void *position)
+{
+  if (position==NULL) {
+    /* allocate a new slot */
+    int i;
+    for (i=0; i<MAXPOSITIONS && srcposalloc[i]!=0; i++)
+      /* nothing */;
+    assert(i<MAXPOSITIONS); /* if not, there is a queue overrun */
+    if (i>=MAXPOSITIONS)
+      return NULL;
+    position=&srcpositions[i];
+    srcposalloc[i]=1;
+  } else {
+    /* use the gived slot */
+    assert(position>=srcpositions && position<srcpositions+sizeof(srcpositions));
+  } /* if */
+  fgetpos((FILE*)handle,(fpos_t*)position);
+  return position;
+}
+
+/* pc_resetsrc()
+ * "position" may only hold a pointer that was previously obtained from
+ * pc_getpossrc()
+ */
+void pc_resetsrc(void *handle,void *position)
+{
+  assert(handle!=NULL);
+  assert(position!=NULL);
+  fsetpos((FILE*)handle,(fpos_t*)position);
+  /* note: the item is not cleared from the pool */
 }
 
 int pc_eofsrc(void *handle)
@@ -425,7 +443,8 @@ int pc_compile(int argc, char *argv[])
   initglobals();
   errorset(sRESET,0);
   errorset(sEXPRRELEASE,0);
-  lexinit();
+  if (!lexinit(FALSE))
+    error(103);         /* insufficient memory */
 
   /* make sure that we clean up on a fatal error; do this before the first
    * call to error(). */
@@ -528,7 +547,7 @@ int pc_compile(int argc, char *argv[])
   } /* if */
   setconstants();               /* set predefined constants and tagnames */
   for (i=0; i<skipinput; i++)   /* skip lines in the input file */
-    if (pc_readsrc(inpf_org,pline,sLINEMAX)!=NULL)
+    if (pc_readsrc(inpf_org,srcline,sLINEMAX)!=NULL)
       fline++;                  /* keep line number up to date */
   skipinput=fline;
   sc_status=statFIRST;
@@ -548,7 +567,7 @@ int pc_compile(int argc, char *argv[])
   } /* if */
   /* do the first pass through the file (or possibly two or more "first passes") */
   sc_parsenum=0;
-  inpfmark=pc_getpossrc(inpf_org);
+  inpfmark=pc_getpossrc(inpf_org,NULL);
   do {
     /* reset "defined" flag of all functions and global variables */
     reduce_referrers(&glbtab);
@@ -629,7 +648,8 @@ int pc_compile(int argc, char *argv[])
   freading=TRUE;
   pc_resetsrc(inpf,inpfmark);   /* reset file position */
   fline=skipinput;              /* reset line number */
-  lexinit();                    /* clear internal flags of lex() */
+  if (!lexinit(FALSE))          /* clear internal flags of lex() */
+    error(103);                 /* insufficient memory */
   sc_status=statWRITE;          /* allow to write --this variable was reset by resetglobals() */
   i=writeleader(&glbtab);
   reduce_referrers(&glbtab);    /* test for unused functions */
@@ -744,6 +764,7 @@ cleanup:
     free(inpfname);
   if (litq!=NULL)
     free(litq);
+  lexinit(TRUE);                          /* reset and release buffers */
   phopt_cleanup();
   stgbuffer_cleanup();
   clearstk();
@@ -925,8 +946,7 @@ static void initglobals(void)
   tagname_tab.next=NULL;/* tagname table */
   libname_tab.next=NULL;/* library table (#pragma library "..." syntax) */
 
-  pline[0]='\0';        /* the line read from the input file */
-  lptr=NULL;            /* points to the current position in "pline" */
+  lptr=NULL;            /* points to the current position in "srcline" */
   curlibrary=NULL;      /* current library */
   inpf_org=NULL;        /* main source file */
 
@@ -2882,7 +2902,7 @@ static void decl_enum(int vclass)
       value+=size;
     else
       value*=size*multiplier;
-  } while (matchtoken(','));
+  } while (matchtoken(tSEPARATOR));
   needtoken('}');       /* terminates the constant list */
   matchtoken(';');      /* eat an optional ; */
 
@@ -5160,7 +5180,7 @@ static void compound(int stmt_sameline)
     const unsigned char *p=lptr;
     /* go back to the opening brace */
     while (*p!='{') {
-      assert(p>pline);
+      assert(p>srcline);
       p--;
     } /* while */
     assert(*p=='{');  /* it should be found */
@@ -5170,8 +5190,8 @@ static void compound(int stmt_sameline)
       p++;
     assert(*p!='\0'); /* a token should be found */
     stmtindent=0;
-    for (i=0; i<(int)(p-pline); i++)
-      if (pline[i]=='\t' && sc_tabsize>0)
+    for (i=0; i<(int)(p-srcline); i++)
+      if (srcline[i]=='\t' && sc_tabsize>0)
         stmtindent += (int)(sc_tabsize - (stmtindent+sc_tabsize) % sc_tabsize);
       else
         stmtindent++;

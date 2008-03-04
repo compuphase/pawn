@@ -12,7 +12,7 @@
  *  "conditional allocation".
  *
  *
- *  Copyright (c) ITB CompuPhase, 2007
+ *  Copyright (c) ITB CompuPhase, 2007-2008
  *
  *  This software is provided "as-is", without any express or implied warranty.
  *  In no event will the authors be held liable for any damages arising from
@@ -41,6 +41,7 @@
 #endif
 
 #define MIN_BLOCKSIZE 32
+#define PROTECT_LRU   0xffff
 
 typedef struct tagARENA {
   unsigned blocksize;
@@ -51,6 +52,9 @@ typedef struct tagARENA {
 static void *pool_base;
 static unsigned pool_size;
 static unsigned short pool_lru;
+
+static void touchblock(ARENA *hdr);
+static ARENA *findblock(int index);
 
 /* amx_poolinit() initializes the memory pool for the allocated blocks. */
 void amx_poolinit(void *pool, unsigned size)
@@ -116,28 +120,6 @@ void amx_poolfree(void *block)
   } /* if */
 }
 
-/* amx_poolfind() returns the address of the memory block with the given index,
- * or NULL if no such block exists. Parameter "index" should not be -1, because
- * -1 represents a free block (actually, only positive values are valid).
- */
-void *amx_poolfind(int index)
-{
-  ARENA *hdr;
-  unsigned sz;
-
-  assert(index>=0);
-  sz=pool_size;
-  hdr=(ARENA*)pool_base;
-  while (sz>0 && hdr->index!=index) {
-    assert(sz<=pool_size);
-    assert((char*)hdr>=(char*)pool_base && (char*)hdr<(char*)pool_base+pool_size);
-    sz-=hdr->blocksize+sizeof(ARENA);
-    hdr=(ARENA*)((char*)hdr+hdr->blocksize+sizeof(ARENA));
-  } /* while */
-  assert(sz<=pool_size);
-  return (sz==0) ? NULL : (void*)((char*)hdr+sizeof(ARENA));
-}
-
 /* amx_poolalloc() allocates the requested number of bytes from the pool and
  * returns a header to the start of it. Every block in the pool is prefixed
  * with an "arena header"; the return value of this function points just
@@ -162,7 +144,7 @@ void *amx_poolalloc(unsigned size,int index)
 
   assert(size>0);
   assert(index>=0 && index<=SHRT_MAX);
-  assert(amx_poolfind(index)==NULL);
+  assert(findblock(index)==NULL);
 
   /* align the size to a cell boundary */
   if ((size % sizeof(cell))!=0)
@@ -212,11 +194,62 @@ void *amx_poolalloc(unsigned size,int index)
   } /* if */
   hdr->blocksize=size;
   hdr->index=(short)index;
-  hdr->lru=++pool_lru;
+  touchblock(hdr);    /* set LRU field */
+
+  return (void*)((char*)hdr+sizeof(ARENA));
+}
+
+/* amx_poolfind() returns the address of the memory block with the given index,
+ * or NULL if no such block exists. Parameter "index" should not be -1, because
+ * -1 represents a free block (actually, only positive values are valid).
+ * When amx_poolfind() finds the block, it increments its LRU count.
+ */
+void *amx_poolfind(int index)
+{
+  ARENA *hdr=findblock(index);
+  if (hdr==NULL)
+    return NULL;
+  touchblock(hdr);
+  return (void*)((char*)hdr+sizeof(ARENA));
+}
+
+int amx_poolprotect(int index)
+{
+  ARENA *hdr=findblock(index);
+  if (hdr==NULL)
+    return AMX_ERR_GENERAL;
+  hdr->lru=PROTECT_LRU;
+  return AMX_ERR_NONE;
+}
+
+static ARENA *findblock(int index)
+{
+  ARENA *hdr;
+  unsigned sz;
+
+  assert(index>=0);
+  sz=pool_size;
+  hdr=(ARENA*)pool_base;
+  while (sz>0 && hdr->index!=index) {
+    assert(sz<=pool_size);
+    assert((char*)hdr>=(char*)pool_base && (char*)hdr<(char*)pool_base+pool_size);
+    sz-=hdr->blocksize+sizeof(ARENA);
+    hdr=(ARENA*)((char*)hdr+hdr->blocksize+sizeof(ARENA));
+  } /* while */
+  assert(sz>=0 && sz<=pool_size);
+  return (sz>0 && hdr->index==index) ? hdr : NULL;
+}
+
+static void touchblock(ARENA *hdr)
+{
+  assert(hdr!=NULL);
+  if (++pool_lru >= PROTECT_LRU)
+    pool_lru=0;
+  hdr->lru=pool_lru;
 
   /* special case: if the overlay LRU count wrapped back to zero, set the
    * LRU count of all blocks to zero, but set the count of the block just
-   * allocated to 1
+   * touched to 1 (skip blocks marked as protected, too)
    */
   if (pool_lru==0) {
     ARENA *hdr2;
@@ -224,13 +257,12 @@ void *amx_poolalloc(unsigned size,int index)
     hdr2=(ARENA*)pool_base;
     while (sz>0) {
       assert(sz<=pool_size);
-      hdr2->lru=0;
+      if (hdr2->lru!=PROTECT_LRU)
+        hdr2->lru=0;
       sz-=hdr2->blocksize+sizeof(ARENA);
       hdr2=(ARENA*)((char*)hdr2+hdr2->blocksize+sizeof(ARENA));
     } /* while */
     assert(sz==0);
     hdr->lru=++pool_lru;
   } /* if */
-
-  return (void*)((char*)hdr+sizeof(ARENA));
 }

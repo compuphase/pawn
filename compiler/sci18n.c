@@ -30,7 +30,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: sci18n.c 3902 2008-01-23 17:40:01Z thiadmer $
+ *  Version: $Id: sci18n.c 3925 2008-03-03 16:08:45Z thiadmer $
  */
 #include <assert.h>
 #include <stdio.h>
@@ -396,13 +396,14 @@ SC_FUNC int scan_utf8(FILE *fp,const char *filename)
   #if defined PAWN_NO_UTF8
     return 0;
   #else
-    void *resetpos=pc_getpossrc(fp);
+    static void *resetpos=NULL;
     int utf8=TRUE;
     int firstchar=TRUE,bom_found=FALSE;
     const unsigned char *ptr;
 
-    while (utf8 && pc_readsrc(fp,pline,sLINEMAX)!=NULL) {
-      ptr=pline;
+    resetpos=pc_getpossrc(fp,resetpos);
+    while (utf8 && pc_readsrc(fp,srcline,sLINEMAX)!=NULL) {
+      ptr=srcline;
       if (firstchar) {
         /* check whether the very first character on the very first line
          * starts with a byte order mark (BOM)

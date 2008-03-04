@@ -1,7 +1,7 @@
 /*  Simple allocation from a memory pool, with automatic release of
  *  least-recently used blocks (LRU blocks).
  *
- *  Copyright (c) ITB CompuPhase, 2007
+ *  Copyright (c) ITB CompuPhase, 2007-2008
  *
  *  This software is provided "as-is", without any express or implied warranty.
  *  In no event will the authors be held liable for any damages arising from

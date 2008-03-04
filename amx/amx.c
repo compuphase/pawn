@@ -18,7 +18,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: amx.c 3903 2008-01-25 16:28:56Z thiadmer $
+ *  Version: $Id: amx.c 3927 2008-03-04 10:13:46Z thiadmer $
  */
 
 #if BUILD_PLATFORM == WINDOWS && BUILD_TYPE == RELEASE && BUILD_COMPILER == MSVC && PAWN_CELL_SIZE == 64
@@ -3318,7 +3318,7 @@ static const void * const amx_opcodelist[] = {
     NEXT(cip,op);
   op_load_p_alt:
     GETPARAM_P(offs,op);
-    pri=_R(data,offs);
+    alt=_R(data,offs);
     NEXT(cip,op);
   op_load_p_s_pri:
     GETPARAM_P(offs,op);
@@ -4812,7 +4812,7 @@ int AMXAPI amx_Exec(AMX *amx, cell *retval, int index)
       break;
     case OP_LOAD_P_ALT:
       GETPARAM_P(offs,op);
-      pri=_R(data,offs);
+      alt=_R(data,offs);
       break;
     case OP_LOAD_P_S_PRI:
       GETPARAM_P(offs,op);

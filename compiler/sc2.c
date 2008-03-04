@@ -18,7 +18,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: sc2.c 3902 2008-01-23 17:40:01Z thiadmer $
+ *  Version: $Id: sc2.c 3927 2008-03-04 10:13:46Z thiadmer $
  */
 #include <assert.h>
 #include <stdio.h>
@@ -37,8 +37,9 @@
 #endif
 
 /* flags for litchar() */
-#define RAWMODE         1
-#define UTF8MODE        2
+#define RAWMODE         0x1
+#define UTF8MODE        0x2
+#define ISPACKED        0x4
 static cell litchar(const unsigned char **lptr,int flags);
 static symbol *find_symbol(const symbol *root,const char *name,int fnumber,int automaton,int *cmptag);
 
@@ -406,7 +407,7 @@ static void readline(unsigned char *line)
  *  The function also detects (and manages) "documentation comments". The
  *  global variable "icomment" is set to 2 for documentation comments.
  *
- *  Global references: icomment  (private to "stripcom")
+ *  Global references: icomment  (altered)
  */
 static void stripcom(unsigned char *line)
 {
@@ -829,20 +830,20 @@ static int preproc_expr(cell *val,int *tag)
   } /* if */
   /* save the position in the literal queue too */
   cur_lit=litidx;
-  assert((lptr-pline)<(int)strlen((char*)pline));   /* lptr must point inside the string */
+  assert(lptr>=srcline && (lptr-srcline)<(int)strlen((char*)srcline));   /* lptr must point inside the string */
   #if !defined NO_DEFINE
     /* preprocess the string */
-    substallpatterns(pline,sLINEMAX);
-    assert((lptr-pline)<(int)strlen((char*)pline)); /* lptr must STILL point inside the string */
+    substallpatterns(srcline,sLINEMAX);
+    assert(lptr>=srcline && (lptr-srcline)<(int)strlen((char*)srcline)); /* lptr must STILL point inside the string */
   #endif
   /* append a special symbol to the string, so the expression
    * analyzer won't try to read a next line when it encounters
    * an end-of-line
    */
-  assert(strlen((char*)pline)<sLINEMAX);
-  term=strchr((char*)pline,'\0');
+  assert(strlen((char*)srcline)<sLINEMAX);
+  term=strchr((char*)srcline,'\0');
   assert(term!=NULL);
-  chrcat((char*)pline,PREPROC_TERM);    /* the "DEL" code (see SC.H) */
+  chrcat((char*)srcline,PREPROC_TERM);  /* the "DEL" code (see SC.H) */
   result=constexpr(val,tag,NULL);       /* get value (or 0 on error) */
   *term='\0';                           /* erase the token (if still present) */
   lexclr(FALSE);                        /* clear any "pushed" tokens */
@@ -1647,16 +1648,71 @@ static void substallpatterns(unsigned char *line,int buffersize)
 }
 #endif
 
+/*  scanellipsis
+ *  Look for ... in the string and (if not there) in the remainder of the file,
+ *  but restore (or keep intact):
+ *  - the current position in the file
+ *  - the comment parsing state
+ *  - the line buffer used by the lexical analyser
+ *  - the active line number and the active file
+ *
+ *  The function returns 1 if an ellipsis was found and 0 if not
+ */
+static int scanellipsis(const unsigned char *lptr)
+{
+  static void *inpfmark=NULL;
+  unsigned char *localbuf;
+  short localcomment,found;
+
+  /* first look for the ellipsis in the remainder of the string */
+  while (*lptr<=' ' && *lptr!='\0')
+    lptr++;
+  if (lptr[0]=='.' && lptr[1]=='.' && lptr[2]=='.')
+    return 1;
+  if (*lptr!='\0')
+    return 0;           /* stumbled on something that is not an ellipsis and not white-space */
+
+  /* the ellipsis was not on the active line, read more lines from the current
+   * file (but save its position first)
+   */
+  if (inpf==NULL || pc_eofsrc(inpf))
+    return 0;           /* quick exit: cannot read after EOF */
+  if ((localbuf=(unsigned char*)malloc((sLINEMAX+1)*sizeof(unsigned char)))==NULL)
+    return 0;
+  inpfmark=pc_getpossrc(inpf,inpfmark);
+  localcomment=icomment;
+
+  found=0;
+  /* read from the file, skip preprocessing, but strip off comments */
+  while (!found && pc_readsrc(inpf,localbuf,sLINEMAX)!=NULL) {
+    stripcom(localbuf);
+    lptr=localbuf;
+    /* skip white space */
+    while (*lptr<=' ' && *lptr!='\0')
+      lptr++;
+    if (lptr[0]=='.' && lptr[1]=='.' && lptr[2]=='.')
+      found=1;
+    else if (*lptr!='\0')
+      break;                       /* stumbled on something that is not an ellipsis and not white-space */
+  } /* while */
+
+  /* clean up & reset */
+  free(localbuf);
+  pc_resetsrc(inpf,inpfmark);
+  icomment=localcomment;
+  return found;
+}
+
 /*  preprocess
  *
- *  Reads a line by readline() into "pline" and performs basic preprocessing:
+ *  Reads a line by readline() into "srcline" and performs basic preprocessing:
  *  deleting comments, skipping lines with false "#if.." code and recognizing
  *  other compiler directives. There is an indirect recursion: lex() calls
  *  preprocess() if a new line must be read, preprocess() calls command(),
  *  which at his turn calls lex() to identify the token.
  *
  *  Global references: lptr     (altered)
- *                     pline    (altered)
+ *                     srcline   (altered)
  *                     freading (referred to only)
  */
 SC_FUNC void preprocess(void)
@@ -1666,17 +1722,17 @@ SC_FUNC void preprocess(void)
   if (!freading)
     return;
   do {
-    readline(pline);
-    stripcom(pline);    /* ??? no need for this when reading back from list file (in the second pass) */
-    lptr=pline;         /* set "line pointer" to start of the parsing buffer */
+    readline(srcline);
+    stripcom(srcline);  /* ??? no need for this when reading back from list file (in the second pass) */
+    lptr=srcline;       /* set "line pointer" to start of the parsing buffer */
     iscommand=command();
     if (iscommand!=CMD_NONE)
       errorset(sRESET,0); /* reset error flag ("panic mode") on empty line or directive */
     #if !defined NO_DEFINE
       if (iscommand==CMD_NONE) {
         assert(lptr!=term_expr);
-        substallpatterns(pline,sLINEMAX);
-        lptr=pline;       /* reset "line pointer" to start of the parsing buffer */
+        substallpatterns(srcline,sLINEMAX);
+        lptr=srcline;   /* reset "line pointer" to start of the parsing buffer */
       } /* if */
     #endif
     if (sc_status==statFIRST && sc_listing && freading
@@ -1690,37 +1746,27 @@ SC_FUNC void preprocess(void)
       if (iscommand==CMD_EMPTYLINE)
         pc_writeasm(outf,"\n");
       else
-        pc_writeasm(outf,(char*)pline);
+        pc_writeasm(outf,(char*)srcline);
     } /* if */
   } while (iscommand!=CMD_NONE && iscommand!=CMD_TERM && freading); /* enddo */
 }
 
-static const unsigned char *unpackedstring(const unsigned char *lptr,int flags)
+static void unpackedstring(const unsigned char *str,int flags)
 {
-  while (*lptr!='\"' && *lptr!='\0') {
-    if (*lptr=='\a') {          /* ignore '\a' (which was inserted at a line concatenation) */
-      lptr++;
-      continue;
-    } /* if */
-    litadd(litchar(&lptr,flags | UTF8MODE));  /* litchar() alters "lptr" */
-  } /* while */
+  while (*str!='\0')
+    litadd(litchar(&str,flags | UTF8MODE));  /* litchar() alters "str" */
   litadd(0);                    /* terminate string */
-  return lptr;
 }
 
-static const unsigned char *packedstring(const unsigned char *lptr,int flags)
+static void packedstring(const unsigned char *str,int flags)
 {
   int i;
   ucell val,c;
 
   i=sizeof(ucell)-(sCHARBITS/8); /* start at most significant byte */
   val=0;
-  while (*lptr!='\"' && *lptr!='\0') {
-    if (*lptr=='\a') {          /* ignore '\a' (which was inserted at a line concatenation) */
-      lptr++;
-      continue;
-    } /* if */
-    c=litchar(&lptr,flags);     /* litchar() alters "lptr" */
+  while (*str!='\0') {
+    c=litchar(&str,flags);      /* litchar() alters "str" */
     if (c>=(ucell)(1 << sCHARBITS))
       error(43);                /* character constant exceeds range */
     val |= (c << 8*i);
@@ -1735,7 +1781,6 @@ static const unsigned char *packedstring(const unsigned char *lptr,int flags)
     litadd(val);        /* at least one zero character in "val" */
   else
     litadd(0);          /* add full cell of zeros */
-  return lptr;
 }
 
 /*  lex(lexvalue,lexsym)        Lexical Analysis
@@ -1775,10 +1820,10 @@ static const unsigned char *packedstring(const unsigned char *lptr,int flags)
 static int _pushed;
 static int _lextok;
 static cell _lexval;
-static char _lexstr[sLINEMAX+1];
+static char *_lexstr=NULL;
 static int _lexnewline;
 
-SC_FUNC void lexinit(void)
+SC_FUNC int lexinit(int releaseall)
 {
   stkidx=0;             /* index for pushstk() and popstk() */
   iflevel=0;            /* preprocessor: nesting of "#if" is currently 0 */
@@ -1786,6 +1831,25 @@ SC_FUNC void lexinit(void)
   icomment=0;           /* currently not in a multiline comment */
   _pushed=FALSE;        /* no token pushed back into lex */
   _lexnewline=FALSE;
+
+  if (releaseall) {
+    if (srcline!=NULL)
+      free(srcline);
+    srcline=NULL;
+    if (_lexstr!=NULL)
+      free(_lexstr);
+    _lexstr=NULL;
+  } else {
+    if (srcline==NULL)
+      srcline=(unsigned char*)malloc((sLINEMAX+1)*sizeof(unsigned char));
+    if (_lexstr==NULL)
+      _lexstr=(unsigned char*)malloc((sLINEMAX+1)*sizeof(unsigned char));
+    if (srcline==NULL || _lexstr==NULL)
+      return 0;
+    *srcline='\0';
+    *_lexstr='\0';
+  } /* if */
+  return 1;
 }
 
 char *sc_tokens[] = {
@@ -1799,16 +1863,18 @@ char *sc_tokens[] = {
          "#assert", "#define", "#else", "#elseif", "#endif", "#endinput",
          "#error", "#file", "#if", "#include", "#line", "#pragma",
          "#tryinclude", "#undef",
-         ";", ";", "-integer value-", "-rational value-", "-identifier-",
+         ";", ",", ";", "-integer value-", "-rational value-", "-identifier-",
          "-label-", "-string-"
        };
 
 SC_FUNC int lex(cell *lexvalue,char **lexsym)
 {
-  int i,toolong,newline,stringflags;
+  int i,toolong,newline;
   char **tokptr;
   const unsigned char *starttoken;
 
+  assert(lexvalue!=NULL);
+  assert(lexsym!=NULL);
   if (_pushed) {
     _pushed=FALSE;      /* reset "_pushed" flag */
     *lexvalue=_lexval;
@@ -1825,7 +1891,7 @@ SC_FUNC int lex(cell *lexvalue,char **lexsym)
   if (!freading)
     return 0;
 
-  newline= (lptr==pline);       /* does lptr point to start of line buffer */
+  newline= (lptr==srcline);     /* does lptr point to start of line buffer? */
   while (*lptr<=' ') {          /* delete leading white space */
     if (*lptr=='\0') {
       preprocess();             /* preprocess resets "lptr" */
@@ -1842,8 +1908,8 @@ SC_FUNC int lex(cell *lexvalue,char **lexsym)
   } /* while */
   if (newline) {
     stmtindent=0;
-    for (i=0; i<(int)(lptr-pline); i++)
-      if (pline[i]=='\t' && sc_tabsize>0)
+    for (i=0; i<(int)(lptr-srcline); i++)
+      if (srcline[i]=='\t' && sc_tabsize>0)
         stmtindent += (int)(sc_tabsize - (stmtindent+sc_tabsize) % sc_tabsize);
       else
         stmtindent++;
@@ -1917,34 +1983,85 @@ SC_FUNC int lex(cell *lexvalue,char **lexsym)
         error(220);
       } /* if */
     } /* if */
-  } else if (*lptr=='\"' || *lptr==sc_ctrlchar && *(lptr+1)=='\"')
-  {                                     /* unpacked string literal */
+  } else if (*lptr=='\"'                              /* unpacked string literal */
+             || *lptr==sc_ctrlchar && *(lptr+1)=='\"' /* unpacked raw string */
+             || *lptr=='!' && *(lptr+1)=='\"'         /* packed string */
+             || *lptr=='!' && *(lptr+1)==sc_ctrlchar && *(lptr+2)=='\"'   /* packed raw string */
+             || *lptr==sc_ctrlchar && *(lptr+1)=='!' && *(lptr+2)=='\"')  /* packed raw string */
+  {
+    int stringflags,segmentflags;
+    unsigned char *cat;
     _lextok=tSTRING;
-    stringflags= (*lptr==sc_ctrlchar) ? RAWMODE : 0;
     *lexvalue=_lexval=litidx;
-    lptr+=1;            /* skip double quote */
-    if ((stringflags & RAWMODE)!=0)
-      lptr+=1;          /* skip "escape" character too */
-    lptr=sc_packstr ? packedstring(lptr,stringflags) : unpackedstring(lptr,stringflags);
-    if (*lptr=='\"')
-      lptr+=1;          /* skip final quote */
+    _lexstr[0]='\0';
+    stringflags=-1;     /* to mark the first segment */
+    for ( ;; ) {
+      if (*lptr=='!')
+        segmentflags= (*(lptr+1)==sc_ctrlchar) ? RAWMODE | ISPACKED: ISPACKED;
+      else if (*lptr==sc_ctrlchar)
+        segmentflags= (*(lptr+1)=='!') ? RAWMODE | ISPACKED : RAWMODE;
+      else
+        segmentflags=0;
+      if ((segmentflags & ISPACKED)!=0)
+        lptr+=1;          /* skip '!' character */
+      if ((segmentflags & RAWMODE)!=0)
+        lptr+=1;          /* skip "escape" character too */
+      assert(*lptr=='\"');
+      lptr+=1;            /* skip double quote too */
+      if (stringflags==-1)
+        stringflags=segmentflags;
+      else if (stringflags!=segmentflags)
+        error(238);       /* mixing packed/unpacked/raw strings in concatenation */
+      cat=strchr(_lexstr,'\0');
+      assert(cat!=NULL);
+      while ((*lptr!='\"' || *(lptr-1)==sc_ctrlchar) && *lptr!='\0' && (cat-_lexstr)<sLINEMAX) {
+        if (*lptr!='\a')  /* ignore '\a' (which was inserted at a line concatenation) */
+          *cat++=*lptr;
+        lptr++;
+      } /* while */
+      *cat='\0';          /* terminate string */
+      if (*lptr=='\"')
+        lptr+=1;          /* skip final quote */
+      else
+        error(37);        /* invalid (non-terminated) string */
+      /* see whether an ellipsis is following the string */
+      if (!scanellipsis(lptr))
+        break;            /* no concatenation of string literals */
+      /* there is an ellipses, go on parsing (this time with full preprocessing) */
+      while (*lptr<=' ') {
+        if (*lptr=='\0') {
+          preprocess();             /* preprocess resets "lptr" */
+          assert(freading && lptr!=term_expr);
+        } else {
+          lptr++;
+        } /* if */
+      } /* while */
+      assert(freading && lptr[0]=='.' && lptr[1]=='.' && lptr[2]=='.');
+      lptr+=3;
+      while (*lptr<=' ') {
+        if (*lptr=='\0') {
+          preprocess();             /* preprocess resets "lptr" */
+          assert(freading && lptr!=term_expr);
+        } else {
+          lptr++;
+        } /* if */
+      } /* while */
+      if (!freading || !(*lptr=='\"'
+                         || *lptr==sc_ctrlchar && *(lptr+1)=='\"'
+                         || *lptr=='!' && *(lptr+1)=='\"'
+                         || *lptr=='!' && *(lptr+1)==sc_ctrlchar && *(lptr+2)=='\"'
+                         || *lptr==sc_ctrlchar && *(lptr+1)=='!' && *(lptr+2)=='\"'))
+      {
+        error(37);                /* invalid string concatenation */
+        break;
+      } /* if */
+    } /* for */
+    if (sc_packstr)
+      stringflags ^= ISPACKED;    /* invert packed/unpacked parameters */
+    if ((stringflags & ISPACKED)!=0)
+      packedstring(_lexstr,stringflags);
     else
-      error(37);        /* invalid (non-terminated) string */
-  } else if (*lptr=='!' && *(lptr+1)=='\"'
-             || *lptr=='!' && *(lptr+1)==sc_ctrlchar && *(lptr+2)=='\"'
-             || *lptr==sc_ctrlchar && *(lptr+1)=='!' && *(lptr+2)=='\"')
-  {                                     /* packed string literal */
-    _lextok=tSTRING;
-    stringflags= (*lptr==sc_ctrlchar || *(lptr+1)==sc_ctrlchar) ? RAWMODE : 0;
-    *lexvalue=_lexval=litidx;
-    lptr+=2;            /* skip exclamation point and double quote */
-    if ((stringflags & RAWMODE)!=0)
-      lptr+=1;          /* skip "escape" character too */
-    lptr=sc_packstr ? unpackedstring(lptr,stringflags) : packedstring(lptr,stringflags);
-    if (*lptr=='\"')
-      lptr+=1;          /* skip final quote */
-    else
-      error(37);        /* invalid (non-terminated) string */
+      unpackedstring(_lexstr,stringflags);
   } else if (*lptr=='\'') {             /* character literal */
     lptr+=1;            /* skip quote */
     _lextok=tNUMBER;
@@ -2013,7 +2130,7 @@ SC_FUNC void lexclr(int clreol)
 {
   _pushed=FALSE;
   if (clreol) {
-    lptr=(unsigned char*)strchr((char*)pline,'\0');
+    lptr=(unsigned char*)strchr((char*)srcline,'\0');
     assert(lptr!=NULL);
   } /* if */
 }
@@ -2049,9 +2166,15 @@ SC_FUNC int matchtoken(int token)
   int tok;
 
   tok=lex(&val,&str);
-  if (tok==token || token==tTERM && (tok==';' || tok==tENDEXPR)) {
+  if (tok==token
+      || token==tTERM && (tok==';' || tok==tENDEXPR)
+      || token==tSEPARATOR && tok==',')
+  {
     return 1;
-  } else if (!sc_needsemicolon && token==tTERM && (_lexnewline || !freading)) {
+  } else if (!sc_needsemicolon
+             && (token==tTERM || token==tSEPARATOR)
+             && (_lexnewline || !freading))
+  {
     /* Push "tok" back, because it is the token following the implicit statement
      * termination (newline) token.
      */
