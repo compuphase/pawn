@@ -6,7 +6,7 @@
 #endif
 #include "svnrev.h"
 
-AppIcon ICON "../pawn.ico"
+AppIcon ICON "../bin/pawn.ico"
 
 /*  Version information
  *

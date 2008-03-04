@@ -25,7 +25,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: sc.h 3902 2008-01-23 17:40:01Z thiadmer $
+ *  Version: $Id: sc.h 3929 2008-03-04 11:47:12Z thiadmer $
  */
 #ifndef SC_H_INCLUDED
 #define SC_H_INCLUDED
@@ -46,14 +46,14 @@
 
 /* Note: the "cell" and "ucell" types are defined in AMX.H */
 
-#define PUBLIC_CHAR '@'     /* character that defines a function "public" */
-#define CTRL_CHAR   '\\'    /* default control character */
-#define sCHARBITS   8       /* size of a packed character */
+#define PUBLIC_CHAR   '@'   /* character that defines a function "public" */
+#define CTRL_CHAR     '\\'  /* default control character */
+#define sCHARBITS     8     /* size of a packed character */
 
-#define sDIMEN_MAX     3    /* maximum number of array dimensions */
-#define sLINEMAX     511    /* input line length (in characters) */
+#define sDIMEN_MAX    3     /* maximum number of array dimensions */
+#define sLINEMAX      1023  /* input line length (in characters) */
 #define sCOMP_STACK   32    /* maximum nesting of #if .. #endif sections */
-#define sDEF_LITMAX  500    /* initial size of the literal pool, in "cells" */
+#define sDEF_LITMAX   500   /* initial size of the literal pool, in "cells" */
 #define sDEF_AMXSTACK 4096  /* default stack size for AMX files */
 #define PREPROC_TERM  '\x7f'/* termination character for preprocessor expressions (the "DEL" code) */
 #define sDEF_PREFIX   "default.inc" /* default prefix filename */
@@ -140,7 +140,7 @@ typedef struct s_symbol {
   union {
     int declared;       /* label: how many local variables are declared */
     struct {
-      int index;        /* array & enum: tag of array indices or the enum item */
+      int index;        /* array & enum: tag of array indices of the enum item */
       int field;        /* enumeration fields, where a size is attached to the field */
     } tags;             /* extra tags */
     constvalue *lib;    /* native function: library it is part of */
@@ -397,17 +397,18 @@ typedef struct s_valuepair {
 #define tpPRAGMA    321
 #define tpTRYINCLUDE 322
 #define tpUNDEF     323
-/* semicolon is a special case, because it can be optional */
+/* semicolon and comma are special cases, because they can be optional */
 #define tTERM       324 /* semicolon or newline */
-#define tENDEXPR    325 /* forced end of expression */
+#define tSEPARATOR  325 /* comma or newline */
+#define tENDEXPR    326 /* forced end of expression */
 /* other recognized tokens */
-#define tNUMBER     326 /* integer number */
-#define tRATIONAL   327 /* rational number */
-#define tSYMBOL     328
-#define tLABEL      329
-#define tSTRING     330
-#define tEXPR       331 /* for assigment to "lastst" only (see SC1.C) */
-#define tENDLESS    332 /* endless loop, for assigment to "lastst" only */
+#define tNUMBER     327 /* integer number */
+#define tRATIONAL   328 /* rational number */
+#define tSYMBOL     329
+#define tLABEL      330
+#define tSTRING     331
+#define tEXPR       332 /* for assigment to "lastst" only (see SC1.C) */
+#define tENDLESS    333 /* endless loop, for assigment to "lastst" only */
 
 /* (reversed) evaluation of staging buffer */
 #define sSTARTREORDER 0x01
@@ -507,10 +508,10 @@ int pc_error(int number,char *message,char *filename,int firstline,int lastline,
 void *pc_opensrc(char *filename); /* reading only */
 void *pc_createsrc(char *filename);
 void pc_closesrc(void *handle);   /* never delete */
-void pc_resetsrc(void *handle,void *position);  /* reset to a position marked earlier */
 char *pc_readsrc(void *handle,unsigned char *target,int maxchars);
 int pc_writesrc(void *handle,const unsigned char *source);
-void *pc_getpossrc(void *handle); /* mark the current position */
+void *pc_getpossrc(void *handle,void *position); /* mark the current position */
+void pc_resetsrc(void *handle,void *position);  /* reset to a position marked earlier */
 int  pc_eofsrc(void *handle);
 
 /* output to intermediate (.ASM) file */
@@ -569,7 +570,7 @@ SC_FUNC void clearstk(void);
 SC_FUNC int plungequalifiedfile(char *name);  /* explicit path included */
 SC_FUNC int plungefile(char *name,int try_currentpath,int try_includepaths);   /* search through "include" paths */
 SC_FUNC void preprocess(void);
-SC_FUNC void lexinit(void);
+SC_FUNC int lexinit(int releaseall);
 SC_FUNC int lex(cell *lexvalue,char **lexsym);
 SC_FUNC void lexpush(void);
 SC_FUNC void lexclr(int clreol);
@@ -803,8 +804,8 @@ SC_FUNC void delete_statelisttable(statelist *root);
 SC_VDECL symbol loctab;       /* local symbol table */
 SC_VDECL symbol glbtab;       /* global symbol table */
 SC_VDECL cell *litq;          /* the literal queue */
-SC_VDECL unsigned char pline[]; /* the line read from the input file */
-SC_VDECL const unsigned char *lptr;/* points to the current position in "pline" */
+SC_VDECL unsigned char *srcline;/* the line read from the input file */
+SC_VDECL const unsigned char *lptr;/* points to the current position in "srcline" */
 SC_VDECL constvalue tagname_tab;/* tagname table */
 SC_VDECL constvalue libname_tab;/* library table (#pragma library "..." syntax) */
 SC_VDECL constvalue *curlibrary;/* current library */

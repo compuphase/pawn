@@ -20,7 +20,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: scvars.c 3902 2008-01-23 17:40:01Z thiadmer $
+ *  Version: $Id: scvars.c 3925 2008-03-03 16:08:45Z thiadmer $
  */
 #include <stdio.h>
 #include <stdlib.h>     /* for _MAX_PATH */
@@ -34,8 +34,8 @@
 SC_VDEFINE symbol loctab;                   /* local symbol table */
 SC_VDEFINE symbol glbtab;                   /* global symbol table */
 SC_VDEFINE cell *litq;                      /* the literal queue */
-SC_VDEFINE unsigned char pline[sLINEMAX+1]; /* the line read from the input file */
-SC_VDEFINE const unsigned char *lptr;       /* points to the current position in "pline" */
+SC_VDEFINE unsigned char *srcline=NULL;     /* the line read from the input file */
+SC_VDEFINE const unsigned char *lptr;       /* points to the current position in "srcline" */
 SC_VDEFINE constvalue tagname_tab = { NULL, "", 0, 0};  /* tagname table */
 SC_VDEFINE constvalue libname_tab = { NULL, "", 0, 0};  /* library table (#pragma library "..." syntax) */
 SC_VDEFINE constvalue *curlibrary = NULL;   /* current library */

@@ -19,7 +19,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: pawnrun.c 3845 2007-11-16 14:41:29Z thiadmer $
+ *  Version: $Id: pawnrun.c 3928 2008-03-04 10:33:02Z thiadmer $
  */
 #include <assert.h>
 #include <stdio.h>
@@ -415,7 +415,8 @@ int main(int argc,char *argv[])
     } /* if */
     err = amx_Exec(&amx, &ret, AMX_EXEC_CONT);
   } /* while */
-  ExitOnError(&amx, err);
+  if (idlefunc == NULL || err != AMX_ERR_INDEX)
+    ExitOnError(&amx, err);     /* event-driven programs may not have main() */
 
   /* For event-driven programs, we also need to loop over the idle/monitor
    * function that some extension module installed (this could be the console

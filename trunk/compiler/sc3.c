@@ -18,7 +18,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: sc3.c 3902 2008-01-23 17:40:01Z thiadmer $
+ *  Version: $Id: sc3.c 3929 2008-03-04 11:47:12Z thiadmer $
  */
 #include <assert.h>
 #include <stdio.h>
@@ -1034,13 +1034,17 @@ static int hier14(value *lval1)
   } /* if */
 
   /* operand on left side of assignment must be lvalue */
-  if (!lvalue)
-    return error(22);                   /* must be lvalue */
+  sc_allowproccall=FALSE;       /* may no longer use "procedure call" syntax */
+  if (!lvalue) {
+    hier14(&lval2);             /* gobble up right-hand of the operator */
+    return error(22);           /* must be lvalue */
+  } /* if */
   /* may not change "constant" parameters */
   assert(lval1->sym!=NULL);
-  if ((lval1->sym->usage & uCONST)!=0)
+  if ((lval1->sym->usage & uCONST)!=0) {
+    hier14(&lval2);             /* gobble up right-hand of the operator */
     return error(22);           /* assignment to const argument */
-  sc_allowproccall=FALSE;       /* may no longer use "procedure call" syntax */
+  } /* if */
 
   lval3=*lval1;         /* save symbol to enable storage of expresion result */
   lval1->arrayidx=org_arrayidx; /* restore array index pointer */
@@ -1931,15 +1935,14 @@ static int primary(value *lval,int *symtok)
     } else {
       char symbolname[sNAMEMAX+1];
       assert(strlen(st)<sizearray(symbolname));
-      strcpy(symbolname,st);
-      if (!sc_allowproccall || isbinaryop(lexpeek())) {
+      strcpy(symbolname,st);  /* copy symbol name, because lexclr() removes it */
+      if (!sc_allowproccall || isbinaryop(lexpeek()) || sc_status!=statFIRST) {
         lexclr(FALSE);
-        return error_suggest(17,st,iVARIABLE);  /* undefined symbol */
+        return error_suggest(17,symbolname,iVARIABLE);  /* undefined symbol */
       } /* if */
       /* an unknown symbol, but used in a way compatible with the "procedure
        * call" syntax. So assume that the symbol refers to a function.
        */
-      assert(sc_status==statFIRST);
       sym=fetchfunc(symbolname,0);
       if (sym==NULL)
         error(103);     /* insufficient memory */
@@ -2309,7 +2312,7 @@ static int nesting=0;
                   error(47);      /* array sizes must match */
               } /* if */
             } /* if */
-            if (lval.ident!=iARRAYCELL) {
+            if (lval.ident!=iARRAYCELL || lval.constval>0) {
               /* save array size, for default values with uSIZEOF flag */
               cell array_sz=lval.constval;
               assert(array_sz!=0);/* literal array must have a size */
