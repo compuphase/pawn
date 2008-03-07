@@ -24,7 +24,7 @@ ENDIF(HAVE_ALLOCA_H)
 IF(UNIX)
   ADD_DEFINITIONS(-DENABLE_BINRELOC -g)
   INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR}/../linux)
-  LINK_LIBRARIES(pthread) #CMake adds the "lib" prefix, so "pthread" becomes "libpthread"
+  LINK_LIBRARIES(pthread m) #CMake adds the "lib" prefix, so "pthread" becomes "libpthread"
 ENDIF(UNIX)
 
 # The Pawn compiler shared library

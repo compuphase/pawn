@@ -324,4 +324,14 @@ main()
         addr = netsocket(25)
         print addr
     #endif
+
+    #if defined LIT_STRING_CAT
+        print "Eenie " ... "Meenie\n"
+        print !"Meinie " ... !"Moe\n"
+    #endif
+
+    #if defined LIT_STRING_CAT_MIX
+        print "Eenie " ... \"Meenie\n"
+        print "Meinie " ... !"Moe\n"
+    #endif
     }

@@ -56,15 +56,19 @@ static unsigned short pool_lru;
 static void touchblock(ARENA *hdr);
 static ARENA *findblock(int index);
 
-/* amx_poolinit() initializes the memory pool for the allocated blocks. */
+/* amx_poolinit() initializes the memory pool for the allocated blocks.
+ * If parameter pool is NULL, the existing pool is cleared (without changing
+ * its position or size).
+ */
 void amx_poolinit(void *pool, unsigned size)
 {
-  assert(pool!=NULL);
-  assert(size>sizeof(ARENA));
-
-  /* save parameters in global variables, then "free" the entire pool */
-  pool_base=pool;
-  pool_size=size;
+  assert(pool!=NULL || pool_base!=NULL);
+  if (pool!=NULL) {
+    assert(size>sizeof(ARENA));
+    /* save parameters in global variables, then "free" the entire pool */
+    pool_base=pool;
+    pool_size=size;
+  } /* if */
   pool_lru=0;
   amx_poolfree(NULL);
 }
@@ -236,7 +240,7 @@ static ARENA *findblock(int index)
     sz-=hdr->blocksize+sizeof(ARENA);
     hdr=(ARENA*)((char*)hdr+hdr->blocksize+sizeof(ARENA));
   } /* while */
-  assert(sz>=0 && sz<=pool_size);
+  assert(sz<=pool_size);
   return (sz>0 && hdr->index==index) ? hdr : NULL;
 }
 
@@ -253,7 +257,7 @@ static void touchblock(ARENA *hdr)
    */
   if (pool_lru==0) {
     ARENA *hdr2;
-    sz=pool_size;
+    unsigned sz=pool_size;
     hdr2=(ARENA*)pool_base;
     while (sz>0) {
       assert(sz<=pool_size);

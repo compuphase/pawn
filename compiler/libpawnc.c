@@ -20,7 +20,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: libpawnc.c 3925 2008-03-03 16:08:45Z thiadmer $
+ *  Version: $Id: libpawnc.c 3931 2008-03-04 17:02:34Z thiadmer $
  */
 #include <assert.h>
 #include <stdio.h>
@@ -224,7 +224,7 @@ void *pc_getpossrc(void *handle,void *position)
     srcposalloc[i]=1;
   } else {
     /* use the gived slot */
-    assert(position>=srcpositions && position<srcpositions+sizeof(srcpositions));
+    assert((fpos_t*)position>=srcpositions && (fpos_t*)position<srcpositions+sizeof(srcpositions));
   } /* if */
   fgetpos((FILE*)handle,(fpos_t*)position);
   return position;

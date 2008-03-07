@@ -20,7 +20,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: sc1.c 3925 2008-03-03 16:08:45Z thiadmer $
+ *  Version: $Id: sc1.c 3935 2008-03-06 13:18:13Z thiadmer $
  */
 #include <assert.h>
 #include <ctype.h>
@@ -3420,8 +3420,11 @@ static void funcstub(int fnative)
   if (fnative) {
     sym->usage=(char)(uNATIVE | uRETVALUE | uDEFINE | (sym->usage & uPROTOTYPED));
     sym->x.lib=curlibrary;
-  } else if (fpublic) {
-    sym->usage|=uPUBLIC;
+  } else {
+    if (fpublic)
+      sym->usage|=uPUBLIC;
+    else
+      sym->usage&=~uPUBLIC;     /* forward declaration is decisive */
   } /* if */
   sym->usage|=uFORWARD;
 
@@ -3547,6 +3550,10 @@ static int newfunc(char *firstname,int firsttag,int fpublic,int fstatic,int stoc
   sym=fetchfunc(symbolname,tag);/* get a pointer to the function entry */
   if (sym==NULL || (sym->usage & uNATIVE)!=0)
     return TRUE;                /* it was recognized as a function declaration, but not as a valid one */
+  if ((sym->usage & uPUBLIC)!=0)
+    fpublic=TRUE;               /* earlier (forward) declaration said this is a public function */
+  else if (fpublic && (sym->usage & uPUBLIC)==0 && (sym->usage & uFORWARD)!=0)
+    error(25);                  /* function definition does not match prototype */
   if (fpublic)
     sym->usage|=uPUBLIC;
   if (fstatic)

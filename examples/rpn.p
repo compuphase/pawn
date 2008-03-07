@@ -5,8 +5,8 @@
 
 main()
     {
-    print "Type an expression in Reverse Polish Notation: "
+    print "Type expressions in Reverse Polish Notation (or an empty line to quit)\n"
     new string[100]
-    getstring string, sizeof string
-    rpncalc string
+    while (getstring(string, sizeof string))
+        rpncalc string
     }
