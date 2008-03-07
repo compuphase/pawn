@@ -182,6 +182,30 @@ enum Direction
     }
 #endif
 
+#if defined ENUM_GOOD_DECL
+enum {  /* old way of declaring an enumeration */
+    a,
+    b,
+    c,
+    }
+
+enum {  /* optional terminating commas */
+    d,    e
+    f
+    }
+
+enum {
+    g, h, i
+    }
+#endif
+
+#if defined ENUM_BAD_DECL
+enum {
+    j k l
+    }
+#endif
+
+
 main()
     {
     #if defined UNDEF_FUNC_CALL
@@ -462,7 +486,7 @@ main()
         new big[1000][1000][1000]
         big[0][0][0] = 10
     #endif
-    
+
     #if defined CHAINED_ASSIGN
         new bool: chglist = false
         new bool: to_parent = false
@@ -490,4 +514,11 @@ new  b[4][5] = {
    { 5, 6, 1, 55, 7 },
    { 5, 6, 1, 55, 8}
 }
+#endif
+
+#if defined PUBLIC_NOT_DECLARED
+forward dummyfunc()
+
+public dummyfunc()
+    return 0
 #endif

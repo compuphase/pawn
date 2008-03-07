@@ -40,3 +40,6 @@ native       flength(File: handle);
 native       fexist(const pattern[]);
 native bool: fmatch(name[], const pattern[], index = 0, size = sizeof name);
 native bool: fstat(name[], &size = 0, &timestamp = 0, &mode = 0, &inode = 0);
+native bool: fattrib(const name[], timestamp=0, attrib=0x0f);
+native       filecrc(const name[]);
+

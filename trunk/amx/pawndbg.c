@@ -33,7 +33,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: pawndbg.c 3902 2008-01-23 17:40:01Z thiadmer $
+ *  Version: $Id: pawndbg.c 3936 2008-03-06 14:18:27Z thiadmer $
  *
  *
  *  Command line options:
@@ -86,7 +86,7 @@
   #include <unistd.h>
 #endif
 
-#if !defined AMX_NODYNALOAD && (defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__)
+#if !defined AMX_NODYNALOAD && defined ENABLE_BINRELOC && (defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__)
   #include <binreloc.h> /* from BinReloc, see www.autopackage.org */
 #endif
 
@@ -121,6 +121,7 @@ extern int chdir(const char *path); /* position of this function in header files
   void amx_wherexy(int *x,int *y);
   unsigned int amx_setattr(int foregr,int backgr,int highlight);
   void amx_console(int columns, int lines, int flags);
+  void amx_viewsize(int *width,int *height);
   #if defined amx_Init
     #define STR_PROMPT  "dbg\xbb "
     #define CHR_HLINE   '\x97'
@@ -129,44 +130,7 @@ extern int chdir(const char *path); /* position of this function in header files
     #define CHR_HLINE   '-'
   #endif
   #define CHR_VLINE     '|'
-#elif defined VT100 || defined __LINUX__ || defined ANSITERM
-  /* ANSI/VT100 terminal, or shell emulating "xterm" */
-  #if !defined VT100 && !defined ANSITERM && defined __LINUX__
-    #define VT100
-  #endif
-  #define amx_printf      printf
-  #define amx_putchar(c)  putchar(c)
-  #define amx_fflush()    fflush(stdout)
-  #define amx_getch()     getch()
-  #define amx_gets(s,n)   fgets(s,n,stdin)
-  int amx_termctl(int,int);
-  void amx_clrscr(void);
-  void amx_clreol(void);
-  void amx_gotoxy(int x,int y);
-  void amx_wherexy(int *x,int *y);
-  unsigned int amx_setattr(int foregr,int backgr,int highlight);
-  void amx_console(int columns, int lines, int flags);
-  #define STR_PROMPT    "dbg> "
-  #define CHR_HLINE     '-'
-  #define CHR_VLINE     '|'
-#elif defined WIN32_CONSOLE
-  /* Win32 console */
-  #define amx_printf      printf
-  #define amx_putchar(c)  putchar(c)
-  #define amx_fflush()    fflush(stdout)
-  #define amx_getch()     getch()
-  #define amx_gets(s,n)   fgets(s,n,stdin)
-  int amx_termctl(int,int);
-  void amx_clrscr(void);
-  void amx_clreol(void);
-  void amx_gotoxy(int x,int y);
-  void amx_wherexy(int *x,int *y);
-  unsigned int amx_setattr(int foregr,int backgr,int highlight);
-  void amx_console(int columns, int lines, int flags);
-  #define STR_PROMPT    "dbg> "
-  #define CHR_HLINE     '\xc4'
-  #define CHR_VLINE     '\xb3'
-#elif defined USE_CURSES
+#elif defined USE_CURSES || defined HAVE_CURSES_H
   /* Use the "curses" library to implement the console */
   const int _False = 0;     /* to avoid compiler warnings */
   #define amx_printf        printw
@@ -184,6 +148,45 @@ extern int chdir(const char *path); /* position of this function in header files
   #define STR_PROMPT        "dbg> "
   #define CHR_HLINE         '-'
   #define CHR_VLINE         '|'
+#elif defined VT100 || defined __LINUX__ || defined ANSITERM
+  /* ANSI/VT100 terminal, or shell emulating "xterm" */
+  #if !defined VT100 && !defined ANSITERM && defined __LINUX__
+    #define VT100
+  #endif
+  #define amx_printf      printf
+  #define amx_putchar(c)  putchar(c)
+  #define amx_fflush()    fflush(stdout)
+  #define amx_getch()     getch()
+  #define amx_gets(s,n)   fgets(s,n,stdin)
+  int amx_termctl(int,int);
+  void amx_clrscr(void);
+  void amx_clreol(void);
+  void amx_gotoxy(int x,int y);
+  void amx_wherexy(int *x,int *y);
+  unsigned int amx_setattr(int foregr,int backgr,int highlight);
+  void amx_console(int columns, int lines, int flags);
+  void amx_viewsize(int *width,int *height);
+  #define STR_PROMPT    "dbg> "
+  #define CHR_HLINE     '-'
+  #define CHR_VLINE     '|'
+#elif defined WIN32_CONSOLE
+  /* Win32 console */
+  #define amx_printf      printf
+  #define amx_putchar(c)  putchar(c)
+  #define amx_fflush()    fflush(stdout)
+  #define amx_getch()     getch()
+  #define amx_gets(s,n)   fgets(s,n,stdin)
+  int amx_termctl(int,int);
+  void amx_clrscr(void);
+  void amx_clreol(void);
+  void amx_gotoxy(int x,int y);
+  void amx_wherexy(int *x,int *y);
+  unsigned int amx_setattr(int foregr,int backgr,int highlight);
+  void amx_console(int columns, int lines, int flags);
+  void amx_viewsize(int *width,int *height);
+  #define STR_PROMPT    "dbg> "
+  #define CHR_HLINE     '\xc4'
+  #define CHR_VLINE     '\xb3'
 #else
   /* assume a streaming terminal; limited features (no colour, no cursor
    * control)
@@ -200,6 +203,7 @@ extern int chdir(const char *path); /* position of this function in header files
   #define amx_setattr(c,b,h) ((void)(c),(void)(b),(void)(h),(0))
   #define amx_termctl(c,v)  ((void)(c),(void)(v),(0))
   #define amx_console(c,l,f) ((void)(c),(void)(l),(void)(f),(void)(0))
+  #define amx_viewsize      (*(x)=80,*(y)=25)
   #define STR_PROMPT        "dbg> "
   #define CHR_HLINE         '-'
   #define CHR_VLINE         '|'
@@ -312,16 +316,6 @@ static char hline_str[256] = "";  /* number of columns in a window should
   amx_fflush();
 }
 
-#if defined WIN32_CONSOLE
-void win32_getscreensize(int *width,int *height)
-{
-  CONSOLE_SCREEN_BUFFER_INFO csbi;
-  assert(width!=NULL && height!=NULL);
-  GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE),&csbi);
-  *width=(int)csbi.dwSize.X;
-  *height=(int)(csbi.srWindow.Bottom-csbi.srWindow.Top+1);
-}
-#endif
 
 static int csrsave_x, csrsave_y;
 #if !defined NDEBUG
@@ -418,32 +412,25 @@ static void term_open(int columns,int lines)
   #if defined VT100
     chr_hline=CHR_HLINE_VT100;
     chr_vline=CHR_VLINE_VT100;
-    /* a trick to get the size of the terminal is to position the cursor far
-     * away and then read it back
-     */
-    amx_gotoxy(999,999);
-    amx_wherexy(&screencolumns,&screenlines);
-    screenlines--;      /* keep last line empty */
+    amx_viewsize(&screencolumns,&screenlines);
     amx_printf("\033[%d;%dr",watchlines+listlines+3,STD_LINES-1); /* set window */
     amx_printf("\033)0");                  /* select graphics codes for set G1 */
-  #endif
-  #if defined WIN32_CONSOLE
+  #elif defined WIN32_CONSOLE
     #if !defined ENABLE_INSERT_MODE || !defined ENABLE_QUICK_EDIT_MODE
       #define ENABLE_INSERT_MODE      0x0020
       #define ENABLE_QUICK_EDIT_MODE  0x0040
       #define ENABLE_EXTENDED_FLAGS   0x0080
       #define ENABLE_AUTO_POSITION    0x0100
     #endif
-    win32_getscreensize(&screencolumns,&screenlines);
-    screenlines--;      /* keep last line empty */
+    amx_viewsize(&screencolumns,&screenlines);
     SetConsoleMode(GetStdHandle(STD_OUTPUT_HANDLE),
                    ENABLE_ECHO_INPUT | ENABLE_INSERT_MODE | ENABLE_LINE_INPUT
                    | ENABLE_MOUSE_INPUT | ENABLE_PROCESSED_INPUT | ENABLE_QUICK_EDIT_MODE
                    | ENABLE_WINDOW_INPUT | ENABLE_EXTENDED_FLAGS);
   #elif defined READLINE
     rl_get_screen_size(&screencolumns,&screenlines);
-    screenlines--;      /* keep last line empty */
   #endif
+  screenlines--;        /* keep last line empty */
   term_refresh(1);
 }
 
@@ -471,7 +458,7 @@ static void term_scroll(int top, int bottom, int lines)
       CHAR_INFO Fill;
       int screenlines,screencolumns;
 
-      win32_getscreensize(&screencolumns,&screenlines);
+      amx_viewsize(&screencolumns,&screenlines);
       ScrollRectangle.Left=0;
       ScrollRectangle.Top=(short)(top-1);
       ScrollRectangle.Right=(short)(screencolumns-1);
@@ -2682,7 +2669,7 @@ extern AMX_NATIVE_INFO console_Natives[];
   unsigned short flags;
   char *ptr;
 
-  #if !defined AMX_NODYNALOAD && (defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__)
+  #if !defined AMX_NODYNALOAD && defined ENABLE_BINRELOC && (defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__)
     /* see www.autopackage.org for the BinReloc module */
     if (br_init(NULL)) {
       char *libroot=br_find_exe_dir("");

@@ -15,7 +15,7 @@ the Pawn language, read the document "The Pawn booklet: The Language". If you
 installed Pawn via the Setup utility (for Microsoft Windows) or the autopackage
 (for Linux), you probably have these documents already. Otherwise, you can
 obtain both these documents from the web page devoted to Pawn:
-        http://www.compuphase.com/pawn.htm
+        http://www.compuphase.com/pawn/
 
 Below is a list of topics that this README covers, in this order:
 
@@ -55,8 +55,8 @@ has Unix line endings (LF only). When "unpacking" these archives, make sure
 that the directory structure in the ZIP/TGZ files is retained. Otherwise, the
 Pawn compiler will not be able to find its "include" files, for example.
 
-You should also download the two documentation files "pawn-lng.pdf" and
-"pawn-imp.pdf" --the "Language guide" and the "Implementor's guide"
+You should also download the two documentation files "pawn-lang.pdf" and
+"pawn-imp.pdf" --the "Language guide" and the "Implementer's guide"
 respectively. You may need to build the compiler and abstract machine, and
 the "Implementor's guide" is likely to give you precise guidelines (or at
 least, it will point you in the right direction). There are a few guidelines
@@ -293,5 +293,5 @@ o  AMXAPI, however, must be set to "__cdecl", because amx_Exec() uses a
 
 The distribution for the AMX DLL comes with two makefiles: the makefile for the
 32-bit DLL is for Watcom C/C++ and the makefile for the 16-bit DLL is for
-Borland C++ (Inprise).
+Borland C++.
 

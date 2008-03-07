@@ -11,10 +11,12 @@
  * terminal tty's in 'raw' mode, if we want to be able to fetch a single character. This also means that everything must
  * be put back correctly when the function ends. See GETCH.C for an implementation.
  *
- * For interactive use of SRUN/SDBG if would be much better to use GNU's readline package: the user would be able to
+ * For interactive use of PawnRun/PawnDbg if would be much better to use GNU's readline package: the user would be able to
  * have a complete emacs/vi like line editing system.
  */
-#include "getch.h"
+#if !defined getch && !defined kbhit
+  #include "getch.h"
+#endif
 
 #define	stricmp(a,b)    strcasecmp(a,b)
 #define	strnicmp(a,b,c) strncasecmp(a,b,c)

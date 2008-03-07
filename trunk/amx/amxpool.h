@@ -21,8 +21,8 @@
  *
  *  Version: $Id$
  */
-#ifndef AMXALLOC_H_INCLUDED
-#define AMXALLOC_H_INCLUDED
+#ifndef AMXPOOL_H_INCLUDED
+#define AMXPOOL_H_INCLUDED
 
 void  amx_poolinit(void *pool, unsigned size);
 void *amx_poolalloc(unsigned size, int index);
@@ -30,4 +30,5 @@ void  amx_poolfree(void *block);
 void *amx_poolfind(int index);
 int   amx_poolprotect(int index);
 
-#endif /* AMXALLOC_H_INCLUDED */
+
+#endif /* AMXPOOL_H_INCLUDED */

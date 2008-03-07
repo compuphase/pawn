@@ -18,7 +18,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: amxfile.c 3927 2008-03-04 10:13:46Z thiadmer $
+ *  Version: $Id: amxfile.c 3931 2008-03-04 17:02:34Z thiadmer $
  */
 #if defined _UNICODE || defined __UNICODE__ || defined UNICODE
 # if !defined UNICODE   /* for Windows */
@@ -30,7 +30,6 @@
 #endif
 
 #include <assert.h>
-#include <io.h>
 #include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -47,6 +46,8 @@
 #endif
 #if defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__ || defined MACOS
   #include <dirent.h>
+#else
+  #include <io.h>
 #endif
 #include "amx.h"
 

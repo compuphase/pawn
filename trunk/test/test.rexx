@@ -1545,3 +1545,67 @@ test121:
   /*??? should also run this example, but need a native function that returns an array */
   return
 
+test122:
+  say '122. The following test should compile successfully; when run, it should print'
+  say ''
+  say '         111 112 113 114 - 121 122 123 124 - 131 132 133 134 -'
+  say '          11  12  13  14 -  21  22  23  24 -  31  32  33  34 -'
+  say ''
+  say '     Assigning a 2-dimensional array to a slot in a 3-dimensional array.'
+  say ''
+  say 'Symptoms of detected bug: incorrect print-out, due to overwriting the index vector.'
+  say '-----'
+  pawncc ' ARRAY2DTO3D= array2'
+  pawnrun ' array2.amx'
+  return
+
+test123:
+  say '123. The following test should compile successfully.'
+  say ''
+  say '     Variants in enumeration declarations (optional terminating commas).'
+  say '-----'
+  pawncc ' ENUM_GOOD_DECL= test1'
+  return
+
+test124:
+  say '124. The following test should issue error 001, expecting "}" but finding an'
+  say '     identifier.'
+  say ''
+  say '     Omitting commans in an enumeration declaration (where they are required).'
+  say '-----'
+  pawncc ' ENUM_BAD_DECL= test1'
+  return
+
+test125:
+  say '125. The following test should compile successfully; when run, it should print:'
+  say ''
+  say '         Eenie Meenie'
+  say '         Meinie Moe'
+  say ''
+  say '     Concatenation of string literals.'
+  say '-----'
+  pawncc ' LIT_STRING_CAT= test2'
+  pawnrun ' test2.amx'
+  return
+
+test126:
+  say '126. The following test should issue warning 238 TWICE; when run, it should'
+  say '     print:'
+  say ''
+  say '         Eenie Meenie'
+  say '         Meinie Moe'
+  say ''
+  say '     Concatenation of string literals, but mixing string formats.'
+  say '-----'
+  pawncc ' LIT_STRING_CAT_MIX= test2'
+  pawnrun ' test2.amx'
+  return
+
+test127:
+  say '127. The following test should issue error 025.'
+  say ''
+  say '     A public function that is forward declared as non-public.'
+  say '-----'
+  pawncc ' PUBLIC_NOT_DECLARED= test1'
+  return
+

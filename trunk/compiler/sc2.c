@@ -18,7 +18,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: sc2.c 3927 2008-03-04 10:13:46Z thiadmer $
+ *  Version: $Id: sc2.c 3931 2008-03-04 17:02:34Z thiadmer $
  */
 #include <assert.h>
 #include <stdio.h>
@@ -621,26 +621,6 @@ static int htoi(cell *val,const unsigned char *curptr)
     return (int)(ptr-curptr);
 }
 
-#if defined __GNUC__
-static double pow10(int value)
-{
-  double res=1.0;
-  while (value>=4) {
-    res*=10000.0;
-    value-=5;
-  } /* while */
-  while (value>=2) {
-    res*=100.0;
-    value-=2;
-  } /* while */
-  while (value>=1) {
-    res*=10.0;
-    value-=1;
-  } /* while */
-  return res;
-}
-#endif
-
 /*  ftoi
  *
  *  Attempts to interpret a numeric symbol as a rational number, either as
@@ -716,11 +696,7 @@ static int ftoi(cell *val,const unsigned char *curptr)
       exp=(exp*10)+(*ptr-'0');
       ptr++;
     } /* while */
-    #if defined __GNUC__
-      fmult=pow10(exp*sign);
-    #else
-      fmult=pow(10,exp*sign);
-    #endif
+    fmult=pow(10,exp*sign);
     fnum *= fmult;
     dnum *= (unsigned long)(fmult+0.5);
   } /* if */
@@ -1990,7 +1966,7 @@ SC_FUNC int lex(cell *lexvalue,char **lexsym)
              || *lptr==sc_ctrlchar && *(lptr+1)=='!' && *(lptr+2)=='\"')  /* packed raw string */
   {
     int stringflags,segmentflags;
-    unsigned char *cat;
+    char *cat;
     _lextok=tSTRING;
     *lexvalue=_lexval=litidx;
     _lexstr[0]='\0';

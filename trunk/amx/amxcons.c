@@ -22,7 +22,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: amxcons.c 3902 2008-01-23 17:40:01Z thiadmer $
+ *  Version: $Id: amxcons.c 3935 2008-03-06 13:18:13Z thiadmer $
  */
 
 #if defined _UNICODE || defined __UNICODE__ || defined UNICODE
@@ -43,8 +43,11 @@
   #include <conio.h>
   #include <malloc.h>
 #endif
-#if defined USE_CURSES
+#if defined USE_CURSES || defined HAVE_CURSES_H
   #include <curses.h>
+  #if !defined CURSES
+    #define CURSES  1
+  #endif
 #endif
 #include "osdefs.h"
 #if defined __ECOS__
@@ -103,7 +106,76 @@
   void amx_wherexy(int *x,int *y);
   unsigned int amx_setattr(int foregr,int backgr,int highlight);
   void amx_console(int columns, int lines, int flags);
+  void amx_viewsize(int *width,int *height);
   int amx_kbhit(void);
+#elif defined CURSES && CURSES != 0
+  /* Use the "curses" library to implement the console */
+  static WINDOW *curseswin;
+  #define amx_putstr(s)       printw("%s",(s))
+  #define amx_putchar(c)      addch(c)
+  #define amx_fflush()        refresh()
+  #define amx_getch()         getch()
+  #define amx_gets(s,n)       getnstr((s),(n))
+  #define amx_clrscr()        clear()
+  #define amx_clreol()        clrtoeol()
+  #define amx_gotoxy(x,y)     move((y)-1,(x)-1)
+  #define amx_console(c,l,f)  ((void)(c),(void)(l),(void)(f))
+  unsigned int amx_setattr(int foregr,int backgr,int highlight)
+  {
+    int attribs=A_NORMAL;
+    if (highlight>0)
+      attribs=(attribs & ~A_NORMAL) | A_STANDOUT;
+    attrset(attribs);
+    //??? in future, also handle colours
+  }
+  void CreateConsole(void);
+  int amx_kbhit(void)
+  {
+    int result;
+    CreateConsole();
+    nodelay(curseswin,TRUE);    /* enter non-blocking state */
+    result=getch();             /* read key (if any) */
+    nodelay(curseswin,FALSE);   /* leave non-blocking state */
+    if (result!=ERR)
+      ungetch(result);          /* a key is waiting, push it back */
+    return (result==ERR) ? 0 : 1;
+  }
+  int amx_termctl(int code,int value)
+  {
+    switch (code) {
+    case 0:           /* query terminal support */
+      return 1;
+    /* case 1: */     /* switch auto-wrap on/off (not supported in curses!) */
+    /* case 2: */     /* create/switch to another console */
+    case 3:           /* set emphasized font */
+      if (value)
+        attron(A_BOLD);
+      else
+        attroff(A_BOLD);
+      return 1;
+    /* case 4: */     /* query whether a terminal is "open" */
+    default:
+      return 0;
+    } /* switch */
+  }
+  void amx_wherexy(int *x,int *y)
+  {
+    int row,col;
+    getyx(curseswin,row,col);
+    if (x!=NULL)
+      *x=col+1;
+    if (y!=NULL)
+      *y=row+1;
+  }
+  void amx_viewsize(int *width,int *height)
+  {
+    int row,col;
+    getmaxyx(curseswin,row,col);
+    if (width!=NULL)
+      *width=col;
+    if (height!=NULL)
+      *height=row;
+  }
 #elif defined VT100 || defined __LINUX__ || defined ANSITERM || defined __ECOS__
   /* ANSI/VT100 terminal, or shell emulating "xterm" */
   #if defined __ECOS__
@@ -211,11 +283,13 @@
     for (i=0; i<8 && (val=amx_getch())!=';'; i++)
       str[i]=(char)val;
     str[i]='\0';
-    *y=atoi(str);
+    if (y!=NULL)
+      *y=atoi(str);
     for (i=0; i<8 && (val=amx_getch())!='R'; i++)
       str[i]=(char)val;
     str[i]='\0';
-    *x=atoi(str);
+    if (x!=NULL)
+      *x=atoi(str);
     #if defined ANSITERM
       val=amx_getch();
       assert(val=='\r');    /* ANSI driver adds CR to the end of the command */
@@ -258,6 +332,14 @@
     sprintf(str,"\033[8;%d;%dt",lines,columns);
     amx_putstr(str);
     amx_fflush();
+  }
+  void amx_viewsize(int *width,int *height)
+  {
+    /* a trick to get the size of the terminal is to position the cursor far
+     * away and then read it back
+     */
+    amx_gotoxy(999,999);
+    amx_wherexy(width,height);
   }
 #elif defined __WIN32__ || defined _WIN32 || defined WIN32
   /* Win32 console */
@@ -380,21 +462,15 @@
     rect.Bottom=(short)(lines-1);
     SetConsoleWindowInfo(GetStdHandle(STD_OUTPUT_HANDLE),TRUE,&rect);
   }
-#elif defined USE_CURSES
-  /* Use the "curses" library to implement the console */
-  #define amx_putstr(s)       printw("%s",(s))
-  #define amx_putchar(c)      addch(c)
-  #define amx_fflush()        (0)
-  #define amx_getch()         getch()
-  #define amx_gets(s,n)       getnstr(s,n)
-  #define amx_clrscr()        clear()
-  #define amx_clreol()        clrtoeol()
-  #define amx_gotoxy(x,y)     ((void)(x),(void)(y),(0))
-  #define amx_wherexy(x,y)    (*(x)=*(y)=0)
-  #define amx_setattr(c,b,h)  ((void)(c),(void)(b),(void)(h),(0))
-  #define amx_termctl(c,v)    ((void)(c),(void)(v),(0))
-  #define amx_console(c,l,f)  ((void)(c),(void)(l),(void)(f))
-  #define amx_kbhit()         kbhit()
+  void amx_viewsize(int *width,int *height)
+  {
+    CONSOLE_SCREEN_BUFFER_INFO csbi;
+    GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE),&csbi);
+    if (width!=NULL)
+      *width=(int)csbi.dwSize.X;
+    if (height!=NULL)
+      *height=(int)(csbi.srWindow.Bottom-csbi.srWindow.Top+1);
+  }
 #else
   /* assume a streaming terminal; limited features (no colour, no cursor
    * control)
@@ -411,6 +487,7 @@
   #define amx_setattr(c,b,h)  ((void)(c),(void)(b),(void)(h),(0))
   #define amx_termctl(c,v)    ((void)(c),(void)(v),(0))
   #define amx_console(c,l,f)  ((void)(c),(void)(l),(void)(f))
+  #define amx_viewsize        (*(x)=80,*(y)=25)
   #define amx_kbhit()         kbhit()
 #endif
 
@@ -422,20 +499,20 @@
   	  createdconsole=1;
   	} /* if */
   }
-#elif defined USE_CURSES
+#elif defined CURSES && CURSES != 0
   // The Mac OS X build variant uses curses.
   void CreateConsole(void)
   { static int createdconsole=0;
     if (!createdconsole) {
-  	  initscr();
+      curseswin=initscr();
       cbreak();
       noecho();
       nonl();
-      intrflush(stdscr, FALSE);
-      keypad(stdscr, TRUE);
-
-  	  createdconsole=1;
-  	} /* if */
+      scrollok(curseswin,TRUE);
+      intrflush(curseswin,FALSE);
+      keypad(curseswin,TRUE);
+      createdconsole=1;
+    } /* if */
   }
 #else
   #define CreateConsole()
