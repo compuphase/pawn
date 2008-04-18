@@ -495,6 +495,11 @@ main()
         assert chglist
         assert to_parent
     #endif
+
+    #if defined STRING_DBL_ESCAPE
+        new name[10 char] = !"\\"
+        #pragma unused name
+    #endif
     }
 
 #if defined LOCAL_SHADOWS
