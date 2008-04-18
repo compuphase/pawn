@@ -1,6 +1,6 @@
 /* String functions
  *
- * (c) Copyright 2005-2007, ITB CompuPhase
+ * (c) Copyright 2005-2008, ITB CompuPhase
  * This file is provided as is (no warranties).
  */
 #pragma library String
@@ -30,3 +30,4 @@ native memcpy(dest[], const source[], index=0, numbytes, maxlength=sizeof dest);
 
 stock bool: strequal(const string1[], const string2[], bool:ignorecase=false, length=cellmax)
     return strcmp(string1, string2, ignorecase, length) == 0;
+

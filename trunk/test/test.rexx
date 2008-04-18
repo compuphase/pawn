@@ -1571,7 +1571,7 @@ test124:
   say '124. The following test should issue error 001, expecting "}" but finding an'
   say '     identifier.'
   say ''
-  say '     Omitting commans in an enumeration declaration (where they are required).'
+  say '     Omitting commas in an enumeration declaration (where they are required).'
   say '-----'
   pawncc ' ENUM_BAD_DECL= test1'
   return
@@ -1607,5 +1607,15 @@ test127:
   say '     A public function that is forward declared as non-public.'
   say '-----'
   pawncc ' PUBLIC_NOT_DECLARED= test1'
+  return
+
+test128:
+  say '128. The following test should compile successfully.'
+  say ''
+  say '     A double backslash as the only element in a string should be ok.'
+  say ''
+  say 'Symptoms of detected bug: error 037.'
+  say '-----'
+  pawncc ' STRING_DBL_ESCAPE= test1'
   return
 

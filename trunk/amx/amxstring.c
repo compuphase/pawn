@@ -18,7 +18,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: amxstring.c 3902 2008-01-23 17:40:01Z thiadmer $
+ *  Version: $Id: amxstring.c 3963 2008-04-18 15:21:10Z thiadmer $
  */
 #include <limits.h>
 #include <string.h>
@@ -50,6 +50,9 @@
 
 #if !defined isdigit
 # define isdigit(c)     ((unsigned)((c)-'0')<10u)
+#endif
+#if !defined sizearray
+# define sizearray(a)   (sizeof(a) / sizeof((a)[0]))
 #endif
 
 
@@ -651,12 +654,11 @@ static cell AMX_NATIVE_CALL n_strval(AMX *amx,const cell *params)
 static cell AMX_NATIVE_CALL n_valstr(AMX *amx,const cell *params)
 {
   TCHAR str[50];
-  cell value,mult;
+  cell value,temp;
   cell *cstr;
   int len,result,negate=0;
 
   /* find out how many digits are needed */
-  mult=10;
   len=1;
   value=params[2];
   if (value<0) {
@@ -664,10 +666,9 @@ static cell AMX_NATIVE_CALL n_valstr(AMX *amx,const cell *params)
     len++;
     value=-value;
   } /* if */
-  while (value>=mult) {
+  for (temp=value; temp>=10; temp/=10)
     len++;
-    mult*=10;
-  } /* while */
+  assert(len<=sizearray(str));
 
   /* put in the string */
   result=len;

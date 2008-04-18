@@ -4,7 +4,7 @@
  *  several interfaces:
  *  - a console interface with terminal support: VT100/ANSI terminal (or the
  *    xterm terminal emulator), Win32 pseudo-terminal and curses (for the Apple
- *    Macintosh)
+ *    Macintosh and Linux)
  *  - hooks to use other pseudo-terminals, such as the Win32 GUI terminal and
  *    the GraphApp terminal, both of which support Unicode
  *  - a GDB-style "streaming" interface, to hook GUI shells to the debugger (in
@@ -33,14 +33,14 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: pawndbg.c 3936 2008-03-06 14:18:27Z thiadmer $
+ *  Version: $Id: pawndbg.c 3963 2008-04-18 15:21:10Z thiadmer $
  *
  *
  *  Command line options:
  *    -rs232=1            set remote debugging over a serial line (port number
  *                        may be 1,2,... for Windows; 0,1,... for Linux)
  *    -term=x,y           set terminal size
- *    -term=off           force terminal off (if environments where it is on by
+ *    -term=off           force terminal off (in environments where it is on by
  *                        default)
  *    -term=hide          hide the window with the terminal, useful when using
  *                        a "dual terminal" debugger from an IDE
@@ -568,7 +568,8 @@ static void source_list(AMX_DBG *amxdbg,int startline,int numlines,int curline)
         cursource[startline][screencolumns-EATLINE-1] = '\n';
         cursource[startline][screencolumns-EATLINE] = '\0';
       } /* if */
-      (void)amx_setattr(-1,-1,startline==curline);
+      if (terminal>=0)
+        (void)amx_setattr(-1,-1,startline==curline);
       if (terminal<=0) {
         if (startline==curline)
           amx_printf("%3d%c %s",startline+1,CHR_CURLINE,cursource[startline]);
@@ -1564,6 +1565,8 @@ static void watch_list(AMX *amx,AMX_DBG *amxdbg)
       idx[dim++]=atoi(indexptr);
       indexptr=strchr(indexptr,'[');
     } /* if */
+    if (terminal<0)
+      amx_printf("!watch ");
     amx_printf("%d   %-12s ",num++,watch->name);
     /* find the symbol with the given range with the smallest scope */
     if (dbg_GetVariable(amxdbg,watch->name,amx->cip,&sym)==AMX_ERR_NONE)
@@ -1584,7 +1587,7 @@ static void watch_list(AMX *amx,AMX_DBG *amxdbg)
     } /* for */
     term_csrrestore();
   } else {
-    if (num>0)
+    if (num>0 && terminal>=0)
       draw_hline(0);
   } /* if */
 }
@@ -1657,7 +1660,29 @@ static int break_clear(int number)
 static int break_set(AMX_DBG *amxdbg,const char *symaddr,int flags)
 {
   BREAKPOINT *cur,*newbp, bp;
-  int number,changed,err;
+  int number,changed,err,i,len,offs;
+  char filename[_MAX_PATH];
+  const char *sep;
+
+  /* check if a filename precedes the breakpoint location */
+  strcpy(filename,curfilename);
+  symaddr=(const char*)skipwhitespace(symaddr);
+  if ((sep=strrchr(symaddr,':'))!=NULL) {
+    /* the user may have given a partial filename (e.g. without a path), so
+     * walk through all files to find a match
+     */
+    len=(int)(sep-symaddr);
+    assert(len>=0);
+    for (i=0; i<amxdbg->hdr->files; i++) {
+      offs=strlen(amxdbg->filetbl[i]->name)-len;
+      if (offs>=0 && strncmp(amxdbg->filetbl[i]->name+offs,symaddr,len)==0) {
+        /* found the matching file */
+        strcpy(filename,amxdbg->filetbl[i]->name);
+        break;
+      } /* if */
+    } /* for */
+    symaddr=sep+1;
+  } /* if */
 
   /* find type */
   memset(&bp,0,sizeof(BREAKPOINT));
@@ -1666,10 +1691,10 @@ static int break_set(AMX_DBG *amxdbg,const char *symaddr,int flags)
     bp.type=BP_CODE;
     if ((flags & 1)!=0)
       bp.number=0;      /* for temporary breakpoint, use number 0 */
-    err=dbg_GetLineAddress(amxdbg,strtol(symaddr,NULL,10)-1,curfilename,&bp.addr);
+    err=dbg_GetLineAddress(amxdbg,strtol(symaddr,NULL,10)-1,filename,&bp.addr);
   } else {
     bp.type=BP_CODE;
-    err=dbg_GetFunctionAddress(amxdbg,symaddr,curfilename,&bp.addr);
+    err=dbg_GetFunctionAddress(amxdbg,symaddr,filename,&bp.addr);
     dbg_LookupFunction(amxdbg, bp.addr, &bp.name);
   } /* if */
   if (err!=AMX_ERR_NONE)
@@ -1734,6 +1759,57 @@ static void break_list(AMX_DBG *amxdbg)
     } /* if */
     amx_printf("\n");
   } /* for */
+}
+
+static int break_find(AMX_DBG *amxdbg,const char *symaddr)
+{
+  BREAKPOINT *cur;
+  int i,len,offs;
+  char filename[_MAX_PATH];
+  const char *sep;
+
+  /* check if a filename precedes the breakpoint location */
+  symaddr=(const char*)skipwhitespace(symaddr);
+  sep=strrchr(symaddr,':');
+  if (sep==NULL && isdigit(*symaddr))
+    return atoi(symaddr);
+
+  strcpy(filename,curfilename);
+  if (sep!=NULL) {
+    /* the user may have given a partial filename (e.g. without a path), so
+     * walk through all files to find a match
+     */
+    len=(int)(sep-symaddr);
+    assert(len>=0);
+    for (i=0; i<amxdbg->hdr->files; i++) {
+      offs=strlen(amxdbg->filetbl[i]->name)-len;
+      if (offs>=0 && strncmp(amxdbg->filetbl[i]->name+offs,symaddr,len)==0) {
+        /* found the matching file */
+        strcpy(filename,amxdbg->filetbl[i]->name);
+        break;
+      } /* if */
+    } /* for */
+    symaddr=sep+1;
+  } /* if */
+
+  symaddr=(const char*)skipwhitespace(symaddr);
+  for (cur=breakpoints.next; cur!=NULL; cur=cur->next) {
+    assert(cur->type!=BP_NONE);
+    if (cur->type==BP_CODE) {
+      const char *fname;
+      dbg_LookupFile(amxdbg,cur->addr,&fname);
+      if (fname!=NULL && strcmp(fname,filename)==0) {
+        long line;
+        if (cur->name!=NULL && strcmp(symaddr,cur->name)==0)
+          return cur->number;
+        dbg_LookupLine(amxdbg,cur->addr,&line);
+        if (line==strtol(symaddr,NULL,10)-1)
+          return cur->number;
+      } /* if */
+    } /* if */
+  } /* for */
+
+  return -1;
 }
 
 static int break_check(AMX *amx)
@@ -1926,12 +2002,27 @@ char *rl_gets(char *str,int length)
       return str;
     } /* if */
     ReadConsole(stdinput,str,length,&num,NULL);
+    if (num<length)
+      str[num]='\0';
   #else
     amx_gets(str,length);
   #endif
   return str;
 }
 #endif
+
+static char *strstrip(char *string)
+{
+  int pos;
+
+  /* strip leading white space */
+  while (*string!='\0' && *string<=' ')
+    memmove(string,string+1,strlen(string));
+  /* strip trailing white space */
+  for (pos=strlen(string); pos>0 && string[pos-1]<=' '; pos--)
+    string[pos-1]='\0';
+  return string;
+}
 
 static void listcommands(char *command,AMX_DBG *amxdbg,int curline)
 {
@@ -1991,9 +2082,10 @@ static void listcommands(char *command,AMX_DBG *amxdbg,int curline)
     amx_printf("\tSET var=value\t\tset variable \"var\" to the numeric value \"value\"\n"
             "\tSET var[i]=value\tset array item \"var\" to a numeric value\n");
   } else if (stricmp(command,"term")==0) {
-    amx_printf("\tTERM OFF\tdisable VT100/Win32 terminal functions\n"
+    amx_printf("\tTERM OFF\tdisable terminal functions\n"
             "\tTERM ON\t\tuse terminal capabilities, default console size\n"
-            "\tTERM x y\tset terminal size (x columns, y lines)\n");
+            "\tTERM x y\tset terminal size (x columns, y lines)\n"
+            "\nDepending on the operating system, the terminal is VT100/ANSI, Win32 console or \"curses\".\n");
 #if !defined NO_REMOTE
   } else if (stricmp(command,"transfer")==0) {
     amx_printf("\tTRANSFER\ttransfer the program to the remote host (for remote\n"
@@ -2093,10 +2185,7 @@ static char lastcommand[32] = "";
         continue;
       } /* if */
     } /* if */
-    if ((params=strchr(line,'\n'))!=NULL)
-      *params='\0';     /* strip newline character */
-    if ((params=strchr(line,'\r'))!=NULL)
-      *params='\0';     /* strip carriage return character too */
+    strstrip(line);     /* strip newline character, plus leading or trailing white space */
     if (strlen(line)==0) {
       if (terminal==0) {
         int csrx,csry;
@@ -2227,11 +2316,10 @@ static char lastcommand[32] = "";
       if (*params=='*') {
         /* clear all breakpoints */
         break_init();
-      } else if (isdigit(*params)) {
-        if (!break_clear(atoi(params)))
-          amx_printf("\tUnknown breakpoint\n");
       } else {
-        amx_printf("\tInvalid command\n");
+        int number=break_find(amxdbg,params);
+        if (number<0 || !break_clear(number))
+          amx_printf("\tUnknown breakpoint (or wrong syntax)\n");
       } /* if */
       if (terminal>0)
         source_list(amxdbg,gettopline(curline,curline-autolist/2),autolist,curline);
@@ -2247,6 +2335,8 @@ static char lastcommand[32] = "";
               && amxdbg->symboltbl[i]->codeend>(ucell)amx->cip)
           {
             scroll_cmdwin(1);
+            if (terminal<0)
+              amx_printf("!");
             amx_printf("%s\t%s\t",(amxdbg->symboltbl[i]->vclass & DISP_MASK)>0 ? "loc" : "glb",amxdbg->symboltbl[i]->name);
             display_variable(amx,amxdbg,amxdbg->symboltbl[i],idx,0);
             amx_printf("\n");
@@ -2271,6 +2361,8 @@ static char lastcommand[32] = "";
           scroll_cmdwin(1);
           if (behindname!=NULL)
             *behindname='[';
+          if (terminal<0)
+            amx_printf("!");
           amx_printf("%s\t%s\t",(sym->vclass & DISP_MASK)>0 ? "loc" : "glb",params/*sym->name*/);
           display_variable(amx,amxdbg,(AMX_DBG_SYMBOL*)sym,idx,dim);
           amx_printf("\n");
@@ -2490,7 +2582,6 @@ static long lastline;
   const char *filename;
   long line;
   int breaknr,i,err;
-  char *msg;
 
   if (amx == NULL) {
     /* special case: re-initialize the abstract machine */
@@ -2566,18 +2657,12 @@ static long lastline;
   dbg_LookupFile(amxdbg,amx->cip,&filename);
 
   /* check breakpoints */
-  msg="";
-  i=0;
-  if (breaknr==0) {
-    msg="STOPPED at line %d\n";
-    i=(int)line+1;
-  } else if (breaknr>0) {
-    msg="STOPPED at breakpoint %d\n";
-    i=breaknr;
-  } /* if */
   term_switch(1);             /* switch to the debugger console */
-  if (msg!=NULL)
-    amx_printf(msg,i);        /* print breakpoint number */
+  i=0;
+  if (breaknr==0)
+    amx_printf("STOP at line %ld\n",line+1);
+  else if (breaknr>0)         /* print breakpoint number */
+    amx_printf("BREAK %d at line %ld\n",breaknr,line+1);
   assert(filename!=NULL);
   if (curfilename!=filename) {
     curfilename=filename;
@@ -2588,7 +2673,7 @@ static long lastline;
       amx_printf("\nCritical error: source file not found (or insufficient memory)\n");
       exit(1);
     } else if (terminal<=0) {
-      amx_printf("(%s)\n",curfilename);
+      amx_printf("!file %s\n",curfilename);
     } /* if */
   } /* if */
   #if !defined VT100

@@ -18,7 +18,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: sc3.c 3929 2008-03-04 11:47:12Z thiadmer $
+ *  Version: $Id: sc3.c 3963 2008-04-18 15:21:10Z thiadmer $
  */
 #include <assert.h>
 #include <stdio.h>
@@ -1159,6 +1159,7 @@ static int hier13(value *lval)
     int flab2=getlabel();
     value lval2={0};
     int array1,array2;
+    short save_allowtags;
 
     if (lvalue) {
       rvalue(lval);
@@ -1177,7 +1178,7 @@ static int hier13(value *lval)
       assert(result);           /* pop off equally many items than were pushed */
     } /* if */
     jmp_eq0(flab1);             /* go to second expression if primary register==0 */
-    PUSHSTK_I(sc_allowtags);
+    save_allowtags=sc_allowtags;
     sc_allowtags=FALSE;         /* do not allow tagnames here (colon is a special token) */
     if (sc_status==statWRITE) {
       modheap(heap1*sizeof(cell));
@@ -1187,7 +1188,7 @@ static int hier13(value *lval)
       rvalue(lval);
     if (lval->ident==iCONSTEXPR)        /* load constant here */
       ldconst(lval->constval,sPRI);
-    sc_allowtags=(short)POPSTK_I();     /* restore */
+    sc_allowtags=save_allowtags;/* restore */
     heap1=decl_heap-locheap;    /* save heap space used in "true" branch */
     assert(heap1>=0);
     decl_heap=locheap;          /* restore heap delta */
@@ -1863,8 +1864,8 @@ static int primary(value *lval,int *symtok)
   assert(symtok!=NULL);
   *symtok=0;
   if (matchtoken('(')){         /* sub-expression - (expression,...) */
-    PUSHSTK_I(sc_intest);
-    PUSHSTK_I(sc_allowtags);
+    short save_intest=sc_intest;
+    short save_allowtags=sc_allowtags;
 
     sc_intest=FALSE;            /* no longer in "test" expression */
     sc_allowtags=TRUE;          /* allow tagnames to be used in parenthesized expressions */
@@ -1875,8 +1876,8 @@ static int primary(value *lval,int *symtok)
     needtoken(')');
     lexclr(FALSE);              /* clear lex() push-back, it should have been
                                  * cleared already by needtoken() */
-    sc_allowtags=(short)POPSTK_I();
-    sc_intest=(short)POPSTK_I();
+    sc_allowtags=save_allowtags;
+    sc_intest=save_intest;
     return lvalue;
   } /* if */
 

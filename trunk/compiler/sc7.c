@@ -525,7 +525,7 @@ static int matchsequence(char *start,char *end,const char *pattern,
           assert((ptr[4]=='0' || ptr[4]=='f') && (ptr[5]=='0' || ptr[5]=='f'));
           assert((ptr[6]=='0' || ptr[6]=='f') && (ptr[7]=='0' || ptr[7]=='f'));
         #endif
-        if (value==0) {
+        if (v==0) {
           str[0]='0'; /* make zero transform to '0' rather than '0000' */
           str[1]='\0';
         } else {

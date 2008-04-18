@@ -18,7 +18,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: sc2.c 3931 2008-03-04 17:02:34Z thiadmer $
+ *  Version: $Id: sc2.c 3963 2008-04-18 15:21:10Z thiadmer $
  */
 #include <assert.h>
 #include <stdio.h>
@@ -274,7 +274,9 @@ static void doinclude(int silent)
     strlcat(symname,ptr+1,sizeof symname);
   else
     strlcat(symname,name,sizeof symname);
-  /* replace invalid characters by '_' (anything not a digit, character or underscore) */
+  /* replace invalid characters by '_' (anything not a digit, character or
+   * underscore)
+   */
   for (i=0; symname[i]!='\0'; i++)
     if (!alphanum(symname[i]))
       symname[i]='_';
@@ -540,16 +542,27 @@ static void stripcom(unsigned char *line)
 static int btoi(cell *val,const unsigned char *curptr)
 {
   const unsigned char *ptr;
+  unsigned digitsep=UINT_MAX;
 
   *val=0;
   ptr=curptr;
   if (*ptr=='0' && *(ptr+1)=='b') {
     ptr+=2;
-    while (*ptr=='0' || *ptr=='1' || *ptr=='_') {
-      if (*ptr!='_')
+    while (*ptr=='0' || *ptr=='1' || *ptr==',') {
+      if (*ptr==',') {
+        if (digitsep!=0 && digitsep<INT_MAX)
+          return 0;       /* invalid numeric format */
+        digitsep=8;
+      } else {
         *val=(*val<<1) | (*ptr-'0');
+        digitsep--;
+      } /* if */
       ptr++;
     } /* while */
+    if (digitsep==8)
+      ptr--;
+    else if (digitsep!=0 && digitsep<INT_MAX)
+      return 0;           /* invalid numeric format */
   } else {
     return 0;
   } /* if */
@@ -568,16 +581,27 @@ static int btoi(cell *val,const unsigned char *curptr)
 static int dtoi(cell *val,const unsigned char *curptr)
 {
   const unsigned char *ptr;
+  unsigned digitsep=UINT_MAX; /* thousands separator */
 
   *val=0;
   ptr=curptr;
   if (!isdigit(*ptr))   /* should start with digit */
     return 0;
-  while (isdigit(*ptr) || *ptr=='_') {
-    if (*ptr!='_')
+  while (isdigit(*ptr) || *ptr==',') {
+    if (*ptr==',') {
+      if (digitsep!=0 && digitsep<INT_MAX)
+        return 0;       /* invalid numeric format */
+      digitsep=3;
+    } else {
       *val=(*val*10)+(*ptr-'0');
+      digitsep--;
+    } /* if */
     ptr++;
   } /* while */
+  if (digitsep==3)
+    ptr--;
+  else if (digitsep!=0 && digitsep<INT_MAX)
+    return 0;           /* invalid numeric format */
   if (alphanum(*ptr))   /* number must be delimited by non-alphanumerical */
     return 0;
   if (*ptr=='.' && isdigit(*(ptr+1)))
@@ -594,6 +618,7 @@ static int dtoi(cell *val,const unsigned char *curptr)
 static int htoi(cell *val,const unsigned char *curptr)
 {
   const unsigned char *ptr;
+  unsigned digitsep=UINT_MAX;
 
   *val=0;
   ptr=curptr;
@@ -601,21 +626,30 @@ static int htoi(cell *val,const unsigned char *curptr)
     return 0;
   if (*ptr=='0' && *(ptr+1)=='x') {     /* C style hexadecimal notation */
     ptr+=2;
-    while (ishex(*ptr) || *ptr=='_') {
-      if (*ptr!='_') {
+    while (ishex(*ptr) || *ptr==',') {
+      if (*ptr==',') {
+        if (digitsep!=0 && digitsep<INT_MAX)
+          return 0;       /* invalid numeric format */
+        digitsep=4;
+      } else {
         assert(ishex(*ptr));
         *val= *val<<4;
         if (isdigit(*ptr))
           *val+= (*ptr-'0');
         else
           *val+= (tolower(*ptr)-'a'+10);
+        digitsep--;
       } /* if */
       ptr++;
     } /* while */
+    if (digitsep==4)
+      ptr--;
+    else if (digitsep!=0 && digitsep<INT_MAX)
+      return 0;           /* invalid numeric format */
   } else {
     return 0;
   } /* if */
-  if (alphanum(*ptr))
+  if (alphanum(*ptr))     /* number must be delimited by non-alphanumerical */
     return 0;
   else
     return (int)(ptr-curptr);
@@ -642,22 +676,32 @@ static int ftoi(cell *val,const unsigned char *curptr)
   double fnum,ffrac,fmult;
   unsigned long dnum,dbase;
   int i, ignore;
+  unsigned digitsep=UINT_MAX; /* thousands separator */
 
+  if (!isdigit(*curptr))      /* should start with digit */
+    return 0;
   assert(rational_digits>=0 && rational_digits<9);
   for (i=0,dbase=1; i<rational_digits; i++)
     dbase*=10;
   fnum=0.0;
   dnum=0L;
   ptr=curptr;
-  if (!isdigit(*ptr))   /* should start with digit */
-    return 0;
-  while (isdigit(*ptr) || *ptr=='_') {
-    if (*ptr!='_') {
+  while (isdigit(*ptr) || *ptr==',') {
+    if (*ptr==',') {
+      if (digitsep!=0 && digitsep<INT_MAX)
+        return 0;       /* invalid numeric format */
+      digitsep=3;
+    } else {
       fnum=(fnum*10.0)+(*ptr-'0');
       dnum=(dnum*10L)+(*ptr-'0')*dbase;
+      digitsep--;
     } /* if */
     ptr++;
   } /* while */
+  if (digitsep==3)
+    ptr--;
+  else if (digitsep!=0 && digitsep<INT_MAX)
+    return 0;           /* invalid numeric format */
   if (*ptr!='.')
     return 0;           /* there must be a period */
   ptr++;
@@ -666,16 +710,14 @@ static int ftoi(cell *val,const unsigned char *curptr)
   ffrac=0.0;
   fmult=1.0;
   ignore=FALSE;
-  while (isdigit(*ptr) || *ptr=='_') {
-    if (*ptr!='_') {
-      ffrac=(ffrac*10.0)+(*ptr-'0');
-      fmult=fmult/10.0;
-      dbase /= 10L;
-      dnum += (*ptr-'0')*dbase;
-      if (dbase==0L && sc_rationaltag && rational_digits>0 && !ignore) {
-        error(222);     /* number of digits exceeds rational number precision */
-        ignore=TRUE;
-      } /* if */
+  while (isdigit(*ptr)) {
+    ffrac=(ffrac*10.0)+(*ptr-'0');
+    fmult=fmult/10.0;
+    dbase /= 10L;
+    dnum += (*ptr-'0')*dbase;
+    if (dbase==0L && sc_rationaltag && rational_digits>0 && !ignore) {
+      error(222);     /* number of digits exceeds rational number precision */
+      ignore=TRUE;
     } /* if */
     ptr++;
   } /* while */
@@ -775,7 +817,7 @@ static int number(cell *val,const unsigned char *curptr)
     *val=value;
     return i;
   } else {
-    return 0;                      /* else not a number */
+    return 0;                         /* else not a number */
   } /* if */
 }
 
@@ -1916,7 +1958,7 @@ SC_FUNC int lex(cell *lexvalue,char **lexsym)
   } /* while */
 
   starttoken=lptr;      /* save start pointer (for concatenating to documentation string) */
-  if ((i=number(&_lexval,lptr))!=0) {   /* number */
+  if ((i=number(&_lexval,lptr))!=0) {   /* number (non-floating point) */
     _lextok=tNUMBER;
     *lexvalue=_lexval;
     lptr+=i;
@@ -1924,6 +1966,15 @@ SC_FUNC int lex(cell *lexvalue,char **lexsym)
     _lextok=tRATIONAL;
     *lexvalue=_lexval;
     lptr+=i;
+  } else if (isdigit(*lptr)) {
+    /* so this symbol starts with a digit, but it is not a valid number; flag
+     * this and skip the entire symbol
+     */
+    error(92);          /* invalid number format */
+    while (alphanum(*lptr))
+      lptr++;
+    _lextok=tNUMBER;
+    *lexvalue=_lexval=0;
   } else if (alpha(*lptr)) {            /* symbol or label */
     /*  Note: only sNAMEMAX characters are significant. The compiler
      *        generates a warning if a symbol exceeds this length.
@@ -1990,9 +2041,12 @@ SC_FUNC int lex(cell *lexvalue,char **lexsym)
         error(238);       /* mixing packed/unpacked/raw strings in concatenation */
       cat=strchr(_lexstr,'\0');
       assert(cat!=NULL);
-      while ((*lptr!='\"' || *(lptr-1)==sc_ctrlchar) && *lptr!='\0' && (cat-_lexstr)<sLINEMAX) {
-        if (*lptr!='\a')  /* ignore '\a' (which was inserted at a line concatenation) */
+      while (*lptr!='"' && *lptr!='\0' && (cat-_lexstr)<sLINEMAX) {
+        if (*lptr!='\a') {/* ignore '\a' (which was inserted at a line concatenation) */
           *cat++=*lptr;
+          if (*lptr==sc_ctrlchar && *(lptr+1)!='\0')
+            *cat++=*++lptr; /* skip escape character plus the escaped character */
+        } /* if */
         lptr++;
       } /* while */
       *cat='\0';          /* terminate string */
