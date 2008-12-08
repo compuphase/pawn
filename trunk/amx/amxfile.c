@@ -18,7 +18,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: amxfile.c 4029 2008-11-04 16:26:23Z thiadmer $
+ *  Version: $Id: amxfile.c 4039 2008-12-08 12:09:24Z thiadmer $
  */
 #if defined _UNICODE || defined __UNICODE__ || defined UNICODE
 # if !defined UNICODE   /* for Windows */
@@ -36,7 +36,11 @@
 #include <string.h>
 #include <time.h>
 #include <sys/stat.h>
-#include <sys/utime.h>
+#if defined __BORLANDC__
+  #include <utime.h>
+#else
+  #include <sys/utime.h>
+#endif
 #include "osdefs.h"
 #if defined __WIN32__ || defined __MSDOS__
   #include <malloc.h>
@@ -830,20 +834,18 @@ static cell AMX_NATIVE_CALL n_fattrib(AMX *amx, const cell *params)
   #endif
   TCHAR *name,fullname[_MAX_PATH]="";
   int result=0;
-  int mode=S_IREAD | S_IWRITE;
-  unsigned long timestamp=(unsigned long)time(NULL);
 
-  if (params[2] != 0)
-    timestamp=(unsigned long)params[2];
-  if (params[3] != 0x0f)
-    mode=(int)params[3];
   amx_StrParam(amx,params[1],name);
   if (name!=NULL && completename(fullname,name,sizearray(fullname))!=NULL) {
-    struct utimbuf times;
-    times.actime=timestamp;
-    times.modtime=timestamp;
-    if (_tchmod(name,mode)==0 && _tutime(name,&times)==0)
-      result=1;
+    result=1;
+    if (params[2]!=0) {
+      struct utimbuf times;
+      times.actime=(unsigned long)params[2];
+      times.modtime=(unsigned long)params[2];
+      result=result && (_tutime(name,&times)==0);
+    } /* if */
+    if (params[3]!=0x0f)
+      result=result && (_tchmod(name,(int)params[3])==0);
   } /* if */
   return result;
 }

@@ -7,6 +7,8 @@
  *   bcc32 -w -w-amb -tWD -DAMXEXPORT="__stdcall _export" -DAMX_NATIVE_CALL=__stdcall -DAMX_NOSTRFMT amxstring.c amx.c
  * Create PAWNRUN with:
  *   bcc32 -w -DFLOATPOINT;FIXEDPOINT -DPAWN_DLL -DAMXDBG pawnrun.c amx.c amxcore.c amxcons.c amxdbg.c
+ *
+ * Move all DLLs and executables to the "bin" directory.
  */
 
 say 'This REXX file does several tests on the compiler and the abstract machine.'
@@ -1450,8 +1452,9 @@ test113:
   say ''
   say '     before dropping into run-time error 10 (native function failed)'
   say ''
-  say '     The native printf function did not support %% correctly. The run-time error'
-  say '     in this script is correct because the second printf lacks the parameter.'
+  say '     The native printf function did not support %% correctly. The run-time'
+  say '     error in this script is correct because the second printf lacks the'
+  say '     parameter.'
   say ''
   say 'Symptoms of detected bug: heap underflow, because heap was restored for either.'
   say 'branch, while only one branch is taken.'

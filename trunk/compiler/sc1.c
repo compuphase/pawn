@@ -20,7 +20,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: sc1.c 4032 2008-11-14 15:06:02Z thiadmer $
+ *  Version: $Id: sc1.c 4039 2008-12-08 12:09:24Z thiadmer $
  */
 #include <assert.h>
 #include <ctype.h>
@@ -1814,7 +1814,7 @@ void sc_attachdocumentation(symbol *sym,int onlylastblock)
    * below is invalid)
    */
   // assert(sym==NULL || sym->documentation==NULL || sym->states!=NULL);
-  
+
   if (pc_recentdoc!=NULL) {
     /* either copy the most recent comment block to the current symbol, or
      * append it to the global documentation
@@ -1863,7 +1863,7 @@ void sc_attachdocumentation(symbol *sym,int onlylastblock)
     free(pc_recentdoc);
     pc_recentdoc=NULL;
   } /* if */
-  
+
   if (onlylastblock)
     pc_docstring_suspended=FALSE;
   else if (pc_docstring_suspended)
@@ -2590,7 +2590,7 @@ static void initials(int ident,int tag,cell *size,int dim[],int numdim,
             break;
           ld=ld->next;
         } /* for */
-        if (d==dim[numdim-2])
+        if (d>0 && d==dim[numdim-2])
           dim[numdim-1]=match;
       } /* if */
       /* after all arrays have been initalized, we know the (major) dimensions
@@ -2659,7 +2659,7 @@ static cell initarray(int ident,int tag,int dim[],int numdim,int cur,
      */
     if (dsize==0 && !*errorfound)
       break;
-    if (idx>=dim[cur]) {
+    if (dim[cur]!=0 && idx>=dim[cur]) {
       assert(dsize>0 || *errorfound);
       error(18);            /* initialization data exceeds array size */
       break;                /* avoid incrementing "idx" */
@@ -2950,7 +2950,7 @@ static void decl_enum(int vclass)
     if (enumsym!=NULL)
       enumsym->usage |= uENUMROOT;
     /* attach a preceding comment to the enumeration's documentation */
-    sc_attachdocumentation(enumsym,TRUE);  
+    sc_attachdocumentation(enumsym,TRUE);
     /* start a new list for the element names */
     if ((enumroot=(constvalue*)malloc(sizeof(constvalue)))==NULL)
       error(103);                       /* insufficient memory (fatal error) */
@@ -4336,7 +4336,7 @@ static void write_docstring(FILE *log,const char *string)
     string++;                 /* skip white space */
   if (*string=='\0')
     return;
-    
+
   assert(strchr(string,sDOCSEP)==NULL);
   /* optionally wrap in "<summary>...</summary>", check whether this must happen */
   if (*string!='<') {       /* wrap in "summary" */
