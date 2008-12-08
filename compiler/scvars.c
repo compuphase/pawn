@@ -20,7 +20,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: scvars.c 3925 2008-03-03 16:08:45Z thiadmer $
+ *  Version: $Id: scvars.c 4002 2008-09-08 07:55:01Z thiadmer $
  */
 #include <stdio.h>
 #include <stdlib.h>     /* for _MAX_PATH */
@@ -77,10 +77,11 @@ SC_VDEFINE short fnumber = 0;      /* the file number in the file table (debuggi
 SC_VDEFINE short fcurrent= 0;      /* current file being processed (debugging) */
 SC_VDEFINE short sc_intest=FALSE;  /* true if inside a test */
 SC_VDEFINE int pc_sideeffect=0;    /* true if an expression causes a side-effect */
-SC_VDEFINE int stmtindent= 0;      /* current indent of the statement */
+SC_VDEFINE int pc_stmtindent=0;    /* current indent of the statement */
 SC_VDEFINE int indent_nowarn=FALSE;/* skip warning "217 loose indentation" */
-SC_VDEFINE int sc_tabsize=8;       /* number of spaces that a TAB represents */
-SC_VDEFINE short sc_allowtags=TRUE;  /* allow/detect tagnames in lex() */
+SC_VDEFINE int pc_tabsize=8;       /* number of spaces that a TAB represents */
+SC_VDEFINE int pc_matchedtabsize=0;/* if no tabsize explicitly set, try to detect the tab size */
+SC_VDEFINE short sc_allowtags=TRUE;/* allow/detect tagnames in lex() */
 SC_VDEFINE int sc_status;          /* read/write status */
 SC_VDEFINE int sc_rationaltag=0;   /* tag for rational numbers */
 SC_VDEFINE int rational_digits=0;  /* number of fractional digits */
@@ -104,12 +105,4 @@ SC_VDEFINE jmp_buf errbuf;
 
 #if !defined PAWN_LIGHT
   SC_VDEFINE int sc_makereport=FALSE; /* generate a cross-reference report */
-#endif
-
-#if defined __WATCOMC__ && !defined NDEBUG
-  /* Watcom's CVPACK dislikes .OBJ files without functions */
-  static int dummyfunc(void)
-  {
-    return 0;
-  }
 #endif

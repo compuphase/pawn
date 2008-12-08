@@ -130,7 +130,7 @@
 ;       * removed all debug hook code
 ;       * exchanged meaning of ESP and ESI in asm_exec(): now low-level calls/
 ;         pushes/pops are possible
-;       * removed the run-time functions for the CALL, CALL_I and RET op-codes,
+;       * removed the run-time functions for the CALL, CALL_PRI and RET op-codes,
 ;         they are now inline
 ;       * All these changes gained around 80% performance increase for the
 ;         hanoi bench.
@@ -1001,20 +1001,21 @@ OP_RETN:
 OP_CALL:
 ;nop;
         RELOC   1
-        GO_ON   j_call, OP_CALL_I, 8
+        GO_ON   j_call, OP_CALL_PRI, 8
 
         j_call:
         ;call   12345678h ; tasm chokes on this out of a sudden
         db      0e8h, 0, 0, 0, 0
 	CHECKCODESIZE j_call
 
-OP_CALL_I:
+OP_CALL_PRI:
 ;nop;
-        GO_ON   j_call_i, OP_JUMP
+        GO_ON   j_call_pri, OP_JUMP
 
-        j_call_i:
-        call    eax
-	CHECKCODESIZE j_call_i
+        j_call_pri:
+        mov     eax,AMX_ERR_INVINSTR
+        jmp     _return_popstack
+	CHECKCODESIZE j_call_pri
 
 ;good
 OP_JUMP:
@@ -1704,10 +1705,9 @@ OP_SRANGE:                              ;ignored
 ;not tested
 OP_JUMP_PRI:
         GO_ON   j_jump_pri, OP_SWITCH
-
     j_jump_pri:                 ; MP: This opcode makes sense only in con-
-        jmp     [eax]           ; junction with a possibility to get the
-                                ; address of a code location...
+        mov     eax,AMX_ERR_INVINSTR
+        jmp     _return_popstack
 	CHECKCODESIZE j_jump_pri
 
 
@@ -2308,7 +2308,7 @@ _amx_opcodelist_jit:
         DD      OP_RET
         DD      OP_RETN
         DD      OP_CALL
-        DD      OP_CALL_I
+        DD      OP_CALL_PRI     ; obsolete (invalid instruction)
         DD      OP_JUMP
         DD      OP_JREL
         DD      OP_JZER
@@ -2386,7 +2386,7 @@ _amx_opcodelist_jit:
         DD      OP_LINE
         DD      OP_SYMBOL
         DD      OP_SRANGE
-        DD      OP_JUMP_PRI
+        DD      OP_JUMP_PRI     ; obsolete (invalid instruction)
         DD      OP_SWITCH
         DD      OP_CASETBL
         DD      OP_SWAP_PRI     ; TR

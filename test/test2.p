@@ -105,6 +105,10 @@ native RegPublicFunction(ParameterCount, ...);
     native [1]netsocket(value);
 #endif
 
+#if defined STRINGIZE_OPER
+    #define log(%1) "logging: " ... #%1 ... "\n"
+#endif
+
 main()
     {
     #if defined ASSERT_LINENO
@@ -333,5 +337,19 @@ main()
     #if defined LIT_STRING_CAT_MIX
         print "Eenie " ... \"Meenie\n"
         print "Meinie " ... !"Moe\n"
+    #endif
+
+    #if defined ENUM_ELLIPSIS
+        enum Rect
+            {
+            left, top, right, bottom
+            }
+
+        new r[Rect] = { -1, ... }
+        printf "%d, %d, %d, %d\n", r[left], r[top], r[right], r[bottom]
+    #endif
+
+    #if defined STRINGIZE_OPER
+        print log(test)
     #endif
     }

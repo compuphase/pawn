@@ -18,7 +18,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: amxtime.c 3902 2008-01-23 17:40:01Z thiadmer $
+ *  Version: $Id: amxtime.c 4026 2008-10-22 10:49:05Z thiadmer $
  */
 #include <time.h>
 #include <assert.h>
@@ -239,7 +239,7 @@ static cell AMX_NATIVE_CALL n_gettime(AMX *amx, const cell *params)
   /* the time() function returns the number of seconds since January 1 1970
    * in Universal Coordinated Time (the successor to Greenwich Mean Time)
    */
-  return sec1970;
+  return (cell)sec1970;
 }
 
 /* setdate(year, month, day)
@@ -429,7 +429,7 @@ const AMX_NATIVE_INFO time_Natives[] = {
   { NULL, NULL }        /* terminator */
 };
 
-int AMXEXPORT amx_TimeInit(AMX *amx)
+int AMXEXPORT AMXAPI amx_TimeInit(AMX *amx)
 {
   #if !defined AMXTIME_NOIDLE
     /* see whether there is a @timer() function */
@@ -443,7 +443,7 @@ int AMXEXPORT amx_TimeInit(AMX *amx)
   return amx_Register(amx, time_Natives, -1);
 }
 
-int AMXEXPORT amx_TimeCleanup(AMX *amx)
+int AMXEXPORT AMXAPI amx_TimeCleanup(AMX *amx)
 {
   (void)amx;
   #if !defined AMXTIME_NOIDLE

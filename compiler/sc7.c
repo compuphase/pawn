@@ -45,7 +45,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: sc7.c 3902 2008-01-23 17:40:01Z thiadmer $
+ *  Version: $Id: sc7.c 4026 2008-10-22 10:49:05Z thiadmer $
  */
 #include <assert.h>
 #include <stdio.h>
@@ -512,7 +512,7 @@ static int matchsequence(char *start,char *end,const char *pattern,
          * values (the peephole optimizer may create such variants)
          */
         ucell v=getparamvalue(str,&ptr);
-        if (*ptr>' ' || v>=(1<<(sizeof(cell)*4)-1) && v<=~(1<<(sizeof(cell)*4)-1))
+        if (*ptr>' ' || v>=(1<<(sizeof(cell)*4)) && v<=~((1<<(sizeof(cell)*4))-1))
           return FALSE;
         /* reconvert the value to a string (without signs or expressions) */
         ptr=itoh(v);

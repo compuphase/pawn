@@ -1,6 +1,6 @@
 <?xml version="1.0" ?>
 <xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="1.0">
-<!-- Version: $Id: pawndoc.xsl 3845 2007-11-16 14:41:29Z thiadmer $ -->
+<!-- Version: $Id: pawndoc.xsl 4032 2008-11-14 15:06:02Z thiadmer $ -->
 
 <xsl:template match="/">
 <HTML>
@@ -19,7 +19,7 @@
 	P { MARGIN-BOTTOM: 0.5em; MARGIN-TOP: 0.5em; MARGIN-LEFT: 4em }
 	P.noindent { MARGIN-LEFT: 0em }
 	P.syntax { FONT-WEIGHT: bold }
-	HR.para { HEIGHT: 0; BORDER: 0; COLOR: transparent; BACKGROUND-COLOR: transparent; MARGIN-TOP: 0.5em; MARGIN-BOTTOM: 0; }
+	HR.para { HEIGHT: 0; BORDER: 0; COLOR: white; BACKGROUND-COLOR: transparent; MARGIN-TOP: 0.5em; MARGIN-BOTTOM: 0; }
 	XMP { BACKGROUND-COLOR: #ddeeff; FONT-SIZE: x-small; MARGIN: 1em }
 	PRE { BACKGROUND-COLOR: #ddeeff; FONT-SIZE: x-small; MARGIN: 1em }
 	TABLE { BORDER-BOTTOM: medium none; BORDER-LEFT: medium none; BORDER-RIGHT: medium none; BORDER-TOP: medium none }
@@ -65,9 +65,12 @@
 		<xsl:when test="substring(@name,1,2) = 'T:'">
 			<a><xsl:attribute name="name"><xsl:value-of select="substring(@name,3)"/></xsl:attribute><h2><span style="float:right; padding-right:2px">enumeration</span><xsl:value-of select="substring(@name,3)"/></h2></a>
 			<xsl:apply-templates select="summary"/>
-			<xsl:if test="remarks">
+			<xsl:if test="remarks or text()">
 				<h3>Remarks</h3>
 				<xsl:apply-templates select="remarks"/>
+				<xsl:if test="text()">
+  			  <p><xsl:apply-templates select="text()"/></p>
+  			</xsl:if>
 			</xsl:if>
 			<xsl:if test="member">
 				<h3>Members</h3>
@@ -91,13 +94,16 @@
 		</xsl:when>
 		<xsl:when test="substring(@name,1,2) = 'C:'">
 			<a><xsl:attribute name="name"><xsl:value-of select="substring(@name,3)"/></xsl:attribute><h2><span style="float:right; padding-right:2px">constant</span><xsl:value-of select="substring(@name,3)"/></h2></a>
-			<p class="noindent"><table><tr><td class="header inline">Value</td><td class="inline"><xsl:value-of select="@value"/></td></tr></table></p>
 			<xsl:apply-templates select="summary"/>
+			<p class="noindent"><table><tr><td class="header inline">Value</td><td class="inline"><xsl:value-of select="@value"/></td></tr></table></p>
 			<xsl:apply-templates select="tagname"/>
 			<xsl:apply-templates select="size"/>
-			<xsl:if test="remarks">
+			<xsl:if test="remarks or text()">
 				<h3>Remarks</h3>
 				<xsl:apply-templates select="remarks"/>
+				<xsl:if test="text()">
+  			  <p><xsl:apply-templates select="text()"/></p>
+  			</xsl:if>
 			</xsl:if>
 			<xsl:apply-templates select="example"/>
 			<xsl:if test="referrer">
@@ -122,9 +128,12 @@
 			</xsl:if>
 			<xsl:apply-templates select="tagname"/>
 			<xsl:apply-templates select="returns"/>
-			<xsl:if test="remarks">
+			<xsl:if test="remarks or text()">
 				<h3>Remarks</h3>
 				<xsl:apply-templates select="remarks"/>
+				<xsl:if test="text()">
+  			  <p><xsl:apply-templates select="text()"/></p>
+  			</xsl:if>
 			</xsl:if>
 			<xsl:apply-templates select="example"/>
 			<xsl:if test="referrer">
@@ -160,9 +169,12 @@
 			<xsl:apply-templates select="summary"/>
 			<h3>Syntax</h3><p class="syntax"><xsl:value-of select="@syntax"/></p>
 			<xsl:apply-templates select="tagname"/>
-			<xsl:if test="remarks">
+			<xsl:if test="remarks or text()">
 				<h3>Remarks</h3>
 				<xsl:apply-templates select="remarks"/>
+				<xsl:if test="text()">
+  			  <p><xsl:apply-templates select="text()"/></p>
+  			</xsl:if>
 			</xsl:if>
 			<xsl:apply-templates select="example"/>
 			<xsl:if test="referrer">
@@ -276,9 +288,9 @@
 
 <xsl:template match="li"><li><xsl:apply-templates/></li></xsl:template>
 
-<xsl:template match="p"><hr class="para"/><xsl:apply-templates/></xsl:template>
+<xsl:template match="p"><br/><xsl:apply-templates/></xsl:template>
 
-<xsl:template match="para"><hr class="para"/><xsl:apply-templates/></xsl:template>
+<xsl:template match="para"><br/><xsl:apply-templates/></xsl:template>
 
 <xsl:template match="section"><h2 class="general"><xsl:apply-templates/></h2></xsl:template>
 

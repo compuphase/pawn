@@ -18,7 +18,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: amxargs.c 3902 2008-01-23 17:40:01Z thiadmer $
+ *  Version: $Id: amxargs.c 4026 2008-10-22 10:49:05Z thiadmer $
  */
 #if defined _UNICODE || defined __UNICODE__ || defined UNICODE
 # if !defined UNICODE   /* for Windows */
@@ -226,7 +226,7 @@ static const TCHAR *matcharg(const TCHAR *key, int skip, int *length)
         optlen++;               /* if ':' or '=' was found, skip it too */
       option += optlen;         /* point behind option */
       *length -= optlen;        /* length of the value, not of the option */
-      assert(length >= 0);
+      assert(*length >= 0);
       if (skip-- == 0)
         break;
     } /* if */
@@ -376,12 +376,12 @@ const AMX_NATIVE_INFO args_Natives[] = {
   { NULL, NULL }        /* terminator */
 };
 
-int AMXEXPORT amx_ArgsInit(AMX *amx)
+int AMXEXPORT AMXAPI amx_ArgsInit(AMX *amx)
 {
   return amx_Register(amx, args_Natives, -1);
 }
 
-int AMXEXPORT amx_ArgsCleanup(AMX *amx)
+int AMXEXPORT AMXAPI amx_ArgsCleanup(AMX *amx)
 {
   (void)amx;
   return AMX_ERR_NONE;
@@ -393,7 +393,7 @@ int AMXEXPORT amx_ArgsCleanup(AMX *amx)
  * that is passed in to this function is NOT copied, so it may not be freed
  * after the call.
  */
-int AMXEXPORT amx_ArgsSetCmdLine(const TCHAR *cmd)
+int AMXEXPORT AMXAPI amx_ArgsSetCmdLine(const TCHAR *cmd)
 {
   cmdline = cmd;
   return AMX_ERR_NONE;

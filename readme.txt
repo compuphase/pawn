@@ -108,9 +108,9 @@ Microsoft Windows. When unpacking the Pawn source code from a "ZIP" or "TGZ"
 archive, the CMake project file is in the main directory where you unpacked
 the archive into.
 
-Microsoft Windows
------------------
-1. Launch CMakeSetup.
+Using CMake
+-----------
+1. Under Microsoft Windows, launch CMakeSetup. Under Linux, run cmake-gui.
 
 2. Select for the source code directory, the "source" subdirectory in the
    directory tree for the toolkit.
@@ -123,23 +123,27 @@ Microsoft Windows
    directory.
 
 4. Select the compiler to use, as well. On Microsoft Windows, CMake supports
-   Microsoft and Borland compilers, as well as GNU GCC.
+   Microsoft, Borland, OpenWatcom and GNU compilers. Under Linux, CMake supports
+   GNU compilers by default, but allows you to set up specific (cross) compilers.
 
 5. Click on the "Configure" button. After an initial configuration, you may
    have items displayed in red.  By this, CMake indicates that these items
    may need adjustment, but in the case of Pawn, this is rarely needed. Click
    "Configure" once more for the final configuration.
 
-6. Click on the "OK" button. This exits the CMakeSetup program after creating a
-   number of files in the destination subdirectory.
+6. Click on the "Generate" button, to create the makefiles or project files.
+   In older versions of CMake, there is an "OK" button instead of "Generate".
 
 7. Build the program in the usual way. For Microsoft Visual C/C++, CMake has
    created a Visual Studio project and "Workspace" file; for other compilers
    CMake builds a makefile.
 
 
-Linux / Unix
-------------
+Using CMake from the command line
+---------------------------------
+In case there is no GUI program for your operating system, you may alternatively
+use the command line programs.
+
 1. Change to the "bin" subdirectory where the archive was extracted into. For
    example, if you unpacked the toolkit in /opt/Pawn, go to /opt/Pawn/bin.
 

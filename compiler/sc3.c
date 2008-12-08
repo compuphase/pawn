@@ -18,7 +18,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: sc3.c 3963 2008-04-18 15:21:10Z thiadmer $
+ *  Version: $Id: sc3.c 4032 2008-11-14 15:06:02Z thiadmer $
  */
 #include <assert.h>
 #include <stdio.h>
@@ -56,6 +56,7 @@ static int hier1(value *lval1);
 static int primary(value *lval,int *symtok);
 static void clear_value(value *lval);
 static void callfunction(symbol *sym,value *lval_result,int matchparanthesis);
+static int skiptotoken(int token);
 static int dbltest(void (*oper)(),value *lval1,value *lval2);
 static int commutative(void (*oper)());
 static int constant(value *lval);
@@ -132,13 +133,13 @@ static int nextop(int *opidx,const int *list)
  */
 static int isbinaryop(int tok)
 {
-  static const operators[] = {'*','/','%','+',
-                              tSHL,tSHR,tSHRU,
-                              '&','^','|',
-                              tlLE,tlGE,'<','>',tlEQ,tlNE,
-                              tlAND,tlOR,
-                              '='
-                             };
+  static const int operators[] = {'*','/','%','+',
+                                  tSHL,tSHR,tSHRU,
+                                  '&','^','|',
+                                  tlLE,tlGE,'<','>',tlEQ,tlNE,
+                                  tlAND,tlOR,
+                                  '='
+                                 };
   int idx;
 
   for (idx=0; idx<sizearray(operators) && tok!=operators[idx]; idx++)
@@ -759,6 +760,7 @@ static void plnge2(void (*oper)(void),void (*arrayoper)(cell),
   } /* if */
 }
 
+#define IABS(a)       ((a)>=0 ? (a) : (-a))
 static cell flooreddiv(cell a,cell b,int return_remainder)
 {
   cell q,r;
@@ -768,7 +770,6 @@ static cell flooreddiv(cell a,cell b,int return_remainder)
     return 0;
   } /* if */
   /* first implement truncated division in a portable way */
-  #define IABS(a)       ((a)>=0 ? (a) : (-a))
   q=IABS(a)/IABS(b);
   if ((cell)(a ^ b)<0)
     q=-q;               /* swap sign if either "a" or "b" is negative (but not both) */
@@ -1208,13 +1209,46 @@ static int hier13(value *lval)
     array1= (lval->ident==iARRAY || lval->ident==iREFARRAY);
     array2= (lval2.ident==iARRAY || lval2.ident==iREFARRAY);
     if (array1 && !array2) {
-      char *ptr=(lval->sym->name!=NULL) ? lval->sym->name : "-unknown-";
+      char *ptr=(lval->sym!=NULL) ? lval->sym->name : "-unknown-";
       error(33,ptr);            /* array must be indexed */
     } else if (!array1 && array2) {
-      char *ptr=(lval2.sym->name!=NULL) ? lval2.sym->name : "-unknown-";
+      char *ptr=(lval2.sym!=NULL) ? lval2.sym->name : "-unknown-";
       error(33,ptr);            /* array must be indexed */
+    } else if (array1 && array2) {
+      int length1,length2,level1,level2,idxtag1,idxtag2;
+      if (lval->sym!=NULL) {
+        length1=(lval->constval==0) ? lval->sym->dim.array.length : lval->constval;
+        level1=lval->sym->dim.array.level;
+        idxtag1=lval->sym->x.tags.index;
+      } else {
+        length1=lval->constval;
+        level1=0;
+        idxtag1=0;
+      } /* if */
+      if (lval2.sym!=NULL) {
+        length2=(lval2.constval==0) ? lval2.sym->dim.array.length : lval2.constval;
+        level2=lval2.sym->dim.array.level;
+        idxtag2=lval2.sym->x.tags.index;
+      } else {
+        length2=lval2.constval;
+        level2=0;
+        idxtag2=0;
+      } /* if */
+      if (level1!=level2)
+        error(48);
+      else if (idxtag1!=idxtag2)
+        error(229,idxtag1!=0 ? lval->sym->name : lval2.sym->name);
+      if (level1==0 && level2==0) {
+        /* for arrays with only one dimension, keep the maximum length */
+        if (IABS(length1)<IABS(length2))
+          lval->constval=length2;
+      } else if (level1>0 && level2>0) {
+        /* for arrays with multiple dimensions, both arrays must match exactly */
+        assert(lval->sym!=NULL);
+        assert(lval2.sym!=NULL);
+        checkarrays(lval,&lval2);
+      } /* if */
     } /* if */
-    /* ??? if both are arrays, should check dimensions */
     if (!matchtag(lval->tag,lval2.tag,FALSE))
       error(213);               /* tagname mismatch ('true' and 'false' expressions) */
     setlabel(flab2);
@@ -1322,6 +1356,10 @@ static int hier2(value *lval)
   tok=lex(&val,&st);
   switch (tok) {
   case tINC:                    /* ++lval */
+    if (matchtoken(tNEW)) {
+      lexpush();                /* to avoid subsequent "shadowing" warnings */
+      return error(22);         /* must be lvalue */
+    } /* if */
     if (!hier2(lval))
       return error(22);         /* must be lvalue */
     assert(lval->sym!=NULL);
@@ -1654,18 +1692,19 @@ restart:
     } /* if */
     if (tok=='[' || tok=='{') { /* subscript */
       close = (char)((tok=='[') ? ']' : '}');
-      if (sym==NULL) {  /* sym==NULL if lval is a constant or a literal */
-        error(28,"<no variable>");  /* cannot subscript */
-        needtoken(close);
+      if (sym==NULL) {  /* sym==NULL if lval is a constant or a literal, or an unknown variable */
+        if (strlen(lastsymbol)>0)
+          error_suggest(28,lastsymbol,iARRAY);  /* cannot subscript */
+        else
+          error(28,"<unknown>");
+        skiptotoken(close);
         return FALSE;
       } else if (sym->ident!=iARRAY && sym->ident!=iREFARRAY){
-        error(28,sym->name);    /* cannot subscript, variable is not an array */
-        needtoken(close);
+        error_suggest(28,sym->name,iARRAY);   /* cannot subscript */
+        skiptotoken(close);
         return FALSE;
       } else if (sym->dim.array.level>0 && close!=']') {
         error(51);              /* invalid subscript, must use [ ] */
-        needtoken(close);
-        return FALSE;
       } /* if */
       /* set the tag to match (enumeration fields as indices) */
       lval2.cmptag=sym->x.tags.index;
@@ -2084,6 +2123,7 @@ static int nesting=0;
   symbol *symret;
   cell lexval;
   char *lexstr;
+  int reloc;
 
   assert(sym!=NULL);
   lval_result->ident=iEXPRESSION; /* preset, may be changed later */
@@ -2196,12 +2236,15 @@ static int nesting=0;
           lval.cmptag=arg[argidx].tags[0];  /* set the expected tag, if any */
         lvalue=hier14(&lval);
         assert(sc_status==statFIRST || arg[argidx].ident== 0 || arg[argidx].tags!=NULL);
+        reloc=FALSE;
         switch (arg[argidx].ident) {
         case 0:
           error(202);             /* argument count mismatch */
           break;
         case iVARARGS:
           /* always pass by reference */
+          if ((sym->usage & uNATIVE)!=0)
+            reloc=TRUE;
           if (lval.ident==iVARIABLE || lval.ident==iREFERENCE) {
             assert(lval.sym!=NULL);
             if ((lval.sym->usage & uCONST)!=0 && (arg[argidx].usage & uCONST)==0) {
@@ -2259,6 +2302,8 @@ static int nesting=0;
           argidx++;               /* argument done */
           break;
         case iREFERENCE:
+          if ((sym->usage & uNATIVE)!=0)
+            reloc=TRUE;
           if (!lvalue || lval.ident==iARRAYCHAR)
             error(35,argidx+1);   /* argument type mismatch */
           if (lval.sym!=NULL && (lval.sym->usage & uCONST)!=0 && (arg[argidx].usage & uCONST)==0)
@@ -2283,6 +2328,8 @@ static int nesting=0;
             markusage(lval.sym,uWRITTEN);
           break;
         case iREFARRAY:
+          if ((sym->usage & uNATIVE)!=0)
+            reloc=TRUE;
           if (lval.ident!=iARRAY && lval.ident!=iREFARRAY
               && lval.ident!=iARRAYCELL)
           {
@@ -2358,8 +2405,15 @@ static int nesting=0;
           // ??? set uWRITTEN?
           argidx++;               /* argument done */
           break;
+        default:
+          assert(0);
         } /* switch */
-        pushreg(sPRI);            /* store the function argument on the stack */
+#if defined PC_RELOC
+        if (reloc)
+          pushreloc();            /* store argument on the stack, mark for run-time relocation */
+        else
+#endif
+          pushreg(sPRI);          /* store the argument on the stack */
         markexpr(sPARM,NULL,0);   /* mark the end of a sub-expression */
         nest_stkusage++;
       } /* if */
@@ -2392,8 +2446,11 @@ static int nesting=0;
     } /* if */
     stgmark((char)(sEXPRSTART+argidx));/* mark beginning of new expression in stage */
     if (arg[argidx].hasdefault) {
+      reloc=FALSE;
       if (arg[argidx].ident==iREFARRAY) {
         short level;
+        if ((sym->usage & uNATIVE)!=0)
+          reloc=TRUE;
         setdefarray(arg[argidx].defvalue.array.data,
                     arg[argidx].defvalue.array.size,
                     arg[argidx].defvalue.array.arraysize,
@@ -2414,6 +2471,8 @@ static int nesting=0;
           } /* for */
         } /* if */
       } else if (arg[argidx].ident==iREFERENCE) {
+        if ((sym->usage & uNATIVE)!=0)
+          reloc=TRUE;
         setheap(arg[argidx].defvalue.val);
         /* address of the value on the heap in PRI */
         heapalloc++;
@@ -2425,7 +2484,12 @@ static int nesting=0;
         check_userop(NULL,arg[argidx].defvalue_tag,arg[argidx].tags[0],2,NULL,&dummytag);
         assert(dummytag==arg[argidx].tags[0]);
       } /* if */
-      pushreg(sPRI);            /* store the function argument on the stack */
+#if defined PC_RELOC
+      if (reloc)
+        pushreloc();            /* store argument on the stack, mark for run-time relocation */
+      else
+#endif
+        pushreg(sPRI);          /* store the argument on the stack */
       markexpr(sPARM,NULL,0);   /* mark the end of a sub-expression */
       nest_stkusage++;
     } else {
@@ -2472,7 +2536,7 @@ static int nesting=0;
       } /* if */
     } /* if */
     ldconst(array_sz,sPRI);
-    pushreg(sPRI);              /* store the function argument on the stack */
+    pushreg(sPRI);              /* store the function argument on the stack (never relocated) */
     markexpr(sPARM,NULL,0);
     nest_stkusage++;
     if (arglist[argidx]==ARG_UNHANDLED)
@@ -2529,9 +2593,27 @@ static int nesting=0;
   nesting--;
 }
 
+/* skiptotoken
+ * skip (ignore) all text up to (and including) the given token; returns
+ * 0 if the end of the file is reached before finding the token
+ */
+static int skiptotoken(int token)
+{
+  cell val;
+  char *str;
+  int tok;
+
+  while (freading) {
+    tok=lex(&val,&str);
+    if (tok==token)
+      break;
+  } /* while */
+  return freading;
+}
+
 /*  dbltest
  *
- *  Returns a non-zero value if lval1 an array and lval2 is not an array and
+ *  Returns a non-zero value if lval1 is an array and lval2 is not an array and
  *  the operation is addition or subtraction.
  *
  *  Returns the "shift" count (1 for 16-bit, 2 for 32-bit) to align a cell
@@ -2603,11 +2685,13 @@ static int constant(value *lval)
     lval->constval=val;
     ldconst(lval->constval,sPRI);
     lval->ident=iCONSTEXPR;
+    lastsymbol[0]='\0';
   } else if (tok==tRATIONAL) {
     lval->constval=val;
     ldconst(lval->constval,sPRI);
     lval->ident=iCONSTEXPR;
     lval->tag=sc_rationaltag;
+    lastsymbol[0]='\0';
   } else if (tok==tSTRING) {
     /* lex() stores starting index of string in the literal table in 'val' */
     ldconst((val+glb_declared)*sizeof(cell),sPRI);
@@ -2617,6 +2701,7 @@ static int constant(value *lval)
                                  * value distinguishes between literal arrays
                                  * and literal strings (this was done for
                                  * array assignment). */
+    lastsymbol[0]='\0';
   } else if (tok=='{') {
     int tag,lasttag=-1;
     val=litidx;
@@ -2640,6 +2725,7 @@ static int constant(value *lval)
     ldconst((val+glb_declared)*sizeof(cell),sPRI);
     lval->ident=iARRAY;         /* pretend this is a global array */
     lval->constval=litidx-val;  /* constval == the size of the literal array */
+    lastsymbol[0]='\0';
   } else {
     return FALSE;               /* no, it cannot be interpreted as a constant */
   } /* if */

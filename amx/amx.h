@@ -18,7 +18,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: amx.h 3902 2008-01-23 17:40:01Z thiadmer $
+ *  Version: $Id: amx.h 4026 2008-10-22 10:49:05Z thiadmer $
  */
 
 #ifndef AMX_H_INCLUDED
@@ -120,7 +120,7 @@ extern  "C" {
     #define AMXAPI          __stdcall
   #endif
   #if !defined AMXEXPORT
-    #define AMXEXPORT       __declspec(dllexport) __stdcall
+    #define AMXEXPORT       __declspec(dllexport)
   #endif
 #endif
 
@@ -145,17 +145,18 @@ extern  "C" {
 #endif
 
 /* File format version (in CUR_FILE_VERSION)
- *   0 (original version)
- *   1 (opcodes JUMP.pri, SWITCH and CASETBL)
- *   2 (compressed files)
- *   3 (public variables)
- *   4 (opcodes SWAP.pri/alt and PUSHADDR)
- *   5 (tagnames table)
- *   6 (reformatted header)
- *   7 (name table, opcodes SYMTAG & SYSREQ.D)
- *   8 (opcode BREAK, renewed debug interface)
- *   9 (macro opcodes)
- *  10 (position-independent code, overlays)
+ *   0 original version
+ *   1 opcodes JUMP.pri, SWITCH and CASETBL
+ *   2 compressed files
+ *   3 public variables
+ *   4 opcodes SWAP.pri/alt and PUSHADDR
+ *   5 tagnames table
+ *   6 reformatted header
+ *   7 name table, opcodes SYMTAG & SYSREQ.D
+ *   8 opcode BREAK, renewed debug interface
+ *   9 macro opcodes
+ *  10 position-independent code, overlays, packed instructions
+ *  11 relocating instructions, for the native interface
  * MIN_FILE_VERSION is the lowest file version number that the current AMX
  * implementation supports. If the AMX file header gets new fields, this number
  * often needs to be incremented. MIN_AMX_VERSION is the lowest AMX version that
@@ -204,6 +205,7 @@ typedef int (AMXAPI *AMX_IDLE)(struct tagAMX *amx, int AMXAPI Exec(struct tagAMX
   #pragma warning(disable:4103)  /* disable warning message 4103 that complains
                                   * about pragma pack in a header file */
   #pragma warning(disable:4100)  /* "'%$S' : unreferenced formal parameter" */
+  #pragma warning(disable:4996)  /* POSIX name is deprecated */
 #endif
 
 /* Some compilers do not support the #pragma align, which should be fine. Some

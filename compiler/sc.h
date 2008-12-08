@@ -25,7 +25,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: sc.h 3929 2008-03-04 11:47:12Z thiadmer $
+ *  Version: $Id: sc.h 4032 2008-11-14 15:06:02Z thiadmer $
  */
 #ifndef SC_H_INCLUDED
 #define SC_H_INCLUDED
@@ -41,6 +41,11 @@
 #else
   #include <setjmp.h>
 #endif
+
+#include "svnrev.h"
+#define VERSION_STR "3.3." SVN_REVSTR
+#define VERSION_INT 0x0303
+
 #include "../amx/osdefs.h"
 #include "../amx/amx.h"
 
@@ -246,6 +251,7 @@ typedef struct s_symbol {
 
 #define uMAINFUNC "main"
 #define uENTRYFUNC "entry"
+#define uEXITFUNC "exit"
 
 #define sGLOBAL   0     /* global variable/constant class (no states) */
 #define sLOCAL    1     /* local variable/constant */
@@ -285,7 +291,8 @@ enum {
 
 enum {
   ovlEXIT,      /* fixed, predefined overlay index for the normal exit point */
-  ovlSTATEEXIT, /* fixed, predefined overlay index for the address for invalid state functions */
+  ovlNO_STATE,  /* fixed, predefined overlay index for invalid state functions */
+  ovlEXITSTATE, /* fixed, predefined overlay index for dummy "exit" state functions */
   /* ----- */
   ovlFIRST,     /* overlay index of the first overlay function */
 };
@@ -510,8 +517,9 @@ void *pc_createsrc(char *filename);
 void pc_closesrc(void *handle);   /* never delete */
 char *pc_readsrc(void *handle,unsigned char *target,int maxchars);
 int pc_writesrc(void *handle,const unsigned char *source);
-void *pc_getpossrc(void *handle,void *position); /* mark the current position */
-void pc_resetsrc(void *handle,void *position);  /* reset to a position marked earlier */
+void pc_clearpossrc(void);                        /* clear file position marks */
+void *pc_getpossrc(void *handle,void *position);  /* mark the current position */
+void pc_resetsrc(void *handle,void *position);    /* reset to a position marked earlier */
 int  pc_eofsrc(void *handle);
 
 /* output to intermediate (.ASM) file */
@@ -557,7 +565,7 @@ SC_FUNC constvalue *find_constval(constvalue *table,char *name,int index);
 SC_FUNC void delete_consttable(constvalue *table);
 SC_FUNC symbol *add_constant(const char *name,cell val,int vclass,int tag,int allow_redef);
 SC_FUNC void exporttag(int tag);
-SC_FUNC void sc_attachdocumentation(symbol *sym);
+SC_FUNC void sc_attachdocumentation(symbol *sym,int onlylastblock);
 
 /* function prototypes in SC2.C */
 #define PUSHSTK_P(v)  { stkitem s_; s_.pv=(v); pushstk(s_); }
@@ -569,10 +577,15 @@ SC_FUNC stkitem popstk(void);
 SC_FUNC void clearstk(void);
 SC_FUNC int plungequalifiedfile(char *name);  /* explicit path included */
 SC_FUNC int plungefile(char *name,int try_currentpath,int try_includepaths);   /* search through "include" paths */
+SC_FUNC char *strdel(char *str,size_t len);
+SC_FUNC char *strins(char *dest,char *src,size_t srclen);
 SC_FUNC void preprocess(void);
+SC_FUNC void lex_fetchindent(const unsigned char *string,const unsigned char *pos);
+SC_FUNC int lex_adjusttabsize(int matchindent);
 SC_FUNC int lexinit(int releaseall);
 SC_FUNC int lex(cell *lexvalue,char **lexsym);
 SC_FUNC void lexpush(void);
+SC_FUNC int lexsettoken(int token,char *str);
 SC_FUNC void lexclr(int clreol);
 SC_FUNC int lexpeek(void);
 SC_FUNC int matchtoken(int token);
@@ -607,9 +620,9 @@ SC_FUNC int sc_getstateid(constvalue **automaton,constvalue **state,char *staten
 SC_FUNC cell array_totalsize(symbol *sym);
 
 /* function prototypes in SC4.C */
-SC_FUNC int writeleader(symbol *root);
+SC_FUNC void writeleader(symbol *root,int *lbl_nostate,int *lbl_ignorestate);
 SC_FUNC void writetrailer(void);
-SC_FUNC void writestatetables(symbol *root,int lbl_nostate);
+SC_FUNC void writestatetables(symbol *root,int lbl_nostate,int lbl_ignorestate);
 SC_FUNC void begcseg(void);
 SC_FUNC void begdseg(void);
 SC_FUNC void setline(int chkbounds);
@@ -631,6 +644,7 @@ SC_FUNC void fillarray(symbol *sym,cell size,cell value);
 SC_FUNC void ldconst(cell val,regid reg);
 SC_FUNC void moveto1(void);
 SC_FUNC void pushreg(regid reg);
+SC_FUNC void pushreloc(void);
 SC_FUNC void pushval(cell val);
 SC_FUNC void popreg(regid reg);
 SC_FUNC void swap1(void);
@@ -847,9 +861,10 @@ SC_VDECL short fnumber;       /* number of files in the input file table */
 SC_VDECL short fcurrent;      /* current file being processed */
 SC_VDECL short sc_intest;     /* true if inside a test */
 SC_VDECL int pc_sideeffect;   /* true if an expression causes a side-effect */
-SC_VDECL int stmtindent;      /* current indent of the statement */
+SC_VDECL int pc_stmtindent;   /* current indent of the statement */
 SC_VDECL int indent_nowarn;   /* skip warning "217 loose indentation" */
-SC_VDECL int sc_tabsize;      /* number of spaces that a TAB represents */
+SC_VDECL int pc_tabsize;      /* number of spaces that a TAB represents */
+SC_VDECL int pc_matchedtabsize;/* if no tabsize explicitly set, try to detect the tab size */
 SC_VDECL short sc_allowtags;  /* allow/detect tagnames in lex() */
 SC_VDECL int sc_status;       /* read/write status */
 SC_VDECL int sc_rationaltag;  /* tag for rational numbers */

@@ -20,7 +20,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: amxdgram.c 3902 2008-01-23 17:40:01Z thiadmer $
+ *  Version: $Id: amxdgram.c 4026 2008-10-22 10:49:05Z thiadmer $
  */
 #include <assert.h>
 #include <ctype.h>
@@ -332,7 +332,7 @@ AMX_NATIVE_INFO dgram_Natives[] = {
   { NULL, NULL }        /* terminator */
 };
 
-int AMXEXPORT amx_DGramInit(AMX *amx)
+int AMXEXPORT AMXAPI amx_DGramInit(AMX *amx)
 {
   dgramBound = 0;
   if (udp_Open()==-1)
@@ -350,7 +350,7 @@ int AMXEXPORT amx_DGramInit(AMX *amx)
   return amx_Register(amx,dgram_Natives,-1);
 }
 
-int AMXEXPORT amx_DGramCleanup(AMX *amx)
+int AMXEXPORT AMXAPI amx_DGramCleanup(AMX *amx)
 {
   (void)amx;
   udp_Close();

@@ -33,7 +33,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: pawndbg.c 3963 2008-04-18 15:21:10Z thiadmer $
+ *  Version: $Id: pawndbg.c 4032 2008-11-14 15:06:02Z thiadmer $
  *
  *
  *  Command line options:
@@ -864,6 +864,7 @@ static int remote_rs232(int port,int baud)
   #endif
   unsigned long size,cip;
   char buffer[40];
+  int sync_found,count;
 
   /* optionally issue a "close-down" request for the remote host */
   #if defined __WIN32__
@@ -956,30 +957,35 @@ static int remote_rs232(int port,int baud)
   #endif
 
   /* handshake, send token and wait for a reply */
+  sync_found=0;
   do {
     #if defined __WIN32__
       WriteFile(hCom,"!",1,&size,NULL);
-      Sleep(500);
-      do {
-        ReadFile(hCom,buffer,1,&size,NULL);
-      } while (size>0 && buffer[0]!='@');
-      Sleep(500);
+      for (count=0; count<10 && !sync_found; count++) {
+        Sleep(100);
+        do {
+          ReadFile(hCom,buffer,1,&size,NULL);
+          sync_found= (size>0 && buffer[0]=='@');
+        } while (!sync_found && size>0);
+      } /* for */
       /* read remaining buffer (if any) */
       ReadFile(hCom,buffer+1,sizeof buffer - 1,&size,NULL);
       size++; /* add size of the handshake character */
     #else
       write(fdCom,"!",1);
-      usleep(500*1000);
-      do {
-        size=read(fdCom,buffer,1);
-      } while (size>0 && buffer[0]!='@');
-      usleep(500*1000);
+      for (count=0; count<10 && !sync_found; count++) {
+        usleep(100*1000);
+        do {
+          size=read(fdCom,buffer,1);
+          sync_found= (size>0 && buffer[0]=='@');
+        } while (!sync_found && size>0);
+      } /* for */
       /* read remaining buffer (if any) */
       size=read(fdCom,buffer+1,sizeof buffer - 1);
       size++; /* add size of the handshake character */
     #endif
   } while (size==0 || buffer[0]!='@');
-  if (sscanf(buffer,"@%lx",&cip)>0) {
+  if (sscanf(buffer,"@%lx",&cip)>0 && cip!=0) {
     /* if the script is already running, give a "go" command */
     #if defined __WIN32__
       WriteFile(hCom,"!",1,&size,NULL);
@@ -2002,7 +2008,7 @@ char *rl_gets(char *str,int length)
       return str;
     } /* if */
     ReadConsole(stdinput,str,length,&num,NULL);
-    if (num<length)
+    if (num<(unsigned long)length)
       str[num]='\0';
   #else
     amx_gets(str,length);
@@ -2044,6 +2050,7 @@ static void listcommands(char *command,AMX_DBG *amxdbg,int curline)
   if (stricmp(command,"break")==0) {
     amx_printf("\tBREAK\t\tlist all breakpoints\n"
             "\tBREAK n\t\tset a breakpoint at line \"n\"\n"
+            "\tBREAK name:n\tset a breakpoint in file \"name\" at line \"n\"\n"
             "\tBREAK func\tset a breakpoint at function with name \"func\"\n");
   } else if (stricmp(command,"cbreak")==0) {
     amx_printf("\tCBREAK n\tremove breakpoint number \"n\"\n"
@@ -2064,6 +2071,7 @@ static void listcommands(char *command,AMX_DBG *amxdbg,int curline)
     amx_printf("\tGO may be abbreviated to G\n\n"
             "\tGO\t\trun until the next breakpoint or program termination\n"
             "\tGO n\t\trun until line number \"n\"\n"
+            "\tGO name:n\trun until line number \"n\" in file \"name\"\n"
             "\tGO func\t\trun until the current function returns (\"step out\")\n");
   } else if (stricmp(command,"l")==0 || stricmp(command,"list")==0) {
     amx_printf("\tLIST may be abbreviated to L\n\n"
@@ -2220,7 +2228,7 @@ static char lastcommand[32] = "";
       #endif
       exit(0);
     } else if (stricmp(command,"g")==0 || stricmp(command,"go")==0) {
-      if (isdigit(*params))
+      if (isdigit(*params) || strchr(params,':')!=NULL)
         break_set(amxdbg,params,0x1);
       recentline=-1;
       if (stricmp(params,"func")==0)

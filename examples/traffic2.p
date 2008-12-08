@@ -6,7 +6,7 @@
 main()
     state green_wait_interim
 
-new bool: button_memo <red_wait, green_wait_interim, yellow_wait>
+new bool: button_memo <red_wait, green_wait_interim>
 
 @keypressed(key)
     {
@@ -57,10 +57,12 @@ entry() <green_wait_interim>
     settimer 5000
     }
 
+exit() <green_wait_interim>
+    button_memo = false
+
 entry() <yellow_wait>
     {
     print "Yellow / Don't walk\n"
-    button_memo = false
     settimer 2000
     }
 

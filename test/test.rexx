@@ -161,13 +161,7 @@ test8:
   return
 
 test9:
-  say '9. Obsolete test, please ignore.'
-  say ''
-  say '   As of version 2.6, a function can return an array.'
-  return
-
-test10:
-  say '10. The following test should compile successfully.'
+  say '9. The following test should compile successfully.'
   say ''
   say '    Line continuation (with a \ at the end of a line) could cause incorrect'
   say '    lines to be read.'
@@ -178,8 +172,8 @@ test10:
   pawncc ' LINE_CAT= test2'
   return
 
-test11:
-  say '11. The compilation should issue warning 217.'
+test10:
+  say '10. The compilation should issue warning 217.'
   say ''
   say '    The infamous "dangling else" problem should be signalled to the user with'
   say '    a "loose indentation" warning.'
@@ -189,8 +183,8 @@ test11:
   pawncc ' -p DANGLING_ELSE= test1'
   return
 
-test12:
-  say '12. The compilation should issue warning 203.'
+test11:
+  say '11. The compilation should issue warning 203.'
   say ''
   say '    An unused and uninitialized local variable should be flagged as "never'
   say '    used" (warning 203).'
@@ -201,8 +195,8 @@ test12:
   pawncc ' -p UNUSED_LOCAL= test1'
   return
 
-test13:
-  say '13. The compilation should issue warning 219 for TWO variables.'
+test12:
+  say '12. The compilation should issue warning 219 for TWO variables.'
   say ''
   say '    A local variable with the name of a variable or function (or parameter) at'
   say '    a higher level should issue a warning (because it is not "clean" code and'
@@ -213,8 +207,8 @@ test13:
   pawncc ' -p LOCAL_SHADOWS= test1'
   return
 
-test14:
-  say '14. The following test should compile successfully.'
+test13:
+  say '13. The following test should compile successfully.'
   say ''
   say '    Function names with upper case letters are valid.'
   say ''
@@ -223,8 +217,8 @@ test14:
   pawncc ' -p MIXED_CASE= test1'
   return
 
-test15:
-  say '15. The following test should compile successfully.'
+test14:
+  say '14. The following test should compile successfully.'
   say ''
   say '    The "for" loop would remove all local symbols of the higher level if the'
   say '    index was not declared in expr1 of the "for" loop.'
@@ -235,8 +229,8 @@ test15:
   pawncc ' -p FOR_DEL_LOCALS= test1'
   return
 
-test16:
-  say '16. The following test should compile successfully.'
+test15:
+  say '15. The following test should compile successfully.'
   say ''
   say '    For systems that support long filenames (and filenames with embedded space'
   say '    characters), the code generator cannot use the space character as a name'
@@ -247,8 +241,8 @@ test16:
   pawncc ' -d2 "test lfn"'
   return
 
-test17:
-  say '17. The following test should compile successfully.'
+test16:
+  say '16. The following test should compile successfully.'
   say ''
   say '    A global variable that is a fairly large, uninitialized, array. This array'
   say '    should be initialized completely with zeros.'
@@ -259,8 +253,8 @@ test17:
   pawncc ' -p UNINIT_ARRAY= test1'
   return
 
-test18:
-  say '18. The following test should compile successfully.'
+test17:
+  say '17. The following test should compile successfully.'
   say ''
   say '    A prototyped function followed by its (identical) definition should'
   say '    compile.'
@@ -272,8 +266,8 @@ test18:
   pawncc ' -p PROTOTYPE_GOOD= test1'
   return
 
-test19:
-  say '19. The compilation should issue error 25.'
+test18:
+  say '18. The compilation should issue error 025.'
   say ''
   say '    Parameter names in a prototype must be identical to those in the function'
   say '    definition, otherwise the "named parameters" feature cannot work.'
@@ -284,8 +278,8 @@ test19:
   pawncc ' -p PROTOTYPE_BAD= test1'
   return
 
-test20:
-  say '20. The compilation should issue error 22 (after warning 211).'
+test19:
+  say '19. The compilation should issue error 22 (after warning 211).'
   say ''
   say '    An attempt to assign a value to a constant in a test should issue error 22'
   say '    and warning 211.'
@@ -296,8 +290,8 @@ test20:
   pawncc ' -p LVAL_IN_TEST= test1'
   return
 
-test21:
-  say '21. The following test should compile successfully.'
+test20:
+  say '20. The following test should compile successfully.'
   say ''
   say '    The example program contains valid declarations of public functions and'
   say '    public variables.'
@@ -305,16 +299,16 @@ test21:
   pawncc ' test4'
   return
 
-test22:
-  say '22. The compilation should issue error 42.'
+test21:
+  say '21. The compilation should issue error 42.'
   say ''
   say '    A variable is declared both "public" and "native" (which is invalid).'
   say '-----'
   pawncc ' INVALID_PUBVAR= test4'
   return
 
-test23:
-  say '23. The next TWO compilations should each issue error 42.'
+test22:
+  say '22. The next TWO compilations should each issue error 42.'
   say ''
   say '    Two functions are flagged as both "public" and "native" (which is invalid).'
   say '-----'
@@ -322,16 +316,16 @@ test23:
   pawncc ' INVALID_PUBFUNC2= test4'
   return
 
-test24:
-  say '24. The compilation should issue error 56 TWICE.'
+test23:
+  say '23. The compilation should issue error 56 TWICE.'
   say ''
   say '    Both function arguments and local variables cannot be "public".'
   say '-----'
   pawncc ' INVALID_PUBLOCAL= test4'
   return
 
-test25:
-  say '25. The compilation should issue warning 202 (too few parameters).'
+test24:
+  say '24. The compilation should issue warning 202 (too few parameters).'
   say ''
   say '    A function that expects two parameters of type array receives only one.'
   say '    Default parameter values are absent.'
@@ -343,8 +337,8 @@ test25:
   pawncc ' -p MISSING_PARM= test1'
   return
 
-test26:
-  say '26. The following test should compile successfully.'
+test25:
+  say '25. The following test should compile successfully.'
   say ''
   say '    When semicolons to end a line are optional, a postfix operator may not'
   say '    start a line; the operator should be considered the prefix operator on the'
@@ -356,8 +350,8 @@ test26:
   pawncc ' -;- IMPLICIT_POSTFIX= test2'
   return
 
-test27:
-  say '27. The following test should compile successfully. The output of the program'
+test26:
+  say '26. The following test should compile successfully. The output of the program'
   say '    must be 3 lines with the number 40 and a 4th line with the number 41.'
   say ''
   say '    A reference argument to a function that is passed to another function by'
@@ -370,8 +364,8 @@ test27:
   pawnrun ' test2.amx'
   return
 
-test28:
-  say '28. The following test should compile successfully.'
+test27:
+  say '27. The following test should compile successfully.'
   say ''
   say '    A string or a literal array that is passed to a function must be smaller'
   say '    or equal to the size of the array of the function''s formal argument.'
@@ -382,8 +376,8 @@ test28:
   pawncc ' PASS_LIT_ARRAY= test3'
   return
 
-test29:
-  say '29. The compilation should issue error 47 THREE times.'
+test28:
+  say '28. The compilation should issue error 47 THREE times.'
   say ''
   say '    A string or a literal array that is passed to a function must be smaller'
   say '    or equal to the size of the array of the function''s formal argument.'
@@ -391,8 +385,8 @@ test29:
   pawncc ' PASS_WRONG_LENGTH= test3'
   return
 
-test30:
-  say '30. The following test should compile successfully (with only warning 203). The'
+test29:
+  say '29. The following test should compile successfully (with only warning 203). The'
   say '    output of the program must read "*** for 63".'
   say ''
   say '    This module has a label (unused) in a somewhat larger program.'
@@ -404,8 +398,8 @@ test30:
   pawnrun ' test5.amx'
   return
 
-test31:
-  say '31. The compilation should issue error 1, expecting "#endif" before end of'
+test30:
+  say '30. The compilation should issue error 1, expecting "#endif" before end of'
   say '    file.'
   say ''
   say '    The program has an #if 0 without a matching #endif before the end of'
@@ -416,8 +410,8 @@ test31:
   pawncc ' test6'
   return
 
-test32:
-  say '32. The compilation should issue error 1, expecting "*/" before end of file.'
+test31:
+  say '31. The compilation should issue error 1, expecting "*/" before end of file.'
   say ''
   say '    The program has a /* without a matching */ before the end of compilation.'
   say ''
@@ -426,8 +420,8 @@ test32:
   pawncc ' test7'
   return
 
-test33:
-  say '33. The following test should compile successfully.'
+test32:
+  say '32. The following test should compile successfully.'
   say ''
   say '    Conditional #endinput should reset the #if ... #endif nesting level.'
   say ''
@@ -437,8 +431,8 @@ test33:
   pawncc ' -i. test8'
   return
 
-test34:
-  say '34. The following test should compile successfully.'
+test33:
+  say '33. The following test should compile successfully.'
   say ''
   say '    A recursive function that returns a value from a call to itself implicitly'
   say '    returns a value.'
@@ -449,8 +443,8 @@ test34:
   pawncc ' fibr'
   return
 
-test35:
-  say '35. The following test should issue warning 206. When it runs, it should print'
+test34:
+  say '34. The following test should issue warning 206. When it runs, it should print'
   say '    the string "Hello world".'
   say ''
   say '    Comparing two constants with the same value is redundant, but should'
@@ -464,8 +458,8 @@ test35:
   pawnrun ' test2.amx'
   return
 
-test36:
-  say '36. The following test should issue warning 205. When it runs, it should print'
+test35:
+  say '35. The following test should issue warning 205. When it runs, it should print'
   say '    the string "Okay".'
   say ''
   say '    Comparing two constants with different values is redundant, but should'
@@ -478,8 +472,8 @@ test36:
   pawnrun ' test2.amx'
   return
 
-test37:
-  say '37. The following test should compile successfully. When it runs, it should'
+test36:
+  say '36. The following test should compile successfully. When it runs, it should'
   say '    print the "Result: 4".'
   say ''
   say '    The "true" and "false" expressions in a conditional operator should be'
@@ -493,8 +487,8 @@ test37:
   pawnrun ' test2.amx'
   return
 
-test38:
-  say '38. The following test should compile successfully. When it runs, it should'
+test37:
+  say '37. The following test should compile successfully. When it runs, it should'
   say '    print the "Result: 0".'
   say ''
   say '    When an argument "uses" its default value (the caller omitted the argument)'
@@ -510,8 +504,8 @@ test38:
   pawnrun ' test2.amx'
   return
 
-test39:
-  say '39. The following test should issue error 1, expecting ":" (THREE times).'
+test38:
+  say '38. The following test should issue error 1, expecting ":" (THREE times).'
   say ''
   say '    The colons on case statements in a switch are missing, this should be'
   say '    flagged.'
@@ -522,8 +516,8 @@ test39:
   pawncc ' -p SWITCH_NO_COLONS= test1'
   return
 
-test40:
-  say '40. The following test should compile successfully. When it runs, it does not'
+test39:
+  say '39. The following test should compile successfully. When it runs, it does not'
   say '    print anything, but it should not drop in an assertion.'
   say ''
   say '    Note: you must have the ANSI C version of PAWNRUN to get the assertions.'
@@ -539,8 +533,8 @@ test40:
   pawnrun ' test1.amx'
   return
 
-test41:
-  say '41. The following test should compile successfully. When it runs, it should'
+test40:
+  say '40. The following test should compile successfully. When it runs, it should'
   say '    print the values:'
   say '           p1=3.141500  p2=5.000000  p3=0.000000'
   say '           sum=8.141500'
@@ -557,8 +551,8 @@ test41:
   pawnrun ' float.amx'
   return
 
-test42:
-  say '42. The following test should issue error 021 (symbol already defined).'
+test41:
+  say '41. The following test should issue error 021 (symbol already defined).'
   say ''
   say '    An enum and a variable are declared at the same scope and with the same'
   say '    name.'
@@ -568,8 +562,8 @@ test42:
   pawncc ' -p REDECL_ENUM_VAR= test1'
   return
 
-test43:
-  say '43. The following test should compile successfully. When it runs, it should'
+test42:
+  say '42. The following test should compile successfully. When it runs, it should'
   say '    print the value:'
   say '           F=3.750'
   say ''
@@ -583,8 +577,8 @@ test43:
   pawnrun ' float.amx'
   return
 
-test44:
-  say '44. The following test should compile successfully. When it runs, it should'
+test43:
+  say '43. The following test should compile successfully. When it runs, it should'
   say '    print:'
   say '           Bigger'
   say '           Unequal'
@@ -599,8 +593,8 @@ test44:
   pawnrun ' float.amx'
   return
 
-test45:
-  say '45. The following test should issue error 017 ("undefined symbol") TWICE.'
+test44:
+  say '44. The following test should issue error 017 ("undefined symbol") TWICE.'
   say ''
   say '    A global variable is declared in the main file, but used in a file that is'
   say '    included *before* the declaration.'
@@ -612,8 +606,8 @@ test45:
   pawncc ' -p menumain'
   return
 
-test46:
-  say '46. The following test should compile successfully. When it runs, it should'
+test45:
+  say '45. The following test should compile successfully. When it runs, it should'
   say '    print:'
   say '           "a" okay'
   say '           "b" okay'
@@ -630,8 +624,8 @@ test46:
   pawnrun ' float.amx'
   return
 
-test47:
-  say '47. The following test should compile successfully. When it runs, it should'
+test46:
+  say '46. The following test should compile successfully. When it runs, it should'
   say '    print:'
   say '           result = First'
   say '           result = Second'
@@ -648,8 +642,8 @@ test47:
   pawnrun ' test2.amx'
   return
 
-test48:
-  say '48. The following test should issue error 017 (undefined symbol) TWICE.'
+test47:
+  say '47. The following test should issue error 017 (undefined symbol) TWICE.'
   say ''
   say 'Symptoms of detected bug: in the first pass, an error is detected, but'
   say 'swallowed. The compiler then misses a synchronization point to restart parsing,'
@@ -659,8 +653,8 @@ test48:
   pawncc ' test9'
   return
 
-test49:
-  say '49. The following test should issue error 025 (function header differs from'
+test48:
+  say '48. The following test should issue error 025 (function header differs from'
   say '    prototype).'
   say ''
   say '    A function is re-declared with more parameters (the first parameters match'
@@ -674,8 +668,8 @@ test49:
   pawncc ' -p REDECLARE_EXPAND= test1'
   return
 
-test50:
-  say '50. The following test should compile successfully.'
+test49:
+  say '49. The following test should compile successfully.'
   say ''
   say '    A stock function is never used. In its body it calls a function that is not'
   say '    implemented. This is okay, as long as the function is indeed never used.'
@@ -687,8 +681,8 @@ test50:
   pawncc ' -p MISSING_UNUSED_FUNC= test1'
   return
 
-test51:
-  say '51. The following test should issue warning 209.'
+test50:
+  say '50. The following test should issue warning 209.'
   say ''
   say '    A program uses the value of a function, but the function does not return'
   say '    a value.'
@@ -699,8 +693,8 @@ test51:
   pawncc ' -p NO_RETURN= test1'
   return
 
-test52:
-  say '52. The following test should issue error 021 (followed by more errors).'
+test51:
+  say '51. The following test should issue error 021 (followed by more errors).'
   say ''
   say '    Declaring a function with the same name as an existing global variable.'
   say ''
@@ -711,8 +705,8 @@ test52:
   pawncc ' -p REDECLARE_VAR_FUNC= test1'
   return
 
-test53:
-  say '53. The following TWO tests should BOTH issue warning 225 (unreachable code).'
+test52:
+  say '52. The following TWO tests should BOTH issue warning 225 (unreachable code).'
   say ''
   say '    Code following a "return" statement at the same compound block level is'
   say '    unreachable. This exhibit of inefficient coding probably hides an error.'
@@ -724,8 +718,8 @@ test53:
   pawncc ' -p UNREACHABLE_CODE2= test1'
   return
 
-test54:
-  say '54. The following test should issue warning 226 TWICE (226 = self-assignment).'
+test53:
+  say '53. The following test should issue warning 226 TWICE (226 = self-assignment).'
   say ''
   say '    A statement like "x=x" displays inefficient coding, but it might hide an'
   say '    error. The first warning is for a simple assignment, the second for an'
@@ -734,8 +728,8 @@ test54:
   pawncc ' -p SELF_ASSIGNMENT= test1'
   return
 
-test55:
-  say '55. The following TWO tests should both issue error 003.'
+test54:
+  say '54. The following TWO tests should both issue error 003.'
   say ''
   say '    A declaration of a local variable as the only statement of a function or a'
   say '    if/for/while/do statement is useless. Due to implementation difficulties,'
@@ -745,8 +739,8 @@ test55:
   pawncc ' -p USELESS_DECLARE2= test1'
   return
 
-test56:
-  say '56. The following test should compile successfully. Then, on execution, it'
+test55:
+  say '55. The following test should compile successfully. Then, on execution, it'
   say '    should halt with run-time error 4 (bounds-check).'
   say ''
   say '    An attempt to access an array element that is just out of bounds should'
@@ -759,8 +753,8 @@ test56:
   pawnrun ' test1.amx'
   return
 
-test57:
-  say '57. The following test should give warning 203, but the compiler should not'
+test56:
+  say '56. The following test should give warning 203, but the compiler should not'
   say '    drop into an assertion.'
   say ''
   say '    This example declares an array at the bottom of the file, which is legal.'
@@ -773,8 +767,8 @@ test57:
   pawncc ' -p LITERAL_QUEUE= test1'
   return
 
-test58:
-  say '58. The following test should issue error 052 and ONLY error 052.'
+test57:
+  say '57. The following test should issue error 052 and ONLY error 052.'
   say ''
   say '    2-dimensional arrays must be completely initialized (or not at all).'
   say '    Partial initialization is not allowed.'
@@ -787,8 +781,8 @@ test58:
   pawncc ' INCOMPLETE_2D_ARRAY= test10'
   return
 
-test59:
-  say '59. The following test should compile successfully. On execution, it should'
+test58:
+  say '58. The following test should compile successfully. On execution, it should'
   say '    print:'
   say ''
   say '       Before: 0'
@@ -805,8 +799,8 @@ test59:
   pawnrun ' test2.amx'
   return
 
-test60:
-  say '60. The following TWO tests should both issue error 032.'
+test59:
+  say '59. The following TWO tests should both issue error 032.'
   say ''
   say '    A negative array index is always out of bounds, whether it is used in an'
   say '    assignment or passed as a parameter.'
@@ -817,8 +811,8 @@ test60:
   pawncc ' NEGATIVE_INDEX2= test2'
   return
 
-test61:
-  say '61. The following TWO tests should both compile successfully, but drop into'
+test60:
+  say '60. The following TWO tests should both compile successfully, but drop into'
   say '    run-time error 4 ("out-of-bounds") when run'
   say ''
   say '    A negative array index is always out of bounds, whether it is used in an'
@@ -834,8 +828,8 @@ test61:
   pawnrun ' test2.amx'
   return
 
-test62:
-  say '62. The following test should compile successfully. When run, compare the'
+test61:
+  say '61. The following test should compile successfully. When run, compare the'
   say '    results with those printed in parantheses behind every result.'
   say ''
   say '    Note: the "off-by-0.001" error in raising to the 3rd power is a known'
@@ -846,8 +840,8 @@ test62:
   pawnrun ' tstfixed.amx'
   return
 
-test63:
-  say '63. The following test should compile successfully.'
+test62:
+  say '62. The following test should compile successfully.'
   say ''
   say '    Self-assignment is not the case when an unary operator is applied.'
   say ''
@@ -856,8 +850,8 @@ test63:
   pawncc ' -p NO_SELF_ASSIGNMENT= test1'
   return
 
-test64:
-  say '64. The following test should give error 021, but WITHOUT memory leakage report.'
+test63:
+  say '63. The following test should give error 021, but WITHOUT memory leakage report.'
   say ''
   say '    The compiler must use FORTIFY for memory leakage detection.'
   say ''
@@ -867,8 +861,8 @@ test64:
   pawncc ' DOUBLE_NATIVE_DECLARE= test2'
   return
 
-test65:
-  say '65. The following test should compile successfully. When run, it should print:'
+test64:
+  say '64. The following test should compile successfully. When run, it should print:'
   say '      Eenie, Meenie, Meinie, Moe'
   say '      Out Goes You'
   say ''
@@ -879,8 +873,8 @@ test65:
   pawnrun ' array.amx'
   return
 
-test66:
-  say '66. The following test should compile successfully. When run, it should print:'
+test65:
+  say '65. The following test should compile successfully. When run, it should print:'
   say '      Eenie, Meenie, Meinie, Moe'
   say '      Out Goes You'
   say ''
@@ -893,8 +887,8 @@ test66:
   pawnrun ' array.amx'
   return
 
-test67:
-  say '67. The following test should compile successfully.'
+test66:
+  say '66. The following test should compile successfully.'
   say ''
   say '    Calling a function before it is defined is valid in a 2-pass compiler.'
   say ''
@@ -904,8 +898,8 @@ test67:
   pawncc ' CALL_BEFORE_DEF= test2'
   return
 
-test68:
-  say '68. The following FOUR tests should compile successfully. When run, each should'
+test67:
+  say '67. The following FOUR tests should compile successfully. When run, each should'
   say '    print the lines:'
   say '        1,1,1,1|'
   say '        1,1,1,1|2,2,2,2|3,3,3,3|'
@@ -921,8 +915,8 @@ test68:
   pawnrun ' array3d.amx'
   return
 
-test69:
-  say '69. The following test should compile successfully.'
+test68:
+  say '68. The following test should compile successfully.'
   say ''
   say '    The preprocessor should run over expressions in compiler directives; in'
   say '    parsing for text substitutions, omit substituting a symbol that follows the'
@@ -934,8 +928,8 @@ test69:
   pawncc ' -p PREPROCESS_DIRECTIVES= test1'
   return
 
-test70:
-  say '70. The following test should compile successfully.'
+test69:
+  say '69. The following test should compile successfully.'
   say ''
   say '    Various tests on expressions using the conditional operator.'
   say ''
@@ -946,8 +940,8 @@ test70:
   pawncc ' -p TAGS_IN_COND_OPER_OK= test1'
   return
 
-test71:
-  say '71. The following test should issue warning 220 (followed by errors).'
+test70:
+  say '70. The following test should issue warning 220 (followed by errors).'
   say ''
   say '    Using sub-expressions with tag overrides inside a conditional operator.'
   say ''
@@ -958,8 +952,8 @@ test71:
   pawncc ' -p TAGS_IN_COND_OPER_WRONG= test1'
   return
 
-test72:
-  say '72. The following test should compile successfully.'
+test71:
+  say '71. The following test should compile successfully.'
   say ''
   say '    The control character "^" should still work when configured.'
   say ''
@@ -969,8 +963,8 @@ test72:
   pawncc ' -p -^^ CARET_CTRL_CHAR= test1'
   return
 
-test73:
-  say '73. The following test should give warning 229.'
+test72:
+  say '72. The following test should give warning 229.'
   say ''
   say '    Arrays declared with different tags for their indices are not "coercible".'
   say ''
@@ -979,8 +973,8 @@ test73:
   pawncc ' ARRAY_INDEX_TAG_ASSIGN= test11'
   return
 
-test74:
-  say '74. The following test should give warning 229.'
+test73:
+  say '73. The following test should give warning 229.'
   say ''
   say '    Arrays declared with different tags for their indices are not "coercible".'
   say ''
@@ -989,8 +983,8 @@ test74:
   pawncc ' ARRAY_INDEX_TAG_CALL= test11'
   return
 
-test75:
-  say '75. The following test should give error 25.'
+test74:
+  say '74. The following test should give error 025.'
   say ''
   say '    Arrays indices should be tag checked between declaration and definition.'
   say ''
@@ -1000,8 +994,8 @@ test75:
   pawncc ' ARRAY_INDEX_TAG_DECL= test11'
   return
 
-test76:
-  say '76. The following test should compile successfully.'
+test75:
+  say '75. The following test should compile successfully.'
   say ''
   say '    When copying an array into an indexed array, the index tag checking should'
   say '    be skipped.'
@@ -1012,8 +1006,8 @@ test76:
   pawncc ' ARRAY_INDEX_TAG_ASSIGN2= test11'
   return
 
-test77:
-  say '77. The following test should compile successfully. When run, it should print:'
+test76:
+  say '76. The following test should compile successfully. When run, it should print:'
   say ''
   say '        one (should be one)'
   say '        exit = 2 (should be 2)'
@@ -1029,8 +1023,8 @@ test77:
   pawnrun ' test2.amx'
   return
 
-test78:
-  say '78. The following test should compile successfully. When run, it should print:'
+test77:
+  say '77. The following test should compile successfully. When run, it should print:'
   say ''
   say '        5 5 5'
   say ''
@@ -1042,8 +1036,8 @@ test78:
   pawnrun ' test2.amx'
   return
 
-test79:
-  say '79. The following test should compile successfully.'
+test78:
+  say '78. The following test should compile successfully.'
   say ''
   say '    Copy one array item into another, where one of these is a constant.'
   say ''
@@ -1052,8 +1046,8 @@ test79:
   pawncc ' -p ARRAY_CELL_ASSIGN_NOSELF= test1'
   return
 
-test80:
-  say '80. The following test should issue error 021, but NOT crash.'
+test79:
+  say '79. The following test should issue error 021, but NOT crash.'
   say ''
   say '    A field of an enumeration has the same name as another symbol.'
   say ''
@@ -1064,8 +1058,8 @@ test80:
   pawncc ' ENUM_REDEFINES_SYM= test2'
   return
 
-test81:
-  say '81. The following test should compile successfully.'
+test80:
+  say '80. The following test should compile successfully.'
   say ''
   say '    A constant (enumeration) passed to a function with variable arguments.'
   say ''
@@ -1077,8 +1071,8 @@ test81:
   pawncc ' CONST_WRITE_USAGE= test2'
   return
 
-test82:
-  say '82. The following test should compile successfully.'
+test81:
+  say '81. The following test should compile successfully.'
   say ''
   say '    A long symbol name (26 characters) for a local variable.'
   say ''
@@ -1089,8 +1083,8 @@ test82:
   pawncc ' SYMBOL_TOO_LONG_FOR_OPTIMIZER= test2'
   return
 
-test83:
-  say '83. The following test should compile successfully. When running, it must print'
+test82:
+  say '82. The following test should compile successfully. When running, it must print'
   say '    9 lines with "Hello world"'
   say ''
   say '    Several tests for string functions (insertion, deletion, selection, ...).'
@@ -1099,8 +1093,8 @@ test83:
   pawnrun ' strtst1'
   return
 
-test84:
-  say '84. The following test should compile successfully. When running, it must print'
+test83:
+  say '83. The following test should compile successfully. When running, it must print'
   say '    lines where the value beginning each line must match the one following it.'
   say ''
   say '    More tests for string functions (number conversions).'
@@ -1109,8 +1103,8 @@ test84:
   pawnrun ' strtst2'
   return
 
-test85:
-  say '85. The following test should compile successfully. When running, it does not'
+test84:
+  say '84. The following test should compile successfully. When running, it does not'
   say '    print anything, but it should not drop into an assertion.'
   say ''
   say '    Even more tests for string functions (searching and comparing).'
@@ -1119,8 +1113,8 @@ test85:
   pawnrun ' strtst3'
   return
 
-test86:
-  say '86. The following test should compile successfully. When running, it does not'
+test85:
+  say '85. The following test should compile successfully. When running, it does not'
   say '    print anything, but it should not drop into an assertion.'
   say ''
   say '    A 3-dimensional array with a variable last dimension.'
@@ -1132,8 +1126,8 @@ test86:
   pawnrun ' test1'
   return
 
-test87:
-  say '87. The following test should issue error 052.'
+test86:
+  say '86. The following test should issue error 052.'
   say ''
   say '    A 2-dimensional array with a variable last dimension and an incomplete'
   say '    initialization.'
@@ -1144,8 +1138,8 @@ test87:
   pawncc ' -p ARRAY_VARDIM_INCOMPLETE= test1'
   return
 
-test88:
-  say '88. The following test should issue error 009 (followed by others).'
+test87:
+  say '87. The following test should issue error 009 (followed by others).'
   say ''
   say '    A 2-dimensional array with a variable last dimension and an absent'
   say '    initialization (due to a syntax error).'
@@ -1156,8 +1150,8 @@ test88:
   pawncc ' -p ARRAY_VARDIM_NONINIT= test1'
   return
 
-test89:
-  say '89. The following test should compile correctly. When run, it should print the'
+test88:
+  say '88. The following test should compile correctly. When run, it should print the'
   say '    values that follow behind in parentheses.'
   say ''
   say '    Various tests on arrays combined with enumerations.'
@@ -1166,8 +1160,8 @@ test89:
   pawnrun ' test12'
   return
 
-test90:
-  say '90. The following test should issue error 032.'
+test89:
+  say '89. The following test should issue error 032.'
   say ''
   say '    Out-of-range error on an enumerated sub-array.'
   say ''
@@ -1177,8 +1171,8 @@ test90:
   pawncc ' OUT_OF_BOUNDS= test12'
   return
 
-test91:
-  say '91. The following test should compile successfully. When running, it must'
+test90:
+  say '90. The following test should compile successfully. When running, it must'
   say '    print the lines:'
   say '         7: 1abcdef'
   say '         7: 12abcde'
@@ -1193,8 +1187,8 @@ test91:
   pawnrun ' strtst4'
   return
 
-test92:
-  say '92. The following test should compile successfully.'
+test91:
+  say '91. The following test should compile successfully.'
   say ''
   say '    Named automatons (instead of the default).'
   say ''
@@ -1205,8 +1199,8 @@ test92:
   pawncc ' NAMED_AUTOMATON= states'
   return
 
-test93:
-  say '93. The following TWO tests should BOTH issue error 088.'
+test92:
+  say '92. The following TWO tests should BOTH issue error 088.'
   say ''
   say '    An attempt to declare public and local state variables.'
   say '-----'
@@ -1214,16 +1208,16 @@ test93:
   pawncc ' LOCAL_STATE_VAR= test1'
   return
 
-test94:
-  say '94. The following test should issue error 089.'
+test93:
+  say '93. The following test should issue error 089.'
   say ''
   say '    An attempt to declare a state variable with an initialler.'
   say '-----'
   pawncc ' INITIALIZED_STATE_VAR= test1'
   return
 
-test95:
-  say '95. The following test should issue error 017 but NOT warning 219.'
+test94:
+  say '94. The following test should issue error 017 but NOT warning 219.'
   say ''
   say '    A function uses a local variable which it does not declare (error 017).'
   say '    Another function has a local variable with the same name. This is okay.'
@@ -1234,8 +1228,8 @@ test95:
   pawncc ' WRONG_PROC_CALL= test13'
   return
 
-test96:
-  say '96. The following test should compile successfully.'
+test95:
+  say '95. The following test should compile successfully.'
   say ''
   say '    A script using an include file, where the include file contains both a'
   say '    static and a stock function.'
@@ -1246,8 +1240,8 @@ test96:
   pawncc ' mainpgm'
   return
 
-test97:
-  say '97. The following test should issue warning 235.'
+test96:
+  say '96. The following test should issue warning 235.'
   say ''
   say '    A public function is not prototyped. This may indicate that the user typed'
   say '    the wrong name for the public function (so this is a warning for a common'
@@ -1256,8 +1250,8 @@ test97:
   pawncc ' UNDECLARED_PUBLIC= test1'
   return
 
-test98:
-  say '98. The following test should compile successfully (without memory log).'
+test97:
+  say '97. The following test should compile successfully (without memory log).'
   say ''
   say '    A script predefining several (unused) public functions.'
   say ''
@@ -1268,8 +1262,8 @@ test98:
   pawncc ' PROTOTYPED_PUBLIC= test1'
   return
 
-test99:
-  say '99. The following test should issue error 033 (array is not indexed).'
+test98:
+  say '98. The following test should issue error 033 (array is not indexed).'
   say ''
   say '    Arrays in a logical expression, with && and ||, must always by fully.'
   say '    indexed.'
@@ -1279,8 +1273,8 @@ test99:
   pawncc ' ARRAY_LOGIC_EXPR= test1'
   return
 
-test100:
-  say '100. The following test should compile successfully. When running, it should'
+test99:
+  say '99. The following test should compile successfully. When running, it should'
   say '     print:'
   say ''
   say '         Passed a Sentient 2'
@@ -1295,8 +1289,8 @@ test100:
   pawnrun ' test2.amx'
   return
 
-test101:
-  say '101. The following test should issue error 009 (invalid array size)'
+test100:
+  say '100. The following test should issue error 009 (invalid array size)'
   say ''
   say '     An array that exceeds 4 GiB.'
   say ''
@@ -1305,8 +1299,8 @@ test101:
   pawncc ' ARRAY_TOO_LARGE= test1'
   return
 
-test102:
-  say '102. The following test should issue warning 235 TWICE (missing forward'
+test101:
+  say '101. The following test should issue warning 235 TWICE (missing forward'
   say '     declaration)'
   say ''
   say '     A public function calls another public function; there are no forward.'
@@ -1317,8 +1311,8 @@ test102:
   pawncc ' INTERNAL_PUBLIC_CALL= test14'
   return
 
-test103:
-  say '103. The following test should issue warning 21 TWICE (redefined symbol)'
+test102:
+  say '102. The following test should issue warning 21 TWICE (redefined symbol)'
   say ''
   say '     Redefinition of constants.'
   say ''
@@ -1327,16 +1321,16 @@ test103:
   pawncc ' REDEFINE_CONSTANTS= test1'
   return
 
-test104:
-  say '104. The following test should compile successfully'
+test103:
+  say '103. The following test should compile successfully'
   say ''
   say '     Redefinition of enumeration fields (with different tags) is allowed.'
   say '-----'
   pawncc ' REDEFINE_ENUM= test1'
   return
 
-test105:
-  say '105. The following TWO tests should BOTH compile successfully (NO error 38)'
+test104:
+  say '104. The following TWO tests should BOTH compile successfully (NO error 38)'
   say ''
   say '     #elseif with an expression.'
   say ''
@@ -1347,8 +1341,8 @@ test105:
   pawncc ' ELSEIF_EXPR=2 test1'
   return
 
-test106:
-  say '106. The following test should compile successfully. When running, it should'
+test105:
+  say '105. The following test should compile successfully. When running, it should'
   say '     print:'
   say ''
   say '        %1test'
@@ -1362,8 +1356,8 @@ test106:
   pawnrun ' test2.amx'
   return
 
-test107:
-  say '107. The following test should issue warning 236 (followed by errors)'
+test106:
+  say '106. The following test should issue warning 236 (followed by errors)'
   say ''
   say '     A pre-processor uses a parameter in replacement that is not in the source.'
   say ''
@@ -1373,8 +1367,8 @@ test107:
   pawncc ' MACRO_PARM_UNKNOWN= test2'
   return
 
-test108:
-  say '108. The following test should compile successfully. When running, it should'
+test107:
+  say '107. The following test should compile successfully. When running, it should'
   say '     print:'
   say ''
   say '        (+8,+3)  q=+2 r=+2'
@@ -1392,16 +1386,16 @@ test108:
   pawnrun ' test2.amx'
   return
 
-test109:
-  say '109. The following test should issue warning 225 (unreachable code)'
+test108:
+  say '108. The following test should issue warning 225 (unreachable code)'
   say ''
   say '    Code below an infinite loop, which does not contain a "break".'
   say '-----'
   pawncc ' -p UNREACHABLE_CODE3= test1'
   return
 
-test110:
-  say '110. The following test should issue error 001 (expected an identifier instead'
+test109:
+  say '109. The following test should issue error 001 (expected an identifier instead'
   say '     of "new"), followed by other errors'
   say ''
   say '     You cannot mix expressions and variable declarations in a "for" loop.'
@@ -1411,8 +1405,8 @@ test110:
   pawncc ' FOR_MIX_EXPR_VAR= test1'
   return
 
-test111:
-  say '111. The following test should issue warning 215'
+test110:
+  say '110. The following test should issue warning 215'
   say ''
   say '     With optional parentheses, expressions may become ambiguous.'
   say ''
@@ -1421,8 +1415,8 @@ test111:
   pawncc ' AMBIGUOUS_CALL= test1'
   return
 
-test112:
-  say '112. The following test should compile successfully; when run, it should print'
+test111:
+  say '111. The following test should compile successfully; when run, it should print'
   say '     the value 2'
   say ''
   say '     Using the prefix increment operator in a return/exit/sleep statement.'
@@ -1433,8 +1427,8 @@ test112:
   pawnrun ' test2.amx'
   return
 
-test113:
-  say '113. The following test should compile successfully; when run, it should print:'
+test112:
+  say '112. The following test should compile successfully; when run, it should print:'
   say ''
   say '         result=123'
   say '         result=1'
@@ -1448,8 +1442,8 @@ test113:
   pawnrun ' test2.amx'
   return
 
-test114:
-  say '114. The following test should compile successfully; when run, it should print'
+test113:
+  say '113. The following test should compile successfully; when run, it should print'
   say ''
   say '         queue: 15%'
   say '         queue:'
@@ -1466,16 +1460,16 @@ test114:
   pawnrun ' test2.amx'
   return
 
-test115:
-  say '115. The following test should issue warning 237 THREE times'
+test114:
+  say '114. The following test should issue warning 237 THREE times'
   say ''
   say '     Detection and notification of recursion (both direct and indirect).'
   say '-----'
   pawncc ' RECURSION_DETECTION= -v test1'
   return
 
-test116:
-  say '116. The following test should compile successfully and run without errors'
+test115:
+  say '115. The following test should compile successfully and run without errors'
   say '     (there is no output).'
   say ''
   say '     Chained assignement (a = b = 3)'
@@ -1487,8 +1481,8 @@ test116:
   pawnrun ' test1.amx'
   return
 
-test117:
-  say '117. The following test should issue error 009 (invalid array size).'
+test116:
+  say '116. The following test should issue error 009 (invalid array size).'
   say ''
   say '     Declaring a partial cell size for an array, e.g.: Array[0.5]'
   say ''
@@ -1498,8 +1492,8 @@ test117:
   pawncc ' PARTIAL_ARRAY_SIZE= test2'
   return
 
-test118:
-  say '118. The following test should compile successfully; when run, it should print'
+test117:
+  say '117. The following test should compile successfully; when run, it should print'
   say ''
   say '         size: 2 x 2'
   say ''
@@ -1511,8 +1505,8 @@ test118:
   pawnrun ' test2.amx'
   return
 
-test119:
-  say '119. The following test should issue error 054 (unmatched closing brace).'
+test118:
+  say '118. The following test should issue error 054 (unmatched closing brace).'
   say ''
   say '     Unbalanced braces terminate a function in the middle.'
   say ''
@@ -1522,8 +1516,8 @@ test119:
   pawncc ' UNBALANCED_BRACES= test2'
   return
 
-test120:
-  say '120. The following test should issue warning 203 (unused symbol) and report it'
+test119:
+  say '119. The following test should issue warning 203 (unused symbol) and report it'
   say '     in the file "menu.inc" (not in "test2.p").'
   say ''
   say '     An unused variable is declared in an include file; the error message'
@@ -1534,8 +1528,8 @@ test120:
   pawncc ' DECLARATION_POSITION= test2'
   return
 
-test121:
-  say '121. The following test should compile successfully.'
+test120:
+  say '120. The following test should compile successfully.'
   say ''
   say '     Native function returning a (packed) array.'
   say ''
@@ -1545,8 +1539,8 @@ test121:
   /*??? should also run this example, but need a native function that returns an array */
   return
 
-test122:
-  say '122. The following test should compile successfully; when run, it should print'
+test121:
+  say '121. The following test should compile successfully; when run, it should print'
   say ''
   say '         111 112 113 114 - 121 122 123 124 - 131 132 133 134 -'
   say '          11  12  13  14 -  21  22  23  24 -  31  32  33  34 -'
@@ -1559,16 +1553,16 @@ test122:
   pawnrun ' array2.amx'
   return
 
-test123:
-  say '123. The following test should compile successfully.'
+test122:
+  say '122. The following test should compile successfully.'
   say ''
   say '     Variants in enumeration declarations (optional terminating commas).'
   say '-----'
   pawncc ' ENUM_GOOD_DECL= test1'
   return
 
-test124:
-  say '124. The following test should issue error 001, expecting "}" but finding an'
+test123:
+  say '123. The following test should issue error 001, expecting "}" but finding an'
   say '     identifier.'
   say ''
   say '     Omitting commas in an enumeration declaration (where they are required).'
@@ -1576,8 +1570,8 @@ test124:
   pawncc ' ENUM_BAD_DECL= test1'
   return
 
-test125:
-  say '125. The following test should compile successfully; when run, it should print:'
+test124:
+  say '124. The following test should compile successfully; when run, it should print:'
   say ''
   say '         Eenie Meenie'
   say '         Meinie Moe'
@@ -1588,8 +1582,8 @@ test125:
   pawnrun ' test2.amx'
   return
 
-test126:
-  say '126. The following test should issue warning 238 TWICE; when run, it should'
+test125:
+  say '125. The following test should issue warning 238 TWICE; when run, it should'
   say '     print:'
   say ''
   say '         Eenie Meenie'
@@ -1601,12 +1595,21 @@ test126:
   pawnrun ' test2.amx'
   return
 
-test127:
-  say '127. The following test should issue error 025.'
+test126:
+  say '126. The following test should issue error 025.'
   say ''
-  say '     A public function that is forward declared as non-public.'
+  say '     A non-public function that is forward declared as public.'
   say '-----'
   pawncc ' PUBLIC_NOT_DECLARED= test1'
+  return
+
+test127:
+  say '127. The following test should compile successfully.'
+  say ''
+  say '     A public function that is forward declared as non-public. This is silently'
+  say '     allowed (the function is marked as public)'
+  say '-----'
+  pawncc ' PUBLIC_NOT_FORWARDED= test1'
   return
 
 test128:
@@ -1617,5 +1620,42 @@ test128:
   say 'Symptoms of detected bug: error 037.'
   say '-----'
   pawncc ' STRING_DBL_ESCAPE= test1'
+  return
+
+test129:
+  say '129. The following test should compile successfully; when run, it should print:'
+  say ''
+  say '         -1, -1, -1, -1'
+  say ''
+  say '     Array declaration based on an enum and using an ellipsis.'
+  say ''
+  say 'Symptoms of detected bug: zero-padding, due to sequence variables for the'
+  say 'ellipsis being reset in the code snippet handling enum sub-fields.'
+  say '-----'
+  pawncc ' ENUM_ELLIPSIS= test2'
+  pawnrun ' test2.amx'
+  return
+
+test130:
+  say '130. The following test should compile successfully; when run, it should print:'
+  say ''
+  say '         logging: test'
+  say ''
+  say '     Stringize operator.'
+  say '-----'
+  pawncc ' STRINGIZE_OPER= test2'
+  pawnrun ' test2.amx'
+  return
+
+test131:
+  say '131. The following TWO tests should BOTH issue error 047 (array size mismatch).'
+  say ''
+  say '     Conditional (ternary) operator where both rvalues are 1D arrays with'
+  say '     different sizes.'
+  say ''
+  say 'Symptoms of detected bug: no error.'
+  say '-----'
+  pawncc ' TERNARY_LIT_ARRAY= test1'
+  pawncc ' TERNARY_1D_ARRAY= test1'
   return
 
