@@ -19,7 +19,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: sc5.c 3902 2008-01-23 17:40:01Z thiadmer $
+ *  Version: $Id: sc5.c 3999 2008-09-05 11:18:38Z thiadmer $
  */
 #include <assert.h>
 #if defined	__WIN32__ || defined _WIN32 || defined __MSDOS__
@@ -336,8 +336,10 @@ static int find_closestsymbol_table(const char *name,const symbol *root,int symb
   while (sym!=NULL) {
     funcdisplayname(symname,sym->name);
     ident=sym->ident;
-    if (sym->ident==iCONSTEXPR || sym->ident==iREFERENCE || sym->ident==iARRAY || sym->ident==iREFARRAY)
-      ident=iVARIABLE;
+    if (symboltype==iARRAY && ident==iREFARRAY)
+      ident=iARRAY;     /* reference arrays match arrays */
+    else if (symboltype==iVARIABLE && (sym->ident==iCONSTEXPR || sym->ident==iREFERENCE || sym->ident==iARRAY || sym->ident==iREFARRAY))
+      ident=iVARIABLE;  /* when requesting variables, constants are also ok */
     if (symboltype==ident || (symboltype==iVARIABLE && ident==iFUNCTN)) {
       dist=levenshtein_distance(name,symname);
       if (dist<closestdist && dist<=critdist) {

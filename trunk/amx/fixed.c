@@ -22,7 +22,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: fixed.c 3902 2008-01-23 17:40:01Z thiadmer $
+ *  Version: $Id: fixed.c 4026 2008-10-22 10:49:05Z thiadmer $
  */
 #include <assert.h>
 #include <stdio.h>      /* for NULL */
@@ -732,12 +732,12 @@ const AMX_NATIVE_INFO fixed_Natives[] = {
   { NULL, NULL }        /* terminator */
 };
 
-int AMXEXPORT amx_FixedInit(AMX *amx)
+int AMXEXPORT AMXAPI amx_FixedInit(AMX *amx)
 {
   return amx_Register(amx,fixed_Natives,-1);
 }
 
-int AMXEXPORT amx_FixedCleanup(AMX *amx)
+int AMXEXPORT AMXAPI amx_FixedCleanup(AMX *amx)
 {
   (void)amx;
   return AMX_ERR_NONE;

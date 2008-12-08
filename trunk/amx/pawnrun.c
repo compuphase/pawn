@@ -19,7 +19,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: pawnrun.c 3935 2008-03-06 13:18:13Z thiadmer $
+ *  Version: $Id: pawnrun.c 4026 2008-10-22 10:49:05Z thiadmer $
  */
 #include <assert.h>
 #include <stdio.h>
@@ -52,8 +52,8 @@ static char g_filename[_MAX_PATH];      /* for loading the debug or information
  * extension modules may be dynamically linked (depending on whether
  * support for dynamic linking is enabled).
  */
-extern int AMXEXPORT amx_ConsoleInit(AMX *amx);
-extern int AMXEXPORT amx_CoreInit(AMX *amx);
+extern int AMXEXPORT AMXAPI amx_ConsoleInit(AMX *amx);
+extern int AMXEXPORT AMXAPI amx_CoreInit(AMX *amx);
 
 AMX *global_amx;
 int AMXAPI prun_Monitor(AMX *amx);

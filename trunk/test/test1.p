@@ -500,6 +500,20 @@ main()
         new name[10 char] = !"\\"
         #pragma unused name
     #endif
+    
+    #if defined TERNARY_LIT_ARRAY
+        new expression = 0
+        new blah[8]
+        blah = (expression) ? "oh" : "22222222222222222"
+    #endif
+
+    #if defined TERNARY_1D_ARRAY
+        new expression = 0
+        new blah[8]
+        new x[3]
+        new y[9]
+        blah = (expression) ? x : y
+    #endif
     }
 
 #if defined LOCAL_SHADOWS
@@ -522,6 +536,13 @@ new  b[4][5] = {
 #endif
 
 #if defined PUBLIC_NOT_DECLARED
+forward public dummyfunc()
+
+dummyfunc()
+    return 0
+#endif
+
+#if defined PUBLIC_NOT_FORWARDED
 forward dummyfunc()
 
 public dummyfunc()

@@ -1,6 +1,13 @@
 #build file for CMake, see http://www.cmake.org/
 
+CMAKE_MINIMUM_REQUIRED(VERSION 2.4)
+IF(COMMAND cmake_policy)
+  cmake_policy(SET CMP0003 NEW)
+ENDIF(COMMAND cmake_policy)
+
 PROJECT(pawnamx)
+
+SET(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake_modules/")
 
 # check for optional include files
 INCLUDE(${CMAKE_ROOT}/Modules/CheckIncludeFile.cmake)
@@ -25,13 +32,20 @@ IF(HAVE_ALLOCA_H)
   ADD_DEFINITIONS(-DHAVE_ALLOCA_H)
 ENDIF(HAVE_ALLOCA_H)
 
+# check optional packages
+FIND_PACKAGE(Dyncall)
+IF(DYNCALL_FOUND)
+  ADD_DEFINITIONS(-DHAVE_DYNCALL_H)
+  INCLUDE_DIRECTORIES(${DYNCALL_INCLUDE_DIR})
+ENDIF(DYNCALL_FOUND)
+
+
 ADD_DEFINITIONS(-DFLOATPOINT -DFIXEDPOINT)
 IF (UNIX)
-  CHECK_INCLUDE_FILE("ffi.h" HAVE_FFI_H)
   INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR}/../linux)
 ENDIF (UNIX)
 IF(WIN32)
-  ADD_DEFINITIONS(-DPAWN_DLL -DSTDECL)
+  ADD_DEFINITIONS(-DPAWN_DLL -DSTDECL -D_CRT_SECURE_NO_WARNINGS)
   IF(NOT BORLAND)
     LINK_LIBRARIES(winmm)
   ENDIF(NOT BORLAND)
@@ -69,6 +83,7 @@ IF(WIN32)
   ELSE(BORLAND)
     SET_TARGET_PROPERTIES(amxDGram PROPERTIES LINK_FLAGS "/export:amx_DGramInit /export:amx_DGramCleanup")
   ENDIF(BORLAND)
+  TARGET_LINK_LIBRARIES(amxDGram wsock32)
 ENDIF(WIN32)
 IF(UNIX)
   ADD_CUSTOM_COMMAND(TARGET amxDGram POST_BUILD COMMAND strip ARGS -K amx_DGramInit -K amx_DGramCleanup ${CMAKE_BINARY_DIR}/amxDGram.so)
@@ -125,14 +140,13 @@ IF(UNIX)
 ENDIF(UNIX)
 
 # amxProcess
-IF(UNIX)
-  IF(NOT HAVE_FFI_H)
-    MESSAGE("The extension module amxProcess requires libffi (foreign function interface); see http://sourceware.org/libffi/. You may continue with this build, and skip the (non-essential) module amxProcess.")
-  ENDIF(NOT HAVE_FFI_H)
-ENDIF(UNIX)
-IF(WIN32 OR HAVE_FFI_H)
 SET(PROCESS_SRCS amxprocess.c amx.c)
 ADD_LIBRARY(amxProcess SHARED ${PROCESS_SRCS})
+IF(DYNCALL_FOUND)
+  TARGET_LINK_LIBRARIES(amxProcess ${DYNCALL_LIBRARIES})
+ELSE(DYNCALL_FOUND)
+  MESSAGE("The extension module amxProcess requires "dyncall" (foreign function interface); see http://www.dyncall.org/. You may continue with this build, but without dyncall, the module amxProcess will lack some functionality.")
+ENDIF(DYNCALL_FOUND)
 SET_TARGET_PROPERTIES(amxProcess PROPERTIES PREFIX "")
 IF(WIN32)
   SET(PROCESS_SRCS ${PROCESS_SRCS} dllmain.c amxprocess.rc)
@@ -146,7 +160,6 @@ IF(UNIX)
   TARGET_LINK_LIBRARIES(amxProcess dl)
   ADD_CUSTOM_COMMAND(TARGET amxProcess POST_BUILD COMMAND strip ARGS -K amx_ProcessInit -K amx_ProcessCleanup ${CMAKE_BINARY_DIR}/amxProcess.so)
 ENDIF(UNIX)
-ENDIF(WIN32 OR HAVE_FFI_H)
 
 # amxString
 SET(STRING_SRCS amxstring.c amx.c amxcons.c)

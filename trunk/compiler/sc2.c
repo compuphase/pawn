@@ -18,7 +18,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: sc2.c 3963 2008-04-18 15:21:10Z thiadmer $
+ *  Version: $Id: sc2.c 4032 2008-11-14 15:06:02Z thiadmer $
  */
 #include <assert.h>
 #include <stdio.h>
@@ -473,7 +473,7 @@ static void stripcom(unsigned char *line)
              * to the global documentation
              */
             if (curfunc==NULL && get_docstring(0)!=NULL)
-              sc_attachdocumentation(NULL);
+              sc_attachdocumentation(NULL,FALSE);
             icomment=2; /* documentation comment */
           } /* if */
           commentidx=0;
@@ -500,7 +500,7 @@ static void stripcom(unsigned char *line)
              * block to the global documentation
              */
             if (!singleline && curfunc==NULL && get_docstring(0)!=NULL)
-              sc_attachdocumentation(NULL);
+              sc_attachdocumentation(NULL,FALSE);
             insert_docstring(str,1);
             prev_singleline=TRUE;
           } /* if */
@@ -548,8 +548,8 @@ static int btoi(cell *val,const unsigned char *curptr)
   ptr=curptr;
   if (*ptr=='0' && *(ptr+1)=='b') {
     ptr+=2;
-    while (*ptr=='0' || *ptr=='1' || *ptr==',') {
-      if (*ptr==',') {
+    while (*ptr=='0' || *ptr=='1' || *ptr=='\'') {
+      if (*ptr=='\'') {
         if (digitsep!=0 && digitsep<INT_MAX)
           return 0;       /* invalid numeric format */
         digitsep=8;
@@ -587,8 +587,8 @@ static int dtoi(cell *val,const unsigned char *curptr)
   ptr=curptr;
   if (!isdigit(*ptr))   /* should start with digit */
     return 0;
-  while (isdigit(*ptr) || *ptr==',') {
-    if (*ptr==',') {
+  while (isdigit(*ptr) || *ptr=='\'') {
+    if (*ptr=='\'') {
       if (digitsep!=0 && digitsep<INT_MAX)
         return 0;       /* invalid numeric format */
       digitsep=3;
@@ -626,8 +626,8 @@ static int htoi(cell *val,const unsigned char *curptr)
     return 0;
   if (*ptr=='0' && *(ptr+1)=='x') {     /* C style hexadecimal notation */
     ptr+=2;
-    while (ishex(*ptr) || *ptr==',') {
-      if (*ptr==',') {
+    while (ishex(*ptr) || *ptr=='\'') {
+      if (*ptr=='\'') {
         if (digitsep!=0 && digitsep<INT_MAX)
           return 0;       /* invalid numeric format */
         digitsep=4;
@@ -686,8 +686,8 @@ static int ftoi(cell *val,const unsigned char *curptr)
   fnum=0.0;
   dnum=0L;
   ptr=curptr;
-  while (isdigit(*ptr) || *ptr==',') {
-    if (*ptr==',') {
+  while (isdigit(*ptr) || *ptr=='\'') {
+    if (*ptr=='\'') {
       if (digitsep!=0 && digitsep<INT_MAX)
         return 0;       /* invalid numeric format */
       digitsep=3;
@@ -1181,7 +1181,8 @@ static int command(void)
         } else if (strcmp(str,"tabsize")==0) {
           cell val;
           preproc_expr(&val,NULL);
-          sc_tabsize=(int)val;
+          if (2<=val && val<=8)
+            pc_tabsize=pc_matchedtabsize=(int)val;
         } else if (strcmp(str,"align")==0) {
           sc_alignnext=TRUE;
         } else if (strcmp(str,"unused")==0) {
@@ -1439,7 +1440,7 @@ static const unsigned char *skippgroup(const unsigned char *string)
   return string;
 }
 
-static char *strdel(char *str,size_t len)
+SC_FUNC char *strdel(char *str,size_t len)
 {
   size_t length=strlen(str);
   if (len>length)
@@ -1448,7 +1449,7 @@ static char *strdel(char *str,size_t len)
   return str;
 }
 
-static char *strins(char *dest,char *src,size_t srclen)
+SC_FUNC char *strins(char *dest,char *src,size_t srclen)
 {
   size_t destlen=strlen(dest);
   assert(srclen<=strlen(src));
@@ -1463,6 +1464,7 @@ static int substpattern(unsigned char *line,size_t buffersize,char *pattern,char
   const unsigned char *p,*s,*e;
   unsigned char *args[10];
   int match,arg,len,instring;
+  int stringize;
 
   memset(args,0,sizeof args);
 
@@ -1503,7 +1505,7 @@ static int substpattern(unsigned char *line,size_t buffersize,char *pattern,char
         if (args[arg]!=NULL)
           free(args[arg]);
         len=(int)(e-s);
-        args[arg]=(unsigned char*)malloc(len+1);
+        args[arg]=(unsigned char*)malloc((len+1)*sizeof(unsigned char));
         if (args[arg]==NULL)
           error(103); /* insufficient memory */
         strlcpy((char*)args[arg],(char*)s,len+1);
@@ -1558,11 +1560,18 @@ static int substpattern(unsigned char *line,size_t buffersize,char *pattern,char
     /* calculate the length of the substituted string */
     instring=0;
     for (e=(unsigned char*)substitution,len=0; *e!='\0'; e++) {
+      if (*e=='#' && *(e+1)=='%' && isdigit(*(e+2)) && !instring) {
+        stringize=1;
+        e++;            /* skip '#' */
+      } else {
+        stringize=0;
+      } /* if */
       if (*e=='%' && isdigit(*(e+1)) && !instring) {
         arg=*(e+1)-'0';
         assert(arg>=0 && arg<=9);
+        assert(stringize==0 || stringize==1);
         if (args[arg]!=NULL)
-          len+=strlen((char*)args[arg]);
+          len+=strlen((char*)args[arg])+2*stringize;
         else
           len+=2;     /* copy '%' plus digit */
         e++;          /* skip %, digit is skipped later */
@@ -1580,12 +1589,22 @@ static int substpattern(unsigned char *line,size_t buffersize,char *pattern,char
       instring=0;
       strdel((char*)line,(int)(s-line));
       for (e=(unsigned char*)substitution,s=line; *e!='\0'; e++) {
+        if (*e=='#' && *(e+1)=='%' && isdigit(*(e+2)) && !instring) {
+          stringize=1;
+          e++;            /* skip '#' */
+        } else {
+          stringize=0;
+        } /* if */
         if (*e=='%' && isdigit(*(e+1)) && !instring) {
           arg=*(e+1)-'0';
           assert(arg>=0 && arg<=9);
           if (args[arg]!=NULL) {
+            if (stringize)
+              strins((char*)s++,"\"",1);
             strins((char*)s,(char*)args[arg],strlen((char*)args[arg]));
             s+=strlen((char*)args[arg]);
+            if (stringize)
+              strins((char*)s++,"\"",1);
           } else {
             error(236); /* parameter does not exist, incorrect #define pattern */
             strins((char*)s,(char*)e,2);
@@ -1801,6 +1820,62 @@ static void packedstring(const unsigned char *str,int flags)
     litadd(0);          /* add full cell of zeros */
 }
 
+static unsigned long pc_indentmask=0;   /* tab/space interval to make up the current indent */
+static unsigned char pc_indentbits=0;   /* bits in pc_indentmask */
+
+SC_FUNC void lex_fetchindent(const unsigned char *string,const unsigned char *pos)
+{
+  unsigned long mask=1;
+
+  pc_stmtindent=0;
+  pc_indentmask=0;
+  for (pc_indentbits=0; pc_indentbits<(int)(pos-string); pc_indentbits++) {
+    assert(pc_tabsize>0);
+    if (string[pc_indentbits]=='\t') {
+      pc_stmtindent += (int)(pc_tabsize - (pc_stmtindent+pc_tabsize) % pc_tabsize);
+      pc_indentmask |= mask;
+    } else {
+      pc_stmtindent++;
+      if (pc_matchedtabsize==0)
+        pc_matchedtabsize=1;  /* allow auto-detect (spaces on indentation were detected) */
+    } /* if */
+    mask <<= 1;
+  } /* for */
+}
+
+SC_FUNC int lex_adjusttabsize(int matchindent)
+{
+  int indent, tabsize,i;
+  unsigned long mask;
+
+  if (sc_status!=statFIRST || pc_stmtindent==matchindent || pc_matchedtabsize!=1
+      || pc_indentmask==0 || pc_indentbits>32)
+    return 0; /* no adjustment, because indent already matches, TAB size was
+               * already matched, there are no TABs in the indent, or this is
+               * not the first pass */
+
+  for (tabsize=2; tabsize<=8; tabsize++) {
+    mask=pc_indentmask;
+    indent=0;
+    for (i=0; i<pc_indentbits; i++) {
+      if ((mask & 1)!=0)
+        indent += (int)(tabsize - (indent+tabsize) % tabsize);
+      else
+        indent++;
+      mask >>= 1;
+    } /* while */
+    if (indent==matchindent) {
+      /* found a match, assume that it is good */
+      pc_tabsize=tabsize;
+      pc_matchedtabsize=tabsize;
+      pc_stmtindent=indent;
+      return 1;
+    } /* if */
+  } /* for */
+
+  return 0;   /* no matching TAB size found */
+}
+
 /*  lex(lexvalue,lexsym)        Lexical Analysis
  *
  *  lex() first deletes leading white space, then checks for multi-character
@@ -1850,6 +1925,9 @@ SC_FUNC int lexinit(int releaseall)
   _pushed=FALSE;        /* no token pushed back into lex */
   _lexnewline=FALSE;
 
+  pc_indentmask=0;      /* tab/space interval to make up the current indent */
+  pc_indentbits=0;      /* bits in pc_indentmask */
+
   if (releaseall) {
     if (srcline!=NULL)
       free(srcline);
@@ -1861,7 +1939,7 @@ SC_FUNC int lexinit(int releaseall)
     if (srcline==NULL)
       srcline=(unsigned char*)malloc((sLINEMAX+1)*sizeof(unsigned char));
     if (_lexstr==NULL)
-      _lexstr=(unsigned char*)malloc((sLINEMAX+1)*sizeof(unsigned char));
+      _lexstr=(char*)malloc((sLINEMAX+1)*sizeof(char));
     if (srcline==NULL || _lexstr==NULL)
       return 0;
     *srcline='\0';
@@ -1924,14 +2002,8 @@ SC_FUNC int lex(cell *lexvalue,char **lexsym)
       lptr+=1;
     } /* if */
   } /* while */
-  if (newline) {
-    stmtindent=0;
-    for (i=0; i<(int)(lptr-srcline); i++)
-      if (srcline[i]=='\t' && sc_tabsize>0)
-        stmtindent += (int)(sc_tabsize - (stmtindent+sc_tabsize) % sc_tabsize);
-      else
-        stmtindent++;
-  } /* if */
+  if (newline)
+    lex_fetchindent(srcline,lptr);
 
   i=tFIRST;
   tokptr=sc_tokens;
@@ -1983,7 +2055,7 @@ SC_FUNC int lex(cell *lexvalue,char **lexsym)
     i=0;
     toolong=0;
     while (alphanum(*lptr)){
-      _lexstr[i]=*lptr;
+      _lexstr[i]=(char)*lptr;
       lptr+=1;
       if (i<sNAMEMAX)
         i+=1;
@@ -2089,9 +2161,9 @@ SC_FUNC int lex(cell *lexvalue,char **lexsym)
     if (sc_packstr)
       stringflags ^= ISPACKED;    /* invert packed/unpacked parameters */
     if ((stringflags & ISPACKED)!=0)
-      packedstring(_lexstr,stringflags);
+      packedstring((unsigned char*)_lexstr,stringflags);
     else
-      unpackedstring(_lexstr,stringflags);
+      unpackedstring((unsigned char*)_lexstr,stringflags);
   } else if (*lptr=='\'') {             /* character literal */
     lptr+=1;            /* skip quote */
     _lextok=tNUMBER;
@@ -2102,7 +2174,7 @@ SC_FUNC int lex(cell *lexvalue,char **lexsym)
       /* try to skip up to the next quote (this may be a user mixing up
        * single and double quotes)
        */
-      const char *ptr=lptr;
+      const unsigned char *ptr=lptr;
       while (*ptr!='\0' && *ptr!='\'')
         ptr++;
       if (*ptr=='\'') {
@@ -2177,6 +2249,19 @@ SC_FUNC int lexpeek(void)
   tok=lex(&val,&str);
   lexpush();
   return tok;
+}
+
+/* changes the current token, this is sometimes convenient when a
+ * reserved word must be re-interpreted as a symbol
+ */
+SC_FUNC int lexsettoken(int token,char *lexsym)
+{
+  assert(_pushed==FALSE);
+  _lextok=token;
+  assert(lexsym!=NULL);
+  assert(strlen(lexsym)<=sLINEMAX);
+  strcpy(_lexstr,lexsym);
+  return _lextok;
 }
 
 /*  matchtoken

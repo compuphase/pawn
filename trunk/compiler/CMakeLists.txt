@@ -1,5 +1,10 @@
 #build file for CMake, see http://www.cmake.org/
 
+CMAKE_MINIMUM_REQUIRED(VERSION 2.4)
+IF(COMMAND cmake_policy)
+  cmake_policy(SET CMP0003 NEW)
+ENDIF(COMMAND cmake_policy)
+
 PROJECT(pawnc)
 
 # check for optional include files
@@ -26,6 +31,9 @@ IF(UNIX)
   INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR}/../linux)
   LINK_LIBRARIES(pthread m) #CMake adds the "lib" prefix, so "pthread" becomes "libpthread"
 ENDIF(UNIX)
+IF(WIN32)
+  ADD_DEFINITIONS(-D_CRT_SECURE_NO_WARNINGS)
+ENDIF(WIN32)
 
 # The Pawn compiler shared library
 SET(PAWNC_SRCS sc1.c sc2.c sc3.c sc4.c sc5.c sc6.c sc7.c
@@ -70,3 +78,8 @@ IF(WIN32)
 ENDIF(WIN32)
 ADD_EXECUTABLE(pawncc ${PAWNCC_SRCS})
 TARGET_LINK_LIBRARIES(pawncc pawnc)
+
+
+# Simple Pawn disassembler (console program)
+SET(PAWNDISASM_SRCS pawndisasm.c)
+ADD_EXECUTABLE(pawndisasm ${PAWNDISASM_SRCS})

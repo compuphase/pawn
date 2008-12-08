@@ -18,7 +18,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: amx.c 3927 2008-03-04 10:13:46Z thiadmer $
+ *  Version: $Id: amx.c 4032 2008-11-14 15:06:02Z thiadmer $
  */
 
 #if BUILD_PLATFORM == WINDOWS && BUILD_TYPE == RELEASE && BUILD_COMPILER == MSVC && PAWN_CELL_SIZE == 64
@@ -191,9 +191,9 @@ typedef enum {
   OP_RET,
   OP_RETN,
   OP_CALL,
-  OP_CALL_PRI,
+  OP_CALL_PRI,  /* obsolete */
   OP_JUMP,
-  OP_JREL,    /* obsolete */
+  OP_JREL,      /* obsolete */
   OP_JZER,
   OP_JNZ,
   OP_JEQ,
@@ -269,7 +269,7 @@ typedef enum {
   OP_LINE,    /* obsolete */
   OP_SYMBOL,  /* obsolete */
   OP_SRANGE,  /* obsolete */
-  OP_JUMP_PRI,
+  OP_JUMP_PRI,/* obsolete */
   OP_SWITCH,
   OP_CASETBL,
   OP_SWAP_PRI,
@@ -917,7 +917,6 @@ static int VerifyPcode(AMX *amx)
     case OP_PROC:
     case OP_RET:
     case OP_RETN:
-    case OP_CALL_PRI:
     case OP_SHL:
     case OP_SHR:
     case OP_SSHR:
@@ -957,7 +956,6 @@ static int VerifyPcode(AMX *amx)
     case OP_DEC_ALT:
     case OP_DEC_I:
     case OP_SYSREQ_PRI:
-    case OP_JUMP_PRI:
     case OP_SWAP_PRI:
     case OP_SWAP_ALT:
     case OP_NOP:
@@ -1169,13 +1167,17 @@ static void expand(unsigned char *code, long codesize, long memsize)
 }
 #endif /* AMX_COMPACTMARGIN > 2 */
 
+/* definitions used for amx_Init() and amx_Cleanup() */
+#if (defined _Windows || defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__) && !defined AMX_NODYNALOAD
+  typedef int AMXEXPORT (AMXAPI _FAR *AMX_ENTRY)(AMX _FAR *amx);
+#endif
+
 int AMXAPI amx_Init(AMX *amx,void *program)
 {
   AMX_HEADER *hdr;
   int err,i;
   unsigned char *data;
   #if (defined _Windows || defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__) && !defined AMX_NODYNALOAD
-    typedef int AMXEXPORT (_FAR *AMX_ENTRY)(AMX _FAR *amx);
     #if defined _Windows
       char libname[sNAMEMAX+8]; /* +1 for '\0', +3 for 'amx' prefix, +4 for extension */
       HINSTANCE hlib;
@@ -1523,7 +1525,6 @@ int AMXAPI amx_InitJIT(AMX *amx,void *compiled_program,void *reloc_table)
 int AMXAPI amx_Cleanup(AMX *amx)
 {
   #if (defined _Windows || defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__) && !defined AMX_NODYNALOAD
-    typedef int AMXEXPORT (_FAR *AMX_ENTRY)(AMX _FAR *amx);
     AMX_HEADER *hdr;
     int numlibraries,i;
     AMX_FUNCSTUB *lib;
@@ -1583,6 +1584,8 @@ int AMXAPI amx_Clone(AMX *amxClone, AMX *amxSource, void *data)
 
   /* set initial values */
   amxClone->base=amxSource->base;
+  amxClone->code=amxSource->code;
+  amxClone->codesize=amxSource->codesize;
   amxClone->hlw=hdr->hea - hdr->dat; /* stack and heap relative to data segment */
   amxClone->stp=hdr->stp - hdr->dat - sizeof(cell);
   amxClone->hea=amxClone->hlw;
@@ -2199,7 +2202,7 @@ static const void * const amx_opcodelist[] = {
         &&op_dec_p_s,     &&op_movs_p,     &&op_cmps_p,      &&op_fill_p,
         &&op_halt_p,      &&op_bounds_p,   &&op_push_p_adr,
 #endif
-        &&op_sysreq_d,  &&op_sysreq_nd };
+        &&op_sysreq_d, &&op_sysreq_nd };
   AMX_HEADER *hdr;
   AMX_FUNCSTUB *func;
   unsigned char *data;
@@ -2332,8 +2335,40 @@ static const void * const amx_opcodelist[] = {
   /* start running */
   NEXT(cip,op);
 
-  op_none:
+  op_none:    /* (partial) list of invalid opcodes, depending on build options */
+  op_call_pri:
+  op_jump_pri:
+#if defined AMX_DONT_RELOCATE
+  op_sysreq_d:
+#endif
+#if defined AMX_NO_MACRO_INSTR || defined AMX_DONT_RELOCATE
+  op_sysreq_nd:
+#endif
+#if defined AMX_NO_MACRO_INSTR
+  op_sysreq_n:
+  op_push5:
+  op_push4:
+  op_push3:
+  op_push2:
+  op_push5_s:
+  op_push4_s:
+  op_push3_s:
+  op_push2_s:
+  op_push5_c:
+  op_push4_c:
+  op_push3_c:
+  op_push2_c:
+  op_push5_adr:
+  op_push4_adr:
+  op_push3_adr:
+  op_push2_adr:
+  op_load_both:
+  op_load_s_both:
+  op_const:
+  op_const_s:
+#endif
     ABORT(amx,AMX_ERR_INVINSTR);
+
   op_load_pri:
     GETPARAM(offs);
     pri=_R(data,offs);
@@ -2630,10 +2665,6 @@ static const void * const amx_opcodelist[] = {
   op_call:
     PUSH(((unsigned char *)cip-amx->code)+sizeof(cell));/* push address behind instruction */
     cip=JUMPREL(cip);                   /* jump to the address */
-    NEXT(cip,op);
-  op_call_pri:
-    PUSH((unsigned char *)cip-amx->code);
-    cip=(cell *)(amx->code+(int)pri);
     NEXT(cip,op);
   op_icall:
     offs=(unsigned char *)cip-amx->code+sizeof(cell); /* skip address */
@@ -3136,9 +3167,6 @@ static const void * const amx_opcodelist[] = {
   op_symtag:
     SKIPPARAM(1);
     NEXT(cip,op);
-  op_jump_pri:
-    cip=(cell *)(amx->code+(int)pri);
-    NEXT(cip,op);
   op_switch: {
     cell *cptr=JUMPREL(cip)+1;  /* +1, to skip the "casetbl" opcode */
     cip=JUMPREL(cptr+1);        /* preset to "none-matched" case */
@@ -3556,7 +3584,7 @@ static const void * const amx_opcodelist[] = {
     PUSH(frm+offs);
     NEXT(cip,op);
 #endif
-#if !defined AMX_NO_MACRO_INSTR
+#if !defined AMX_DONT_RELOCATE
   op_sysreq_d:          /* see op_sysreq_c */
     GETPARAM(offs);
     /* save a few registers */
@@ -3577,7 +3605,7 @@ static const void * const amx_opcodelist[] = {
     } /* if */
     NEXT(cip,op);
 #endif
-#if !defined AMX_NO_MACRO_INSTR && !defined AMX_NO_MACRO_INSTR
+#if !defined AMX_NO_MACRO_INSTR && !defined AMX_DONT_RELOCATE
   op_sysreq_nd:    /* see op_sysreq_n */
     GETPARAM(offs);
     GETPARAM(val);
@@ -4131,10 +4159,6 @@ int AMXAPI amx_Exec(AMX *amx, cell *retval, int index)
       PUSH(((unsigned char *)cip-amx->code)+sizeof(cell));/* skip address */
       cip=JUMPREL(cip);                 /* jump to the address */
       break;
-    case OP_CALL_PRI:
-      PUSH((unsigned char *)cip-amx->code);
-      cip=(cell *)(amx->code+(int)pri);
-      break;
     case OP_ICALL:
       offs=(unsigned char *)cip-amx->code+sizeof(cell); /* skip address */
       assert(offs>=0 && offs<(1<<(sizeof(cell)*4)));
@@ -4617,9 +4641,6 @@ int AMXAPI amx_Exec(AMX *amx, cell *retval, int index)
       break;
     case OP_SYMTAG:
       SKIPPARAM(1);
-      break;
-    case OP_JUMP_PRI:
-      cip=(cell *)(amx->code+(int)pri);
       break;
     case OP_SWITCH: {
       cell *cptr=JUMPREL(cip)+1;/* +1, to skip the "casetbl" opcode */

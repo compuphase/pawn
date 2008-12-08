@@ -18,7 +18,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: sc6.c 3902 2008-01-23 17:40:01Z thiadmer $
+ *  Version: $Id: sc6.c 3999 2008-09-05 11:18:38Z thiadmer $
  */
 #include <assert.h>
 #include <stdio.h>
@@ -513,7 +513,7 @@ static OPCODE opcodelist[] = {
   {211, "bounds.p",   sIN_CSEG, parm1_p },
   {137, "break",      sIN_CSEG, parm0 },        /* version 8 */
   { 49, "call",       sIN_CSEG, do_call },
-  { 50, "call.pri",   sIN_CSEG, parm0 },
+/*{ 50, "call.pri",   sIN_CSEG, parm0 },        removed for security reasons */
   {  0, "case",       sIN_CSEG, do_case },
   {130, "casetbl",    sIN_CSEG, parm0 },        /* version 1 */
   {118, "cmps",       sIN_CSEG, parm1 },
@@ -577,7 +577,7 @@ static OPCODE opcodelist[] = {
   { 62, "jsleq",      sIN_CSEG, do_jump },
   { 61, "jsless",     sIN_CSEG, do_jump },
   { 51, "jump",       sIN_CSEG, do_jump },
-  {128, "jump.pri",   sIN_CSEG, parm0 },        /* version 1 */
+/*{128, "jump.pri",   sIN_CSEG, parm0 },        removed for security reasons */
   { 53, "jzer",       sIN_CSEG, do_jump },
   { 31, "lctrl",      sIN_CSEG, parm1 },
   { 98, "leq",        sIN_CSEG, parm0 },
@@ -646,6 +646,13 @@ static OPCODE opcodelist[] = {
   {153, "push5.adr",  sIN_CSEG, parm5 },        /* version 9 */
   {150, "push5.c",    sIN_CSEG, parm5 },        /* version 9 */
   {152, "push5.s",    sIN_CSEG, parm5 },        /* version 9 */
+  {216, "pushr.adr",  sIN_CSEG, parm1 },        /* version 11 */
+  {214, "pushr.c",    sIN_CSEG, parm1 },        /* version 11 */
+  {219, "pushr.p.adr",sIN_CSEG, parm1_p },      /* version 11 */
+  {217, "pushr.p.c",  sIN_CSEG, parm1_p },      /* version 11 */
+  {218, "pushr.p.s",  sIN_CSEG, parm1_p },      /* version 11 */
+  {213, "pushr.pri",  sIN_CSEG, parm0 },        /* version 11 */
+  {215, "pushr.s",    sIN_CSEG, parm1 },        /* version 11 */
   { 47, "ret",        sIN_CSEG, parm0 },
   { 48, "retn",       sIN_CSEG, parm0 },
   { 32, "sctrl",      sIN_CSEG, parm1 },
@@ -781,7 +788,7 @@ SC_FUNC int assemble(FILE *fout,FILE *fin)
      * for a non-existant opcode)
      */
     {
-      #define MAX_OPCODE 212
+      #define MAX_OPCODE 219
       unsigned char opcodearray[MAX_OPCODE+1];
       assert(opcodelist[1].name!=NULL);
       memset(opcodearray,0,sizeof opcodearray);
@@ -814,7 +821,8 @@ SC_FUNC int assemble(FILE *fout,FILE *fin)
       if (pc_overlays>0 && (sym->usage & uNATIVE)==0
           && (sym->usage & (uREAD | uPUBLIC))!=0 && (sym->usage & uDEFINE)!=0)
       {
-        ++numoverlays;
+        if (strcmp(sym->name,uENTRYFUNC)!=0)
+          ++numoverlays;  /* there is no stub function for state entry functions */
         if (sym->states!=NULL) {
           /* for functions with states, write an overlay block for every implementation */
           statelist *stlist;
@@ -1092,13 +1100,17 @@ SC_FUNC int assemble(FILE *fout,FILE *fin)
         assert(sym->vclass==sGLOBAL);
         assert(strcmp(sym->name,uENTRYFUNC)==0 || sym->index==count++);/* overlay indices must be in sequential order */
         assert(strcmp(sym->name,uENTRYFUNC)==0 || sym->addr<sym->codeaddr);
-        info.offset=sym->addr;
-        info.size=sym->codeaddr - sym->addr;
-        #if BYTE_ORDER==BIG_ENDIAN
-          align32(&info.offset);
-          align32(&info.size);
-        #endif
-        pc_writebin(fout,&info,sizeof info);
+        /* write the overlay for the stub function first */
+        if (strcmp(sym->name,uENTRYFUNC)!=0) {
+          /* there is no stub function for state entry functions */
+          info.offset=sym->addr;
+          info.size=sym->codeaddr - sym->addr;
+          #if BYTE_ORDER==BIG_ENDIAN
+            align32(&info.offset);
+            align32(&info.size);
+          #endif
+          pc_writebin(fout,&info,sizeof info);
+        } /* if */
         if (sym->states!=NULL) {
           /* for functions with states, write an overlay block for every implementation */
           statelist *stlist;

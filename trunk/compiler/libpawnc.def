@@ -1,5 +1,4 @@
 LIBRARY       PAWNC
-DESCRIPTION   'Pawn compiler'
 
 EXPORTS Compile
         pc_compile

@@ -18,7 +18,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: amxstring.c 3963 2008-04-18 15:21:10Z thiadmer $
+ *  Version: $Id: amxstring.c 4026 2008-10-22 10:49:05Z thiadmer $
  */
 #include <limits.h>
 #include <string.h>
@@ -796,6 +796,7 @@ static cell AMX_NATIVE_CALL n_uuencode(AMX *amx,const cell *params)
 
   /* get the source */
   amx_GetAddr(amx,params[2],&cstr);
+  amx_GetString((char *)src,cstr,0,sizeof src);
   /* encode (and check for errors) */
   if (uuencode(dst,src,params[3])) {
     if (params[4]>0) {
@@ -811,6 +812,135 @@ static cell AMX_NATIVE_CALL n_uuencode(AMX *amx,const cell *params)
   amx_GetAddr(amx,params[1],&cstr);
   amx_SetString(cstr,dst,1,0,params[4]);
   return (((params[3]+2)/3) << 2)+2;
+}
+
+/* urldecode(dest[], const source[], maxlength=sizeof dest, bool:pack=false)
+ * Returns the number of characters decoded; if the dest buffer is
+ * too small, not all bytes are stored.
+ * A buffer may be decoded "in-place"; the destination size is always
+ * smaller than the source size.
+ */
+static cell AMX_NATIVE_CALL n_urldecode(AMX *amx,const cell *params)
+{
+  cell *cstr;
+  TCHAR *str;
+  int idx_src=0,idx_dst=0;
+
+  /* get the source */
+  amx_StrParam(amx,params[2],str);
+
+  /* decode */
+  while (idx_src!='\0') {
+    assert(idx_dst<=idx_src);
+    if (str[idx_src]=='%') {
+      int p,q;
+      if (str[idx_src+1]>='0' && str[idx_src+1]<='9')
+        p=str[idx_src+1]-'0';
+      else if (str[idx_src+1]>='A' && str[idx_src+1]<='F')
+        p=str[idx_src+1]-'A'+10;
+      else if (str[idx_src+1]>='a' && str[idx_src+1]<='f')
+        p=str[idx_src+1]-'a'+10;
+      else
+        p=-1;
+      if (p>=0) {
+        if (str[idx_src+2]>='0' && str[idx_src+2]<='9')
+          q=str[idx_src+2]-'0';
+        else if (str[idx_src+2]>='A' && str[idx_src+2]<='F')
+          q=str[idx_src+2]-'A'+10;
+        else if (str[idx_src+2]>='a' && str[idx_src+2]<='f')
+          q=str[idx_src+2]-'a'+10;
+        else
+          q=-1;
+      } /* if */
+      if (p>=0 && q >=0) {
+        assert(p<=15 && q<=15);
+        str[idx_dst]=(TCHAR)((p<<4) | q);
+        idx_src+=3;
+      } else {
+        /* invalid '%xx' syntax, copy literal '%' */
+        str[idx_dst]=str[idx_src++];
+      } /* if */
+    } else {
+      str[idx_dst]=str[idx_src++];
+    } /* if */
+    idx_dst++;
+  } /* while */
+  str[idx_dst]='\0';
+
+  /* store */
+  amx_GetAddr(amx,params[1],&cstr);
+  amx_SetString(cstr,str,1,0,params[4]); /* store as packed ot unpacked */
+
+  return idx_dst;
+}
+
+#define INVALIDURI(c) ((c)<','               \
+                       || (c)>'9' && (c)<'A' \
+                       || (c)>'Z' && (c)<'_' \
+                       || (c)>'_' && (c)<'a' \
+                       || (c)>'z' && (unsigned)(c)<0xa1)
+
+#define TOHEX(c)      (TCHAR)((c)<10 ? '0'+(c) : 'A'-10+(c))
+
+/* urlencode(dest[], const source[], maxlength=sizeof dest, bool:pack=false)
+ * Returns the number of characters encoded, excluding the zero string
+ * terminator; if the dest buffer is too small, not all bytes are stored.
+ * Always creates a packed string. This string has a newline character at the
+ * end. A buffer may be encoded "in-place" if the destination is large enough.
+ * Endian issues (for multi-byte values in the data stream) are not handled.
+ */
+static cell AMX_NATIVE_CALL n_urlencode(AMX *amx,const cell *params)
+{
+  cell *cstr;
+  int length,destlen,count,lastwidth;
+  TCHAR *str;
+
+  /* allocate memory and get the source */
+  if ((length=(int)params[3])==0)
+    return 0;
+  if ((str = (TCHAR*)alloca(length * sizeof(TCHAR)))==NULL)
+    return 0;
+  amx_GetAddr(amx,params[2],&cstr);
+  amx_GetString((char*)str, cstr, sizeof(TCHAR)>1, length);
+
+  /* run through the string and determine the new length */
+  destlen=1;  /* space for the '\0' terminator */
+  lastwidth=0;
+  for (count=0; str[count]!='\0' && destlen<length; count++) {
+    if (INVALIDURI(str[count]))
+      lastwidth=3;
+    else
+      lastwidth=1;
+    destlen+=lastwidth;
+  } /* for */
+  if (destlen>length) {   /* correct for overrun */
+    destlen-=lastwidth;
+    count--;
+  } /* if */
+  assert(destlen<=length);
+  assert(count>=0);
+
+  /* store string terminator */
+  assert(destlen>0);
+  str[--destlen]='\0';
+  /* convert string from end to start */
+  while (--count>=0) {
+    assert(destlen>count);
+    if (INVALIDURI(str[count])) {
+      str[--destlen]=TOHEX(str[count] & 0x0f);
+      str[--destlen]=TOHEX((str[count] >> 4) & 0x0f);
+      str[--destlen]='%';
+    } else {
+      str[--destlen]=str[count];
+    } /* if */
+  } /* while */
+  assert(destlen==0);
+
+  /* store the result */
+  amx_GetAddr(amx,params[1],&cstr);
+  amx_SetString(cstr,str,1,0,params[4]); /* store as packed ot unpacked */
+
+  return strlen(str);
 }
 
 /* memcpy(dest[], const source[], index=0, numbytes, maxlength=sizeof dest)
@@ -908,16 +1038,18 @@ const AMX_NATIVE_INFO string_Natives[] = {
   { "strval",    n_strval },
   { "uudecode",  n_uudecode },
   { "uuencode",  n_uuencode },
+  { "urldecode", n_urldecode },
+  { "urlencode", n_urlencode },
   { "valstr",    n_valstr },
   { NULL, NULL }        /* terminator */
 };
 
-int AMXEXPORT amx_StringInit(AMX *amx)
+int AMXEXPORT AMXAPI amx_StringInit(AMX *amx)
 {
   return amx_Register(amx, string_Natives, -1);
 }
 
-int AMXEXPORT amx_StringCleanup(AMX *amx)
+int AMXEXPORT AMXAPI amx_StringCleanup(AMX *amx)
 {
   (void)amx;
   return AMX_ERR_NONE;

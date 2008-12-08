@@ -20,7 +20,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: sc1.c 3935 2008-03-06 13:18:13Z thiadmer $
+ *  Version: $Id: sc1.c 4032 2008-11-14 15:06:02Z thiadmer $
  */
 #include <assert.h>
 #include <ctype.h>
@@ -66,10 +66,6 @@
   #include <sclinux.h>
   #include <binreloc.h> /* from BinReloc, see www.autopackage.org */
 #endif
-
-#include "svnrev.h"
-#define VERSION_STR "3.3." SVN_REVSTR
-#define VERSION_INT 0x0303
 
 static void resetglobals(void);
 static void initglobals(void);
@@ -150,7 +146,9 @@ static int wq[wqTABSZ];         /* "while queue", internal stack for nested loop
 static int *wqptr;              /* pointer to next entry */
 #if !defined PAWN_LIGHT
   static char sc_rootpath[_MAX_PATH];
-  static char *sc_documentation=NULL;/* main documentation */
+  static char *pc_globaldoc=NULL;/* main documentation */
+  static char *pc_recentdoc=NULL;/* documentation from the most recent comment block */
+  int pc_docstring_suspended=FALSE;
 #endif
 #if defined	__WIN32__ || defined _WIN32 || defined _Windows
   static HWND hwndFinish = 0;
@@ -282,6 +280,12 @@ int pc_writesrc(void *handle,const unsigned char *source)
 #define MAXPOSITIONS  4
 static fpos_t srcpositions[MAXPOSITIONS];
 static unsigned char srcposalloc[MAXPOSITIONS];
+
+void pc_clearpossrc(void)
+{
+  memset(srcpositions,0,sizeof srcpositions);
+  memset(srcposalloc,0,sizeof srcposalloc);
+}
 
 void *pc_getpossrc(void *handle,void *position)
 {
@@ -424,7 +428,7 @@ DLLEXPORT
 int pc_compile(int argc, char *argv[])
 {
   int entry,i,jmpcode;
-  int retcode;
+  int retcode,lbl_nostate,lbl_exitstate;
   char incfname[_MAX_PATH];
   char reportname[_MAX_PATH];
   char codepage[MAXCODEPAGE+1];
@@ -445,6 +449,7 @@ int pc_compile(int argc, char *argv[])
   errorset(sEXPRRELEASE,0);
   if (!lexinit(FALSE))
     error(103);         /* insufficient memory */
+  pc_clearpossrc();
 
   /* make sure that we clean up on a fatal error; do this before the first
    * call to error(). */
@@ -481,7 +486,7 @@ int pc_compile(int argc, char *argv[])
   sc_ctrlchar_org=sc_ctrlchar;
   lcl_packstr=sc_packstr;
   lcl_needsemicolon=sc_needsemicolon;
-  lcl_tabsize=sc_tabsize;
+  lcl_tabsize=pc_tabsize;
   #if !defined PAWN_NO_CODEPAGE
     if (!cp_set(codepage))      /* set codepage */
       error(108);               /* codepage mapping file not found */
@@ -556,12 +561,12 @@ int pc_compile(int argc, char *argv[])
     char string[150];
     sprintf(string,"#pragma ctrlchar 0x%02x\n"
                    "#pragma pack %s\n"
-                   "#pragma semicolon %s\n"
-                   "#pragma tabsize %d\n",
+                   "#pragma semicolon %s\n",
             sc_ctrlchar,
             sc_packstr ? "true" : "false",
-            sc_needsemicolon ? "true" : "false",
-            sc_tabsize);
+            sc_needsemicolon ? "true" : "false");
+    if (pc_matchedtabsize>1 && pc_tabsize>1)
+      sprintf(string,"#pragma tabsize %d\n",pc_tabsize);
     pc_writeasm(outf,string);
     setfiledirect(inpfname);
   } /* if */
@@ -580,7 +585,7 @@ int pc_compile(int argc, char *argv[])
     sc_ctrlchar=sc_ctrlchar_org;
     sc_packstr=lcl_packstr;
     sc_needsemicolon=lcl_needsemicolon;
-    sc_tabsize=lcl_tabsize;
+    pc_tabsize=(pc_matchedtabsize<=1) ? lcl_tabsize : pc_matchedtabsize;
     errorset(sRESET,0);
     /* reset the source file */
     inpf=inpf_org;
@@ -610,18 +615,18 @@ int pc_compile(int argc, char *argv[])
   /* write a report, if requested */
   #if !defined PAWN_LIGHT
     if (sc_makereport) {
-      FILE *frep=stdout;
-      if (strlen(reportname)>0)
-        frep=fopen(reportname,"wb");    /* avoid translation of \n to \r\n in DOS/Windows */
-      if (frep!=NULL) {
-        make_report(&glbtab,frep,get_sourcefile(0));
-        if (strlen(reportname)>0)
+      if (strlen(reportname)>0) {
+        FILE *frep=fopen(reportname,"wb");  /* avoid translation of \n to \r\n in DOS/Windows */
+        if (frep!=NULL) {
+          make_report(&glbtab,frep,get_sourcefile(0));
           fclose(frep);
+        } /* if */
       } /* if */
-      if (sc_documentation!=NULL) {
-        free(sc_documentation);
-        sc_documentation=NULL;
+      if (pc_globaldoc!=NULL) {
+        free(pc_globaldoc);
+        pc_globaldoc=NULL;
       } /* if */
+      assert(pc_recentdoc==NULL);
     } /* if */
   #endif
   if (sc_listing)
@@ -641,7 +646,7 @@ int pc_compile(int argc, char *argv[])
   sc_ctrlchar=sc_ctrlchar_org;
   sc_packstr=lcl_packstr;
   sc_needsemicolon=lcl_needsemicolon;
-  sc_tabsize=lcl_tabsize;
+  pc_tabsize=(pc_matchedtabsize<=1) ? lcl_tabsize : pc_matchedtabsize;
   errorset(sRESET,0);
   /* reset the source file */
   inpf=inpf_org;
@@ -651,10 +656,10 @@ int pc_compile(int argc, char *argv[])
   if (!lexinit(FALSE))          /* clear internal flags of lex() */
     error(103);                 /* insufficient memory */
   sc_status=statWRITE;          /* allow to write --this variable was reset by resetglobals() */
-  i=writeleader(&glbtab);
+  writeleader(&glbtab,&lbl_nostate,&lbl_exitstate);
   reduce_referrers(&glbtab);    /* test for unused functions */
   gen_ovlinfo(&glbtab);         /* generate overlay information */
-  writestatetables(&glbtab,i);  /* create state tables and additional overlay information */
+  writestatetables(&glbtab,lbl_nostate,lbl_exitstate);  /* create state tables and additional overlay information */
   /* reset "defined" flag of all functions and global variables */
   delete_symbols(&glbtab,0,TRUE,FALSE);
   insert_dbgfile(inpfname);     /* attach to debug information */
@@ -788,8 +793,10 @@ cleanup:
   #endif
   #if !defined PAWN_LIGHT
     delete_docstringtable();
-    if (sc_documentation!=NULL)
-      free(sc_documentation);
+    if (pc_globaldoc!=NULL)
+      free(pc_globaldoc);
+    if (pc_recentdoc!=NULL)
+      free(pc_recentdoc);
   #endif
   delete_autolisttable();
   delete_heaplisttable();
@@ -887,7 +894,7 @@ static void resetglobals(void)
   fcurrent=0;           /* current file being processed (debugging) */
   sc_intest=FALSE;      /* true if inside a test */
   pc_sideeffect=0;      /* true if an expression causes a side-effect */
-  stmtindent=0;         /* current indent of the statement */
+  pc_stmtindent=0;      /* current indent of the statement */
   indent_nowarn=FALSE;  /* do not skip warning "217 loose indentation" */
   sc_allowtags=TRUE;    /* allow/detect tagnames */
   sc_status=statIDLE;
@@ -928,7 +935,8 @@ static void initglobals(void)
   pc_stksize=sDEF_AMXSTACK;/* default stack size */
   pc_amxlimit=0;        /* no limit on size of the abstract machine */
   pc_amxram=0;          /* no limit on data size of the abstract machine */
-  sc_tabsize=8;         /* assume a TAB is 8 spaces */
+  pc_tabsize=8;         /* assume a TAB is 8 spaces */
+  pc_matchedtabsize=0;  /* allow auto-adjust of TAB size (no space indents detected yet) */
   sc_rationaltag=0;     /* assume no support for rational numbers */
   rational_digits=0;    /* number of fractional digits */
   pc_overlays=0;        /* do not generate for overlays */
@@ -953,8 +961,10 @@ static void initglobals(void)
   wqptr=wq;             /* initialize while queue pointer */
 
 #if !defined PAWN_LIGHT
-  sc_documentation=NULL;
+  pc_globaldoc=NULL;
+  pc_recentdoc=NULL;
   sc_makereport=FALSE;  /* do not generate a cross-reference report */
+  pc_docstring_suspended=FALSE;
 #endif
 }
 
@@ -1023,7 +1033,7 @@ static void parserespf(char *filename,char *oname,char *ename,char *pname,
 static void parseoptions(int argc,char **argv,char *oname,char *ename,char *pname,
                          char *rname, char *codepage)
 {
-  char str[_MAX_PATH],*name;
+  char str[_MAX_PATH];
   const char *ptr,*optionptr;
   int arg,i,isoption;
 
@@ -1129,19 +1139,8 @@ static void parseoptions(int argc,char **argv,char *oname,char *ename,char *pnam
       case 'r':
         strlcpy(rname,option_value(ptr),_MAX_PATH); /* set name of report file */
         sc_makereport=TRUE;
-        if (strlen(rname)>0) {
+        if (strlen(rname)>0)
           set_extension(rname,".xml",FALSE);
-        } else if ((name=get_sourcefile(0))!=NULL) {
-          assert(strlen(rname)==0);
-          assert(strlen(name)<_MAX_PATH);
-          if ((ptr=strrchr(name,DIRSEP_CHAR))!=NULL)
-            ptr++;          /* strip path */
-          else
-            ptr=name;
-          assert(strlen(ptr)<_MAX_PATH);
-          strcpy(rname,ptr);
-          set_extension(rname,".xml",TRUE);
-        } /* if */
         break;
 #endif
       case 'S':
@@ -1155,7 +1154,9 @@ static void parseoptions(int argc,char **argv,char *oname,char *ename,char *pnam
         skipinput=atoi(option_value(ptr));
         break;
       case 't':
-        sc_tabsize=atoi(option_value(ptr));
+        i=atoi(option_value(ptr));
+        if (2<=i && i<=8)
+          pc_tabsize=pc_matchedtabsize=i;
         break;
       case 'V':
         /* allow -V+, -V- and -V1234, where 1234 is the code pool size;
@@ -1246,19 +1247,31 @@ static void parseoptions(int argc,char **argv,char *oname,char *ename,char *pnam
         strcpy(oname,ptr);
       } /* if */
       set_extension(oname,".asm",TRUE);
-#if !defined PAWN_LIGHT
-      if (sc_makereport && strlen(rname)==0) {
-        if ((ptr=strrchr(str,DIRSEP_CHAR))!=NULL)
-          ptr++;          /* strip path */
-        else
-          ptr=str;
-        assert(strlen(ptr)<_MAX_PATH);
-        strcpy(rname,ptr);
-        set_extension(rname,".xml",TRUE);
-      } /* if */
-#endif
     } /* if */
   } /* for */
+#if !defined PAWN_LIGHT
+  if (sc_makereport && strlen(rname)==0) {
+    if (strlen(oname)==0) {
+      /* not output filename is set, use the name of the first source file,
+       * without the path
+       */
+      char *name;
+      if ((name=get_sourcefile(0))!=NULL) {
+        assert(strlen(name)<_MAX_PATH);
+        if ((ptr=strrchr(name,DIRSEP_CHAR))!=NULL)
+          ptr++;          /* strip path */
+        else
+          ptr=name;
+        assert(strlen(ptr)<_MAX_PATH);
+        strcpy(rname,ptr);
+      } /* if */
+    } else {
+      /* a specific output filename is set, use it for the report name too */
+      strcpy(rname,oname);
+    } /* if */
+    set_extension(rname,".xml",TRUE);
+  } /* if */
+#endif
 }
 
 #if !defined PAWN_LIGHT
@@ -1460,7 +1473,7 @@ static void about(void)
 #endif
     pc_printf("         -S<num>  stack/heap size in cells (default=%d)\n",(int)pc_stksize);
     pc_printf("         -s<num>  skip lines from the input file\n");
-    pc_printf("         -t<num>  TAB indent size (in character positions, default=%d)\n",sc_tabsize);
+    pc_printf("         -t<num>  TAB indent size (in character positions, default=%d)\n",pc_tabsize);
     pc_printf("         -V<num>  generate overlay code and instructions; set buffer size\n");
     pc_printf("         -v<num>  verbosity level; 0=quiet, 1=normal, 2=verbose (default=%d)\n",verbosity);
     pc_printf("         -w<num>  disable a specific warning by its number\n");
@@ -1669,9 +1682,15 @@ static void parse(void)
         declfuncvar(fpublic,fstatic,fstock,fconst);
       } /* if */
       break;
+    case tEXIT:
     case tLABEL:
     case tSYMBOL:
     case tOPERATOR:
+      /* at this level, if the token is tEXIT, it is probably the declaration
+       * of a state exist function, not the "exit" statement
+       */
+      if (tok==tEXIT)
+        tok=lexsettoken(tSYMBOL,uEXITFUNC);
       lexpush();
       if (!newfunc(NULL,-1,FALSE,FALSE,FALSE)) {
         error(10);              /* illegal function or declaration */
@@ -1699,6 +1718,7 @@ static void parse(void)
       } /* if */
     } /* switch */
   } /* while */
+  sc_attachdocumentation(NULL,FALSE);  /* attach any trailing comment to the main documentation */
 }
 
 /*  dumplits
@@ -1777,11 +1797,11 @@ static void aligndata(int numbytes)
  * appends documentation comments to the passed-in symbol, or to a global
  * string if "sym" is NULL.
  */
-void sc_attachdocumentation(symbol *sym)
+void sc_attachdocumentation(symbol *sym,int onlylastblock)
 {
-  int line;
+  int line,wrap;
   size_t length;
-  char *str,*doc;
+  char *str,*doc,*end;
 
   if (!sc_makereport || sc_status!=statFIRST || sc_parsenum>0) {
     /* just clear the entire table */
@@ -1794,6 +1814,60 @@ void sc_attachdocumentation(symbol *sym)
    * below is invalid)
    */
   // assert(sym==NULL || sym->documentation==NULL || sym->states!=NULL);
+  
+  if (pc_recentdoc!=NULL) {
+    /* either copy the most recent comment block to the current symbol, or
+     * append it to the global documentation
+     */
+    length=strlen(pc_recentdoc);
+    wrap=0;
+    if (onlylastblock) {
+      assert(sym!=NULL);
+      str=sym->documentation;
+    } else {
+      str=pc_globaldoc;
+    } /* if */
+    /* set the documentation, or append it to it */
+    if (str!=NULL)
+      length+=strlen(str)+1+4;   /* plus 4 for "<p/>" */
+    doc=(char*)malloc((length+1)*sizeof(char));
+    if (doc!=NULL) {
+      if (str!=NULL) {
+        strcpy(doc,str);
+        free(str);
+        strcat(doc,"<p/>");
+      } else {
+        *doc='\0';
+      } /* if */
+      end=strchr(doc,'\0');
+      assert(end!=NULL);
+      strcat(doc,pc_recentdoc);
+      if (wrap) {
+        strins(end,"<summary>",9);
+        end+=9;         /* skip "<summary>" */
+        while (*end!='\0' && *end!='.' && *end!='<')
+          end++;
+        if (*end=='.')
+          end++;        /* end the summary behind the period */
+        strins(end,"</summary>",10);
+      } /* if */
+      if (onlylastblock) {
+        sym->documentation=doc;
+        /* force adding the new strings (if any) to the global data */
+        sym=NULL;
+      } else {
+        pc_globaldoc=doc;
+      } /* if */
+    } /* if */
+    /* remove the "recent block" string */
+    free(pc_recentdoc);
+    pc_recentdoc=NULL;
+  } /* if */
+  
+  if (onlylastblock)
+    pc_docstring_suspended=FALSE;
+  else if (pc_docstring_suspended)
+    return;
 
   /* first check the size */
   length=0;
@@ -1802,22 +1876,15 @@ void sc_attachdocumentation(symbol *sym)
       length++;   /* count 1 extra for a separating space */
     length+=strlen(str);
   } /* for */
-  if (sym==NULL && sc_documentation!=NULL) {
-    length += strlen(sc_documentation) + 1 + 4; /* plus 4 for "<p/>" */
-    assert(length>strlen(sc_documentation));
-  } /* if */
 
   if (length>0) {
     /* allocate memory for the documentation */
     if (sym!=NULL && sym->documentation!=NULL)
-      length+=strlen(sym->documentation) + 1 + 4;/* plus 4 for "<p/>" */
+      length+=strlen(sym->documentation)+1+4;   /* plus 4 for "<p/>" */
     doc=(char*)malloc((length+1)*sizeof(char));
     if (doc!=NULL) {
       /* initialize string or concatenate */
-      if (sym==NULL && sc_documentation!=NULL) {
-        strcpy(doc,sc_documentation);
-        strcat(doc,"<p/>");
-      } else if (sym!=NULL && sym->documentation!=NULL) {
+      if (sym!=NULL && sym->documentation!=NULL) {
         strcpy(doc,sym->documentation);
         strcat(doc,"<p/>");
         free(sym->documentation);
@@ -1841,9 +1908,8 @@ void sc_attachdocumentation(symbol *sym)
         assert(sym->documentation==NULL);
         sym->documentation=doc;
       } else {
-        if (sc_documentation!=NULL)
-          free(sc_documentation);
-        sc_documentation=doc;
+        assert(pc_recentdoc==NULL);
+        pc_recentdoc=doc;
       } /* if */
     } /* if */
   } else {
@@ -1859,7 +1925,7 @@ static void insert_docstring_separator(void)
   insert_docstring(sep,1);
 }
 #else
-  #define sc_attachdocumentation(s)      (void)(s)
+  #define sc_attachdocumentation(s,f)    (void)(s)
   #define insert_docstring_separator()
 #endif
 
@@ -1881,6 +1947,11 @@ static void declfuncvar(int fpublic,int fstatic,int fstock,int fconst)
     return;
   } /* if */
 
+  /* at this level, if the token is tEXIT, it is probably the declaration
+   * of a state exist function, not the "exit" statement
+   */
+  if (tok==tEXIT)
+    tok=lexsettoken(tSYMBOL,uEXITFUNC);
   if (tok!=tSYMBOL && tok!=tOPERATOR) {
     lexpush();
     needtoken(tSYMBOL);
@@ -1937,6 +2008,7 @@ static void declglb(char *firstname,int firsttag,int fpublic,int fstatic,int fst
   insert_docstring_separator();         /* see comment in newfunc() */
   filenum=fcurrent;                     /* save file number at the start of the declaration */
   do {
+    pc_docstring_suspended=TRUE;        /* suspend attaching documentation to global/recent blocks */
     size=1;                             /* single size (no array) */
     numdim=0;                           /* no dimensions */
     ident=iVARIABLE;
@@ -2139,6 +2211,7 @@ static void declglb(char *firstname,int firsttag,int fpublic,int fstatic,int fst
       continue;
     if (sym==NULL) {    /* define only if not yet defined */
       sym=addvariable(name,address,ident,sGLOBAL,tag,dim,numdim,idxtag);
+      sc_attachdocumentation(sym,TRUE);/* attach any documenation to the variable */
       if (sc_curstates>0)
         attachstatelist(sym,sc_curstates);
     } else {            /* if declared but not yet defined, adjust the variable's address */
@@ -2158,7 +2231,6 @@ static void declglb(char *firstname,int firsttag,int fpublic,int fstatic,int fst
       sym->usage|=uSTOCK;
     if (fstatic)
       sym->fvisible=filenum;
-    sc_attachdocumentation(sym);/* attach any documenation to the variable */
     if (sc_status==statSKIP) {
       sc_status=statWRITE;
       code_idx=cidx;
@@ -2545,6 +2617,11 @@ static cell initarray(int ident,int tag,int dim[],int numdim,int cur,
   assert(startlit>=0);
   assert(cur+2<=numdim);/* there must be 2 dimensions or more to do */
   assert(errorfound!=NULL && *errorfound==FALSE);
+  /* check for a quick exit */
+  if (matchtoken('}')) {
+    lexpush();
+    return 0;
+  } /* if */
   totalsize=0;
   needtoken('{');
   for (idx=0,abortparse=FALSE; !abortparse; idx++) {
@@ -2556,22 +2633,36 @@ static cell initarray(int ident,int tag,int dim[],int numdim,int cur,
      * necessary at this point to reserve space for an extra cell in the
      * indirection vector.
      */
-    if (dim[cur]==0) {
+    if (dim[cur]==0)
       litinsert(0,startlit);
-    } else if (idx>=dim[cur]) {
-      error(18);            /* initialization data exceeds array size */
-      break;
-    } /* if */
     if (cur+2<numdim) {
       dsize=initarray(ident,tag,dim,numdim,cur+1,startlit,counteddim,
                       lastdim,enumroot,errorfound);
     } else {
       dsize=initvector(ident,tag,dim[cur+1],TRUE,enumroot,errorfound);
-      /* The final dimension may be variable length. We need to keep the
+      /* The final dimension may be variable length. We need to save the
        * lengths of the final dimensions in order to set the indirection
        * vectors for the next-to-last dimension.
        */
       append_constval(lastdim,itoh(idx),dsize,0);
+    } /* if */
+    /* In a declaration like:
+     *    new a[2][2] = {
+     *                    {1, 2},
+     *                    {3, 4},
+     *                  }
+     * the final trailing comma (after the "4}") makes this loop attempt to
+     * parse one more initialization vector, but initvector() (and a recursive
+     * call to initarray()) quits with a size of zero while not setting
+     * "errorfound". Then, we must exit this loop without incrementing the
+     * dimension count.
+     */
+    if (dsize==0 && !*errorfound)
+      break;
+    if (idx>=dim[cur]) {
+      assert(dsize>0 || *errorfound);
+      error(18);            /* initialization data exceeds array size */
+      break;                /* avoid incrementing "idx" */
     } /* if */
     totalsize+=dsize;
     if (*errorfound || !matchtoken(','))
@@ -2637,7 +2728,7 @@ static cell initvector(int ident,int tag,cell size,int fillzero,
         error(227);             /* more initiallers than enum fields */
       rtag=tag;                 /* preset, may be overridden by enum field tag */
       if (enumfield!=NULL) {
-        cell step;
+        cell step, val;
         int cmptag=enumfield->index;
         symbol *symfield=findconst(enumfield->name,&cmptag);
         if (cmptag>1)
@@ -2647,14 +2738,15 @@ static cell initvector(int ident,int tag,cell size,int fillzero,
         if (litidx-fieldlit>symfield->dim.array.length)
           error(228);           /* length of initialler exceeds size of the enum field */
         if (ellips) {
+          val=prev1;
           step=prev1-prev2;
         } else {
           step=0;
-          prev1=0;
+          val=0;                /* fill up with zeros */
         } /* if */
         for (i=litidx-fieldlit; i<symfield->dim.array.length; i++) {
-          prev1+=step;
-          litadd(prev1);
+          val+=step;
+          litadd(val);
         } /* for */
         rtag=symfield->x.tags.index;  /* set the expected tag to the index tag */
         enumfield=enumfield->next;
@@ -2663,6 +2755,13 @@ static cell initvector(int ident,int tag,cell size,int fillzero,
         error(213);             /* tag mismatch */
     } while (matchtoken(',')); /* do */
     needtoken('}');
+  } else if (matchtoken('}')) {
+    /* this may be caused by a trailing comma in a declaration of a
+     * multi-dimensional array
+     */
+    lexpush();                  /* push back for later analysis */
+    size=0;                     /* avoid zero filling */
+    assert(!ellips);
   } else {
     init(ident,&ctag,errorfound);
     if (!matchtag(tag,ctag,TRUE))
@@ -2699,14 +2798,16 @@ static cell initvector(int ident,int tag,cell size,int fillzero,
  */
 static cell init(int ident,int *tag,int *errorfound)
 {
+  int curlit=litidx;
   cell i = 0;
 
   if (matchtoken(tSTRING)){
     /* lex() automatically stores strings in the literal table (and
-     * increases "litidx") */
+     * increases "litidx")
+     */
     if (ident==iVARIABLE) {
       error(6);         /* must be assigned to an array */
-      litidx=1;         /* reset literal queue */
+      litidx=curlit+1;  /* reset literal queue */
     } /* if */
     *tag=0;
   } else if (constexpr(&i,tag,NULL)){
@@ -2768,6 +2869,7 @@ static void decl_const(int vclass)
 
   insert_docstring_separator();         /* see comment in newfunc() */
   do {
+    pc_docstring_suspended=TRUE;        /* suspend attaching documentation to global/recent blocks */
     tag=pc_addtag(NULL);
     if (lex(&val,&str)!=tSYMBOL)        /* read in (new) token */
       error(20,str);                    /* invalid symbol name */
@@ -2785,7 +2887,7 @@ static void decl_const(int vclass)
     } /* if */
     sym=add_constant(constname,val,vclass,tag,FALSE);
     if (sym!=NULL)
-      sc_attachdocumentation(sym);/* attach any documenation to the constant */
+      sc_attachdocumentation(sym,TRUE);/* attach any documenation to the constant */
   } while (matchtoken(',')); /* enddo */   /* more? */
   needtoken(tTERM);
 }
@@ -2847,6 +2949,8 @@ static void decl_enum(int vclass)
     enumsym=add_constant(enumname,0,vclass,tag,FALSE);
     if (enumsym!=NULL)
       enumsym->usage |= uENUMROOT;
+    /* attach a preceding comment to the enumeration's documentation */
+    sc_attachdocumentation(enumsym,TRUE);  
     /* start a new list for the element names */
     if ((enumroot=(constvalue*)malloc(sizeof(constvalue)))==NULL)
       error(103);                       /* insufficient memory (fatal error) */
@@ -2913,7 +3017,7 @@ static void decl_enum(int vclass)
     /* assign the constant list */
     assert(enumroot!=NULL);
     enumsym->dim.enumlist=enumroot;
-    sc_attachdocumentation(enumsym);  /* attach any documenation to the enumeration */
+    sc_attachdocumentation(enumsym,FALSE);  /* attach any additional documenation to the enumeration */
   } /* if */
 }
 
@@ -3430,7 +3534,7 @@ static void funcstub(int fnative)
 
   declargs(sym,FALSE);
   /* "declargs()" found the ")" */
-  sc_attachdocumentation(sym);  /* attach any documenation to the function */
+  sc_attachdocumentation(sym,TRUE);  /* attach any documenation to the function */
   if (!operatoradjust(opertok,sym,symbolname,tag))
     sym->usage &= ~uDEFINE;
 
@@ -3550,10 +3654,12 @@ static int newfunc(char *firstname,int firsttag,int fpublic,int fstatic,int stoc
   sym=fetchfunc(symbolname,tag);/* get a pointer to the function entry */
   if (sym==NULL || (sym->usage & uNATIVE)!=0)
     return TRUE;                /* it was recognized as a function declaration, but not as a valid one */
-  if ((sym->usage & uPUBLIC)!=0)
+  /* attach a preceding comment to the function's documentation */
+  sc_attachdocumentation(sym,TRUE);
+  if ((sym->usage & uPUBLIC)!=0 && !fpublic) {
     fpublic=TRUE;               /* earlier (forward) declaration said this is a public function */
-  else if (fpublic && (sym->usage & uPUBLIC)==0 && (sym->usage & uFORWARD)!=0)
     error(25);                  /* function definition does not match prototype */
+  } /* if */
   if (fpublic)
     sym->usage|=uPUBLIC;
   if (fstatic)
@@ -3580,10 +3686,12 @@ static int newfunc(char *firstname,int firsttag,int fpublic,int fstatic,int stoc
   /* declare all arguments */
   argcnt=declargs(sym,TRUE);
   opererror=!operatoradjust(opertok,sym,symbolname,tag);
-  if (strcmp(symbolname,uMAINFUNC)==0 || strcmp(symbolname,uENTRYFUNC)==0) {
+  if (strcmp(symbolname,uMAINFUNC)==0 || strcmp(symbolname,uENTRYFUNC)==0
+      || strcmp(symbolname,uEXITFUNC)==0)
+  {
     if (argcnt>0)
-      error(5);         /* "main()" and "entry()" functions may not have any arguments */
-    sym->usage|=uREAD;  /* "main()" is the program's entry point: always used */
+      error(5);         /* main(), entry() and exit() functions may not have any arguments */
+    sym->usage|=uREAD;  /* main() is the program's entry point: always used */
   } /* if */
   state_id=getstates(symbolname);
   if (state_id>0 && (opertok!=0 || strcmp(symbolname,uMAINFUNC)==0))
@@ -3670,9 +3778,10 @@ static int newfunc(char *firstname,int firsttag,int fpublic,int fstatic,int stoc
     declared=0;
   } /* if */
   if ((lastst!=tRETURN) && (lastst!=tGOTO)){
+    int remparams=(strcmp(sym->name,uENTRYFUNC)!=0 && strcmp(sym->name,uEXITFUNC)!=0);
     ldconst(0,sPRI);
-    ffret(strcmp(sym->name,uENTRYFUNC)!=0);
-    if ((sym->usage & uRETVALUE)!=0) {
+    ffret(remparams);
+    if ((sym->usage & uRETVALUE)!=0 && lastst!=tENDLESS) {
       char symname[2*sNAMEMAX+16];  /* allow space for user defined operators */
       funcdisplayname(symname,sym->name);
       error(209,symname);       /* function should return a value */
@@ -3687,7 +3796,7 @@ static int newfunc(char *firstname,int firsttag,int fpublic,int fstatic,int stoc
     sym->codeaddr=code_idx;
   else
     stlist->endaddr=code_idx;
-  sc_attachdocumentation(sym);  /* attach collected documenation to the function */
+  sc_attachdocumentation(sym,FALSE);  /* attach collected documentation to the function */
   if (litidx) {                 /* if there are literals defined */
     glb_declared+=litidx;
     begdseg();                  /* flip to DATA segment */
@@ -3780,6 +3889,7 @@ static int declargs(symbol *sym,int chkshadow)
   numtags=0;
   fconst=FALSE;
   fpublic= (sym->usage & uPUBLIC)!=0;
+  assert(litidx==0);                    /* literal queue should be empty */
   /* the '(' parantheses has already been parsed */
   if (!matchtoken(')')){
     do {                                /* there are arguments; process them */
@@ -3890,13 +4000,17 @@ static int declargs(symbol *sym,int chkshadow)
         argcnt++;
         break;
       default:
-        error(10);                      /* illegal function or declaration */
+        error(10);              /* illegal function or declaration */
+        litidx=0;               /* make sure literals get dropped (ignored) */
       } /* switch */
     } while (tok=='&' || tok==tLABEL || tok==tCONST
              || tok!=tELLIPS && matchtoken(',')); /* more? */
     /* if the next token is not ",", it should be ")" */
     needtoken(')');
   } /* if */
+  if ((sym->usage & uPROTOTYPED)!=0 && argcnt!=oldargcnt)
+    error(25);                  /* function definition does not match prototype */
+
   /* resolve any "sizeof" arguments (now that all arguments are known) */
   assert(sym->dim.arglist!=NULL);
   arglist=sym->dim.arglist;
@@ -4211,10 +4325,43 @@ static char *xmlencode(char *dest,char *source)
   return dest;
 }
 
+static void write_docstring(FILE *log,const char *string)
+{
+  int len;
+  const char *ptr;
+
+  if (string==NULL)
+    return;
+  while (*string<=' ' && *string!='\0')
+    string++;                 /* skip white space */
+  if (*string=='\0')
+    return;
+    
+  assert(strchr(string,sDOCSEP)==NULL);
+  /* optionally wrap in "<summary>...</summary>", check whether this must happen */
+  if (*string!='<') {       /* wrap in "summary" */
+    len=0;
+    for (ptr=string; *ptr!='\0' && *ptr!='<' && *ptr!='.'; ptr++)
+      len++;
+    if (*ptr=='.')
+      len++;
+    assert(len>0);
+    fprintf(log,"\t\t\t<summary>%.*s</summary>\n",len,string);
+    string+=len;
+    while (*string<=' ' && *string!='\0')
+      string++;             /* skip white space */
+  } else {
+    len=0;
+  } /* if */
+
+  if (*string!='\0')
+    fprintf(log,"\t\t\t%s\n",string);
+}
+
 static void make_report(symbol *root,FILE *log,char *sourcefile)
 {
   char symname[_MAX_PATH];
-  int i,arg,dim;
+  int i,arg,dim,count;
   symbol *sym,*ref;
   constvalue *tagsym;
   constvalue *enumroot;
@@ -4241,10 +4388,12 @@ static void make_report(symbol *root,FILE *log,char *sourcefile)
   fprintf(log,"\t<assembly>\n\t\t<name>%s</name>\n\t</assembly>\n",ptr);
 
   /* attach the global documentation, if any */
-  if (sc_documentation!=NULL) {
+  if (pc_globaldoc!=NULL) {
     fprintf(log,"\n\t<!-- general -->\n");
     fprintf(log,"\t<general>\n\t\t");
-    fputs(sc_documentation,log);
+    while ((ptr=strchr(pc_globaldoc,sDOCSEP))!=NULL)
+      *ptr=' ';
+    fputs(pc_globaldoc,log);
     fprintf(log,"\n\t</general>\n\n");
   } /* if */
 
@@ -4294,8 +4443,7 @@ static void make_report(symbol *root,FILE *log,char *sourcefile)
       if ((ref=sym->refer[i])!=NULL)
         fprintf(log,"\t\t\t<referrer name=\"%s\"/>\n",xmlencode(symname,funcdisplayname(symname,ref->name)));
     } /* for */
-    if (sym->documentation!=NULL)
-      fprintf(log,"\t\t\t%s\n",sym->documentation);
+    write_docstring(log,sym->documentation);
     fprintf(log,"\t\t</member>\n");
   } /* for */
 
@@ -4309,6 +4457,14 @@ static void make_report(symbol *root,FILE *log,char *sourcefile)
       continue;
     if ((sym->usage & uREAD)==0 || (sym->usage & (uENUMFIELD | uENUMROOT))!=0)
       continue;
+    /* list only constants with referrers */
+    count=0;
+    assert(sym->refer!=NULL);
+    for (i=0; i<sym->numrefers; i++)
+      if ((ref=sym->refer[i])!=NULL)
+        count++;
+    if (count==0)
+      continue;
     fprintf(log,"\t\t<member name=\"C:%s\" value=\"%ld\">\n",funcdisplayname(symname,sym->name),sym->addr);
     if (sym->tag!=0) {
       tagsym=find_tag_byval(sym->tag);
@@ -4320,8 +4476,7 @@ static void make_report(symbol *root,FILE *log,char *sourcefile)
       if ((ref=sym->refer[i])!=NULL)
         fprintf(log,"\t\t\t<referrer name=\"%s\"/>\n",xmlencode(symname,funcdisplayname(symname,ref->name)));
     } /* for */
-    if (sym->documentation!=NULL)
-      fprintf(log,"\t\t\t%s\n",sym->documentation);
+    write_docstring(log,sym->documentation);
     fprintf(log,"\t\t</member>\n");
   } /* for */
 
@@ -4355,8 +4510,7 @@ static void make_report(symbol *root,FILE *log,char *sourcefile)
       if ((ref=sym->refer[i])!=NULL)
         fprintf(log,"\t\t\t<referrer name=\"%s\"/>\n",xmlencode(symname,funcdisplayname(symname,ref->name)));
     } /* for */
-    if (sym->documentation!=NULL)
-      fprintf(log,"\t\t\t%s\n",sym->documentation);
+    write_docstring(log,sym->documentation);
     fprintf(log,"\t\t</member>\n");
   } /* for */
 
@@ -4368,6 +4522,8 @@ static void make_report(symbol *root,FILE *log,char *sourcefile)
       continue;
     if ((sym->usage & (uREAD | uNATIVE))==uNATIVE)
       continue;                 /* unused native function */
+    if ((sym->usage & (uPUBLIC | uDEFINE))==uPUBLIC)
+      continue;
     funcdisplayname(symname,sym->name);
     xmlencode(symname,symname);
     fprintf(log,"\t\t<member name=\"M:%s\" syntax=\"%s(",symname,symname);
@@ -4405,8 +4561,12 @@ static void make_report(symbol *root,FILE *log,char *sourcefile)
       fprintf(log,"\t\t\t<attribute name=\"native\"/>\n");
     if ((sym->usage & uPUBLIC)!=0)
       fprintf(log,"\t\t\t<attribute name=\"public\"/>\n");
-    if (strcmp(sym->name,uMAINFUNC)==0 || strcmp(sym->name,uENTRYFUNC)==0)
+    if (strcmp(sym->name,uMAINFUNC)==0)
+      fprintf(log,"\t\t\t<attribute name=\"init\"/>\n");
+    else if (strcmp(sym->name,uENTRYFUNC)==0)
       fprintf(log,"\t\t\t<attribute name=\"entry\"/>\n");
+    else if (strcmp(sym->name,uEXITFUNC)==0)
+      fprintf(log,"\t\t\t<attribute name=\"exit\"/>\n");
     if ((sym->usage & uNATIVE)==0)
       fprintf(log,"\t\t\t<stacksize value=\"%ld\"/>\n",(long)sym->x.stacksize);
     if (sym->states!=NULL) {
@@ -4503,8 +4663,7 @@ static void make_report(symbol *root,FILE *log,char *sourcefile)
       } /* if */
       fprintf(log,"\t\t\t</param>\n");
     } /* for */
-    if (sym->documentation!=NULL)
-      fprintf(log,"\t\t\t%s\n",sym->documentation);
+    write_docstring(log,sym->documentation);
     fprintf(log,"\t\t</member>\n");
   } /* for */
 
@@ -4530,7 +4689,8 @@ static void reduce_referrers(symbol *root)
         continue;                 /* hierarchical data type */
       if (sym->ident==iFUNCTN
           && (sym->usage & uNATIVE)==0
-          && (sym->usage & uPUBLIC)==0 && strcmp(sym->name,uMAINFUNC)!=0 && strcmp(sym->name,uENTRYFUNC)!=0
+          && (sym->usage & uPUBLIC)==0
+          && strcmp(sym->name,uMAINFUNC)!=0 && strcmp(sym->name,uENTRYFUNC)!=0 && strcmp(sym->name,uEXITFUNC)!=0
           && count_referrers(sym)==0)
       {
         sym->usage&=~(uREAD | uWRITTEN);  /* erase usage bits if there is no referrer */
@@ -4584,8 +4744,8 @@ static void gen_ovlinfo(symbol *root)
           && (sym->usage & uDEFINE)!=0)
       {
         /* state entry functions are called directly for the states, but there
-         * is no function stub -> no overlay index should be assigned for this
-         * special case
+         * is no function stub (for the jump table) -> no overlay index should
+         * be assigned for this stub
          */
         if (strcmp(sym->name,uENTRYFUNC)!=0)
           sym->index=idx++;
@@ -5066,11 +5226,13 @@ static void statement(int *lastindent,int allow_decl)
     insert_dbgline(fline);
     setline(TRUE);
   } /* if */
-  /* lex() has set stmtindent */
+  /* lex() has set pc_stmtindent */
   if (lastindent!=NULL && tok!=tLABEL) {
-    if (*lastindent>=0 && *lastindent!=stmtindent && !indent_nowarn && sc_tabsize>0)
-      error(217);               /* loose indentation */
-    *lastindent=stmtindent;
+    if (*lastindent>=0 && *lastindent!=pc_stmtindent && !indent_nowarn) {
+      if (pc_matchedtabsize>1 || !lex_adjusttabsize(*lastindent))
+        error(217);             /* loose indentation */
+    } /* if */
+    *lastindent=pc_stmtindent;
     indent_nowarn=FALSE;        /* if warning was blocked, re-enable it */
   } /* if */
   switch (tok) {
@@ -5183,8 +5345,7 @@ static void compound(int stmt_sameline)
 
   /* if there is more text on this line, we should adjust the statement indent */
   if (stmt_sameline) {
-    int i;
-    const unsigned char *p=lptr;
+    const unsigned char *p=lptr-1;
     /* go back to the opening brace */
     while (*p!='{') {
       assert(p>srcline);
@@ -5196,12 +5357,7 @@ static void compound(int stmt_sameline)
     while (*p<=' ' && *p!='\0')
       p++;
     assert(*p!='\0'); /* a token should be found */
-    stmtindent=0;
-    for (i=0; i<(int)(p-srcline); i++)
-      if (srcline[i]=='\t' && sc_tabsize>0)
-        stmtindent += (int)(sc_tabsize - (stmtindent+sc_tabsize) % sc_tabsize);
-      else
-        stmtindent++;
+    lex_fetchindent(srcline,p);
   } /* if */
 
   nestlevel+=1;                 /* increase compound statement level */
@@ -5380,7 +5536,7 @@ static int doif(void)
   int ifindent;
   int lastst_true;
 
-  ifindent=stmtindent;          /* save the indent of the "if" instruction */
+  ifindent=pc_stmtindent;       /* save the indent of the "if" instruction */
   flab1=getlabel();             /* get label number for false branch */
   test(flab1,TRUE,FALSE);       /* get expression, branch to flab1 if false */
   statement(NULL,FALSE);        /* if true, do a statement */
@@ -5390,7 +5546,7 @@ static int doif(void)
     lastst_true=lastst;         /* save last statement of the "true" branch */
     /* to avoid the "dangling else" error, we want a warning if the "else"
      * has a lower indent than the matching "if" */
-    if (stmtindent<ifindent && sc_tabsize>0)
+    if (pc_stmtindent<ifindent)
       error(217);               /* loose indentation */
     flab2=getlabel();
     if ((lastst!=tRETURN) && (lastst!=tGOTO))
@@ -5738,9 +5894,18 @@ static void dogoto(void)
     sym=fetchlab(st);
     jumplabel((int)sym->addr);
     sym->usage|=uREAD;          /* set "uREAD" bit */
-    // ??? if the label is defined (check sym->usage & uDEFINE), check
-    //     sym->compound (nesting level of the label) against nestlevel;
-    //     if sym->compound < nestlevel, call the destructor operator
+    /* for a backward goto, destruct the symbols; for a forward goto, the
+     * compound nesting level of a symbol is unknown and therefore it cannot
+     * be destructed; the trouble is: by the time we get to the label, the
+     * symbol may no longer be in the symbol table
+     */
+    if ((sym->usage & uDEFINE)!=0) {
+      if (sym->compound<nestlevel)
+        destructsymbols(&loctab,sym->compound+1);
+    } else {
+      //??? test for symbols with sym->compound==nestlevel, test whether these
+      // have a destruction operator on their tag, issue a warning if so
+    } /* if */
   } else {
     error_suggest(20,st,iLABEL);/* illegal symbol name */
   } /* if */
@@ -5778,9 +5943,10 @@ static symbol *fetchlab(char *name)
   symbol *sym;
 
   sym=findloc(name);            /* labels are local in scope */
-  if (sym){
+  if (sym) {
     if (sym->ident!=iLABEL)
       error_suggest(19,sym->name,iLABEL);  /* not a label: ... */
+    //??? if this is a label definition, update sym->nestlevel and sym->x.declared
   } else {
     sym=addsym(name,getlabel(),iLABEL,sLOCAL,0,0);
     assert(sym!=NULL);          /* fatal error 103 must be given on error */
@@ -5797,7 +5963,7 @@ static symbol *fetchlab(char *name)
 static void doreturn(void)
 {
   int tag,ident;
-  int level;
+  int level,remparams;
   symbol *sym,*sub;
 
   if (!matchtoken(tTERM)) {
@@ -5915,7 +6081,9 @@ static void doreturn(void)
   destructsymbols(&loctab,0);           /* call destructor for *all* locals */
   modstk((int)declared*sizeof(cell));   /* end of function, remove *all*
                                          * local variables */
-  ffret(strcmp(curfunc->name,uENTRYFUNC)!=0);
+  assert(curfunc!=NULL);
+  remparams=(strcmp(curfunc->name,uENTRYFUNC)!=0 && strcmp(curfunc->name,uEXITFUNC)!=0);
+  ffret(remparams);
 }
 
 static void dobreak(void)
@@ -6037,6 +6205,19 @@ static void dostate(void)
     } /* if */
   } /* if */
 
+  /* see if the current automaton has exit functions for the states, if so,
+   * call it through the function stub
+   */
+  if ((sym=findglb(uEXITFUNC,sSTATEVAR))!=NULL) {
+    /* push 0 for number of arguments in case of overlays (the state exit
+     * function has a RET for normal mode, but an IRETN for overlay mode;
+     * this IRETN clears the arguments from the stack)
+     */
+    if (pc_overlays>0)
+      pushval(0);
+    ffcall(sym,NULL,0);
+  } /* if */
+
   /* store the new state id */
   assert(state!=NULL);
   ldconst(state->value,sPRI);
@@ -6054,6 +6235,13 @@ static void dostate(void)
     } /* for */
     assert(stlist==NULL || state_inlist(stlist->id,state->value));
     if (stlist!=NULL) {
+      /* when generating overlays, make sure to push in a zero for the number
+       * of arguments (when not using overlays, the compiler generates a RET
+       * for the entry function return, but for overlays, there only exists an
+       * IRETN instruction, which clears the arguments from the stack)
+       */
+      if (pc_overlays>0)
+        pushval(0);
       /* the label to jump to is in stlist->name */
       ffcall(sym,itoh(stlist->label),0);
     } /* if */

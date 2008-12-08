@@ -22,7 +22,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: amxcons.c 3935 2008-03-06 13:18:13Z thiadmer $
+ *  Version: $Id: amxcons.c 4026 2008-10-22 10:49:05Z thiadmer $
  */
 
 #if defined _UNICODE || defined __UNICODE__ || defined UNICODE
@@ -1377,7 +1377,7 @@ const AMX_NATIVE_INFO console_Natives[] = {
   { NULL, NULL }        /* terminator */
 };
 
-int AMXEXPORT amx_ConsoleInit(AMX *amx)
+int AMXEXPORT AMXAPI amx_ConsoleInit(AMX *amx)
 {
   #if !defined AMXCONSOLE_NOIDLE
     /* see whether there is an @keypressed() function */
@@ -1391,7 +1391,7 @@ int AMXEXPORT amx_ConsoleInit(AMX *amx)
   return amx_Register(amx, console_Natives, -1);
 }
 
-int AMXEXPORT amx_ConsoleCleanup(AMX *amx)
+int AMXEXPORT AMXAPI amx_ConsoleCleanup(AMX *amx)
 {
   (void)amx;
   #if !defined AMXCONSOLE_NOIDLE

@@ -20,7 +20,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: libpawnc.c 3931 2008-03-04 17:02:34Z thiadmer $
+ *  Version: $Id: libpawnc.c 4032 2008-11-14 15:06:02Z thiadmer $
  */
 #include <assert.h>
 #include <stdio.h>
@@ -209,6 +209,12 @@ int pc_writesrc(void *handle,const unsigned char *source)
 #define MAXPOSITIONS  4
 static fpos_t srcpositions[MAXPOSITIONS];
 static unsigned char srcposalloc[MAXPOSITIONS];
+
+void pc_clearpossrc(void)
+{
+  memset(srcpositions,0,sizeof srcpositions);
+  memset(srcposalloc,0,sizeof srcposalloc);
+}
 
 void *pc_getpossrc(void *handle,void *position)
 {

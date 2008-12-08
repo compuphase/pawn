@@ -769,14 +769,6 @@ OP_CALL:
         NEXT
 
 
-OP_CALL_PRI:
-        lea     ebp,[esi+4]
-        mov     esi,eax
-        add     esi,code        ; cip = PRI + code
-        _PUSH   ebp
-        NEXT
-
-
 OP_ICALL:
         mov     alt,edx         ; save ALT
         lea     edx,[esi+8]     ; EDX=address of next instruction
@@ -1665,12 +1657,9 @@ OP_LINE:
 OP_SYMBOL:
 OP_SRANGE:
 OP_SYMTAG:
-        jmp     OP_INVALID
-
-
 OP_JUMP_PRI:
-        mov     esi,eax
-        NEXT
+OP_CALL_PRI:
+        jmp     OP_INVALID
 
 
 OP_SWITCH:
@@ -2643,7 +2632,7 @@ _amx_opcodelist DD OP_INVALID
         DD      OP_RET
         DD      OP_RETN
         DD      OP_CALL
-        DD      OP_CALL_PRI
+        DD      OP_CALL_PRI     ; obsolete (invalid instruction)
         DD      OP_JUMP
         DD      OP_JREL         ; obsolete
         DD      OP_JZER
@@ -2721,7 +2710,7 @@ _amx_opcodelist DD OP_INVALID
         DD      OP_LINE         ; obsolete
         DD      OP_SYMBOL       ; obsolete
         DD      OP_SRANGE       ; obsolete
-        DD      OP_JUMP_PRI
+        DD      OP_JUMP_PRI     ; obsolete (invalid instruction)
         DD      OP_SWITCH
         DD      OP_CASETBL
         DD      OP_SWAP_PRI

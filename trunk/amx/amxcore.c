@@ -18,7 +18,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: amxcore.c 3902 2008-01-23 17:40:01Z thiadmer $
+ *  Version: $Id: amxcore.c 4026 2008-10-22 10:49:05Z thiadmer $
  */
 #if defined _UNICODE || defined __UNICODE__ || defined UNICODE
 # if !defined UNICODE   /* for Windows */
@@ -505,12 +505,12 @@ const AMX_NATIVE_INFO core_Natives[] = {
   { NULL, NULL }        /* terminator */
 };
 
-int AMXEXPORT amx_CoreInit(AMX *amx)
+int AMXEXPORT AMXAPI amx_CoreInit(AMX *amx)
 {
   return amx_Register(amx, core_Natives, -1);
 }
 
-int AMXEXPORT amx_CoreCleanup(AMX *amx)
+int AMXEXPORT AMXAPI amx_CoreCleanup(AMX *amx)
 {
   (void)amx;
   #if !defined AMX_NOPROPLIST

@@ -18,7 +18,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: sc4.c 3902 2008-01-23 17:40:01Z thiadmer $
+ *  Version: $Id: sc4.c 3999 2008-09-05 11:18:38Z thiadmer $
  */
 #include <assert.h>
 #include <ctype.h>
@@ -38,12 +38,16 @@ static int fcurseg;     /* the file number (fcurrent) for the active segment */
  * Today, the compiler simply generates a HALT instruction at address 0. So
  * a subroutine can savely return to 0, and then encounter a HALT.
  */
-SC_FUNC int writeleader(symbol *root)
+SC_FUNC void writeleader(symbol *root,int *lbl_nostate,int *lbl_ignorestate)
 {
-  int lbl_nostate;
   symbol *sym;
 
   assert(code_idx==0);
+
+  assert(lbl_nostate!=NULL);
+  assert(lbl_ignorestate!=NULL);
+  *lbl_nostate=0;
+  *lbl_ignorestate=0;
 
   begcseg();
   pc_ovl0size[ovlEXIT][0]=code_idx;     /* store offset to the special overlay */
@@ -66,13 +70,14 @@ SC_FUNC int writeleader(symbol *root)
     if (sym->ident==iFUNCTN && (sym->usage & (uPUBLIC | uREAD))!=0 && sym->states!=NULL)
       break;
   if (sym==NULL)
-    return 0;           /* no function has states, nothing to do next */
+    return;             /* no function has states, nothing to do next */
 
   /* generate an error function that is called for an undefined state */
-  pc_ovl0size[ovlSTATEEXIT][0]=code_idx;
+  pc_ovl0size[ovlNO_STATE][0]=code_idx;
   stgwrite(";exit point for functions called from the wrong state\n");
-  lbl_nostate=getlabel();
-  setlabel(lbl_nostate);
+  assert(lbl_nostate!=NULL);
+  *lbl_nostate=getlabel();
+  setlabel(*lbl_nostate);
 #if !defined AMX_NO_PACKED_OPC
   if (pc_optimize>sOPTIMIZE_NOMACRO) {
     assert(AMX_ERR_INVSTATE<(1<<sizeof(cell)*4));
@@ -88,9 +93,33 @@ SC_FUNC int writeleader(symbol *root)
   } /* if */
 #endif
   stgwrite("\n");
-  pc_ovl0size[ovlSTATEEXIT][1]=code_idx-pc_ovl0size[ovlSTATEEXIT][0];
+  pc_ovl0size[ovlNO_STATE][1]=code_idx-pc_ovl0size[ovlNO_STATE][0];
 
-  return lbl_nostate;
+  /* check whether there are "exit state" functions */
+  for (sym=root->next; sym!=NULL; sym=sym->next)
+    if (strcmp(sym->name,uEXITFUNC)==0)
+      break;
+  if (sym!=NULL) {
+    /* generate a stub function that is called for an undefined exit state and
+     * that returns immediately to the caller (no error)
+     */
+    pc_ovl0size[ovlEXITSTATE][0]=code_idx;
+    stgwrite(";catch-all for undefined exit states\n");
+    assert(lbl_ignorestate!=NULL);
+    *lbl_ignorestate=getlabel();
+    setlabel(*lbl_ignorestate);
+    /* the RET and IRETN instructions pop off the FRM register from the stack,
+     * because they assume that a stack frame was set up; for this catch-all
+     * routine (for exit states) we therefore need to set up a stack frame
+     */
+    stgwrite("\tproc\n");
+    if (pc_overlays>0)
+      stgwrite("\tiretn\n");
+    else
+      stgwrite("\tret\n");
+    code_idx+=opcodes(2);
+    pc_ovl0size[ovlEXITSTATE][1]=code_idx-pc_ovl0size[ovlEXITSTATE][0];
+  } /* if */
 }
 
 /*  writetrailer
@@ -138,9 +167,9 @@ SC_FUNC void writetrailer(void)
  * This function also creates the hidden state variables (one for each
  * automaton) in the data segment.
  */
-SC_FUNC void writestatetables(symbol *root,int lbl_nostate)
+SC_FUNC void writestatetables(symbol *root,int lbl_nostate,int lbl_ignorestate)
 {
-  int lbl_default,lbl_table;
+  int lbl_default,lbl_table,lbl_defnostate;
   int statecount;
   symbol *sym;
   constvalue *fsa, *state;
@@ -156,8 +185,8 @@ SC_FUNC void writestatetables(symbol *root,int lbl_nostate)
   if (sym==NULL)
     return;             /* no function has states, nothing to do next */
 
-  assert(pc_ovl0size[ovlSTATEEXIT][0]>0); /* state exit point must already have been created */
-  assert(pc_ovl0size[ovlSTATEEXIT][1]>0);
+  assert(pc_ovl0size[ovlNO_STATE][0]>0); /* state exit point must already have been created */
+  assert(pc_ovl0size[ovlNO_STATE][1]>0);
 
   /* write the "state-selectors" table with all automatons (update the
    * automatons structure too, as we are now assigning the address to
@@ -220,7 +249,12 @@ SC_FUNC void writestatetables(symbol *root,int lbl_nostate)
        * whether there is a default (i.e. "fallback") state function
        */
       statecount=0;
-      lbl_default= (pc_overlays>0) ? ovlSTATEEXIT : lbl_nostate;
+      if (strcmp(sym->name,uEXITFUNC)==0) {
+        lbl_default= (pc_overlays>0) ? ovlEXITSTATE : lbl_ignorestate;
+      } else {
+        lbl_defnostate= (pc_overlays>0) ? ovlNO_STATE : lbl_nostate;
+        lbl_default=lbl_defnostate;
+      } /* if */
       for (stlist=sym->states->next; stlist!=NULL; stlist=stlist->next) {
         if (stlist->id==-1) {
           lbl_default=stlist->label;
@@ -257,7 +291,7 @@ SC_FUNC void writestatetables(symbol *root,int lbl_nostate)
               break;
             } /* if */
           } /* for */
-          if (stlist==NULL && lbl_default==lbl_nostate)
+          if (stlist==NULL && lbl_default==lbl_defnostate)
             error(230,state->name,sym->name);  /* unimplemented state, no fallback */
         } /* if (state belongs to automaton of function) */
       } /* for (state) */
@@ -732,6 +766,16 @@ SC_FUNC void pushreg(regid reg)
   } /* switch */
   code_idx+=opcodes(1);
 }
+
+/* Push primary register onto the stack, mark for run-time relocation
+ */
+#if defined PC_RELOC
+SC_FUNC void pushreloc(void)
+{
+  stgwrite("\tpushr.pri\n");
+  code_idx+=opcodes(1);
+}
+#endif
 
 /*
  *  Push a constant value onto the stack
