@@ -109,6 +109,13 @@ native RegPublicFunction(ParameterCount, ...);
     #define log(%1) "logging: " ... #%1 ... "\n"
 #endif
 
+
+#if defined PACKED_OPCODE_LIMITS
+    printvalue(d, const s[])
+        printf !"%d (should be %s)\n", d, s
+#endif
+
+
 main()
     {
     #if defined ASSERT_LINENO
@@ -351,5 +358,13 @@ main()
 
     #if defined STRINGIZE_OPER
         print log(test)
+    #endif
+
+    #if defined PACKED_OPCODE_LIMITS
+        printvalue 32767, !"32767"
+        printvalue 32768, !"32768"
+        printvalue -32767, !"-32767"
+        printvalue -32768, !"-32768"
+        printvalue -32769, !"-32769"
     #endif
     }

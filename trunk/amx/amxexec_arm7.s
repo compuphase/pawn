@@ -15,7 +15,7 @@
 ;   machine.
 ;
 ;
-;   Copyright (c) ITB CompuPhase, 2006-2008
+;   Copyright (c) ITB CompuPhase, 2006-2009
 ;
 ;   This software is provided "as-is", without any express or implied warranty.
 ;   In no event will the authors be held liable for any damages arising from
@@ -33,7 +33,7 @@
 ;       misrepresented as being the original software.
 ;   3.  This notice may not be removed or altered from any source distribution.
 ;
-;   Version: $Id: amxexec_arm7.s 3999 2008-09-05 11:18:38Z thiadmer $
+;   Version: $Id: amxexec_arm7.s 4057 2009-01-15 08:21:31Z thiadmer $
 
 
     AREA    amxexec_data, DATA, READONLY

@@ -7,7 +7,7 @@
  *
  *  Copyright R. Cain, 1980
  *  Copyright J.E. Hendrix, 1982, 1983
- *  Copyright ITB CompuPhase, 1997-2008
+ *  Copyright ITB CompuPhase, 1997-2009
  *
  *  This software is provided "as-is", without any express or implied warranty.
  *  In no event will the authors be held liable for any damages arising from
@@ -25,7 +25,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: sc.h 4032 2008-11-14 15:06:02Z thiadmer $
+ *  Version: $Id: sc.h 4057 2009-01-15 08:21:31Z thiadmer $
  */
 #ifndef SC_H_INCLUDED
 #define SC_H_INCLUDED
@@ -41,10 +41,6 @@
 #else
   #include <setjmp.h>
 #endif
-
-#include "svnrev.h"
-#define VERSION_STR "3.3." SVN_REVSTR
-#define VERSION_INT 0x0303
 
 #include "../amx/osdefs.h"
 #include "../amx/amx.h"

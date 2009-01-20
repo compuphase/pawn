@@ -1,6 +1,6 @@
 /*  Simple terminal for Microsoft Windows
  *
- *  Copyright (c) ITB CompuPhase, 2004-2008
+ *  Copyright (c) ITB CompuPhase, 2004-2009
  *
  *  This software is provided "as-is", without any express or implied warranty.
  *  In no event will the authors be held liable for any damages arising from
@@ -18,7 +18,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: termwin.c 3902 2008-01-23 17:40:01Z thiadmer $
+ *  Version: $Id: termwin.c 4058 2009-01-15 08:56:51Z thiadmer $
  */
 
 #if defined _UNICODE || defined __UNICODE__ || defined UNICODE
@@ -506,8 +506,13 @@ long CALLBACK EXPORT ConsoleFunc(HWND hwnd,unsigned message,WPARAM wParam,
     if ((con=Hwnd2Console(hwnd))!=NULL)
       DoDeleteConsole(con);
     /* if there are no consoles left, abort the program */
-    if (consoleroot.next==NULL)
-      ExitProcess(0);
+    if (consoleroot.next==NULL) {
+      #if defined __WIN32__ || defined _WIN32 || defined WIN32
+        ExitProcess(0);
+      #else
+        exit(0);
+      #endif
+    } /* if */
     break;
 
   case WM_GETMINMAXINFO:

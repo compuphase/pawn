@@ -1,6 +1,6 @@
 /*  Pawn compiler - Binary code generation (the "assembler")
  *
- *  Copyright (c) ITB CompuPhase, 1997-2008
+ *  Copyright (c) ITB CompuPhase, 1997-2009
  *
  *  This software is provided "as-is", without any express or implied warranty.
  *  In no event will the authors be held liable for any damages arising from
@@ -18,7 +18,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: sc6.c 3999 2008-09-05 11:18:38Z thiadmer $
+ *  Version: $Id: sc6.c 4057 2009-01-15 08:21:31Z thiadmer $
  */
 #include <assert.h>
 #include <stdio.h>
@@ -539,7 +539,6 @@ static OPCODE opcodelist[] = {
   {105, "eq.c.pri",   sIN_CSEG, parm1 },
   {202, "eq.p.c.alt", sIN_CSEG, parm1_p },
   {201, "eq.p.c.pri", sIN_CSEG, parm1_p },
-/*{124, "file",       sIN_CSEG, do_file }, */
   {119, "fill",       sIN_CSEG, parm1 },
   {209, "fill.p",     sIN_CSEG, parm1_p },
   {100, "geq",        sIN_CSEG, parm0 },
@@ -585,7 +584,6 @@ static OPCODE opcodelist[] = {
   { 25, "lidx",       sIN_CSEG, parm0 },
   { 26, "lidx.b",     sIN_CSEG, parm1 },
   {184, "lidx.p.b",   sIN_CSEG, parm1_p },
-/*{125, "line",       sIN_CSEG, parm2 }, */
   {  2, "load.alt",   sIN_CSEG, parm1 },
   {154, "load.both",  sIN_CSEG, parm2 },        /* version 9 */
   {  9, "load.i",     sIN_CSEG, parm0 },
@@ -646,13 +644,13 @@ static OPCODE opcodelist[] = {
   {153, "push5.adr",  sIN_CSEG, parm5 },        /* version 9 */
   {150, "push5.c",    sIN_CSEG, parm5 },        /* version 9 */
   {152, "push5.s",    sIN_CSEG, parm5 },        /* version 9 */
-  {216, "pushr.adr",  sIN_CSEG, parm1 },        /* version 11 */
-  {214, "pushr.c",    sIN_CSEG, parm1 },        /* version 11 */
-  {219, "pushr.p.adr",sIN_CSEG, parm1_p },      /* version 11 */
-  {217, "pushr.p.c",  sIN_CSEG, parm1_p },      /* version 11 */
-  {218, "pushr.p.s",  sIN_CSEG, parm1_p },      /* version 11 */
-  {213, "pushr.pri",  sIN_CSEG, parm0 },        /* version 11 */
-  {215, "pushr.s",    sIN_CSEG, parm1 },        /* version 11 */
+  {127, "pushr.adr",  sIN_CSEG, parm1 },        /* version 11 */
+  {125, "pushr.c",    sIN_CSEG, parm1 },        /* version 11 */
+  {215, "pushr.p.adr",sIN_CSEG, parm1_p },      /* version 11 */
+  {213, "pushr.p.c",  sIN_CSEG, parm1_p },      /* version 11 */
+  {214, "pushr.p.s",  sIN_CSEG, parm1_p },      /* version 11 */
+  {124, "pushr.pri",  sIN_CSEG, parm0 },        /* version 11 */
+  {126, "pushr.s",    sIN_CSEG, parm1 },        /* version 11 */
   { 47, "ret",        sIN_CSEG, parm0 },
   { 48, "retn",       sIN_CSEG, parm0 },
   { 32, "sctrl",      sIN_CSEG, parm1 },
@@ -677,7 +675,6 @@ static OPCODE opcodelist[] = {
   { 72, "smul",       sIN_CSEG, parm0 },
   { 88, "smul.c",     sIN_CSEG, parm1 },
   {198, "smul.p.c",   sIN_CSEG, parm1_p },
-/*{127, "srange",     sIN_CSEG, parm2 },        -- version 1 */
   { 20, "sref.alt",   sIN_CSEG, parm1 },
   {180, "sref.p.alt", sIN_CSEG, parm1_p },
   {179, "sref.p.pri", sIN_CSEG, parm1_p },
@@ -706,7 +703,6 @@ static OPCODE opcodelist[] = {
   {132, "swap.alt",   sIN_CSEG, parm0 },        /* version 4 */
   {131, "swap.pri",   sIN_CSEG, parm0 },        /* version 4 */
   {129, "switch",     sIN_CSEG, do_switch },    /* version 1 */
-/*{126, "symbol",     sIN_CSEG, do_symbol }, */
 /*{136, "symtag",     sIN_CSEG, parm1 },        -- version 7 */
   {123, "sysreq.c",   sIN_CSEG, parm1 },
   {135, "sysreq.n",   sIN_CSEG, parm2 },        /* version 9 (replaces SYSREQ.d from earlier version) */
@@ -788,16 +784,16 @@ SC_FUNC int assemble(FILE *fout,FILE *fin)
      * for a non-existant opcode)
      */
     {
-      #define MAX_OPCODE 219
+      #define MAX_OPCODE 215
       unsigned char opcodearray[MAX_OPCODE+1];
       assert(opcodelist[1].name!=NULL);
       memset(opcodearray,0,sizeof opcodearray);
       for (i=2; i<(sizeof opcodelist / sizeof opcodelist[0]); i++) {
         assert(opcodelist[i].name!=NULL);
         assert(stricmp(opcodelist[i].name,opcodelist[i-1].name)>0);
+        /* also verify that no opcode number appears twice */
         assert((int)opcodelist[i].opcode<=MAX_OPCODE);
         assert(opcodelist[i].opcode==0 || opcodearray[(int)opcodelist[i].opcode]==0);
-        /* also verify that no opcode number appears twice */
         opcodearray[(int)opcodelist[i].opcode] += 1;
       } /* for */
     }

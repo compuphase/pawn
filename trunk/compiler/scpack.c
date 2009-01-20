@@ -47,7 +47,8 @@ int compress(unsigned char *buffer, unsigned buffersize, unsigned char pairtable
 {
   unsigned char *left, *right, *count;
   unsigned char a, b, bestcount;
-  unsigned i, j, index, bestindex, code=128;
+  unsigned i, j, index, code=128;
+  int bestindex;
 
   /* Dynamically allocate buffers and check for errors */
   left = (unsigned char *)malloc(HASHSIZE);
@@ -89,12 +90,14 @@ int compress(unsigned char *buffer, unsigned buffersize, unsigned char pairtable
 
     /* Search hash table for most frequent pair */
     bestcount = THRESHOLD - 1;
+    bestindex = -1;
     for (i=0; i<HASHSIZE; i++) {
       if (count[i] > bestcount) {
         bestcount = count[i];
         bestindex = i;
       }
     }
+    assert(bestcount < THRESHOLD || bestindex >= 0);
 
     /* Compress if enough occurrences of pair */
     if (bestcount >= THRESHOLD) {

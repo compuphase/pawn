@@ -1,6 +1,6 @@
 /*  Pawn compiler - Recursive descend expresion parser
  *
- *  Copyright (c) ITB CompuPhase, 1997-2008
+ *  Copyright (c) ITB CompuPhase, 1997-2009
  *
  *  This software is provided "as-is", without any express or implied warranty.
  *  In no event will the authors be held liable for any damages arising from
@@ -18,7 +18,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: sc3.c 4032 2008-11-14 15:06:02Z thiadmer $
+ *  Version: $Id: sc3.c 4058 2009-01-15 08:56:51Z thiadmer $
  */
 #include <assert.h>
 #include <stdio.h>
@@ -1519,6 +1519,7 @@ static int hier2(value *lval)
     if (tok==tLABEL) {
       constvalue *tagsym=find_constval(&tagname_tab,st,0);
       tag=(int)((tagsym!=NULL) ? tagsym->value : 0);
+      sym=NULL;
     } else {
       sym=findloc(st);
       if (sym==NULL)
@@ -1529,7 +1530,7 @@ static int hier2(value *lval)
         return error_suggest(17,st,iVARIABLE); /* undefined symbol (symbol is in the table, but it is "used" only) */
       tag=sym->tag;
     } /* if */
-    if (sym->ident==iARRAY || sym->ident==iREFARRAY) {
+    if (sym!=NULL && (sym->ident==iARRAY || sym->ident==iREFARRAY)) {
       int level;
       symbol *idxsym=NULL;
       symbol *subsym=sym;

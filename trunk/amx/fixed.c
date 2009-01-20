@@ -4,7 +4,7 @@
  *  library decimal fixed point numbers with an configurable number of
  *  decimals. The current setting is 3 decimals.
  *
- *  Copyright (c) ITB CompuPhase, 1998-2008
+ *  Copyright (c) ITB CompuPhase, 1998-2009
  *
  *  This software is provided "as-is", without any express or implied warranty.
  *  In no event will the authors be held liable for any damages arising from
@@ -22,7 +22,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: fixed.c 4026 2008-10-22 10:49:05Z thiadmer $
+ *  Version: $Id: fixed.c 4057 2009-01-15 08:21:31Z thiadmer $
  */
 #include <assert.h>
 #include <stdio.h>      /* for NULL */

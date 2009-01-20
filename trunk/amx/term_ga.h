@@ -1,6 +1,6 @@
 /*  Simple terminal using GraphApp
  *
- *  Copyright (c) ITB CompuPhase, 2004-2008
+ *  Copyright (c) ITB CompuPhase, 2004-2009
  *
  *  This software is provided "as-is", without any express or implied warranty.
  *  In no event will the authors be held liable for any damages arising from
@@ -19,7 +19,7 @@
  *  3.  This notice may not be removed or altered from any source distribution.
  *  This file may be freely used. No warranties of any kind.
  *
- *  Version: $Id: term_ga.h 3902 2008-01-23 17:40:01Z thiadmer $
+ *  Version: $Id: term_ga.h 4057 2009-01-15 08:21:31Z thiadmer $
  */
 
 #if !defined TERMGA_H_INCLUDED

@@ -12,7 +12,7 @@
  *  is allocated statically, so loading SBCS tables cannot fail (if the tables
  *  themselves are valid, of course).
  *
- *  Copyright (c) ITB CompuPhase, 2004-2008
+ *  Copyright (c) ITB CompuPhase, 2004-2009
  *
  *  This software is provided "as-is", without any express or implied warranty.
  *  In no event will the authors be held liable for any damages arising from
@@ -30,7 +30,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: sci18n.c 3925 2008-03-03 16:08:45Z thiadmer $
+ *  Version: $Id: sci18n.c 4057 2009-01-15 08:21:31Z thiadmer $
  */
 #include <assert.h>
 #include <stdio.h>
