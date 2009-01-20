@@ -25,7 +25,7 @@
  *  function. This happens in SC4.C.
  *
  *
- *  Copyright (c) ITB CompuPhase, 2005-2008
+ *  Copyright (c) ITB CompuPhase, 2005-2009
  *
  *  This software is provided "as-is", without any express or implied warranty.
  *  In no event will the authors be held liable for any damages arising from
@@ -43,7 +43,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: scstate.c 3902 2008-01-23 17:40:01Z thiadmer $
+ *  Version: $Id: scstate.c 4057 2009-01-15 08:21:31Z thiadmer $
  */
 #include <assert.h>
 #include <limits.h>

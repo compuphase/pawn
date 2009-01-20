@@ -1662,3 +1662,22 @@ test131:
   pawncc ' TERNARY_1D_ARRAY= test1'
   return
 
+test132:
+  say '132. The following test should compile successfully; when run, it should print:'
+  say ''
+  say '         32767 (should be 32767)'
+  say '         32768 (should be 32768)'
+  say '         -32767 (should be -32767)'
+  say '         -32768 (should be -32768)'
+  say '         -32769 (should be -32769)'
+  say ''
+  say '     Limiting values for the criterion for storing as a packed opcode.'
+  say '     different sizes.'
+  say ''
+  say 'Symptoms of detected bug: wrong limits were applied; a parameter could be put in'
+  say 'a packed opcode while it did not fit in one.'
+  say '-----'
+  pawncc '-O:2 PACKED_OPCODE_LIMITS= test2'
+  pawnrun ' test2.amx'
+  return
+

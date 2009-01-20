@@ -1,6 +1,6 @@
 /*  Pawn compiler - Error message strings (plain and compressed formats)
  *
- *  Copyright (c) ITB CompuPhase, 2000-2008
+ *  Copyright (c) ITB CompuPhase, 2000-2009
  *
  *  This software is provided "as-is", without any express or implied warranty.
  *  In no event will the authors be held liable for any damages arising from
@@ -18,7 +18,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: sc5.sch 3963 2008-04-18 15:21:10Z thiadmer $
+ *  Version: $Id: sc5.sch 4057 2009-01-15 08:21:31Z thiadmer $
  */
 
 SC_FUNC int strexpand(char *dest, unsigned char *source, int maxlen, unsigned char pairtable[128][2]);

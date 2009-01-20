@@ -15,7 +15,7 @@
 @   machine.
 @
 @
-@   Copyright (c) ITB CompuPhase, 2006-2008
+@   Copyright (c) ITB CompuPhase, 2006-2009
 @
 @   This software is provided "as-is", without any express or implied warranty.
 @   In no event will the authors be held liable for any damages arising from

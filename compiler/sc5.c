@@ -1,7 +1,7 @@
 /*  Pawn compiler - Error message system
  *  In fact a very simple system, using only 'panic mode'.
  *
- *  Copyright (c) ITB CompuPhase, 1997-2008
+ *  Copyright (c) ITB CompuPhase, 1997-2009
  *
  *  This software is provided "as-is", without any express or implied warranty.
  *  In no event will the authors be held liable for any damages arising from
@@ -19,7 +19,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: sc5.c 3999 2008-09-05 11:18:38Z thiadmer $
+ *  Version: $Id: sc5.c 4057 2009-01-15 08:21:31Z thiadmer $
  */
 #include <assert.h>
 #if defined	__WIN32__ || defined _WIN32 || defined __MSDOS__

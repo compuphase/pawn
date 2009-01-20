@@ -2,7 +2,7 @@
  *
  *  Function and variable definition and declaration, statement parser.
  *
- *  Copyright (c) ITB CompuPhase, 1997-2008
+ *  Copyright (c) ITB CompuPhase, 1997-2009
  *
  *  This software is provided "as-is", without any express or implied warranty.
  *  In no event will the authors be held liable for any damages arising from
@@ -20,7 +20,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: sc1.c 4039 2008-12-08 12:09:24Z thiadmer $
+ *  Version: $Id: sc1.c 4058 2009-01-15 08:56:51Z thiadmer $
  */
 #include <assert.h>
 #include <ctype.h>
@@ -67,6 +67,11 @@
   #include <binreloc.h> /* from BinReloc, see www.autopackage.org */
 #endif
 
+#include "svnrev.h"
+#define VERSION_STR "3.3." SVN_REVSTR
+#define VERSION_INT 0x0303
+
+
 static void resetglobals(void);
 static void initglobals(void);
 static char *get_extension(char *filename);
@@ -76,6 +81,7 @@ static void setconfig(char *root);
 static void setcaption(void);
 static void about(void);
 static void setconstants(void);
+static void plungeprefix(char *prefixname);
 static void parse(void);
 static void dumplits(void);
 static void dumpzero(int count);
@@ -145,7 +151,8 @@ static int sc_parsenum = 0;     /* number of the extra parses */
 static int wq[wqTABSZ];         /* "while queue", internal stack for nested loops */
 static int *wqptr;              /* pointer to next entry */
 #if !defined PAWN_LIGHT
-  static char sc_rootpath[_MAX_PATH];
+  static char sc_rootpath[_MAX_PATH]; /* base path of the installation */
+  static char sc_binpath[_MAX_PATH];  /* path for the binaries, often sc_rootpath + /bin */
   static char *pc_globaldoc=NULL;/* main documentation */
   static char *pc_recentdoc=NULL;/* documentation from the most recent comment block */
   int pc_docstring_suspended=FALSE;
@@ -466,6 +473,7 @@ int pc_compile(int argc, char *argv[])
   if (!phopt_init())
     error(103);         /* insufficient memory */
 
+  setconfig(argv[0]);   /* the path to the include and codepage files, plus the root path */
   setopt(argc,argv,outfname,errfname,incfname,reportname,codepage);
   strcpy(binfname,outfname);
   ptr=get_extension(binfname);
@@ -482,7 +490,6 @@ int pc_compile(int argc, char *argv[])
     remove(errfname);   /* delete file on startup */
   else if (verbosity>0)
     setcaption();
-  setconfig(argv[0]);   /* the path to the include and codepage files */
   sc_ctrlchar_org=sc_ctrlchar;
   lcl_packstr=sc_packstr;
   lcl_needsemicolon=sc_needsemicolon;
@@ -595,21 +602,14 @@ int pc_compile(int argc, char *argv[])
     sc_reparse=FALSE;           /* assume no extra passes */
     sc_status=statFIRST;        /* resetglobals() resets it to IDLE */
 
-    if (strlen(incfname)>0) {
-      if (strcmp(incfname,sDEF_PREFIX)==0) {
-        plungefile(incfname,FALSE,TRUE);    /* parse "default.inc" */
-      } else {
-        if (!plungequalifiedfile(incfname)) /* parse "prefix" include file */
-          error(100,incfname);          /* cannot read from ... (fatal error) */
-      } /* if */
-    } /* if */
-    preprocess();                       /* fetch first line */
-    parse();                            /* process all input */
+    plungeprefix(incfname);     /* jump into "default.inc" or alternative prefix file */
+    preprocess();               /* fetch first line */
+    parse();                    /* process all input */
     sc_parsenum++;
   } while (sc_reparse);
 
   /* second (or third) pass */
-  sc_status=statWRITE;                  /* set, to enable warnings */
+  sc_status=statWRITE;          /* set, to enable warnings */
   state_conflict(&glbtab);
 
   /* write a report, if requested */
@@ -664,16 +664,11 @@ int pc_compile(int argc, char *argv[])
   delete_symbols(&glbtab,0,TRUE,FALSE);
   insert_dbgfile(inpfname);     /* attach to debug information */
   insert_inputfile(inpfname);   /* save for the error system */
-  if (strlen(incfname)>0) {
-    if (strcmp(incfname,sDEF_PREFIX)==0)
-      plungefile(incfname,FALSE,TRUE);  /* parse "default.inc" (again) */
-    else
-      plungequalifiedfile(incfname);    /* parse implicit include file (again) */
-  } /* if */
-  preprocess();                         /* fetch first line */
-  parse();                              /* process all input */
+  plungeprefix(incfname);       /* jump into "default.inc" or alternative prefix file */
+  preprocess();                 /* fetch first line */
+  parse();                      /* process all input */
   /* inpf is already closed when readline() attempts to pop of a file */
-  writetrailer();                       /* write remaining stuff */
+  writetrailer();               /* write remaining stuff */
 
   entry=testsymbols(&glbtab,0,TRUE,FALSE);  /* test for unused or undefined
                                              * functions and variables */
@@ -769,6 +764,20 @@ cleanup:
     free(inpfname);
   if (litq!=NULL)
     free(litq);
+  /* when aborting inside an include file, pop off and erase all names on the stack */
+  while ((i=POPSTK_I())!=-1) {
+    (void)POPSTK_I();   /* fcurrent */
+    (void)POPSTK_I();   /* icomment */
+    (void)POPSTK_I();   /* sc_is_utf8 */
+    (void)POPSTK_I();   /* iflevel */
+    (void)POPSTK_P();   /* curlibrary */
+    inpfname=(char *)POPSTK_P();
+    inpf=(FILE *)POPSTK_P();
+    assert(inpfname!=NULL && (int)inpfname!=-1);
+    free(inpfname);
+    assert(inpf!=NULL && (int)inpf!=-1);
+    fclose(inpf);
+  } /* if */
   lexinit(TRUE);                          /* reset and release buffers */
   phopt_cleanup();
   stgbuffer_cleanup();
@@ -1027,8 +1036,10 @@ static int toggle_option(const char *optptr, int option)
  * parserespf() calls parseoptions() at its turn after having created
  * an "option list" from the contents of the file.
  */
+#if !defined PAWN_LIGHT
 static void parserespf(char *filename,char *oname,char *ename,char *pname,
                        char *rname, char *codepage);
+#endif
 
 static void parseoptions(int argc,char **argv,char *oname,char *ename,char *pname,
                          char *rname, char *codepage)
@@ -1152,6 +1163,9 @@ static void parseoptions(int argc,char **argv,char *oname,char *ename,char *pnam
         break;
       case 's':
         skipinput=atoi(option_value(ptr));
+        break;
+      case 'T':
+        /* this option was already handled on an initial scan, see setopt() */
         break;
       case 't':
         i=atoi(option_value(ptr));
@@ -1278,7 +1292,7 @@ static void parseoptions(int argc,char **argv,char *oname,char *ename,char *pnam
 static void parserespf(char *filename,char *oname,char *ename,char *pname,
                        char *rname,char *codepage)
 {
-#define MAX_OPTIONS     100
+#define MAX_OPTIONS     200
   FILE *fp;
   char *string, *ptr, **argv;
   int argc;
@@ -1330,20 +1344,41 @@ static void setopt(int argc,char **argv,char *oname,char *ename,char *pname,
   *codepage='\0';
   strcpy(pname,sDEF_PREFIX);
 
-  #if !defined PAWNC_LIGHT
+  #if !defined PAWN_LIGHT
     /* first parse a "config" file with default options */
-    if (argv[0]!=NULL) {
-      char cfgfile[_MAX_PATH];
-      char *ext;
-      strcpy(cfgfile,argv[0]);
-      if ((ext=strrchr(cfgfile,DIRSEP_CHAR))!=NULL) {
-        *(ext+1)='\0';          /* strip the program filename */
-        strcat(cfgfile,"pawn.cfg");
-      } else {
-        strcpy(cfgfile,"pawn.cfg");
-      } /* if */
+    if (sc_binpath[0]!='\0') {
+      char cfgfile[_MAX_PATH],*base;
+      const char *ptr;
+      int i,isoption,found;
+      /* copy the default config file name, but keep a pointer to the location
+       * of the base name
+       */
+      assert(strlen(sc_binpath)<sizeof cfgfile);
+      strcpy(cfgfile,sc_binpath);
+      base=strchr(cfgfile,'\0');
+      assert(base!=NULL);
+      strcpy(base,"pawn.cfg");
+      /* run through the argument list to see whether a -T option is present */
+      found=0;
+      for (i=1; i<argc; i++) {
+        #if DIRSEP_CHAR=='/'
+          isoption= argv[i][0]=='-';
+        #else
+          isoption= argv[i][0]=='/' || argv[i][0]=='-';
+        #endif
+        if (isoption && argv[i][1]=='T') {
+          found=1;
+          ptr=option_value(&argv[i][1]);
+          if (strchr(ptr,DIRSEP_CHAR)!=NULL)
+            strlcpy(cfgfile,ptr,_MAX_PATH); /* assume full path */
+          else
+            strlcpy(base,ptr,_MAX_PATH);    /* no path */
+        } /* if */
+      } /* for */
       if (access(cfgfile,4)==0)
         parserespf(cfgfile,oname,ename,pname,rname,codepage);
+      else if (found)
+        error(100,cfgfile);  /* config. file was explicitly specified, but cannot be read */
     } /* if */
   #endif
   parseoptions(argc,argv,oname,ename,pname,rname,codepage);
@@ -1362,12 +1397,27 @@ static void setopt(int argc,char **argv,char *oname,char *ename,char *pname,
 #endif
 static void setconfig(char *root)
 {
+  char *ptr;
+  int len;
+
   #if defined macintosh
     insert_path(":include:");
+    #if !defined PAWN_LIGHT
+      if (root!=NULL) {
+        strlcpy(sc_rootpath,root,sizeof sc_rootpath);
+        if ((ptr=strrchr(sc_rootpath,DIRSEP_CHAR))!=NULL) {
+          *(ptr+1)='\0';
+          assert(sizeof sc_binpath==sizeof sc_rootpath);
+          strcpy(sc_binpath,sc_rootpath);
+          len=strlen(sc_rootpath);
+          if (strcmp(sc_rootpath+len-5,":bin:")==0)
+            *(ptr-3)='\0';
+        } /* if */
+      } /* if */
+    #endif
   #else
     char path[_MAX_PATH];
-    char *ptr,*base;
-    int len;
+    char *base;
 
     /* add the default "include" directory */
     #if defined __WIN32__ || defined _WIN32
@@ -1393,6 +1443,10 @@ static void setconfig(char *root)
        * path; so we just don't add it to the list in that case
        */
       *(ptr+1)='\0';
+      #if !defined PAWN_LIGHT
+        assert(sizeof sc_binpath==sizeof path);
+        strcpy(sc_binpath,sc_rootpath);
+      #endif
       base=ptr;
       strcat(path,"include");
       len=strlen(path);
@@ -1425,7 +1479,7 @@ static void setconfig(char *root)
       /* also copy the root path (for the XML documentation) */
       #if !defined PAWN_LIGHT
         *ptr='\0';
-        strcpy(sc_rootpath,path);
+        strlcpy(sc_rootpath,path,sizeof sc_rootpath);
       #endif
     } /* if */
   #endif /* macintosh */
@@ -1433,7 +1487,7 @@ static void setconfig(char *root)
 
 static void setcaption(void)
 {
-  pc_printf("Pawn compiler %-25s Copyright (c) 1997-2008, ITB CompuPhase\n\n",VERSION_STR);
+  pc_printf("Pawn compiler %-25s Copyright (c) 1997-2009, ITB CompuPhase\n\n",VERSION_STR);
 }
 
 static void about(void)
@@ -1467,13 +1521,14 @@ static void about(void)
     pc_printf("             0    no optimization\n");
     pc_printf("             1    JIT-compatible optimizations only\n");
     pc_printf("             2    full optimizations\n");
-    pc_printf("         -p<name> set name of \"prefix\" file\n");
+    pc_printf("         -p<name> set name of the \"prefix\" file\n");
 #if !defined PAWN_LIGHT
     pc_printf("         -r[name] write cross reference report to console or to specified file\n");
 #endif
     pc_printf("         -S<num>  stack/heap size in cells (default=%d)\n",(int)pc_stksize);
     pc_printf("         -s<num>  skip lines from the input file\n");
     pc_printf("         -t<num>  TAB indent size (in character positions, default=%d)\n",pc_tabsize);
+    pc_printf("         -T<name> set name of the configuration file to use\n");
     pc_printf("         -V<num>  generate overlay code and instructions; set buffer size\n");
     pc_printf("         -v<num>  verbosity level; 0=quiet, 1=normal, 2=verbose (default=%d)\n",verbosity);
     pc_printf("         -w<num>  disable a specific warning by its number\n");
@@ -1553,6 +1608,163 @@ static void setconstants(void)
   add_constant("overlaysize",pc_overlays,sGLOBAL,0,TRUE);
 
   append_constval(&sc_automaton_tab,"",0,0);    /* anonymous automaton */
+}
+
+#if !defined PAWN_LIGHT
+/* sc_attachdocumentation()
+ * appends documentation comments to the passed-in symbol, or to a global
+ * string if "sym" is NULL.
+ */
+void sc_attachdocumentation(symbol *sym,int onlylastblock)
+{
+  int line,wrap;
+  size_t length;
+  char *str,*doc,*end;
+
+  if (!sc_makereport || sc_status!=statFIRST || sc_parsenum>0) {
+    /* just clear the entire table */
+    delete_docstringtable();
+    return;
+  } /* if */
+  /* in the case of state functions, multiple documentation sections may
+   * appear; we should concatenate these
+   * (with forward declarations, this is also already the case, so the assertion
+   * below is invalid)
+   */
+  // assert(sym==NULL || sym->documentation==NULL || sym->states!=NULL);
+
+  if (pc_recentdoc!=NULL) {
+    /* either copy the most recent comment block to the current symbol, or
+     * append it to the global documentation
+     */
+    length=strlen(pc_recentdoc);
+    wrap=0;
+    if (onlylastblock) {
+      assert(sym!=NULL);
+      str=sym->documentation;
+    } else {
+      str=pc_globaldoc;
+    } /* if */
+    /* set the documentation, or append it to it */
+    if (str!=NULL)
+      length+=strlen(str)+1+4;   /* plus 4 for "<p/>" */
+    doc=(char*)malloc((length+1)*sizeof(char));
+    if (doc!=NULL) {
+      if (str!=NULL) {
+        strcpy(doc,str);
+        free(str);
+        strcat(doc,"<p/>");
+      } else {
+        *doc='\0';
+      } /* if */
+      end=strchr(doc,'\0');
+      assert(end!=NULL);
+      strcat(doc,pc_recentdoc);
+      if (wrap) {
+        strins(end,"<summary>",9);
+        end+=9;         /* skip "<summary>" */
+        while (*end!='\0' && *end!='.' && *end!='<')
+          end++;
+        if (*end=='.')
+          end++;        /* end the summary behind the period */
+        strins(end,"</summary>",10);
+      } /* if */
+      if (onlylastblock) {
+        sym->documentation=doc;
+        /* force adding the new strings (if any) to the global data */
+        sym=NULL;
+      } else {
+        pc_globaldoc=doc;
+      } /* if */
+    } /* if */
+    /* remove the "recent block" string */
+    free(pc_recentdoc);
+    pc_recentdoc=NULL;
+  } /* if */
+
+  if (onlylastblock)
+    pc_docstring_suspended=FALSE;
+  else if (pc_docstring_suspended)
+    return;
+
+  /* first check the size */
+  length=0;
+  for (line=0; (str=get_docstring(line))!=NULL && *str!=sDOCSEP; line++) {
+    if (length>0)
+      length++;   /* count 1 extra for a separating space */
+    length+=strlen(str);
+  } /* for */
+
+  if (length>0) {
+    /* allocate memory for the documentation */
+    if (sym!=NULL && sym->documentation!=NULL)
+      length+=strlen(sym->documentation)+1+4;   /* plus 4 for "<p/>" */
+    doc=(char*)malloc((length+1)*sizeof(char));
+    if (doc!=NULL) {
+      /* initialize string or concatenate */
+      if (sym!=NULL && sym->documentation!=NULL) {
+        strcpy(doc,sym->documentation);
+        strcat(doc,"<p/>");
+        free(sym->documentation);
+        sym->documentation=NULL;
+      } else {
+        doc[0]='\0';
+      } /* if */
+      /* collect all documentation */
+      while ((str=get_docstring(0))!=NULL && *str!=sDOCSEP) {
+        if (doc[0]!='\0')
+          strcat(doc," ");
+        strcat(doc,str);
+        delete_docstring(0);
+      } /* while */
+      if (str!=NULL) {
+        /* also delete the separator */
+        assert(*str==sDOCSEP);
+        delete_docstring(0);
+      } /* if */
+      if (sym!=NULL) {
+        assert(sym->documentation==NULL);
+        sym->documentation=doc;
+      } else {
+        assert(pc_recentdoc==NULL);
+        pc_recentdoc=doc;
+      } /* if */
+    } /* if */
+  } else {
+    /* delete an empty separator, if present */
+    if ((str=get_docstring(0))!=NULL && *str==sDOCSEP)
+      delete_docstring(0);
+  } /* if */
+}
+
+static void insert_docstring_separator(void)
+{
+  char sep[2]={sDOCSEP,'\0'};
+  insert_docstring(sep,1);
+}
+#else
+  #define sc_attachdocumentation(s,f)    (void)(s)
+  #define insert_docstring_separator()
+#endif
+
+static void plungeprefix(char *prefixname)
+{
+
+  if (strlen(prefixname)>0) {
+    int ok;
+    if (strchr(prefixname,DIRSEP_CHAR)==NULL) {
+      /* no path, search the prefix file in the include directory */
+      ok=plungefile(prefixname,FALSE,TRUE);
+    } else {
+      /* when a path is given for the prefix file, it must be absolute */
+      ok=plungequalifiedfile(prefixname);
+    } /* if */
+    /* silently ignore a "default.inc" file that cannot be read, but give
+     * an error on explicit files
+     */
+    if (!ok && strcmp(prefixname,sDEF_PREFIX)!=0)
+      error(100,prefixname);    /* cannot read from ... (fatal error) */
+  } /* if */
 }
 
 static int getclassspec(int initialtok,int *fpublic,int *fstatic,int *fstock,int *fconst)
@@ -1792,143 +2004,6 @@ static void aligndata(int numbytes)
 
 }
 
-#if !defined PAWN_LIGHT
-/* sc_attachdocumentation()
- * appends documentation comments to the passed-in symbol, or to a global
- * string if "sym" is NULL.
- */
-void sc_attachdocumentation(symbol *sym,int onlylastblock)
-{
-  int line,wrap;
-  size_t length;
-  char *str,*doc,*end;
-
-  if (!sc_makereport || sc_status!=statFIRST || sc_parsenum>0) {
-    /* just clear the entire table */
-    delete_docstringtable();
-    return;
-  } /* if */
-  /* in the case of state functions, multiple documentation sections may
-   * appear; we should concatenate these
-   * (with forward declarations, this is also already the case, so the assertion
-   * below is invalid)
-   */
-  // assert(sym==NULL || sym->documentation==NULL || sym->states!=NULL);
-
-  if (pc_recentdoc!=NULL) {
-    /* either copy the most recent comment block to the current symbol, or
-     * append it to the global documentation
-     */
-    length=strlen(pc_recentdoc);
-    wrap=0;
-    if (onlylastblock) {
-      assert(sym!=NULL);
-      str=sym->documentation;
-    } else {
-      str=pc_globaldoc;
-    } /* if */
-    /* set the documentation, or append it to it */
-    if (str!=NULL)
-      length+=strlen(str)+1+4;   /* plus 4 for "<p/>" */
-    doc=(char*)malloc((length+1)*sizeof(char));
-    if (doc!=NULL) {
-      if (str!=NULL) {
-        strcpy(doc,str);
-        free(str);
-        strcat(doc,"<p/>");
-      } else {
-        *doc='\0';
-      } /* if */
-      end=strchr(doc,'\0');
-      assert(end!=NULL);
-      strcat(doc,pc_recentdoc);
-      if (wrap) {
-        strins(end,"<summary>",9);
-        end+=9;         /* skip "<summary>" */
-        while (*end!='\0' && *end!='.' && *end!='<')
-          end++;
-        if (*end=='.')
-          end++;        /* end the summary behind the period */
-        strins(end,"</summary>",10);
-      } /* if */
-      if (onlylastblock) {
-        sym->documentation=doc;
-        /* force adding the new strings (if any) to the global data */
-        sym=NULL;
-      } else {
-        pc_globaldoc=doc;
-      } /* if */
-    } /* if */
-    /* remove the "recent block" string */
-    free(pc_recentdoc);
-    pc_recentdoc=NULL;
-  } /* if */
-
-  if (onlylastblock)
-    pc_docstring_suspended=FALSE;
-  else if (pc_docstring_suspended)
-    return;
-
-  /* first check the size */
-  length=0;
-  for (line=0; (str=get_docstring(line))!=NULL && *str!=sDOCSEP; line++) {
-    if (length>0)
-      length++;   /* count 1 extra for a separating space */
-    length+=strlen(str);
-  } /* for */
-
-  if (length>0) {
-    /* allocate memory for the documentation */
-    if (sym!=NULL && sym->documentation!=NULL)
-      length+=strlen(sym->documentation)+1+4;   /* plus 4 for "<p/>" */
-    doc=(char*)malloc((length+1)*sizeof(char));
-    if (doc!=NULL) {
-      /* initialize string or concatenate */
-      if (sym!=NULL && sym->documentation!=NULL) {
-        strcpy(doc,sym->documentation);
-        strcat(doc,"<p/>");
-        free(sym->documentation);
-        sym->documentation=NULL;
-      } else {
-        doc[0]='\0';
-      } /* if */
-      /* collect all documentation */
-      while ((str=get_docstring(0))!=NULL && *str!=sDOCSEP) {
-        if (doc[0]!='\0')
-          strcat(doc," ");
-        strcat(doc,str);
-        delete_docstring(0);
-      } /* while */
-      if (str!=NULL) {
-        /* also delete the separator */
-        assert(*str==sDOCSEP);
-        delete_docstring(0);
-      } /* if */
-      if (sym!=NULL) {
-        assert(sym->documentation==NULL);
-        sym->documentation=doc;
-      } else {
-        assert(pc_recentdoc==NULL);
-        pc_recentdoc=doc;
-      } /* if */
-    } /* if */
-  } else {
-    /* delete an empty separator, if present */
-    if ((str=get_docstring(0))!=NULL && *str==sDOCSEP)
-      delete_docstring(0);
-  } /* if */
-}
-
-static void insert_docstring_separator(void)
-{
-  char sep[2]={sDOCSEP,'\0'};
-  insert_docstring(sep,1);
-}
-#else
-  #define sc_attachdocumentation(s,f)    (void)(s)
-  #define insert_docstring_separator()
-#endif
-
 static void declfuncvar(int fpublic,int fstatic,int fstock,int fconst)
 {
   char name[sNAMEMAX+11];
@@ -2008,7 +2083,9 @@ static void declglb(char *firstname,int firsttag,int fpublic,int fstatic,int fst
   insert_docstring_separator();         /* see comment in newfunc() */
   filenum=fcurrent;                     /* save file number at the start of the declaration */
   do {
-    pc_docstring_suspended=TRUE;        /* suspend attaching documentation to global/recent blocks */
+    #if !defined PAWN_LIGHT
+      pc_docstring_suspended=TRUE;      /* suspend attaching documentation to global/recent blocks */
+    #endif
     size=1;                             /* single size (no array) */
     numdim=0;                           /* no dimensions */
     ident=iVARIABLE;
@@ -2869,7 +2946,9 @@ static void decl_const(int vclass)
 
   insert_docstring_separator();         /* see comment in newfunc() */
   do {
-    pc_docstring_suspended=TRUE;        /* suspend attaching documentation to global/recent blocks */
+    #if !defined PAWN_LIGHT
+      pc_docstring_suspended=TRUE;      /* suspend attaching documentation to global/recent blocks */
+    #endif
     tag=pc_addtag(NULL);
     if (lex(&val,&str)!=tSYMBOL)        /* read in (new) token */
       error(20,str);                    /* invalid symbol name */
@@ -5994,7 +6073,7 @@ static void doreturn(void)
     if (!matchtag(curfunc->tag,tag,TRUE))
       error(213);                       /* tagname mismatch */
     if (ident==iARRAY || ident==iREFARRAY) {
-      int dim[sDIMEN_MAX],numdim;
+      int dim[sDIMEN_MAX],numdim=0;
       cell arraysize;
       assert(sym!=NULL);
       if (sub!=NULL) {

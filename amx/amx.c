@@ -1,6 +1,6 @@
 /*  Pawn Abstract Machine (for the Pawn language)
  *
- *  Copyright (c) ITB CompuPhase, 1997-2008
+ *  Copyright (c) ITB CompuPhase, 1997-2009
  *
  *  This software is provided "as-is", without any express or implied warranty.
  *  In no event will the authors be held liable for any damages arising from
@@ -18,7 +18,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: amx.c 4032 2008-11-14 15:06:02Z thiadmer $
+ *  Version: $Id: amx.c 4057 2009-01-15 08:21:31Z thiadmer $
  */
 
 #if BUILD_PLATFORM == WINDOWS && BUILD_TYPE == RELEASE && BUILD_COMPILER == MSVC && PAWN_CELL_SIZE == 64
@@ -5323,29 +5323,26 @@ int AMXAPI amx_GetString(char *dest,const cell *source,int use_wchar,size_t size
 {
   int len=0;
   #if defined AMX_ANSIONLY
-    (void)use_wchar;
+    (void)use_wchar;    /* unused parameter (if ANSI only) */
   #endif
   if ((ucell)*source>UNPACKEDMAX) {
     /* source string is packed */
-    cell c = 0;         /* to avoid a compiler warning */
+    cell c=0;           /* initialize to 0 to avoid a compiler warning */
     int i=sizeof(cell)-1;
+    char ch;
     while ((size_t)len<size) {
       if (i==sizeof(cell)-1)
         c=*source++;
+      ch=(char)(c >> i*CHARBITS);
+      if (ch=='\0')
+        break;          /* terminating zero character found */
       #if defined AMX_ANSIONLY
-        dest[len++]=(char)(c >> i*CHARBITS);
-        if (dest[len-1]=='\0')
-          break;        /* terminating zero character found */
+        dest[len++]=ch;
       #else
-        if (use_wchar) {
-          ((wchar_t*)dest)[len++]=(char)(c >> i*CHARBITS);
-          if (((wchar_t*)dest)[len-1]=='\0')
-            break;      /* terminating zero character found */
-        } else {
-          dest[len++]=(char)(c >> i*CHARBITS);
-          if (dest[len-1]=='\0')
-            break;      /* terminating zero character found */
-        } /* if */
+        if (use_wchar)
+          ((wchar_t*)dest)[len++]=ch;
+        else
+          dest[len++]=ch;
       #endif
       i=(i+sizeof(cell)-1) % sizeof(cell);
     } /* while */
@@ -5364,10 +5361,19 @@ int AMXAPI amx_GetString(char *dest,const cell *source,int use_wchar,size_t size
       } /* if */
     #endif
   } /* if */
+  /* store terminator */
   if ((size_t)len>=size)
     len=size-1;
-  if (len>=0)
-    dest[len]='\0';   /* store terminator */
+  if (len>=0) {
+    #if defined AMX_ANSIONLY
+      dest[len]='\0';
+    #else
+      if (use_wchar)
+        ((wchar_t*)dest)[len]=0;
+      else
+        dest[len]='\0';
+    #endif
+  } /* IF */
   return AMX_ERR_NONE;
 }
 #endif /* AMX_XXXSTRING */

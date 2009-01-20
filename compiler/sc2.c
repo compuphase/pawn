@@ -1,6 +1,6 @@
 /*  Pawn compiler - File input, preprocessing and lexical analysis functions
  *
- *  Copyright (c) ITB CompuPhase, 1997-2008
+ *  Copyright (c) ITB CompuPhase, 1997-2009
  *
  *  This software is provided "as-is", without any express or implied warranty.
  *  In no event will the authors be held liable for any damages arising from
@@ -18,7 +18,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: sc2.c 4032 2008-11-14 15:06:02Z thiadmer $
+ *  Version: $Id: sc2.c 4058 2009-01-15 08:56:51Z thiadmer $
  */
 #include <assert.h>
 #include <stdio.h>
@@ -1075,6 +1075,7 @@ static int command(void)
           preproc_expr(&pc_amxlimit,NULL);
         } else if (strcmp(str,"amxram")==0) {
           preproc_expr(&pc_amxram,NULL);
+#if !defined PAWN_NO_CODEPAGE
         } else if (strcmp(str,"codepage")==0) {
           char name[sNAMEMAX+1];
           while (*lptr<=' ' && *lptr!='\0')
@@ -1089,6 +1090,7 @@ static int command(void)
           } /* if */
           if (!cp_set(name))
             error(108);         /* codepage mapping file not found */
+#endif
         } else if (strcmp(str,"compress")==0) {
           cell val;
           preproc_expr(&val,NULL);
@@ -2714,6 +2716,7 @@ SC_FUNC void delete_symbols(symbol *root,int level,int delete_labels,int delete_
     case iVARARGS:
     default:
       assert(0);
+      mustdelete=FALSE; /* dummy assignment, to avoid warnings by lint-like checkers */
       break;
     } /* switch */
     if (mustdelete) {

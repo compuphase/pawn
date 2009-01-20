@@ -1,6 +1,6 @@
 /*  Date/time module for the Pawn Abstract Machine
  *
- *  Copyright (c) ITB CompuPhase, 2001-2008
+ *  Copyright (c) ITB CompuPhase, 2001-2009
  *
  *  This software is provided "as-is", without any express or implied warranty.
  *  In no event will the authors be held liable for any damages arising from
@@ -18,7 +18,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: amxtime.c 4026 2008-10-22 10:49:05Z thiadmer $
+ *  Version: $Id: amxtime.c 4057 2009-01-15 08:21:31Z thiadmer $
  */
 #include <time.h>
 #include <assert.h>
