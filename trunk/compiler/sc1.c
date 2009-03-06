@@ -20,7 +20,7 @@
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
  *
- *  Version: $Id: sc1.c 4058 2009-01-15 08:56:51Z thiadmer $
+ *  Version: $Id: sc1.c 4065 2009-01-27 10:46:59Z thiadmer $
  */
 #include <assert.h>
 #include <ctype.h>
@@ -1313,6 +1313,12 @@ static void parserespf(char *filename,char *oname,char *ename,char *pname,
   memset(string,0,(int)size+1);
   fread(string,1,(int)size,fp);
   fclose(fp);
+  /* remove comments in the response file */
+  while ((ptr=strchr(string,'#'))!=NULL) {
+    *ptr=' ';                   /* pad with spaces up to \n */
+    while (*++ptr!='\n')
+      *ptr=' ';
+  } /* while */
   /* allocate table for option pointers */
   if ((argv=(char **)malloc(MAX_OPTIONS*sizeof(char*)))==NULL)
     error(103);                 /* insufficient memory */
@@ -1373,6 +1379,9 @@ static void setopt(int argc,char **argv,char *oname,char *ename,char *pname,
             strlcpy(cfgfile,ptr,_MAX_PATH); /* assume full path */
           else
             strlcpy(base,ptr,_MAX_PATH);    /* no path */
+          ptr=strrchr(cfgfile,'.');
+          if (ptr==NULL || strchr(ptr,DIRSEP_CHAR)!=NULL)
+            strlcat(cfgfile,".cfg",_MAX_PATH);
         } /* if */
       } /* for */
       if (access(cfgfile,4)==0)
@@ -1445,7 +1454,7 @@ static void setconfig(char *root)
       *(ptr+1)='\0';
       #if !defined PAWN_LIGHT
         assert(sizeof sc_binpath==sizeof path);
-        strcpy(sc_binpath,sc_rootpath);
+        strcpy(sc_binpath,path);
       #endif
       base=ptr;
       strcat(path,"include");
@@ -2652,7 +2661,7 @@ static void initials(int ident,int tag,cell *size,int dim[],int numdim,
           err++;
         } /* if */
       } /* for */
-      if (numdim>1 && dim[numdim-1]==0 && !errorfound) {
+      if (numdim>1 && dim[numdim-1]==0 && !errorfound && err==0) {
         /* also look whether, by any chance, all "counted" final dimensions are
          * the same value; if so, we can store this
          */

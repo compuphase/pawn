@@ -9,10 +9,10 @@
 #ifndef SVNREH_H
 #define SVNREV_H
 
-#define SVN_REV		4058
-#define SVN_REVSTR	"4058M"
-#define SVN_REVDATE	"2009-01-15"
-#define SVN_REVSTAMP	20090115L
-#define SVN_MODIFIED	1
+#define SVN_REV		4065
+#define SVN_REVSTR	"4065"
+#define SVN_REVDATE	"2009-01-27"
+#define SVN_REVSTAMP	20090127L
+#define SVN_MODIFIED	0
 
 #endif /* SVNREV_H */
