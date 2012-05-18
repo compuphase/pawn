@@ -9,41 +9,38 @@
 ;   ASM32 defined.
 ;
 ;   The calling convention conforms to the ARM Architecture Procedure
-;   Call Standard (AAPCS). This applies both to the function amx_exec_asm
+;   Call Standard (AAPCS). This applies both to the function amx_exec_run
 ;   implemented in this file as to the debug hook function, callback hook
 ;   function and any native functions called directly from the abstract
 ;   machine.
 ;
 ;
-;   Copyright (c) ITB CompuPhase, 2006-2009
+;   Copyright (c) ITB CompuPhase, 2006-2010
 ;
-;   This software is provided "as-is", without any express or implied warranty.
-;   In no event will the authors be held liable for any damages arising from
-;   the use of this software.
+;   Licensed under the Apache License, Version 2.0 (the "License"); you may not
+;   use this file except in compliance with the License. You may obtain a copy
+;   of the License at
 ;
-;   Permission is granted to anyone to use this software for any purpose,
-;   including commercial applications, and to alter it and redistribute it
-;   freely, subject to the following restrictions:
+;       http://www.apache.org/licenses/LICENSE-2.0
 ;
-;   1.  The origin of this software must not be misrepresented; you must not
-;       claim that you wrote the original software. If you use this software in
-;       a product, an acknowledgment in the product documentation would be
-;       appreciated but is not required.
-;   2.  Altered source versions must be plainly marked as such, and must not be
-;       misrepresented as being the original software.
-;   3.  This notice may not be removed or altered from any source distribution.
+;   Unless required by applicable law or agreed to in writing, software
+;   distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+;   WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+;   License for the specific language governing permissions and limitations
+;   under the License.
 ;
-;   Version: $Id: amxexec_arm7.s 4057 2009-01-15 08:21:31Z thiadmer $
+;   Version: $Id: amxexec_arm7.s 4641 2012-01-16 08:15:57Z thiadmer $
 
 
     AREA    amxexec_data, DATA, READONLY
     ALIGN   2
 
-IF :LNOT: :DEF:AMX_NO_PACKED_OPC
-  IF :LNOT: :DEF:AMX_TOKENTHREADING
-    AMX_TOKENTHREADING EQU 1   ; packed opcodes require token threading
+ IF :LNOT::DEF:AMX_NO_PACKED_OPC
+  IF :LNOT::DEF:AMX_TOKENTHREADING
+    GBLA AMX_TOKENTHREADING
+AMX_TOKENTHREADING SETA 1      ; packed opcodes require token threading
   ENDIF
-ENDIF
+ ENDIF
 
 AMX_ERR_NONE      EQU      0
 AMX_ERR_EXIT      EQU      1   ; forced exit
@@ -89,13 +86,13 @@ amx_reloc_size    EQU    120   ; (JIT) required temporary buffer for relocations
 
     EXPORT  amx_opcodelist
 amx_opcodelist
-    DCD     OP_INVALID
+_amx_opcodelist
+    ; core set
+    DCD     OP_NOP
     DCD     OP_LOAD_PRI
     DCD     OP_LOAD_ALT
     DCD     OP_LOAD_S_PRI
     DCD     OP_LOAD_S_ALT
-    DCD     OP_LREF_PRI
-    DCD     OP_LREF_ALT
     DCD     OP_LREF_S_PRI
     DCD     OP_LREF_S_ALT
     DCD     OP_LOAD_I
@@ -104,163 +101,130 @@ amx_opcodelist
     DCD     OP_CONST_ALT
     DCD     OP_ADDR_PRI
     DCD     OP_ADDR_ALT
-    DCD     OP_STOR_PRI
-    DCD     OP_STOR_ALT
-    DCD     OP_STOR_S_PRI
-    DCD     OP_STOR_S_ALT
-    DCD     OP_SREF_PRI
-    DCD     OP_SREF_ALT
-    DCD     OP_SREF_S_PRI
-    DCD     OP_SREF_S_ALT
+    DCD     OP_STOR
+    DCD     OP_STOR_S
+    DCD     OP_SREF_S
     DCD     OP_STOR_I
     DCD     OP_STRB_I
-    DCD     OP_LIDX
-    DCD     OP_LIDX_B
-    DCD     OP_IDXADDR
-    DCD     OP_IDXADDR_B
     DCD     OP_ALIGN_PRI
-    DCD     OP_ALIGN_ALT
     DCD     OP_LCTRL
     DCD     OP_SCTRL
-    DCD     OP_MOVE_PRI
-    DCD     OP_MOVE_ALT
     DCD     OP_XCHG
     DCD     OP_PUSH_PRI
     DCD     OP_PUSH_ALT
-    DCD     OP_PICK
-    DCD     OP_PUSH_C
-    DCD     OP_PUSH
-    DCD     OP_PUSH_S
+    DCD     OP_PUSHR_PRI
     DCD     OP_POP_PRI
     DCD     OP_POP_ALT
+    DCD     OP_PICK
     DCD     OP_STACK
     DCD     OP_HEAP
     DCD     OP_PROC
     DCD     OP_RET
     DCD     OP_RETN
     DCD     OP_CALL
-    DCD     OP_CALL_PRI         ; obsolete
     DCD     OP_JUMP
-    DCD     OP_JREL             ; obsolete
     DCD     OP_JZER
     DCD     OP_JNZ
-    DCD     OP_JEQ
-    DCD     OP_JNEQ
-    DCD     OP_JLESS
-    DCD     OP_JLEQ
-    DCD     OP_JGRTR
-    DCD     OP_JGEQ
-    DCD     OP_JSLESS
-    DCD     OP_JSLEQ
-    DCD     OP_JSGRTR
-    DCD     OP_JSGEQ
     DCD     OP_SHL
     DCD     OP_SHR
     DCD     OP_SSHR
     DCD     OP_SHL_C_PRI
     DCD     OP_SHL_C_ALT
-    DCD     OP_SHR_C_PRI
-    DCD     OP_SHR_C_ALT
     DCD     OP_SMUL
     DCD     OP_SDIV
-    DCD     OP_SDIV_ALT
-    DCD     OP_UMUL
-    DCD     OP_UDIV
-    DCD     OP_UDIV_ALT
     DCD     OP_ADD
     DCD     OP_SUB
-    DCD     OP_SUB_ALT
     DCD     OP_AND
     DCD     OP_OR
     DCD     OP_XOR
     DCD     OP_NOT
     DCD     OP_NEG
     DCD     OP_INVERT
-    DCD     OP_ADD_C
-    DCD     OP_SMUL_C
-    DCD     OP_ZERO_PRI
-    DCD     OP_ZERO_ALT
-    DCD     OP_ZERO
-    DCD     OP_ZERO_S
-    DCD     OP_SIGN_PRI
-    DCD     OP_SIGN_ALT
     DCD     OP_EQ
     DCD     OP_NEQ
-    DCD     OP_LESS
-    DCD     OP_LEQ
-    DCD     OP_GRTR
-    DCD     OP_GEQ
     DCD     OP_SLESS
     DCD     OP_SLEQ
     DCD     OP_SGRTR
     DCD     OP_SGEQ
-    DCD     OP_EQ_C_PRI
-    DCD     OP_EQ_C_ALT
     DCD     OP_INC_PRI
     DCD     OP_INC_ALT
-    DCD     OP_INC
-    DCD     OP_INC_S
     DCD     OP_INC_I
     DCD     OP_DEC_PRI
     DCD     OP_DEC_ALT
-    DCD     OP_DEC
-    DCD     OP_DEC_S
     DCD     OP_DEC_I
     DCD     OP_MOVS
     DCD     OP_CMPS
     DCD     OP_FILL
     DCD     OP_HALT
     DCD     OP_BOUNDS
-    DCD     OP_SYSREQ_PRI
-    DCD     OP_SYSREQ_C
-    DCD     OP_FILE             ; obsolete
-    DCD     OP_LINE             ; obsolete
-    DCD     OP_SYMBOL           ; obsolete
-    DCD     OP_SRANGE           ; obsolete
-    DCD     OP_JUMP_PRI         ; obsolete
+    DCD     OP_SYSREQ
     DCD     OP_SWITCH
-    DCD     OP_CASETBL
     DCD     OP_SWAP_PRI
     DCD     OP_SWAP_ALT
-    DCD     OP_PUSH_ADR
-    DCD     OP_NOP
-    DCD     OP_SYSREQ_N
-    DCD     OP_SYMTAG           ; obsolete
     DCD     OP_BREAK
-    ; macro opcodes
-    DCD     OP_PUSH2_C
-    DCD     OP_PUSH2
-    DCD     OP_PUSH2_S
-    DCD     OP_PUSH2_ADR
-    DCD     OP_PUSH3_C
-    DCD     OP_PUSH3
-    DCD     OP_PUSH3_S
-    DCD     OP_PUSH3_ADR
-    DCD     OP_PUSH4_C
-    DCD     OP_PUSH4
-    DCD     OP_PUSH4_S
-    DCD     OP_PUSH4_ADR
-    DCD     OP_PUSH5_C
-    DCD     OP_PUSH5
-    DCD     OP_PUSH5_S
-    DCD     OP_PUSH5_ADR
-    DCD     OP_LOAD_BOTH
-    DCD     OP_LOAD_S_BOTH
+    DCD     OP_CASETBL
+    ; patched instructions
+    DCD     OP_SYSREQ_D
+    DCD     OP_SYSREQ_ND
+    ; overlay instructions
+ IF :LNOT::DEF:AMX_NO_OVERLAY
+    DCD     OP_CALL_OVL
+    DCD     OP_RETN_OVL
+    DCD     OP_SWITCH_OVL
+    DCD     OP_CASETBL_OVL
+ ENDIF  ; AMX_NO_OVERLAY
+    ; supplemental instructions
+ IF :LNOT::DEF:AMX_NO_MACRO_INSTR
+    DCD     OP_LIDX
+    DCD     OP_LIDX_B
+    DCD     OP_IDXADDR
+    DCD     OP_IDXADDR_B
+    DCD     OP_PUSH_C
+    DCD     OP_PUSH
+    DCD     OP_PUSH_S
+    DCD     OP_PUSH_ADR
+    DCD     OP_PUSHR_C
+    DCD     OP_PUSHR_S
+    DCD     OP_PUSHR_ADR
+    DCD     OP_JEQ
+    DCD     OP_JNEQ
+    DCD     OP_JSLESS
+    DCD     OP_JSLEQ
+    DCD     OP_JSGRTR
+    DCD     OP_JSGEQ
+    DCD     OP_SDIV_INV
+    DCD     OP_SUB_INV
+    DCD     OP_ADD_C
+    DCD     OP_SMUL_C
+    DCD     OP_ZERO_PRI
+    DCD     OP_ZERO_ALT
+    DCD     OP_ZERO
+    DCD     OP_ZERO_S
+    DCD     OP_EQ_C_PRI
+    DCD     OP_EQ_C_ALT
+    DCD     OP_INC
+    DCD     OP_INC_S
+    DCD     OP_DEC
+    DCD     OP_DEC_S
+    DCD     OP_SYSREQ_N
+    DCD     OP_PUSHM_C
+    DCD     OP_PUSHM
+    DCD     OP_PUSHM_S
+    DCD     OP_PUSHM_ADR
+    DCD     OP_PUSHRM_C
+    DCD     OP_PUSHRM_S
+    DCD     OP_PUSHRM_ADR
+    DCD     OP_LOAD2
+    DCD     OP_LOAD2_S
     DCD     OP_CONST
     DCD     OP_CONST_S
-    ; overlay opcodes
-    DCD     OP_ICALL
-    DCD     OP_IRETN
-    DCD     OP_ISWITCH
-    DCD     OP_ICASETBL
+ ENDIF  ; AMX_NO_MACRO_INSTR
     ; packed opcodes
-IF :LNOT::DEF:AMX_NO_PACKED_OPC
+ IF :LNOT::DEF:AMX_NO_PACKED_OPC
     DCD     OP_LOAD_P_PRI
     DCD     OP_LOAD_P_ALT
     DCD     OP_LOAD_P_S_PRI
     DCD     OP_LOAD_P_S_ALT
-    DCD     OP_LREF_P_PRI
-    DCD     OP_LREF_P_ALT
     DCD     OP_LREF_P_S_PRI
     DCD     OP_LREF_P_S_ALT
     DCD     OP_LODB_P_I
@@ -268,28 +232,31 @@ IF :LNOT::DEF:AMX_NO_PACKED_OPC
     DCD     OP_CONST_P_ALT
     DCD     OP_ADDR_P_PRI
     DCD     OP_ADDR_P_ALT
-    DCD     OP_STOR_P_PRI
-    DCD     OP_STOR_P_ALT
-    DCD     OP_STOR_P_S_PRI
-    DCD     OP_STOR_P_S_ALT
-    DCD     OP_SREF_P_PRI
-    DCD     OP_SREF_P_ALT
-    DCD     OP_SREF_P_S_PRI
-    DCD     OP_SREF_P_S_ALT
+    DCD     OP_STOR_P
+    DCD     OP_STOR_P_S
+    DCD     OP_SREF_P_S
     DCD     OP_STRB_P_I
     DCD     OP_LIDX_P_B
     DCD     OP_IDXADDR_P_B
     DCD     OP_ALIGN_P_PRI
-    DCD     OP_ALIGN_P_ALT
     DCD     OP_PUSH_P_C
     DCD     OP_PUSH_P
     DCD     OP_PUSH_P_S
+    DCD     OP_PUSH_P_ADR
+    DCD     OP_PUSHR_P_C
+    DCD     OP_PUSHR_P_S
+    DCD     OP_PUSHR_P_ADR
+    DCD     OP_PUSHM_P_C
+    DCD     OP_PUSHM_P
+    DCD     OP_PUSHM_P_S
+    DCD     OP_PUSHM_P_ADR
+    DCD     OP_PUSHRM_P_C
+    DCD     OP_PUSHRM_P_S
+    DCD     OP_PUSHRM_P_ADR
     DCD     OP_STACK_P
     DCD     OP_HEAP_P
     DCD     OP_SHL_P_C_PRI
     DCD     OP_SHL_P_C_ALT
-    DCD     OP_SHR_P_C_PRI
-    DCD     OP_SHR_P_C_ALT
     DCD     OP_ADD_P_C
     DCD     OP_SMUL_P_C
     DCD     OP_ZERO_P
@@ -305,17 +272,13 @@ IF :LNOT::DEF:AMX_NO_PACKED_OPC
     DCD     OP_FILL_P
     DCD     OP_HALT_P
     DCD     OP_BOUNDS_P
-    DCD     OP_PUSH_P_ADR
-ENDIF   ; AMX_NO_PACKED_OPC
-    ; patch opcodes
-    DCD     OP_SYSREQ_D
-    DCD     OP_SYSREQ_ND
+ ENDIF  ; AMX_NO_PACKED_OPC
+opcodelist_size EQU .-amx_opcodelist
 
 
     MACRO
     NEXT
       IF :DEF:AMX_TOKENTHREADING
-
         IF :DEF:AMX_NO_PACKED_OPC
           ldr r11, [r4], #4     ; get opcode, increment CIP
         ELSE
@@ -348,12 +311,12 @@ ENDIF   ; AMX_NO_PACKED_OPC
     MEND
 
     MACRO
-    REGPUSH $rx
+    mPUSH $rx
     str $rx, [r6, #-4]!         ; STK -= 4, [STK] = $rx
     MEND
 
     MACRO
-    REGPOP $rx
+    mPOP $rx
     ldr $rx, [r6], #4           ; $rx = [STK], STK += 4
     MEND
 
@@ -393,10 +356,7 @@ ENDIF   ; AMX_NO_PACKED_OPC
     MEND
 
 
-; ----------------------------------------------------------------
-; cell amx_exec_asm(AMX *amx, cell *retval, char *data)
-;                        r0         r1            r2
-; ----------------------------------------------------------------
+; ================================================================
 
     AREA    amxexec_code, CODE, READONLY
     CODE32
@@ -405,15 +365,37 @@ ENDIF   ; AMX_NO_PACKED_OPC
 amx_opcodelist_addr
     DCD   amx_opcodelist
 
-    EXPORT  amx_exec_asm
-amx_exec_asm
+
+; ----------------------------------------------------------------
+; cell amx_exec_list(AMX *amx, cell **opcodelist,int *numopcodes)
+;                         r0          r1              r2
+; ----------------------------------------------------------------
+
+    EXPORT  amx_exec_list
+amx_exec_list
+    ldr r0, amx_opcodelist_addr     ; r0 = opcode table address
+    str r0, [r1]                    ; store in parameter 'opcodelist'
+    mov r0, #opcodelist_size
+    mov r0, r0, LSR #2              ; number of opcodes, not bytes
+    str r0, [r2]                    ; store in parameter 'numopcodes'
+    mov r0, #0                      ; no specific return value)
+    mov pc, lr
+
+
+; ----------------------------------------------------------------
+; cell amx_exec_run(AMX *amx, cell *retval, char *data)
+;                        r0         r1            r2
+; ----------------------------------------------------------------
+
+    EXPORT  amx_exec_run
+amx_exec_run
     ; save non-scratch registers
     stmfd sp!, {r4 - r12, lr}
 
-    ; save register that holds the address for the return value
+    ; save the register that holds the address for the return value
     ; we only need this at the point of returning, so it would be
     ; a waste to keep it in a register
-    str r1, [sp, #-4]!
+    str r1, [sp, #-8]!          ; decrement by 8 to keep 8-byte alignment of sp
 
     ; set up the registers
     ; r0  = PRI
@@ -425,7 +407,7 @@ amx_exec_asm
     ; r6  = STK, relocated (absolute address)
     ; r7  = FRM, relocated (absolute address)
     ; r8  = code
-    ; r9  = code_end = code + code_size
+    ; r9  = code_size
     ; r10 = amx base (passed in r0)
     ; r14 = opcode list address (for token threading)
     ; r11 and r12 are scratch; r11 is used in the macro to fetch the next opcode
@@ -448,16 +430,14 @@ amx_exec_asm
     add r6, r6, r5              ; relocate STK
     add r7, r7, r5              ; relocate FRM
     add r4, r4, r8              ; relocate CIP
-    add r9, r9, r8              ; make r9 point behind last valid code address
 
     ldr r14, amx_opcodelist_addr
 
     ; start running
     NEXT
 
-OP_INVALID
-    mov r11, #AMX_ERR_INVINSTR
-    b   amx_exit
+OP_NOP
+    NEXT
 
 OP_LOAD_PRI                     ; tested
     GETPARAM r11
@@ -477,18 +457,6 @@ OP_LOAD_S_PRI                   ; tested
 OP_LOAD_S_ALT                   ; tested
     GETPARAM r11
     ldr r1, [r7, r11]
-    NEXT
-
-OP_LREF_PRI                     ; not generated by pawncc
-    GETPARAM r11
-    ldr r11, [r5, r11]
-    ldr r0, [r5, r11]
-    NEXT
-
-OP_LREF_ALT                     ; not generated by pawncc
-    GETPARAM r11
-    ldr r11, [r5, r11]
-    ldr r1, [r5, r11]
     NEXT
 
 OP_LREF_S_PRI                   ; tested
@@ -541,48 +509,20 @@ OP_ADDR_ALT                     ; tested
     sub r1, r1, r5              ; reverse relocate
     NEXT
 
-OP_STOR_PRI                     ; tested
+OP_STOR                         ; tested
     GETPARAM r11
     str r0, [r5, r11]
     NEXT
 
-OP_STOR_ALT
-    GETPARAM r11
-    str r1, [r5, r11]
-    NEXT
-
-OP_STOR_S_PRI                   ; tested
+OP_STOR_S                       ; tested
     GETPARAM r11
     str r0, [r7, r11]
     NEXT
 
-OP_STOR_S_ALT                   ; not generated by pawncc
-    GETPARAM r11
-    str r1, [r7, r11]
-    NEXT
-
-OP_SREF_PRI                     ; not generated by pawncc
-    GETPARAM r11
-    ldr r11, [r5, r11]
-    str r0, [r5, r11]
-    NEXT
-
-OP_SREF_ALT                     ; not generated by pawncc
-    GETPARAM r11
-    ldr r11, [r5, r11]
-    str r1, [r5, r11]
-    NEXT
-
-OP_SREF_S_PRI                   ; tested
+OP_SREF_S                       ; tested
     GETPARAM r11
     ldr r11, [r7, r11]
     str r0, [r5, r11]
-    NEXT
-
-OP_SREF_S_ALT                   ; not generated by pawncc
-    GETPARAM r11
-    ldr r11, [r7, r11]
-    str r1, [r5, r11]
     NEXT
 
 OP_STOR_I                       ; tested
@@ -603,43 +543,11 @@ OP_STRB_I                       ; tested
     streq r0, [r12]
     NEXT
 
-OP_LIDX                         ; tested
-    add r12, r1, r0, LSL #2     ; r12 = ALT + 4*PRI
-    add r12, r12, r5            ; relocate to absolute address
-    VERIFYADDRESS r12
-    ldr r0, [r12]
-    NEXT
-
-OP_LIDX_B
-    GETPARAM r11
-    add r12, r1, r0, LSL r11    ; r12 = ALT + (PRI << param)
-    add r12, r12, r5            ; relocate to absolute address
-    VERIFYADDRESS r12
-    ldr r0, [r12]
-    NEXT
-
-OP_IDXADDR                      ; tested
-    add r0, r1, r0, LSL #2      ; PRI = ALT + 4*PRI
-    NEXT
-
-OP_IDXADDR_B
-    GETPARAM r11
-    add r0, r1, r0, LSL r11     ; PRI = ALT + (PRI << param)
-    NEXT
-
 OP_ALIGN_PRI                    ; tested
     GETPARAM r11
   IF :LNOT::DEF:BIG_ENDIAN
     rsbs r11, r11, #4           ; rsb = reverse subtract; r11 = #4 - param
     eorhi r0, r0, r11           ; PRI ^= (#4 - param), but only if (#4 - param) > 0
-  ENDIF
-    NEXT
-
-OP_ALIGN_ALT
-    GETPARAM r11
-  IF :LNOT::DEF:BIG_ENDIAN
-    rsbs r11, r11, #4           ; rsb = reverse subtract; r11 = #4 - param
-    eorhi r1, r1, r11           ; ALT ^= (#4 - param), but only if (#4 - param) > 0
   ENDIF
     NEXT
 
@@ -670,15 +578,7 @@ OP_SCTRL
     teq r11, #5
     addeq r7, r0, r5            ; 5 == FRM (reverse relocated)
     teq r11, #6
-    subeq r4, r0, r8            ; 6 == CIP (relative to code)
-    NEXT
-
-OP_MOVE_PRI                     ; tested
-    mov r0, r1
-    NEXT
-
-OP_MOVE_ALT                     ; tested
-    mov r1, r0
+    addeq r4, r0, r8            ; 6 == CIP (relative to code)
     NEXT
 
 OP_XCHG                         ; tested
@@ -688,36 +588,29 @@ OP_XCHG                         ; tested
     NEXT
 
 OP_PUSH_PRI                     ; tested
-    REGPUSH r0
+    mPUSH r0
     NEXT
 
 OP_PUSH_ALT                     ; tested
-    REGPUSH r1
+    mPUSH r1
     NEXT
 
-OP_PUSH_C                       ; tested
-    GETPARAM r11
-    REGPUSH r11
-    NEXT
-
-OP_PUSH
-    GETPARAM r11
-    ldr r11, [r5, r11]
-    REGPUSH r11
-    NEXT
-
-OP_PUSH_S                       ; tested
-    GETPARAM r11
-    ldr r11, [r7, r11]
-    REGPUSH r11
+OP_PUSHR_PRI
+    add r11, r0, r5             ; relocate PRI to DAT
+    mPUSH r11
     NEXT
 
 OP_POP_PRI
-    REGPOP r0
+    mPOP r0
     NEXT
 
 OP_POP_ALT                      ; tested
-    REGPOP r1
+    mPOP r1
+    NEXT
+
+OP_PICK
+    GETPARAM r11
+    ldr r0, [r6, r11]
     NEXT
 
 OP_STACK                        ; tested
@@ -737,31 +630,29 @@ OP_HEAP                         ; tested
     NEXT
 
 OP_PROC                         ; tested
-    REGPUSH r7
+    mPUSH r7
     mov r7, r6                  ; FRM = stk
     CHKMARGIN r12
     NEXT
 
 OP_RET
-    REGPOP r7                   ; pop FRM
-    REGPOP r4                   ; pop CIP (return address)
+    mPOP r7                     ; pop FRM
+    mPOP r4                     ; pop CIP (return address)
     ; verify return address (avoid stack/buffer overflow)
-    cmp r4, r8                  ; return address >= code_start ?
-    blo err_memaccess           ; no, error
     cmp r4, r9                  ; return addres < code_end ?
     bhs err_memaccess           ; no, error
-    ; all tests passed
+    ; test passed
+    add r4, r4, r8              ; relocate
     NEXT
 
 OP_RETN                         ; tested
-    REGPOP r7                   ; pop FRM
-    REGPOP r4                   ; pop CIP (return address)
+    mPOP r7                     ; pop FRM
+    mPOP r4                     ; pop CIP (return address)
     ; verify return address (avoid stack/buffer overflow)
-    cmp r4, r8                  ; return address >= code_start ?
-    blo err_memaccess           ; no, error
     cmp r4, r9                  ; return addres < code_end ?
     bhs err_memaccess           ; no, error
-    ; all tests passed
+    ; test passed
+    add r4, r4, r8              ; relocate
     ldr r11, [r6], #4           ; read value at the stack (#args passed to func), add 4 to STK
     add r6, r6, r11             ; STK += #args (+ 4, added in the LDR instruction)
     NEXT
@@ -771,51 +662,13 @@ err_memaccess
     b   amx_exit
 
 OP_CALL                         ; tested
-    add r11, r4, #4             ; r11 = address of next instruction
-    REGPUSH r11
+    sub r11, r4, r8             ; reverse-relocate CIP
+    add r11, r11, #4            ; r11 = address of next instruction
+    mPUSH r11
     JUMPREL al, r11             ; cc = always
     NEXT
 
-OP_ICALL
-    add r11, r4, #4             ; r11 = address of next instruction (absolute)
-    sub r11, r11, r8            ; r11 = relative address (to start of code segment)
-    ldr r12, [r10, #amxOvlIndex]; r12 = overlay index
-    add r11, r12, r11, LSL #16  ; r11 = (address << 16) + ovl_index
-    REGPUSH r11
-    ldr r12, [r4]               ; r12 = [CIP] = new overlay index
-    str r12, [r10, #amxOvlIndex]
-    stmfd sp!, {r0 - r3, lr}    ; save some extra registers
-    mov r0, r10                 ; 1st arg = AMX
-    mov r1, r12                 ; 2nd arg = overlay index
-    ldr r11, [r10, #amxOverlay] ; callback function pointer in r11
-    mov lr, pc                  ; simulate BLX with MOV and BX
-    bx  r11
-    ldmfd sp!, {r0 - r3, lr}    ; restore registers
-    ldr r8, [r10, #amxCode]     ; r8 = code pointer (base)
-    mov r4, r8                  ; CIP = code base
-    NEXT
-
-OP_IRETN
-    REGPOP r7                   ; pop FRM
-    REGPOP r4                   ; pop relative CIP (return address) + overlay index
-    ldr r11, [r6], #4           ; read value at the stack (#args passed to func), add 4 to STK
-    add r6, r6, r11             ; STK += #args (+ 4, added in the LDR instruction)
-    stmfd sp!, {r0 - r3, lr}    ; save some extra registers
-    mov r0, r10                 ; 1st arg = AMX
-    mvn r1, #0                  ; r1 = 0xffffffff
-    mov r1, r1, LSR #16         ; r1 = 0x0000ffff
-    and r1, r4, r1              ; 2nd arg = overlay index
-    str r1, [r10, #amxOvlIndex] ; store new overlay index too
-    ldr r11, [r10, #amxOverlay] ; callback function pointer in r11
-    mov lr, pc                  ; simulate BLX with MOV and BX
-    bx  r11
-    ldmfd sp!, {r0 - r3, lr}    ; restore registers
-    ldr r8, [r10, #amxCode]     ; r8 = code pointer (base)
-    add r4, r8, r4, LSR #16     ; r4 = base address + relative address
-    NEXT
-
 OP_JUMP                         ; tested
-OP_JREL                         ; obsolete
     JUMPREL al, r11             ; cc = always
     NEXT
 
@@ -829,66 +682,6 @@ OP_JNZ                          ; tested
     cmp r0, #0
     JUMPREL ne, r11             ; if PRI != 0, jump
     addeq r4, r4, #4            ; otherwise skip param
-    NEXT
-
-OP_JEQ                          ; tested
-    cmp r0, r1
-    JUMPREL eq, r11             ; if PRI == ALT, jump
-    addne r4, r4, #4            ; otherwise skip param
-    NEXT
-
-OP_JNEQ                         ; tested
-    cmp r0, r1
-    JUMPREL ne, r11             ; if PRI != ALT, jump
-    addeq r4, r4, #4            ; otherwise skip param
-    NEXT
-
-OP_JLESS                        ; not generated by pawncc
-    cmp r0, r1
-    JUMPREL lo, r11             ; if PRI < ALT (unsigned), jump
-    addhs r4, r4, #4            ; otherwise skip param
-    NEXT
-
-OP_JLEQ                         ; not generated by pawncc
-    cmp r0, r1
-    JUMPREL ls, r11             ; if PRI <= ALT (unsigned), jump
-    addhi r4, r4, #4            ; otherwise skip param
-    NEXT
-
-OP_JGRTR                        ; not generated by pawncc
-    cmp r0, r1
-    JUMPREL hi, r11             ; if PRI > ALT (unsigned), jump
-    addls r4, r4, #4            ; otherwise skip param
-    NEXT
-
-OP_JGEQ                         ; not generated by pawncc
-    cmp r0, r1
-    JUMPREL hs, r11             ; if PRI >= ALT (unsigned), jump
-    addlo r4, r4, #4            ; otherwise skip param
-    NEXT
-
-OP_JSLESS                       ; tested
-    cmp r0, r1
-    JUMPREL lt, r11             ; if PRI < ALT (signed), jump
-    addge r4, r4, #4            ; otherwise skip param
-    NEXT
-
-OP_JSLEQ                        ; tested
-    cmp r0, r1
-    JUMPREL le, r11             ; if PRI <= ALT (signed), jump
-    addgt r4, r4, #4            ; otherwise skip param
-    NEXT
-
-OP_JSGRTR                       ; tested
-    cmp r0, r1
-    JUMPREL gt, r11             ; if PRI > ALT (signed), jump
-    addle r4, r4, #4            ; otherwise skip param
-    NEXT
-
-OP_JSGEQ                        ; tested
-    cmp r0, r1
-    JUMPREL ge, r11             ; if PRI >= ALT (signed), jump
-    addlt r4, r4, #4            ; otherwise skip param
     NEXT
 
 OP_SHL                          ; tested
@@ -915,33 +708,15 @@ OP_SHL_C_ALT
     mov r1, r1, LSL r11         ; ALT = ALT << param
     NEXT
 
-OP_SHR_C_PRI
-    GETPARAM r11
-    cmp r11, #0
-    movhi r0, r0, LSR r11       ; PRI = PRI >> param (but check that param > 0)
-    NEXT
-
-OP_SHR_C_ALT
-    GETPARAM r11
-    cmp r11, #0
-    movhi r1, r1, LSR r11       ; ALT = ALT >> param (but check that param > 0)
-    NEXT
-
 OP_SMUL                         ; tested
-OP_UMUL                         ; tested (not generated by pawncc)
     mov r11, r0                 ; copy r0
     mul r0, r11, r1             ; dest must be different from source registers
     NEXT
 
-OP_SDIV_ALT                     ; tested
-    ; swap r0 and r1, then drop into normal (signed) division case
-    mov r11, r0
-    mov r0, r1
-    mov r1, r11
-OP_SDIV                         ; tested (not generated by pawncc)
-    teq r1, #0                  ; verify r1 (divisor)
-    moveq r11, #AMX_ERR_DIVIDE  ; r1 == 0 -> set error code
-    beq amx_exit                ; r1 == 0 -> jump to error-exit
+OP_SDIV                         ; tested
+    teq r0, #0                  ; verify r0 (divisor)
+    moveq r11, #AMX_ERR_DIVIDE  ; r0 == 0 -> set error code
+    beq amx_exit                ; r0 == 0 -> jump to error-exit
     stmfd sp!, {r2 - r3, lr}    ; need two more scratch registers
     ; save input registers and create absolute values
     movs r2, r0
@@ -949,9 +724,9 @@ OP_SDIV                         ; tested (not generated by pawncc)
     movs r3, r1
     rsbmi r1, r1, #0            ; if r3 < 0, r1 = #0 - r1
     ; do the division
-    bl  amx_div                 ; r0 = abs(PRI) / abs(ALT), r1 = abs(PRI) % abs(ALT)
+    bl  amx_div                 ; r0 = r1 / r0, r1 = r1 % r0
     ; patch signs
-    cmp r3, #0                  ; check sign of original value of ALT (divisor)
+    cmp r2, #0                  ; check sign of original value of divisor
     rsbmi r1, r1, #0            ; sign(remainder) = sign(divisor)
     teq r2, r3                  ; check signs of dividend and divisor
     bpl op_div_done             ; sign(divident) == sign(divisor) -> done
@@ -960,34 +735,16 @@ OP_SDIV                         ; tested (not generated by pawncc)
     ; floor the quotient and adjust the remainder
     cmp r1, #0
     subne r0, r0, #1            ; remainder != 0 -> r0 = r0 - 1
-    rsbne r1, r1, r3            ; remainder != 0 -> r1 = divisor - r1
+    rsbne r1, r1, r2            ; remainder != 0 -> r1 = divisor - r1
 op_div_done
     ldmfd sp!, {r2 - r3, lr}
-    NEXT
-
-OP_UDIV_ALT                     ; not generated by pawncc
-    ; swap r0 and r1, then drop into normal (unsigned) division case
-    mov r11, r0
-    mov r0, r1
-    mov r1, r11
-OP_UDIV                         ; not generated by pawncc
-    teq r1, #0                  ; verify r1 (divisor)
-    moveq r11, #AMX_ERR_DIVIDE  ; r1 == 0 -> set error code
-    beq amx_exit                ; r1 == 0 -> jump to error-exit
-    str lr, [sp, #-4]!          ; save lr (r14)
-    bl  amx_div                 ; PRI = PRI / ALT, ALT = PRI % ALT
-    ldr lr, [sp], #4            ; restore lr
     NEXT
 
 OP_ADD                          ; tested
     add r0, r0, r1
     NEXT
 
-OP_SUB
-    sub r0, r0, r1
-    NEXT
-
-OP_SUB_ALT                      ; tested
+OP_SUB                          ; tested
     sub r0, r1, r0
     NEXT
 
@@ -1017,49 +774,6 @@ OP_INVERT                       ; tested
     mvn r0, r0                  ; PRI = NOT PRI (all bits inverted)
     NEXT
 
-OP_ADD_C                        ; tested
-    GETPARAM r11
-    add r0, r0, r11             ; PRI += param
-    NEXT
-
-OP_SMUL_C                       ; tested
-    GETPARAM r11
-    mov r12, r0
-    mul r0, r11, r12            ; PRI *= param
-    NEXT
-
-OP_ZERO_PRI                     ; tested
-    mov r0, #0
-    NEXT
-
-OP_ZERO_ALT
-    mov r1, #0
-    NEXT
-
-OP_ZERO                         ; tested
-    GETPARAM r11
-    mov r12, #0
-    str r12, [r5, r11]
-    NEXT
-
-OP_ZERO_S                       ; tested
-    GETPARAM r11
-    mov r12, #0
-    str r12, [r7, r11]
-    NEXT
-
-OP_SIGN_PRI                     ; not generated by pawncc
-    tst r0, #0x80               ; bit 7 set?
-    mvnne r11, #0xff            ; sets 0xffffff00
-    orrne r0, r0, r11           ; yes, sign-extend to the top 24 bits
-    NEXT
-
-OP_SIGN_ALT                     ; not generated by pawncc
-    tst r1, #0x80               ; bit 7 set?
-    mvnne r11, #0xff            ; sets 0xffffff00
-    orrne r1, r1, r11           ; yes, sign-extend to the top 24 bits
-    NEXT
-
 OP_EQ
     cmp r0, r1
     moveq r0, #1
@@ -1070,30 +784,6 @@ OP_NEQ
     cmp r0, r1
     movne r0, #1
     moveq r0, #0
-    NEXT
-
-OP_LESS                         ; not generated by pawncc
-    cmp r0, r1
-    movlo r0, #1
-    movhs r0, #0
-    NEXT
-
-OP_LEQ                          ; not generated by pawncc
-    cmp r0, r1
-    movls r0, #1
-    movhi r0, #0
-    NEXT
-
-OP_GRTR                         ; not generated by pawncc
-    cmp r0, r1
-    movhi r0, #1
-    movls r0, #0
-    NEXT
-
-OP_GEQ                          ; not generated by pawncc
-    cmp r0, r1
-    movhs r0, #1
-    movlo r0, #0
     NEXT
 
 OP_SLESS                        ; tested
@@ -1120,40 +810,12 @@ OP_SGEQ                         ; tested
     movlt r0, #0
     NEXT
 
-OP_EQ_C_PRI                     ; tested
-    GETPARAM r11
-    cmp r0, r11
-    moveq r0, #1
-    movne r0, #0
-    NEXT
-
-OP_EQ_C_ALT
-    GETPARAM r11
-    cmp r1, r11
-    moveq r0, #1
-    movne r0, #0
-    NEXT
-
 OP_INC_PRI
     add r0, r0, #1
     NEXT
 
 OP_INC_ALT
     add r1, r1, #1
-    NEXT
-
-OP_INC                          ; tested
-    GETPARAM r11
-    ldr r12, [r5, r11]
-    add r12, r12, #1
-    str r12, [r5, r11]
-    NEXT
-
-OP_INC_S                        ; tested
-    GETPARAM r11
-    ldr r12, [r7, r11]
-    add r12, r12, #1
-    str r12, [r7, r11]
     NEXT
 
 OP_INC_I                        ; tested
@@ -1168,20 +830,6 @@ OP_DEC_PRI
 
 OP_DEC_ALT
     sub r1, r1, #1
-    NEXT
-
-OP_DEC                          ; tested
-    GETPARAM r11
-    ldr r12, [r5, r11]
-    sub r12, r12, #1
-    str r12, [r5, r11]
-    NEXT
-
-OP_DEC_S                        ; tested
-    GETPARAM r11
-    ldr r12, [r7, r11]
-    sub r12, r12, #1
-    str r12, [r7, r11]
     NEXT
 
 OP_DEC_I                        ; tested
@@ -1213,6 +861,7 @@ movs4loop
     ldrge r12, [r0], #4
     strge r12, [r1], #4
     bgt movs4loop
+    addlt r11, r11, #4          ; undo subtraction of 4-byte word, if not zero
 movs1loop
     subs r11, r11, #1
     ldrgeb r12, [r0], #1
@@ -1294,9 +943,8 @@ OP_BOUNDS                       ; tested
     bhi amx_exit
     NEXT
 
-OP_SYSREQ_C                     ; tested
+OP_SYSREQ                       ; tested
     GETPARAM r0                 ; native function index in r0
-OP_SYSREQ_PRI                   ; tested (not generated by pawncc)
     ; store stack and heap state AMX state
     sub r11, r7, r5             ; reverse-relocate FRM
     str r11, [r10, #amxFRM]
@@ -1308,7 +956,7 @@ OP_SYSREQ_PRI                   ; tested (not generated by pawncc)
     str r11, [r10, #amxCIP]
     ; invoke callback
     stmfd sp!, {r1 - r3, lr}    ; save some extra registers
-    sub sp, sp, #4              ; reserve a cell on the stack for the return value
+    sub sp, sp, #8              ; reserve a cell on the stack for the return value, maintaining 8-byte alignment
     mov r1, r0                  ; 2nd arg = index (in r0, so do this one first)
     mov r0, r10                 ; 1st arg = AMX
     mov r2, sp                  ; 3rd arg = address of return value
@@ -1317,16 +965,392 @@ OP_SYSREQ_PRI                   ; tested (not generated by pawncc)
     mov lr, pc                  ; simulate BLX with MOV and BX
     bx  r11
     mov r11, r0                 ; get error return in r11
-    ldr r0, [sp], #4            ; get return value, restore stack
+    ldr r0, [sp], #8            ; get return value, restore stack
     ldmfd sp!, {r1 - r3, lr}    ; restore registers
     teq r11, #AMX_ERR_NONE      ; callback hook returned error/abort code?
     bne amx_exit                ; yes -> quit
     NEXT
 
+OP_SWITCH                       ; tested
+    str r14, [sp, #-4]!         ; need extra register
+    ldr r11, [r4]               ; r11 = [CIP], relative offset to case-table
+    add r11, r11, r4            ; r11 = direct address, OP_CASETBL opcode already skipped
+    ldr r12, [r11]              ; r12 = number of case-table records
+    ldr r14, [r11, #4]          ; preset CIP to "default" case (none-matched)
+    add r4, r11, r14
+op_switch_loop
+    subs r12, r12, #1           ; decrement number to do; any left?
+    bmi op_switch_done          ; no, quit (CIP already set to the default value)
+    add r11, r11, #8            ; move to next record
+    ldr r14, [r11]              ; get the case value
+    cmp r0, r14                 ; case value identical to PRI ?
+    bne op_switch_loop          ; no, continue
+    ldr r14, [r11, #4]          ; yes, load matching CIP and exit loop
+    add r4, r11, r14            ; r4 = address of case record + offset of the record
+op_switch_done
+    ldr r14, [sp], #4           ; restore r14
+    NEXT
+
+OP_SWAP_PRI                     ; tested
+    ldr r11, [r6]
+    str r0, [r6]
+    mov r0, r11
+    NEXT
+
+OP_SWAP_ALT
+    ldr r11, [r6]
+    str r1, [r6]
+    mov r1, r11
+    NEXT
+
+OP_BREAK                        ; tested
+    ldr r12, [r10, #amxDebug]
+    teq r12, #0
+    beq op_break_quit
+    ; store stack and heap state AMX state
+    sub r11, r7, r5             ; reverse-relocate FRM
+    str r11, [r10, #amxFRM]
+    sub r11, r6, r5             ; reverse-relocate STK
+    str r11, [r10, #amxSTK]
+    sub r11, r3, r5             ; reverse-relocate HEA
+    str r11, [r10, #amxHEA]
+    sub r11, r4, r8             ; reverse-relocate CIP
+    str r11, [r10, #amxCIP]
+    ; invoke debug hook (address still in r12)
+    stmfd sp!, {r0 - r3, r4, lr}; save some extra registers (r4 is a dummy, to keep sp 8-byte aligned)
+    mov r0, r10                 ; 1st arg = AMX
+    mov lr, pc                  ; simulate BLX with MOV and BX
+    bx  r12
+    mov r11, r0                 ; store exit code in r11 (r0 is restored)
+    ldmfd sp!, {r0 - r3, r4, lr}; restore registers
+    teq r11, #0                 ; debug hook returned error/abort code?
+    bne amx_exit                ; yes -> quit
+op_break_quit
+    NEXT
+
+OP_CASETBL
+OP_CASETBL_OVL
+    mov r11, #AMX_ERR_INVINSTR  ; these instructions are no longer supported
+    b   amx_exit
+
+OP_SYSREQ_D                     ; tested
+    GETPARAM r12                ; address of native function in r12
+    ; store stack and heap state AMX state
+    sub r11, r7, r5             ; reverse-relocate FRM
+    str r11, [r10, #amxFRM]
+    sub r11, r6, r5             ; reverse-relocate STK
+    str r11, [r10, #amxSTK]
+    sub r11, r3, r5             ; reverse-relocate HEA
+    str r11, [r10, #amxHEA]
+    sub r11, r4, r8             ; reverse-relocate CIP
+    str r11, [r10, #amxCIP]
+    ; invoke callback (address still in r12)
+    stmfd sp!, {r1 - r3, lr}    ; save some extra registers
+    mov r0, r10                 ; 1st arg = AMX
+    mov r1, r6                  ; 2nd arg = address in the AMX stack
+    mov lr, pc                  ; simulate BLX with MOV and BX
+    bx  r12
+    ldmfd sp!, {r1 - r3, lr}    ; restore registers
+    ldr r11, [r10, #amxError]   ; get error returned by native function
+    teq r11, #AMX_ERR_NONE      ; callback hook returned error/abort code?
+    bne amx_exit                ; yes -> quit
+    NEXT
+
+OP_SYSREQ_ND                    ; tested
+    GETPARAM r0                 ; address of native function in r0 (temporary)
+    GETPARAM r12                ; get # parameters
+    mPUSH r12                   ; push second parameter
+    ; store stack and heap state AMX state
+    sub r11, r7, r5             ; reverse-relocate FRM
+    str r11, [r10, #amxFRM]
+    sub r11, r6, r5             ; reverse-relocate STK
+    str r11, [r10, #amxSTK]
+    sub r11, r3, r5             ; reverse-relocate HEA
+    str r11, [r10, #amxHEA]
+    sub r11, r4, r8             ; reverse-relocate CIP
+    str r11, [r10, #amxCIP]
+    ; invoke callback (address still in r0)
+    mov r11, r0                 ; get address to call in r11 (r0 is overwritten)
+    stmfd sp!, {r1 - r3, r4, r12, lr} ; save some extra registers (r4 is a dummy, to keep sp 8-byte aligned)
+    mov r0, r10                 ; 1st arg = AMX
+    mov r1, r6                  ; 2nd arg = address in the AMX stack
+    mov lr, pc                  ; simulate BLX with MOV and BX
+    bx  r11
+    ldmfd sp!, {r1 - r3, r4, r12, lr} ; restore registers
+    add r6, r6, r12             ; remove # parameters from the AMX stack
+    add r6, r6, #4              ; also remove the extra cell pushed
+    ldr r11, [r10, #amxError]   ; get error returned by native function
+    teq r11, #AMX_ERR_NONE      ; callback hook returned error/abort code?
+    bne amx_exit                ; yes -> quit
+    NEXT
+
+
+    ; overlay instructions
+ IF :LNOT::DEF:AMX_NO_OVERLAY
+
+OP_CALL_OVL
+    add r11, r4, #4             ; r11 = address of next instruction (absolute)
+    sub r11, r11, r8            ; r11 = relative address (to start of code segment)
+    ldr r12, [r10, #amxOvlIndex]; r12 = overlay index
+    add r11, r12, r11, LSL #16  ; r11 = (address << 16) + ovl_index
+    mPUSH r11
+    ldr r12, [r4]               ; r12 = [CIP] = new overlay index
+    str r12, [r10, #amxOvlIndex]
+    stmfd sp!, {r0 - r3, r4, lr}; save some extra registers (r4 is a dummy, to keep sp 8-byte aligned)
+    mov r0, r10                 ; 1st arg = AMX
+    mov r1, r12                 ; 2nd arg = overlay index
+    ldr r11, [r10, #amxOverlay] ; callback function pointer in r11
+    mov lr, pc                  ; simulate BLX with MOV and BX
+    bx  r11
+    ldmfd sp!, {r0 - r3, r4, lr}; restore registers
+    ldr r8, [r10, #amxCode]     ; r8 = code pointer (base)
+    mov r4, r8                  ; CIP = code base
+    NEXT
+
+OP_RETN_OVL
+    mPOP r7                     ; pop FRM
+    mPOP r4                     ; pop relative CIP (return address) + overlay index
+    ldr r11, [r6], #4           ; read value at the stack (#args passed to func), add 4 to STK
+    add r6, r6, r11             ; STK += #args (+ 4, added in the LDR instruction)
+    stmfd sp!, {r0 - r3, r4, lr}; save some extra registers (r4 is a dummy, to keep sp 8-byte aligned)
+    mov r0, r10                 ; 1st arg = AMX
+    mvn r1, #0                  ; r1 = 0xffffffff
+    mov r1, r1, LSR #16         ; r1 = 0x0000ffff
+    and r1, r4, r1              ; 2nd arg = overlay index
+    str r1, [r10, #amxOvlIndex] ; store new overlay index too
+    ldr r11, [r10, #amxOverlay] ; callback function pointer in r11
+    mov lr, pc                  ; simulate BLX with MOV and BX
+    bx  r11
+    ldmfd sp!, {r0 - r3, r4, lr}; restore registers
+    ldr r8, [r10, #amxCode]     ; r8 = code pointer (base)
+    add r4, r8, r4, LSR #16     ; r4 = base address + relative address
+    NEXT
+
+OP_SWITCH_OVL
+    str r14, [sp, #-4]!         ; need extra register
+    ldr r11, [r4]               ; r11 = [CIP], relative offset to case-table
+    add r11, r11, r4            ; r11 = direct address, OP_CASETBL opcode already skipped
+    ldr r12, [r11]              ; r12 = number of case-table records
+    ldr r4, [r11, #4]           ; preset ovl_index to "default" case (none-matched)
+op_iswitch_loop
+    subs r12, r12, #1           ; decrement number to do; any left?
+    bmi op_iswitch_done         ; no, quit (CIP already set to the default value)
+    add r11, r11, #8            ; move to next record
+    ldr r14, [r11]              ; get the case value
+    cmp r0, r14                 ; case value identical to PRI ?
+    bne op_iswitch_loop         ; no, continue
+    ldr r4, [r11, #4]           ; yes, load matching ovl_index and exit loop
+op_iswitch_done
+    ldr r14, [sp], #4           ; restore r14
+    str r4, [r10, #amxOvlIndex] ; store new overlay index
+    stmfd sp!, {r0 - r3, r4, lr}; save some extra registers (r4 is a dummy, to keep sp 8-byte aligned)
+    mov r0, r10                 ; 1st arg = AMX
+    mov r1, r4                  ; 2nd arg = overlay index
+    ldr r11, [r10, #amxOverlay] ; callback function pointer in r11
+    mov lr, pc                  ; simulate BLX with MOV and BX
+    bx  r11
+    ldmfd sp!, {r0 - r3, r4, lr}; restore registers
+    ldr r8, [r10, #amxCode]     ; r8 = code pointer (base)
+    mov r4, r8                  ; CIP = code base
+    NEXT
+
+ ENDIF  ; AMX_NO_OVERLAY
+
+
+    ; supplemental instructions
+ IF :LNOT::DEF:AMX_NO_MACRO_INSTR
+
+OP_LIDX                         ; tested
+    add r12, r1, r0, LSL #2     ; r12 = ALT + 4*PRI
+    add r12, r12, r5            ; relocate to absolute address
+    VERIFYADDRESS r12
+    ldr r0, [r12]
+    NEXT
+
+OP_LIDX_B
+    GETPARAM r11
+    add r12, r1, r0, LSL r11    ; r12 = ALT + (PRI << param)
+    add r12, r12, r5            ; relocate to absolute address
+    VERIFYADDRESS r12
+    ldr r0, [r12]
+    NEXT
+
+OP_IDXADDR                      ; tested
+    add r0, r1, r0, LSL #2      ; PRI = ALT + 4*PRI
+    NEXT
+
+OP_IDXADDR_B
+    GETPARAM r11
+    add r0, r1, r0, LSL r11     ; PRI = ALT + (PRI << param)
+    NEXT
+
+OP_PUSH_C                       ; tested
+    GETPARAM r11
+    mPUSH r11
+    NEXT
+
+OP_PUSH
+    GETPARAM r11
+    ldr r11, [r5, r11]
+    mPUSH r11
+    NEXT
+
+OP_PUSH_S                       ; tested
+    GETPARAM r11
+    ldr r11, [r7, r11]
+    mPUSH r11
+    NEXT
+
+OP_PUSH_ADR                     ; tested
+    GETPARAM r11
+    add r11, r11, r7            ; relocate to FRM
+    sub r11, r11, r5            ; but relative to start of data section
+    mPUSH r11
+    NEXT
+
+OP_PUSHR_C
+    GETPARAM r11
+    add r11, r11, r5            ; relocate to DAT
+    mPUSH r11
+    NEXT
+
+OP_PUSHR_S
+    GETPARAM r11
+    ldr r11, [r7, r11]
+    add r11, r11, r5            ; relocate to DAT
+    mPUSH r11
+    NEXT
+
+OP_PUSHR_ADR
+    GETPARAM r11
+    add r11, r11, r7            ; relocate to FRM
+    mPUSH r11
+    NEXT
+
+OP_JEQ                          ; tested
+    cmp r0, r1
+    JUMPREL eq, r11             ; if PRI == ALT, jump
+    addne r4, r4, #4            ; otherwise skip param
+    NEXT
+
+OP_JNEQ                         ; tested
+    cmp r0, r1
+    JUMPREL ne, r11             ; if PRI != ALT, jump
+    addeq r4, r4, #4            ; otherwise skip param
+    NEXT
+
+OP_JSLESS                       ; tested
+    cmp r0, r1
+    JUMPREL lt, r11             ; if PRI < ALT (signed), jump
+    addge r4, r4, #4            ; otherwise skip param
+    NEXT
+
+OP_JSLEQ                        ; tested
+    cmp r0, r1
+    JUMPREL le, r11             ; if PRI <= ALT (signed), jump
+    addgt r4, r4, #4            ; otherwise skip param
+    NEXT
+
+OP_JSGRTR                       ; tested
+    cmp r0, r1
+    JUMPREL gt, r11             ; if PRI > ALT (signed), jump
+    addle r4, r4, #4            ; otherwise skip param
+    NEXT
+
+OP_JSGEQ                        ; tested
+    cmp r0, r1
+    JUMPREL ge, r11             ; if PRI >= ALT (signed), jump
+    addlt r4, r4, #4            ; otherwise skip param
+    NEXT
+
+OP_SDIV_INV
+    ; swap r0 and r1, then branch to the normal (signed) division case
+    mov r11, r0
+    mov r0, r1
+    mov r1, r11
+    b   OP_SDIV
+
+OP_SUB_INV
+    sub r0, r0, r1
+    NEXT
+
+OP_ADD_C                        ; tested
+    GETPARAM r11
+    add r0, r0, r11             ; PRI += param
+    NEXT
+
+OP_SMUL_C                       ; tested
+    GETPARAM r11
+    mov r12, r0
+    mul r0, r11, r12            ; PRI *= param
+    NEXT
+
+OP_ZERO_PRI                     ; tested
+    mov r0, #0
+    NEXT
+
+OP_ZERO_ALT
+    mov r1, #0
+    NEXT
+
+OP_ZERO                         ; tested
+    GETPARAM r11
+    mov r12, #0
+    str r12, [r5, r11]
+    NEXT
+
+OP_ZERO_S                       ; tested
+    GETPARAM r11
+    mov r12, #0
+    str r12, [r7, r11]
+    NEXT
+
+OP_EQ_C_PRI                     ; tested
+    GETPARAM r11
+    cmp r0, r11
+    moveq r0, #1
+    movne r0, #0
+    NEXT
+
+OP_EQ_C_ALT
+    GETPARAM r11
+    cmp r1, r11
+    moveq r0, #1
+    movne r0, #0
+    NEXT
+
+OP_INC                          ; tested
+    GETPARAM r11
+    ldr r12, [r5, r11]
+    add r12, r12, #1
+    str r12, [r5, r11]
+    NEXT
+
+OP_INC_S                        ; tested
+    GETPARAM r11
+    ldr r12, [r7, r11]
+    add r12, r12, #1
+    str r12, [r7, r11]
+    NEXT
+
+OP_DEC                          ; tested
+    GETPARAM r11
+    ldr r12, [r5, r11]
+    sub r12, r12, #1
+    str r12, [r5, r11]
+    NEXT
+
+OP_DEC_S                        ; tested
+    GETPARAM r11
+    ldr r12, [r7, r11]
+    sub r12, r12, #1
+    str r12, [r7, r11]
+    NEXT
+
 OP_SYSREQ_N                     ; tested
     GETPARAM r0                 ; get native function index
     GETPARAM r12                ; get # parameters
-    REGPUSH r12                 ; push second parameter
+    mPUSH r12                   ; push second parameter
     ; store stack and heap state AMX state
     sub r11, r7, r5             ; reverse-relocate FRM
     str r11, [r10, #amxFRM]
@@ -1355,273 +1379,85 @@ OP_SYSREQ_N                     ; tested
     bne amx_exit                ; yes -> quit
     NEXT
 
-OP_SYSREQ_D                     ; tested
-    GETPARAM r12                ; address of native function in r12
-    ; store stack and heap state AMX state
-    sub r11, r7, r5             ; reverse-relocate FRM
-    str r11, [r10, #amxFRM]
-    sub r11, r6, r5             ; reverse-relocate STK
-    str r11, [r10, #amxSTK]
-    sub r11, r3, r5             ; reverse-relocate HEA
-    str r11, [r10, #amxHEA]
-    sub r11, r4, r8             ; reverse-relocate CIP
-    str r11, [r10, #amxCIP]
-    ; invoke callback (address still in r12)
-    stmfd sp!, {r1 - r3, lr}    ; save some extra registers
-    mov r0, r10                 ; 1st arg = AMX
-    mov r1, r6                  ; 2nd arg = address in the AMX stack
-    mov lr, pc                  ; simulate BLX with MOV and BX
-    bx  r12
-    ldmfd sp!, {r1 - r3, lr}    ; restore registers
-    ldr r11, [r10, #amxError]   ; get error returned by native function
-    teq r11, #AMX_ERR_NONE      ; callback hook returned error/abort code?
-    bne amx_exit                ; yes -> quit
-    NEXT
-
-OP_SYSREQ_ND                    ; tested
-    GETPARAM r0                 ; address of native function in r0 (temporary)
-    GETPARAM r12                ; get # parameters
-    REGPUSH r12                 ; push second parameter
-    ; store stack and heap state AMX state
-    sub r11, r7, r5             ; reverse-relocate FRM
-    str r11, [r10, #amxFRM]
-    sub r11, r6, r5             ; reverse-relocate STK
-    str r11, [r10, #amxSTK]
-    sub r11, r3, r5             ; reverse-relocate HEA
-    str r11, [r10, #amxHEA]
-    sub r11, r4, r8             ; reverse-relocate CIP
-    str r11, [r10, #amxCIP]
-    ; invoke callback (address still in r0)
-    mov r11, r0                 ; get address to call in r11 (r0 is overwritten)
-    stmfd sp!, {r1 - r3, r12, lr} ; save some extra registers
-    mov r0, r10                 ; 1st arg = AMX
-    mov r1, r6                  ; 2nd arg = address in the AMX stack
-    mov lr, pc                  ; simulate BLX with MOV and BX
-    bx  r11
-    ldmfd sp!, {r1 - r3, r12, lr} ; restore registers
-    add r6, r6, r12             ; remove # parameters from the AMX stack
-    add r6, r6, #4              ; also remove the extra cell pushed
-    ldr r11, [r10, #amxError]   ; get error returned by native function
-    teq r11, #AMX_ERR_NONE      ; callback hook returned error/abort code?
-    bne amx_exit                ; yes -> quit
-    NEXT
-
-OP_PICK
+OP_PUSHM_C
+    GETPARAM r12                ; r12 = parameter count
+op_pushm_c_loop
     GETPARAM r11
-    ldr r0, [r6, r11]
+    mPUSH r11
+    subs r12, r12, #1
+    bgt op_pushm_c_loop
     NEXT
 
-OP_FILE
-OP_LINE
-OP_SYMBOL
-OP_SRANGE
-OP_SYMTAG
-OP_JUMP_PRI
-OP_CALL_PRI
-OP_CASETBL
-OP_ICASETBL
-    mov r11, #AMX_ERR_INVINSTR  ; these instructions are no longer supported
-    b   amx_exit
-
-OP_SWITCH                       ; tested
-    str r14, [sp, #-4]!         ; need extra register
-    ldr r11, [r4]               ; r11 = [CIP], relative offset to case-table
-    add r11, r11, r4            ; r11 = direct address, OP_CASETBL opcode already skipped
-    ldr r12, [r11]              ; r12 = number of case-table records
-    ldr r14, [r11, #4]          ; preset CIP to "default" case (none-matched)
-    add r4, r11, r14
-op_switch_loop
-    subs r12, r12, #1           ; decrement number to do; any left?
-    bmi op_switch_done          ; no, quit (CIP already set to the default value)
-    add r11, r11, #8            ; move to next record
-    ldr r14, [r11]              ; get the case value
-    cmp r0, r14                 ; case value identical to PRI ?
-    bne op_switch_loop          ; no, continue
-    ldr r14, [r11, #4]          ; yes, load matching CIP and exit loop
-    add r4, r11, r14            ; r4 = address of case record + offset of the record
-op_switch_done
-    ldr r14, [sp], #4           ; restore r14
+OP_PUSHM
+    GETPARAM r12                ; r12 = parameter count
+op_pushm_loop
+    GETPARAM r11
+    ldr r11, [r5, r11]
+    mPUSH r11
+    subs r12, r12, #1
+    bgt op_pushm_loop
     NEXT
 
-OP_ISWITCH
-    str r14, [sp, #-4]!         ; need extra register
-    ldr r11, [r4]               ; r11 = [CIP], relative offset to case-table
-    add r11, r11, r4            ; r11 = direct address, OP_CASETBL opcode already skipped
-    ldr r12, [r11]              ; r12 = number of case-table records
-    ldr r4, [r11, #4]           ; preset ovl_index to "default" case (none-matched)
-op_iswitch_loop
-    subs r12, r12, #1           ; decrement number to do; any left?
-    bmi op_iswitch_done         ; no, quit (CIP already set to the default value)
-    add r11, r11, #8            ; move to next record
-    ldr r14, [r11]              ; get the case value
-    cmp r0, r14                 ; case value identical to PRI ?
-    bne op_iswitch_loop         ; no, continue
-    ldr r4, [r11, #4]           ; yes, load matching ovl_index and exit loop
-op_iswitch_done
-    ldr r14, [sp], #4           ; restore r14
-    str r4, [r10, #amxOvlIndex] ; store new overlay index
-    stmfd sp!, {r0 - r3, lr}    ; save some extra registers
-    mov r0, r10                 ; 1st arg = AMX
-    mov r1, r4                  ; 2nd arg = overlay index
-    ldr r11, [r10, #amxOverlay] ; callback function pointer in r11
-    mov lr, pc                  ; simulate BLX with MOV and BX
-    bx  r11
-    ldmfd sp!, {r0 - r3, lr}    ; restore registers
-    ldr r8, [r10, #amxCode]     ; r8 = code pointer (base)
-    mov r4, r8                  ; CIP = code base
+OP_PUSHM_S
+    GETPARAM r12                ; r12 = parameter count
+op_pushm_s_loop
+    GETPARAM r11
+    ldr r11, [r7, r11]
+    mPUSH r11
+    subs r12, r12, #1
+    bgt op_pushm_s_loop
     NEXT
 
-OP_SWAP_PRI                     ; tested
-    ldr r11, [r6]
-    str r0, [r6]
-    mov r0, r11
-    NEXT
-
-OP_SWAP_ALT
-    ldr r11, [r6]
-    str r1, [r6]
-    mov r1, r11
-    NEXT
-
-OP_PUSH_ADR                     ; tested
+OP_PUSHM_ADR
+    GETPARAM r12                ; r12 = parameter count
+op_pushm_adr_loop
     GETPARAM r11
     add r11, r11, r7            ; relocate to FRM
     sub r11, r11, r5            ; but relative to start of data section
-    REGPUSH r11
+    mPUSH r11
+    subs r12, r12, #1
+    bgt op_pushm_adr_loop
     NEXT
 
-OP_NOP
+OP_PUSHRM_C
+    GETPARAM r12                ; r12 = parameter count
+op_pushrm_c_loop
+    GETPARAM r11
+    add r11, r11, r5            ; relocate to DAT
+    mPUSH r11
+    subs r12, r12, #1
+    bgt op_pushrm_c_loop
     NEXT
 
-OP_BREAK                        ; tested
-    ldr r12, [r10, #amxDebug]
-    teq r12, #0
-    beq op_break_quit
-    ; store stack and heap state AMX state
-    sub r11, r7, r5             ; reverse-relocate FRM
-    str r11, [r10, #amxFRM]
-    sub r11, r6, r5             ; reverse-relocate STK
-    str r11, [r10, #amxSTK]
-    sub r11, r3, r5             ; reverse-relocate HEA
-    str r11, [r10, #amxHEA]
-    sub r11, r4, r8             ; reverse-relocate CIP
-    str r11, [r10, #amxCIP]
-    ; invoke debug hook (address still in r12)
-    stmfd   sp!, {r0 - r3, lr}  ; save some extra registers
-    mov r0, r10                 ; 1st arg = AMX
-    mov lr, pc                  ; simulate BLX with MOV and BX
-    bx  r12
-    mov r11, r0                 ; store exit code in r11 (r0 is restored)
-    ldmfd sp!, {r0 - r3, lr}    ; restore registers
-    teq r11, #0                 ; debug hook returned error/abort code?
-    bne amx_exit                ; yes -> quit
-op_break_quit
-    NEXT
-
-OP_PUSH5                        ; tested
-    GETPARAM r11
-    ldr r11, [r5, r11]
-    REGPUSH r11
-    ; drop through
-OP_PUSH4                        ; tested
-    GETPARAM r11
-    ldr r11, [r5, r11]
-    REGPUSH r11
-    ; drop through
-OP_PUSH3                        ; tested
-    GETPARAM r11
-    ldr r11, [r5, r11]
-    REGPUSH r11
-    ; drop through
-OP_PUSH2                        ; tested
-    GETPARAM r11
-    ldr r11, [r5, r11]
-    REGPUSH r11
-    GETPARAM r11
-    ldr r11, [r5, r11]
-    REGPUSH r11
-    NEXT
-
-OP_PUSH5_S                      ; tested
+OP_PUSHRM_S
+    GETPARAM r12                ; r12 = parameter count
+op_pushrm_s_loop
     GETPARAM r11
     ldr r11, [r7, r11]
-    REGPUSH r11
-    ; drop through
-OP_PUSH4_S                      ; tested
-    GETPARAM r11
-    ldr r11, [r7, r11]
-    REGPUSH r11
-    ; drop through
-OP_PUSH3_S                      ; tested
-    GETPARAM r11
-    ldr r11, [r7, r11]
-    REGPUSH r11
-    ; drop through
-OP_PUSH2_S                      ; tested
-    GETPARAM r11
-    ldr r11, [r7, r11]
-    REGPUSH r11
-    GETPARAM r11
-    ldr r11, [r7, r11]
-    REGPUSH r11
+    add r11, r11, r5            ; relocate to DAT
+    mPUSH r11
+    subs r12, r12, #1
+    bgt op_pushrm_s_loop
     NEXT
 
-OP_PUSH5_C
-    GETPARAM r11
-    REGPUSH r11
-    ; drop through
-OP_PUSH4_C                      ; tested
-    GETPARAM r11
-    REGPUSH r11
-    ; drop through
-OP_PUSH3_C                      ; tested
-    GETPARAM r11
-    REGPUSH r11
-    ; drop through
-OP_PUSH2_C                      ; tested
-    GETPARAM r11
-    REGPUSH r11
-    GETPARAM r11
-    REGPUSH r11
-    NEXT
-
-OP_PUSH5_ADR                    ; tested
+OP_PUSHRM_ADR
+    GETPARAM r12                ; r12 = parameter count
+op_pushrm_adr_loop
     GETPARAM r11
     add r11, r11, r7            ; relocate to FRM
-    sub r11, r11, r5            ; but relative to start of data section
-    REGPUSH r11
-    ; drop through
-OP_PUSH4_ADR                    ; tested
-    GETPARAM r11
-    add r11, r11, r7            ; relocate to FRM
-    sub r11, r11, r5            ; but relative to start of data section
-    REGPUSH r11
-    ; drop through
-OP_PUSH3_ADR                    ; tested
-    GETPARAM r11
-    add r11, r11, r7            ; relocate to FRM
-    sub r11, r11, r5            ; but relative to start of data section
-    REGPUSH r11
-    ; drop through
-OP_PUSH2_ADR                    ; tested
-    GETPARAM r11
-    add r11, r11, r7            ; relocate to FRM
-    sub r11, r11, r5            ; but relative to start of data section
-    REGPUSH r11
-    GETPARAM r11
-    add r11, r11, r7
-    sub r11, r11, r5
-    REGPUSH r11
+    mPUSH r11
+    subs r12, r12, #1
+    bgt op_pushrm_adr_loop
     NEXT
 
-OP_LOAD_BOTH                    ; tested
+OP_LOAD2                        ; tested
     GETPARAM r11
     ldr r0, [r5, r11]
     GETPARAM r11
     ldr r1, [r5, r11]
     NEXT
 
-OP_LOAD_S_BOTH                  ; tested
+OP_LOAD2_S                      ; tested
     GETPARAM r11
     ldr r0, [r7, r11]
     GETPARAM r11
@@ -1640,10 +1476,11 @@ OP_CONST_S                      ; tested
     str r12, [r7, r11]
     NEXT
 
-; --------------------------------------------------------
-; packed opcodes
-; --------------------------------------------------------
-IF :LNOT::DEF:AMX_NO_PACKED_OPC
+ ENDIF  ; AMX_NO_MACRO_INSTR
+
+
+    ; packed opcodes
+ IF :LNOT::DEF:AMX_NO_PACKED_OPC
 
 OP_LOAD_P_PRI
     ldr r0, [r5, r12, ASR #16]
@@ -1659,16 +1496,6 @@ OP_LOAD_P_S_PRI
 
 OP_LOAD_P_S_ALT
     ldr r1, [r7, r12, ASR #16]
-    NEXT
-
-OP_LREF_P_PRI
-    ldr r11, [r5, r12, ASR #16]
-    ldr r0, [r5, r11]
-    NEXT
-
-OP_LREF_P_ALT
-    ldr r11, [r5, r12, ASR #16]
-    ldr r1, [r5, r11]
     NEXT
 
 OP_LREF_P_S_PRI
@@ -1713,40 +1540,17 @@ OP_ADDR_P_ALT
     sub r1, r1, r5              ; reverse relocate
     NEXT
 
-OP_STOR_P_PRI
+OP_STOR_P
     str r0, [r5, r12, ASR #16]
     NEXT
 
-OP_STOR_P_ALT
-    str r1, [r5, r12, ASR #16]
-    NEXT
-
-OP_STOR_P_S_PRI
+OP_STOR_P_S
     str r0, [r7, r12, ASR #16]
     NEXT
 
-OP_STOR_P_S_ALT
-    str r1, [r7, r12, ASR #16]
-    NEXT
-
-OP_SREF_P_PRI
-    ldr r11, [r5, r12, ASR #16]
-    str r0, [r5, r11]
-    NEXT
-
-OP_SREF_P_ALT
-    ldr r11, [r5, r12, ASR #16]
-    str r1, [r5, r11]
-    NEXT
-
-OP_SREF_P_S_PRI
+OP_SREF_P_S
     ldr r11, [r7, r12, ASR #16]
     str r0, [r5, r11]
-    NEXT
-
-OP_SREF_P_S_ALT
-    ldr r11, [r7, r12, ASR #16]
-    str r1, [r5, r11]
     NEXT
 
 OP_STRB_P_I
@@ -1782,27 +1586,116 @@ OP_ALIGN_P_PRI
   ENDIF
     NEXT
 
-OP_ALIGN_P_ALT
-    GETPARAM_P r11
-  IF :LNOT::DEF:BIG_ENDIAN
-    rsbs r11, r11, #4           ; rsb = reverse subtract; r11 = #4 - param
-    eorhi r1, r1, r11           ; ALT ^= (#4 - param), but only if (#4 - param) > 0
-  ENDIF
-    NEXT
-
 OP_PUSH_P_C
     GETPARAM_P r11
-    REGPUSH r11
+    mPUSH r11
     NEXT
 
 OP_PUSH_P
     ldr r11, [r5, r12, ASR #16]
-    REGPUSH r11
+    mPUSH r11
     NEXT
 
 OP_PUSH_P_S
     ldr r11, [r7, r12, ASR #16]
-    REGPUSH r11
+    mPUSH r11
+    NEXT
+
+OP_PUSH_P_ADR
+    GETPARAM_P r11
+    add r11, r11, r7            ; relocate to FRM
+    sub r11, r11, r5            ; but relative to start of data section
+    mPUSH r11
+    NEXT
+
+OP_PUSHR_P_C
+    GETPARAM_P r11
+    add r11, r11, r5            ; relocate to DAT
+    mPUSH r11
+    NEXT
+
+OP_PUSHR_P_S
+    GETPARAM_P r11
+    ldr r11, [r7, r11]
+    add r11, r11, r5            ; relocate to DAT
+    mPUSH r11
+    NEXT
+
+OP_PUSHR_P_ADR
+    GETPARAM_P r11
+    add r11, r11, r7            ; relocate to FRM
+    mPUSH r11
+    NEXT
+
+OP_PUSHM_P_C
+    GETPARAM_P r12              ; r12 = parameter count
+op_pushm_p_c_loop
+    GETPARAM r11
+    mPUSH r11
+    subs r12, r12, #1
+    bgt op_pushm_p_c_loop
+    NEXT
+
+OP_PUSHM_P
+    GETPARAM_P r12              ; r12 = parameter count
+op_pushm_p_loop
+    GETPARAM r11
+    ldr r11, [r5, r11]
+    mPUSH r11
+    subs r12, r12, #1
+    bgt op_pushm_p_loop
+    NEXT
+
+OP_PUSHM_P_S
+    GETPARAM_P r12              ; r12 = parameter count
+op_pushm_p_s_loop
+    GETPARAM r11
+    ldr r11, [r7, r11]
+    mPUSH r11
+    subs r12, r12, #1
+    bgt op_pushm_p_s_loop
+    NEXT
+
+OP_PUSHM_P_ADR
+    GETPARAM_P r12              ; r12 = parameter count
+op_pushm_p_adr_loop
+    GETPARAM r11
+    add r11, r11, r7            ; relocate to FRM
+    sub r11, r11, r5            ; but relative to start of data section
+    mPUSH r11
+    subs r12, r12, #1
+    bgt op_pushm_p_adr_loop
+    NEXT
+
+OP_PUSHRM_P_C
+    GETPARAM_P r12              ; r12 = parameter count
+op_pushrm_p_c_loop
+    GETPARAM r11
+    add r11, r11, r5            ; relocate to DAT
+    mPUSH r11
+    subs r12, r12, #1
+    bgt op_pushrm_p_c_loop
+    NEXT
+
+OP_PUSHRM_P_S
+    GETPARAM_P r12              ; r12 = parameter count
+op_pushrm_p_s_loop
+    GETPARAM r11
+    ldr r11, [r7, r11]
+    add r11, r11, r5            ; relocate to DAT
+    mPUSH r11
+    subs r12, r12, #1
+    bgt op_pushrm_p_s_loop
+    NEXT
+
+OP_PUSHRM_P_ADR
+    GETPARAM_P r12              ; r12 = parameter count
+op_pushrm_p_adr_loop
+    GETPARAM r11
+    add r11, r11, r7            ; relocate to FRM
+    mPUSH r11
+    subs r12, r12, #1
+    bgt op_pushrm_p_adr_loop
     NEXT
 
 OP_STACK_P
@@ -1829,18 +1722,6 @@ OP_SHL_P_C_PRI
 OP_SHL_P_C_ALT
     GETPARAM_P r11
     mov r1, r1, LSL r11         ; ALT = ALT << param
-    NEXT
-
-OP_SHR_P_C_PRI
-    GETPARAM_P r11
-    cmp r11, #0
-    movhi r0, r0, LSR r11       ; PRI = PRI >> param (but check that param > 0)
-    NEXT
-
-OP_SHR_P_C_ALT
-    GETPARAM_P r11
-    cmp r11, #0
-    movhi r1, r1, LSR r11       ; ALT = ALT >> param (but check that param > 0)
     NEXT
 
 OP_ADD_P_C
@@ -1934,14 +1815,7 @@ OP_BOUNDS_P
     bhi amx_exit
     NEXT
 
-OP_PUSH_P_ADR
-    GETPARAM_P r11
-    add r11, r11, r7            ; relocate to FRM
-    sub r11, r11, r5            ; but relative to start of data section
-    REGPUSH r11
-    NEXT
-
-ENDIF   ; AMX_NO_PACKED_OPC
+ ENDIF  ; AMX_NO_PACKED_OPC
 
 
 amx_exit                        ; assume r11 already set (to exit code)
@@ -1960,40 +1834,39 @@ amx_exit                        ; assume r11 already set (to exit code)
     str r7, [r10, #amxFRM]      ; FRM
 
     mov r0, r11                 ; put return value in r0
-    add sp, sp, #4              ; drop register for the return value
+    add sp, sp, #8              ; drop register for the return value
     ldmfd sp!, {r4 - r12, lr}
     bx  lr
-; amx_exec_asm
+; amx_exec_run
 
 
     ALIGN   2
     EXPORT  amx_div
 amx_div
-    ; expects divident in r0, divisor in r1
+    ; expects divident in r1, divisor in r0
     ; on exit quotient is in r0, remainder in r1
     ; r11 and r12 are scratch; r12 is temporary result
-    ; unsigned division only; when r1 (divisor) is zero, the function returns
+    ; unsigned division only; when r0 (divisor) is zero, the function returns
     ; with all registers unchanged
-    teq r1, #0                  ; verify r1
+    teq r0, #0                  ; verify r0
     moveq pc, lr                ; just for security
     ; drop-through (divisor is not zero)
     mov r11, #1
 amx_div1
-    cmp r1, #0x80000000         ; shift divisor left until top bit set
-    cmpcc r1, r0                ; ...or divisor>divident
-    movcc r1, r1, LSL #1        ; shift divisor left if required
+    cmp r0, #0x80000000         ; shift divisor left until top bit set
+    cmpcc r0, r1                ; ...or divisor>divident
+    movcc r0, r0, LSL #1        ; shift divisor left if required
     movcc r11, r11, LSL #1      ; shift r11 left if required
     bcc amx_div1                ; repeat whilst more shifting required
     mov r12, #0                 ; used to store result (temporary)
 amx_div2
-    cmp r0, r1                  ; test for possible subtraction
-    subcs r0, r0, r1            ; subtract if divident>divisor
+    cmp r1, r0                  ; test for possible subtraction
+    subcs r1, r1, r0            ; subtract if divident>divisor
     addcs r12, r12, r11         ; put relevant bit into result
     movs  r11, r11, LSR #1      ; shift control bit
-    movne r1, r1, LSR #1        ; halve unless finished
+    movne r0, r0, LSR #1        ; halve unless finished
     bne amx_div2                ; loop if there is more to do
-    ; remainder r0, result in r12
-    mov r1, r0                  ; remainder now in r1
+    ; remainder r1, result in r12
     mov r0, r12                 ; quotient now in r0
     mov pc, lr
 ; amx_div

@@ -1,6 +1,6 @@
 /* Core functions
  *
- * (c) Copyright 1998-2008, ITB CompuPhase
+ * (c) Copyright 1998-2011, ITB CompuPhase
  * This file is provided as is (no warranties).
  */
 #pragma library Core
@@ -23,8 +23,8 @@ native min(value1, value2);
 native max(value1, value2);
 native clamp(value, min=cellmin, max=cellmax);
 
-native getproperty(id=0, const name[]="", value=cellmin, string[]="");
-native setproperty(id=0, const name[]="", value=cellmin, const string[]="");
-native deleteproperty(id=0, const name[]="", value=cellmin);
-native existproperty(id=0, const name[]="", value=cellmin);
+native getproperty(id=0, const name[]=``'', value=cellmin, string[]=``'', size=sizeof string);
+native setproperty(id=0, const name[]=``'', value=cellmin, const string[]=``'');
+native deleteproperty(id=0, const name[]=``'', value=cellmin);
+native existproperty(id=0, const name[]=``'', value=cellmin);
 

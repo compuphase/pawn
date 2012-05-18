@@ -2,9 +2,8 @@
  *
  *  Simple (minimalistic) debugger that supports source-level debugging with
  *  several interfaces:
- *  - a console interface with terminal support: VT100/ANSI terminal (or the
- *    xterm terminal emulator), Win32 pseudo-terminal and curses (for the Apple
- *    Macintosh and Linux)
+ *  - a console interface with terminal support: VT100/ANSI/xterm terminal,
+ *    Win32 pseudo-terminal and curses (for the Apple Macintosh and Linux)
  *  - hooks to use other pseudo-terminals, such as the Win32 GUI terminal and
  *    the GraphApp terminal, both of which support Unicode
  *  - a GDB-style "streaming" interface, to hook GUI shells to the debugger (in
@@ -15,29 +14,25 @@
  *  - ability to do remote debugging over an RS232 connection
  *
  *
- *  Copyright (c) ITB CompuPhase, 1998-2009
+ *  Copyright (c) ITB CompuPhase, 1998-2011
  *
- *  This software is provided "as-is", without any express or implied warranty.
- *  In no event will the authors be held liable for any damages arising from
- *  the use of this software.
+ *  Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ *  use this file except in compliance with the License. You may obtain a copy
+ *  of the License at
  *
- *  Permission is granted to anyone to use this software for any purpose,
- *  including commercial applications, and to alter it and redistribute it
- *  freely, subject to the following restrictions:
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
- *  1.  The origin of this software must not be misrepresented; you must not
- *      claim that you wrote the original software. If you use this software in
- *      a product, an acknowledgment in the product documentation would be
- *      appreciated but is not required.
- *  2.  Altered source versions must be plainly marked as such, and must not be
- *      misrepresented as being the original software.
- *  3.  This notice may not be removed or altered from any source distribution.
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ *  WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ *  License for the specific language governing permissions and limitations
+ *  under the License.
  *
- *  Version: $Id: pawndbg.c 4057 2009-01-15 08:21:31Z thiadmer $
+ *  Version: $Id: pawndbg.c 4523 2011-06-21 15:03:47Z thiadmer $
  *
  *
  *  Command line options:
- *    -rs232=1            set remote debugging over a serial line (port number
+ *    -rs232=1,baud       set remote debugging over a serial line (port number
  *                        may be 1,2,... for Windows; 0,1,... for Linux)
  *    -term=x,y           set terminal size
  *    -term=off           force terminal off (in environments where it is on by
@@ -67,6 +62,7 @@
 #include "osdefs.h"     /* for _MAX_PATH and other macros */
 #include "amx.h"
 #include "amxdbg.h"
+#include "amxpool.h"
 
 #if defined __WIN32__ || defined __MSDOS__ || defined __WATCOMC__
   #include <conio.h>
@@ -79,7 +75,7 @@
       #define WIN32_CONSOLE
     #endif
   #endif
-#elif !defined macintosh
+#elif !defined macintosh || defined __APPLE__
   #include "../linux/getch.h"
   #include <fcntl.h>
   #include <termios.h>
@@ -288,6 +284,7 @@ static char chr_vline=CHR_VLINE;
 static char remote_pendingbuf[30];
 static int remote_pendingsize=0;
 static jmp_buf restart_buf;
+static char g_filename[_MAX_PATH];      /* for loading overlays */
 
 
 static void draw_hline(int forceinit)
@@ -681,36 +678,53 @@ static void scroll_cmdwin(int lines)
   } /* if */
 }
 
+static cell *VirtAddressToPhys(AMX *amx,cell amx_addr)
+{
+  AMX_HEADER *hdr;
+  unsigned char *data;
+
+  assert(amx!=NULL);
+  hdr=(AMX_HEADER *)amx->base;
+  assert(hdr!=NULL);
+  assert(hdr->magic==AMX_MAGIC);
+  data=(amx->data!=NULL) ? amx->data : amx->base+(int)hdr->dat;
+
+  if (amx_addr>=amx->hea && amx_addr<amx->stk || amx_addr<0 || amx_addr>=amx->stp)
+    return NULL;
+  return (cell *)(data + (int)amx_addr);
+}
+
 #if !defined NO_REMOTE
 /* For the remote debugging capabilities, the "device" is the apparatus/PC on
  * which the script runs and the "host" is the PC on which the debugger runs.
  * Both the device and the host load the script. The device typically does not
  * load the debugging info. The host would not really need to load the opcodes,
- * but its taks becomes a lot simpler when it has locally an image of what runs
+ * but its task becomes a lot simpler when it has locally an image of what runs
  * on the device.
  *
  * Handshake
  *
  * The first step, after opening the connection, is the handshake. For that,
- * the host must send a packet with the single character "!". Since the device
- * may not be "on-line" immediately and packets may get lost, the host should
- * repeat sending these characters until the device reponds.
+ * the host must send a packet with the single character "¡" (ASCII 161). Since
+ * the device may not be "on-line" immediately and packets may get lost, the
+ * host should repeat sending these characters until the device reponds.
  *
  * When the device starts up and loads a script, it should check whether this
  * script contains debugging information (even if it does not load the debugging
  * information). If debugging information is present, it should check for the
- * reception of packets with the character "!". Upon reception, it replies with
+ * reception of packets with the character "¡". Upon reception, it replies with
  * a return packed with the character "@". The device should have a time-out on
- * the polling loop for receivng the "!" packets, because the script should run
+ * the polling loop for receivng the "¡" packets, because the script should run
  * normally when no debugger is attached.
  *
  * Running
  *
- * After entering in debug mode, the device will send a packed with the
- * character "@" followed by the new instruction pointer address (CIP) at every
- * "BREAK" instruction. The device then waits for a response from the host (the
- * script is halted). To continue running, the host simply sends a packet with
- * the single character "!".
+ * After entering in debug mode, the device runs the script, but when it drops
+ * at a "BREAK" instruction, it sends a packet with the character "@" followed
+ * by the new instruction pointer address (CIP) and a newline character. The
+ * device then waits for a response from the host (the script is halted). To
+ * continue running, the host simply sends a packet with the single character
+ * "!".
  *
  * If, instead of allowing the device to continue running the script, you want
  * to halt execution (e.g. because a breakpoint is reached), the first command
@@ -862,7 +876,7 @@ static int remote_rs232(int port,int baud)
     DCB    dcb;
     COMMTIMEOUTS commtimeouts;
   #endif
-  unsigned long size,cip;
+  unsigned long size;
   char buffer[40];
   int sync_found,count;
 
@@ -960,9 +974,9 @@ static int remote_rs232(int port,int baud)
   sync_found=0;
   do {
     #if defined __WIN32__
-      WriteFile(hCom,"!",1,&size,NULL);
-      for (count=0; count<10 && !sync_found; count++) {
-        Sleep(100);
+      WriteFile(hCom,"\xa1",1,&size,NULL);
+      for (count=0; count<50 && !sync_found; count++) {
+        Sleep(20);
         do {
           ReadFile(hCom,buffer,1,&size,NULL);
           sync_found= (size>0 && buffer[0]=='@');
@@ -972,9 +986,9 @@ static int remote_rs232(int port,int baud)
       ReadFile(hCom,buffer+1,sizeof buffer - 1,&size,NULL);
       size++; /* add size of the handshake character */
     #else
-      write(fdCom,"!",1);
-      for (count=0; count<10 && !sync_found; count++) {
-        usleep(100*1000);
+      write(fdCom,"\xa1",1);
+      for (count=0; count<50 && !sync_found; count++) {
+        usleep(20*1000);
         do {
           size=read(fdCom,buffer,1);
           sync_found= (size>0 && buffer[0]=='@');
@@ -985,19 +999,12 @@ static int remote_rs232(int port,int baud)
       size++; /* add size of the handshake character */
     #endif
   } while (size==0 || buffer[0]!='@');
-  if (sscanf(buffer,"@%lx",&cip)>0 && cip!=0) {
-    /* if the script is already running, give a "go" command */
-    #if defined __WIN32__
-      WriteFile(hCom,"!",1,&size,NULL);
-    #else
-      write(fdCom,"!",1);
-    #endif
-  } else if (size>1 && size<sizeof remote_pendingbuf) {
+  if (size>1 && size<sizeof remote_pendingbuf) {
     remote_pendingsize=size-1;
     memcpy(remote_pendingbuf,buffer+1,remote_pendingsize);
-    /* give a "sync time" command, so that the device has the same time as the computer */
-    settimestamp_rs232((unsigned long)time(NULL));
   } /* if */
+  /* give a "sync time" command, so that the device has the same time as the computer */
+  settimestamp_rs232((unsigned long)time(NULL));
 
   remote=REMOTE_RS232;
   return 1;
@@ -1125,7 +1132,7 @@ static void remote_read_rs232(AMX *amx,cell vaddr,int number)
     ptr=buffer+1;       /* skip '@' */
     while (number>0 && (ptr-buffer)<sizeof buffer && *ptr!='\0') {
       val=strtol(ptr,&ptr,16);
-      if (amx_GetAddr(amx,vaddr,&cptr)==AMX_ERR_NONE)
+      if ((cptr=VirtAddressToPhys(amx,vaddr))!=NULL)
         *cptr=val;
       number--;
       vaddr+=sizeof(cell);
@@ -1146,8 +1153,8 @@ static void remote_write_rs232(AMX *amx,cell vaddr,int number)
     number-=num;
     sprintf(buffer,"?W%lx",(long)vaddr);
     while (num>0) {
-      if (amx_GetAddr(amx,vaddr,&cptr)!=AMX_ERR_NONE)
-        return;
+      cptr=VirtAddressToPhys(amx,vaddr);
+      assert(cptr!=NULL);
       strcat(buffer,",");
       sprintf(buffer+strlen(buffer),"%x",*cptr);
       num--;
@@ -1196,7 +1203,7 @@ static int remote_transfer_rs232(const char *filename)
   if (sscanf(str,"@%x",&block)!=1)
     block=0;
   /* allocate 1 byte more, for the ACK/NAK prefix */
-  if (block==0 || (buffer=malloc((block+1)*sizeof(char)))==NULL) {
+  if (block==0 || (buffer=(unsigned char*)malloc((block+1)*sizeof(char)))==NULL) {
     fclose(fp);
     return 0;
   } /* if */
@@ -1290,7 +1297,7 @@ static NAMELIST *namelist_add(NAMELIST *root,char *name,int number)
   NAMELIST *cur, *pred;
 
   /* allocate a structure */
-  cur=malloc(sizeof(NAMELIST));
+  cur=(NAMELIST*)malloc(sizeof(NAMELIST));
   if (cur==NULL)
     return NULL;
   cur->name=strdup(name);
@@ -1327,15 +1334,16 @@ static int get_symbolvalue(AMX *amx,AMX_DBG_SYMBOL *sym,int index,cell *value)
   if (sym->vclass & DISP_MASK)
     base+=amx->frm;     /* addresses of local vars are relative to the frame */
   if (sym->ident==iREFERENCE || sym->ident==iREFARRAY) {   /* a reference */
-    amx_GetAddr(amx,base,&vptr);
+    vptr=VirtAddressToPhys(amx,base);
+    assert(vptr!=NULL);
     base=*vptr;
   } /* if */
   #if !defined NO_REMOTE
     if (remote==REMOTE_RS232)
       remote_read_rs232(amx,(cell)(base+index*sizeof(cell)),1);
   #endif
-  if (amx_GetAddr(amx,(cell)(base+index*sizeof(cell)),&vptr)!=AMX_ERR_NONE)
-    return 0;
+  vptr=VirtAddressToPhys(amx,(cell)(base+index*sizeof(cell)));
+  assert(vptr!=NULL);
   *value=*vptr;
   return 1;
 }
@@ -1347,11 +1355,12 @@ static int set_symbolvalue(AMX *amx,const AMX_DBG_SYMBOL *sym,int index,cell val
   if (sym->vclass & DISP_MASK)
     base+=amx->frm;     /* addresses of local vars are relative to the frame */
   if (sym->ident==iREFERENCE || sym->ident==iREFARRAY) {   /* a reference */
-    amx_GetAddr(amx,base,&vptr);
+    vptr=VirtAddressToPhys(amx,base);
+    assert(vptr!=NULL);
     base=*vptr;
   } /* if */
-  if (amx_GetAddr(amx,(cell)(base+index*sizeof(cell)),&vptr)!=AMX_ERR_NONE)
-    return 0;
+  vptr=VirtAddressToPhys(amx,(cell)(base+index*sizeof(cell)));
+  assert(vptr!=NULL);
   *vptr=value;
   #if !defined NO_REMOTE
     if (remote==REMOTE_RS232)
@@ -1378,35 +1387,34 @@ static char string[MAXLINELENGTH];
   if (sym->vclass)
     base+=amx->frm;     /* addresses of local vars are relative to the frame */
   if (sym->ident==iREFARRAY) {   /* a reference */
-    amx_GetAddr(amx,base,&addr);
+    addr=VirtAddressToPhys(amx,base);
+    assert(addr!=NULL);
     base=*addr;
   } /* if */
   #if !defined NO_REMOTE
     if (remote==REMOTE_RS232)
       remote_read_rs232(amx,base,MAXLINELENGTH);
   #endif
-  if (amx_GetAddr(amx,base,&addr)==AMX_ERR_NONE) {
-    amx_StrLen(addr,&length);
+  addr=VirtAddressToPhys(amx,base);
+  assert(addr!=NULL);
+  amx_StrLen(addr,&length);
 
-    /* allocate a temporary buffer */
-    ptr=malloc(length+1);
-    if (ptr!=NULL) {
-      amx_GetString(ptr,addr,0,maxlength);
-      num=length;
-      if (num>=maxlength) {
-        num=maxlength-1;
-        if (num>3)
-          num-=3;         /* make space for the ... terminator */
-      } /* if */
-      assert(num>=0);
-      strncpy(string,ptr,num);
-      string[num]='\0';
-      if (num<length && num==maxlength-3)
-        strcat(string,"...");
-      free(ptr);
+  /* allocate a temporary buffer */
+  ptr=(char*)malloc(length+1);
+  if (ptr!=NULL) {
+    amx_GetString(ptr,addr,0,maxlength);
+    num=length;
+    if (num>=maxlength) {
+      num=maxlength-1;
+      if (num>3)
+        num-=3;         /* make space for the ... terminator */
     } /* if */
-  } else {
-    strcpy(string,"?");
+    assert(num>=0);
+    strncpy(string,ptr,num);
+    string[num]='\0';
+    if (num<length && num==maxlength-3)
+      strcat(string,"...");
+    free(ptr);
   } /* if */
   return string;
 }
@@ -1728,7 +1736,7 @@ static int break_set(AMX_DBG *amxdbg,const char *symaddr,int flags)
   } while (changed);
 
   /* allocate a new breakpoint, add the entry parsed earlier to the list */
-  newbp=malloc(sizeof(BREAKPOINT));
+  newbp=(BREAKPOINT*)malloc(sizeof(BREAKPOINT));
   if (newbp==0)
     return -1;
   memcpy(newbp,&bp,sizeof(BREAKPOINT));
@@ -2271,8 +2279,9 @@ static char lastcommand[32] = "";
             if (remote==REMOTE_RS232)
               remote_read_rs232(amx,amxdbg->automatontbl[i]->address,1);
           #endif
-          if (amx_GetAddr(amx,amxdbg->automatontbl[i]->address,&cptr)==AMX_ERR_NONE)
-            dbg_GetStateName(amxdbg,(int)*cptr,&statename);
+          cptr=VirtAddressToPhys(amx,amxdbg->automatontbl[i]->address);
+          assert(cptr!=NULL);
+          dbg_GetStateName(amxdbg,(int)*cptr,&statename);
           amx_printf("\t-> %s\n",(statename==NULL) ? "(none)" : statename);
         } /* for */
       } else if (stricmp(params,"on")==0) {
@@ -2589,7 +2598,7 @@ static long lastline;
   AMX_DBG *amxdbg;
   const char *filename;
   long line;
-  int breaknr,i,err;
+  int breaknr,err;
 
   if (amx == NULL) {
     /* special case: re-initialize the abstract machine */
@@ -2666,7 +2675,6 @@ static long lastline;
 
   /* check breakpoints */
   term_switch(1);             /* switch to the debugger console */
-  i=0;
   if (breaknr==0)
     amx_printf("STOP at line %ld\n",line+1);
   else if (breaknr>0)         /* print breakpoint number */
@@ -2706,23 +2714,78 @@ static long lastline;
 
 #if !defined amx_Init
 
+/* prun_Overlay()
+ * Helper function to load overlays
+ */
+int AMXAPI prun_Overlay(AMX *amx, int index)
+{
+  AMX_HEADER *hdr;
+  AMX_OVERLAYINFO *tbl;
+  FILE *ovl;
+
+  assert(amx != NULL);
+  hdr = (AMX_HEADER*)amx->base;
+  assert((size_t)index < (hdr->nametable - hdr->overlays) / sizeof(AMX_OVERLAYINFO));
+  tbl = (AMX_OVERLAYINFO*)(amx->base + hdr->overlays) + index;
+  amx->codesize = tbl->size;
+  amx->code = amx_poolfind(index);
+  if (amx->code == NULL) {
+    if ((amx->code = amx_poolalloc(tbl->size, index)) == NULL)
+      return AMX_ERR_OVERLAY;   /* failure allocating memory for the overlay */
+    ovl = fopen(g_filename, "rb");
+    assert(ovl != NULL);
+    fseek(ovl, (int)hdr->cod + tbl->offset, SEEK_SET);
+    fread(amx->code, 1, tbl->size, ovl);
+    fclose(ovl);
+  } /* if */
+  return AMX_ERR_NONE;
+}
+
 extern int CreateConsoleThread(void);
 
 static void *loadprogram(AMX *amx,const char *filename)
 {
+  #define OVLPOOLSIZE 16384
   FILE *fp;
   AMX_HEADER hdr;
+  int32_t size;
   void *program;
 
   if ((fp = fopen(filename,"rb")) != NULL) {
     fread(&hdr, sizeof hdr, 1, fp);
     amx_Align32((uint32_t *)&hdr.stp);
-	amx_Align32((uint32_t *)&hdr.size);
-    if ((program = malloc((int)hdr.stp)) != NULL) {
+    amx_Align32((uint32_t *)&hdr.size);
+
+    if ((hdr.flags & AMX_FLAG_OVERLAY) != 0) {
+      /* allocate the block for the data + stack/heap, plus the complete file
+       * header, plus the overlay pool
+       */
+      size = (hdr.stp - hdr.dat) + hdr.cod + OVLPOOLSIZE;
+    } else {
+      size = hdr.stp;
+    } /* if */
+
+    if ((program = malloc((size_t)size)) != NULL) {
+      strcpy(g_filename, filename); /* save the filename for reading overlays */
       rewind(fp);
-      fread(program, 1, (int)hdr.size, fp);
+      if ((hdr.flags & AMX_FLAG_OVERLAY) != 0) {
+        /* read the entire header */
+        fread(program, 1, hdr.cod, fp);
+        /* read the data section, put it behind the header in the block */
+        fseek(fp, hdr.dat, SEEK_SET);
+        fread((char*)program + hdr.cod, 1, hdr.hea - hdr.dat, fp);
+        /* initialize the overlay pool */
+        amx_poolinit((char*)program + (hdr.stp - hdr.dat) + hdr.cod, OVLPOOLSIZE);
+      } else {
+        fread(program, 1, (size_t)hdr.size, fp);
+      } /* if */
       fclose(fp);
+
       memset(amx, 0, sizeof *amx);
+      if ((hdr.flags & AMX_FLAG_OVERLAY) != 0) {
+        amx->data = (char*)program + hdr.cod;
+        amx->overlay = prun_Overlay;
+      } /* if */
       if (amx_Init(amx,program) == AMX_ERR_NONE)
         return program;
       free(program);

@@ -4,25 +4,21 @@
  *  cannot always be implemented with portable C functions. In other words,
  *  these routines must be ported to other environments.
  *
- *  Copyright (c) ITB CompuPhase, 1997-2009
+ *  Copyright (c) ITB CompuPhase, 1997-2011
  *
- *  This software is provided "as-is", without any express or implied warranty.
- *  In no event will the authors be held liable for any damages arising from
- *  the use of this software.
+ *  Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ *  use this file except in compliance with the License. You may obtain a copy
+ *  of the License at
  *
- *  Permission is granted to anyone to use this software for any purpose,
- *  including commercial applications, and to alter it and redistribute it
- *  freely, subject to the following restrictions:
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
- *  1.  The origin of this software must not be misrepresented; you must not
- *      claim that you wrote the original software. If you use this software in
- *      a product, an acknowledgment in the product documentation would be
- *      appreciated but is not required.
- *  2.  Altered source versions must be plainly marked as such, and must not be
- *      misrepresented as being the original software.
- *  3.  This notice may not be removed or altered from any source distribution.
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ *  WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ *  License for the specific language governing permissions and limitations
+ *  under the License.
  *
- *  Version: $Id: amxcons.c 4057 2009-01-15 08:21:31Z thiadmer $
+ *  Version: $Id: amxcons.c 4523 2011-06-21 15:03:47Z thiadmer $
  */
 
 #if defined _UNICODE || defined __UNICODE__ || defined UNICODE
@@ -40,6 +36,7 @@
 #include <string.h>
 #include <assert.h>
 #if defined __WIN32__ || defined _WIN32 || defined WIN32 || defined __MSDOS__
+  #define HAVE_CONIO
   #include <conio.h>
   #include <malloc.h>
 #endif
@@ -79,10 +76,10 @@
 #endif
 #include "amxcons.h"
 
-#if defined __MSDOS__
+#if defined AMX_TERMINAL
   #define EOL_CHAR       '\r'
 #endif
-#if defined __WIN32__ || defined _WIN32 || defined WIN32
+#if defined __WIN32__ || defined _WIN32 || defined WIN32 || defined __MSDOS__
   #define EOL_CHAR       '\r'
 #endif
 #if !defined EOL_CHAR
@@ -478,7 +475,6 @@
   #define amx_putstr(s)       printf("%s",(s))
   #define amx_putchar(c)      putchar(c)
   #define amx_fflush()        fflush(stdout)
-  #define amx_getch()         getch()
   #define amx_gets(s,n)       fgets(s,n,stdin)
   #define amx_clrscr()        (void)(0)
   #define amx_clreol()        (void)(0)
@@ -488,7 +484,13 @@
   #define amx_termctl(c,v)    ((void)(c),(void)(v),(0))
   #define amx_console(c,l,f)  ((void)(c),(void)(l),(void)(f))
   #define amx_viewsize        (*(x)=80,*(y)=25)
-  #define amx_kbhit()         kbhit()
+  #if defined HAVE_CONIO
+    #define amx_getch()       getch()
+    #define amx_kbhit()       kbhit()
+  #else
+    #define amx_getch()       getchar()
+    #define amx_kbhit()       (0)
+  #endif
 #endif
 
 #if !defined AMX_TERMINAL && (defined __WIN32__ || defined _WIN32 || defined WIN32)
@@ -697,7 +699,7 @@ static int dochar(AMX *amx,TCHAR ch,cell param,TCHAR sign,TCHAR decpoint,int wid
 
   switch (ch) {
   case __T('c'):
-    amx_GetAddr(amx,param,&cptr);
+    cptr=amx_Address(amx,param);
     width--;            /* single character itself has a with of 1 */
     if (sign!=__T('-'))
       while (width-->0)
@@ -710,7 +712,7 @@ static int dochar(AMX *amx,TCHAR ch,cell param,TCHAR sign,TCHAR decpoint,int wid
   case __T('d'): {
     cell value;
     int length=1;
-    amx_GetAddr(amx,param,&cptr);
+    cptr=amx_Address(amx,param);
     value=*cptr;
     if (value<0 || sign==__T('+'))
       length++;
@@ -747,7 +749,7 @@ static int dochar(AMX *amx,TCHAR ch,cell param,TCHAR sign,TCHAR decpoint,int wid
     if (width>0)
       _stprintf(formatstring+_tcslen(formatstring),__T("%d"),width);
     _stprintf(formatstring+_tcslen(formatstring),__T(".%df"),digits);
-    amx_GetAddr(amx,param,&cptr);
+    cptr=amx_Address(amx,param);
     #if PAWN_CELL_SIZE == 64
       _stprintf(buffer,formatstring,*(double*)cptr);
     #else
@@ -768,7 +770,7 @@ static int dochar(AMX *amx,TCHAR ch,cell param,TCHAR sign,TCHAR decpoint,int wid
 #if !defined FLOATPOINT
   case __T('r'): /* if fixed point is enabled, and floating point is not, %r == %q */
 #endif
-    amx_GetAddr(amx,param,&cptr);
+    cptr=amx_Address(amx,param);
     /* format the number */
     if (digits==INT_MAX)
       digits=3;
@@ -795,7 +797,7 @@ static int dochar(AMX *amx,TCHAR ch,cell param,TCHAR sign,TCHAR decpoint,int wid
     info.f_putstr=f_putstr;
     info.f_putchar=f_putchar;
     info.user=user;
-    amx_GetAddr(amx,param,&cptr);
+    cptr=amx_Address(amx,param);
     amx_printstring(amx,cptr,&info);
     return 1;
   } /* case */
@@ -803,7 +805,7 @@ static int dochar(AMX *amx,TCHAR ch,cell param,TCHAR sign,TCHAR decpoint,int wid
   case __T('x'): {
     ucell value;
     int length=1;
-    amx_GetAddr(amx,param,&cptr);
+    cptr=amx_Address(amx,param);
     value=*(ucell*)cptr;
     while (value>=0x10) {
       length++;
@@ -1051,7 +1053,7 @@ static cell AMX_NATIVE_CALL n_print(AMX *amx,const cell *params)
   info.length= ((size_t)params[0]>=3*sizeof(cell)) ? (int)(params[3]-info.skip) : INT_MAX;
 
   CreateConsole();
-  amx_GetAddr(amx,params[1],&cstr);
+  cstr=amx_Address(amx,params[1]);
   amx_printstring(amx,cstr,&info);
   amx_fflush();
   return 0;
@@ -1068,7 +1070,7 @@ static cell AMX_NATIVE_CALL n_print(AMX *amx,const cell *params)
   /* set the new colours */
   oldcolours=amx_setattr((int)params[2],(int)params[3],(int)params[4]);
 
-  amx_GetAddr(amx,params[1],&cstr);
+  cstr=amx_Address(amx,params[1]);
   amx_printstring(amx,cstr,NULL);
 
   /* reset the colours */
@@ -1090,7 +1092,7 @@ static cell AMX_NATIVE_CALL n_printf(AMX *amx,const cell *params)
   info.length=INT_MAX;
 
   CreateConsole();
-  amx_GetAddr(amx,params[1],&cstr);
+  cstr=amx_Address(amx,params[1]);
   amx_printstring(amx,cstr,&info);
   amx_fflush();
   return 0;
@@ -1121,6 +1123,7 @@ static cell AMX_NATIVE_CALL n_getstring(AMX *amx,const cell *params)
   int c,chars,max;
   cell *cptr;
 
+  (void)amx;
   CreateConsole();
   chars=0;
   max=(int)params[2];
@@ -1151,7 +1154,7 @@ static cell AMX_NATIVE_CALL n_getstring(AMX *amx,const cell *params)
     assert(chars<max);
     str[chars]='\0';
 
-    amx_GetAddr(amx,params[1],&cptr);
+    cptr=amx_Address(amx,params[1]);
     amx_SetString(cptr,(char*)str,(int)params[3],sizeof(TCHAR)>1,max);
 
   } /* if */
@@ -1190,13 +1193,14 @@ static int inlist(AMX *amx,int c,const cell *params,int num)
 {
   int i, key;
 
+  (void)amx;
   for (i=0; i<num; i++) {
     if (i==0) {
       /* first key is passed by value, others are passed by reference */
       key = (int)params[i];
     } else {
       cell *cptr;
-      amx_GetAddr(amx,params[i],&cptr);
+      cptr=amx_Address(amx,params[i]);
       key=(int)*cptr;
     } /* if */
     if (c==key || c==-key)
@@ -1234,8 +1238,8 @@ static cell AMX_NATIVE_CALL n_getvalue(AMX *amx,const cell *params)
     } /* if */
 
     /* check end of input */
-    #if defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__ || defined MACOS
-      if (c=='\n' && inlist(amx,'\r',params+2,(int)params[0]/sizeof(cell)-1)!=0)
+    #if EOL_CHAR!='\r'
+      if (c==EOL_CHAR && inlist(amx,'\r',params+2,(int)params[0]/sizeof(cell)-1)!=0)
         c='\r';
     #endif
     if ((chars>1 || chars>0 && sign>0)
@@ -1245,6 +1249,10 @@ static cell AMX_NATIVE_CALL n_getvalue(AMX *amx,const cell *params)
         acceptchar(c,&chars);
       break;
     } /* if */
+    #if EOL_CHAR!='\r'
+      if (c=='\r')
+        c=EOL_CHAR;
+    #endif
 
     /* get value */
     d=base;     /* by default, do not accept the character */
@@ -1299,12 +1307,13 @@ static cell AMX_NATIVE_CALL n_wherexy(AMX *amx,const cell *params)
   cell *px,*py;
   int x,y;
 
+  (void)amx;
   CreateConsole();
   amx_wherexy(&x,&y);
-  amx_GetAddr(amx,params[1],&px);
-  amx_GetAddr(amx,params[2],&py);
-  if (px!=NULL) *px=x;
-  if (py!=NULL) *py=y;
+  px=amx_Address(amx,params[1]);
+  py=amx_Address(amx,params[2]);
+  *px=x;
+  *py=y;
   return 0;
 }
 

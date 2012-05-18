@@ -92,7 +92,7 @@ weekday(day, month, year)
 
 /**
  * <summary>
- *   Reads a date and stores it in three separate fields. tata
+ *   Reads a date and stores it in three separate fields.
  * </summary>
  *
  * <param name="day">
@@ -158,7 +158,8 @@ bool: isleapyear(year)
  */
 daysinmonth(month, year)
     {
-    static daylist[] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31}
+    static daylist[] = [ 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 ]
     assert 1 <= month <= 12
     return daylist[month-1] + _:(month == 2 && isleapyear(year))
     }
+

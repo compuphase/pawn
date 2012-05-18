@@ -7,14 +7,15 @@ were essential design criterions for both the language and the abstract
 machine.
 
 Through the evolution of the Pawn toolkit, this README had steadily been
-growing, as more and more compilers were tested and more components were added.
-More recently, the compiling instructions were moved to a separate document
-entitled "The Pawn booklet: Implementor's Guide". To get the Pawn toolkit
-working on your system, please (also) consult that document. To learn about
-the Pawn language, read the document "The Pawn booklet: The Language". If you
-installed Pawn via the Setup utility (for Microsoft Windows) or the autopackage
-(for Linux), you probably have these documents already. Otherwise, you can
-obtain both these documents from the web page devoted to Pawn:
+growing, as more and more components were added and the project was ported
+to diverse environments. Detailed instructions how to port, build and/or
+embed Pawn can be found in a separate document entitled "The Pawn booklet: 
+Implementer's Guide". To get the Pawn toolkit working on your system, please
+(also) consult that document. To learn about the Pawn language, read the
+document "The Pawn booklet: The Language". If you installed Pawn via the
+Setup utility (for Microsoft Windows) or the autopackage (for Linux), you
+probably have these documents already. Otherwise, you can obtain both these
+documents from the web page devoted to Pawn:
         http://www.compuphase.com/pawn/
 
 Below is a list of topics that this README covers, in this order:
@@ -25,9 +26,6 @@ o  Getting started
 o  Building with CMake
    For a portable way to (re-)build the software
 
-o  Acknowledgements
-   For components not written by CompuPhase
-
 o  Using the AMX DLL
    How to create a program that uses the pre-built DLL.
 
@@ -35,6 +33,12 @@ o  Building the AMX DLL
    Notes on how the DLL must be built itself.
 
 o  Building extension modules for the AMX DLL
+
+
+Acknowledgements
+================
+See the "NOTICES" file for acknowledgments for parts of Pawn not written by
+CompuPhase.
 
 
 Getting started
@@ -58,7 +62,7 @@ Pawn compiler will not be able to find its "include" files, for example.
 You should also download the two documentation files "pawn-lang.pdf" and
 "pawn-imp.pdf" --the "Language guide" and the "Implementer's guide"
 respectively. You may need to build the compiler and abstract machine, and
-the "Implementor's guide" is likely to give you precise guidelines (or at
+the "Implementer's guide" is likely to give you precise guidelines (or at
 least, it will point you in the right direction). There are a few guidelines
 for building the system with CMake in the section "Building with CMake", below.
 
@@ -110,7 +114,9 @@ the archive into.
 
 Using CMake
 -----------
-1. Under Microsoft Windows, launch CMakeSetup. Under Linux, run cmake-gui.
+1. Under Microsoft Windows, launch CMakeSetup. Under Linux, run cmake-gui (if
+   you don't have cmake-gui, either update your CMake system first, or see
+   below for running CMake from the command-line).
 
 2. Select for the source code directory, the "source" subdirectory in the
    directory tree for the toolkit.
@@ -161,57 +167,6 @@ use the command line programs.
 
 4. Press the "g" button for "generate and quit". Then build the program by
    typing "make". The programs will be built in the subdirectory "bin".
-
-
-Acknowledgements
-================
-This work is based on the "Small C Compiler" by Ron Cain and James E. Hendrix,
-as published in the book "Dr. Dobb's Toolbook of C", Brady Books, 1986.
-
-The assembler version of the abstract machine (five times faster than the ANSI
-C version and over two times faster than the GNU C version) was written by
-Marc Peter (macpete@gmx.de). Marc holds the copyright of the file AMXEXEC.ASM,
-but its distribution and license fall under the same conditions as those
-stated in LICENSE.TXT.
-
-The Just-In-Time compiler (JIT) included in this release was also written by
-Marc Peter. As is apparent from the source code, the JIT is an evolutionary
-step from his earlier abstract machine. The JIT falls under the same (liberal)
-license as the other components in the Pawn toolkit. The abstract machine
-has evolved slightly since Marc Peter write the JIT and the JIT does currently
-not handle the "sleep" instruction correctly.
-
-The power user David "Bailopan" Anderson (see www.bailopan.net) found many bugs
-in Pawn, and provided patches and detailed reports. He and his team also
-provided a new "memory file" module that make the compiler process large scripts
-quicker.
-
-G.W.M. Vissers translated Marc Peter's JIT to NASM. This makes the JIT available
-to Linux and Unix-like platforms.
-
-Greg Garner from Artran Inc. compiled the source files as C++ files (rather
-than C), added type casts where needed and fixed two bugs in the Pawn compiler
-in the process. Greg Garner also wrote (and contributed) the extension module
-for floating point support (files FLOAT.CPP and FLOAT.INC). I am currently
-maintaining these modules, in order to keep them up to date with new features
-in the Pawn toolkit.
-
-Dark Fiber contributed an extension module for the AMX to provide decent
-quality pseudo-random numbers, starting with any seed. To illustrate the
-module, he also wrote a simple card game (TWENTY1.SMA) as a non-trivial
-Pawn script.
-
-Dieter Neubauer made a 16-bit version of the Pawn tools (meaning that a cell
-is 16-bit, instead of the default 32-bit). His changes were merged in the
-original distribution. Note that fixed or floating point arithmetic will be
-near to impossible with a 16-bit cell.
-
-Robert Daniels ported Pawn to ucLinux and corrected a few errors that had to
-do with the "Endianness" of the CPU. His corrections make the Pawn compiler
-and abstract machine better portable to Big Endian machines.
-
-Frank Condello made a port of the Pawn toolkit to MacOS (CFM Carbon). His
-changes are merged into the main source trunk.
 
 
 Using the AMX DLL

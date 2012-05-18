@@ -1,24 +1,20 @@
 /*  Process control and Foreign Function Interface module for the Pawn AMX
  *
- *  Copyright (c) ITB CompuPhase, 2005-2009
+ *  Copyright (c) ITB CompuPhase, 2005-2011
  *
- *  This software is provided "as-is", without any express or implied warranty.
- *  In no event will the authors be held liable for any damages arising from
- *  the use of this software.
+ *  Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ *  use this file except in compliance with the License. You may obtain a copy
+ *  of the License at
  *
- *  Permission is granted to anyone to use this software for any purpose,
- *  including commercial applications, and to alter it and redistribute it
- *  freely, subject to the following restrictions:
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
- *  1.  The origin of this software must not be misrepresented; you must not
- *      claim that you wrote the original software. If you use this software in
- *      a product, an acknowledgment in the product documentation would be
- *      appreciated but is not required.
- *  2.  Altered source versions must be plainly marked as such, and must not be
- *      misrepresented as being the original software.
- *  3.  This notice may not be removed or altered from any source distribution.
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ *  WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ *  License for the specific language governing permissions and limitations
+ *  under the License.
  *
- *  Version: $Id: amxprocess.c 4057 2009-01-15 08:21:31Z thiadmer $
+ *  Version: $Id: amxprocess.c 4523 2011-06-21 15:03:47Z thiadmer $
  */
 #if defined _UNICODE || defined __UNICODE__ || defined UNICODE
 # if !defined UNICODE   /* for Windows */
@@ -474,7 +470,7 @@ static cell AMX_NATIVE_CALL n_libcall(AMX *amx, const cell *params)
       typeidx++;                  /* skip closing ']' too */
     } /* if */
     /* get pointer to parameter */
-    amx_GetAddr(amx,params[paramidx+4],&cptr);
+    cptr=amx_Address(amx,params[paramidx+4]);
     switch (ps[paramidx].type) {
     case 'i': /* signed integer */
     case 'u': /* unsigned integer */
@@ -577,7 +573,7 @@ static cell AMX_NATIVE_CALL n_libcall(AMX *amx, const cell *params)
       break;
     case 'p' | BYREF:
     case 's' | BYREF:
-      amx_GetAddr(amx,params[idx+4],&cptr);
+      cptr=amx_Address(amx,params[idx+4]);
       amx_SetString(cptr,(char *)ps[idx].v.ptr,ps[idx].type==('p'|BYREF),sizeof(TCHAR)>1,UNLIMITED);
       free(ps[idx].v.ptr);
       break;
@@ -589,7 +585,7 @@ static cell AMX_NATIVE_CALL n_libcall(AMX *amx, const cell *params)
     case 'i' | BYREF:
     case 'u' | BYREF:
     case 'f' | BYREF:
-      amx_GetAddr(amx,params[idx+4],&cptr);
+      cptr=amx_Address(amx,params[idx+4]);
       if (ps[idx].range==1) {
         /* modify directly in the AMX (no memory block was allocated */
         switch (ps[idx].size) {
@@ -887,7 +883,7 @@ static cell AMX_NATIVE_CALL n_procread(AMX *amx, const cell *params)
       index--;
   line[index]=__T('\0');
 
-  amx_GetAddr(amx,params[1],&cptr);
+  cptr=amx_Address(amx,params[1]);
   amx_SetString(cptr,line,params[4],sizeof(TCHAR)>1,params[2]);
   return 1;
 }

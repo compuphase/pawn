@@ -5,22 +5,22 @@ forward testfunc(d[]);
 public testfunc(d[])
     {
     new a[4];
-    new b[4] = { 5, 6, ... };
+    new b[4] = [ 5, 6, ... ];
     new c;
 
 #if defined OKAY
-    a = { 1, 2, 3, 4 };         /* ok */
-    a = { 4, 5, 6, 7 };         /* ok */
+    a = [ 1, 2, 3, 4 ];         /* ok */
+    a = [ 4, 5, 6, 7 ];         /* ok */
     a = b;                      /* ok */
 #endif
 
 #if defined WRONG_LENGTH_1
-    a = { 1, 2, 3 };            /* error */
+    a = [ 1, 2, 3 ];            /* error */
     #pragma unused b, c, d
 #endif
 
 #if defined WRONG_LENGTH_2
-    a = { 1, 2, 3, 4, 5 };      /* error */
+    a = [ 1, 2, 3, 4, 5 ];      /* error */
     #pragma unused b, c, d
 #endif
 
@@ -30,7 +30,7 @@ public testfunc(d[])
 #endif
 
 #if defined INDEXED
-    a[2] = { 1, 2, 3, 4 };      /* error */
+    a[2] = [ 1, 2, 3, 4 ];      /* error */
 #endif
 
 #if defined NEED_INDEX_1
@@ -42,11 +42,16 @@ public testfunc(d[])
 #endif
 
 #if defined NOT_ARRAY_1
-    c = { 1, 2, 3, 4 };         /* error */
+    c = [ 1, 2, 3, 4 ];         /* error */
 #endif
 
 #if defined NOT_ARRAY_2
-    c[1] = { 1, 2, 3, 4 };      /* error */
+    c[1] = [ 1, 2, 3, 4 ];      /* error */
+#endif
+
+#if defined MIX_PACKED_UNPACKED
+    a = "abcd" 	                /* warning */
+    #pragma unused b, c, d
 #endif
     }
 
@@ -60,14 +65,14 @@ testfunc2(a[4])
 main()
     {
     #if defined PASS_LIT_ARRAY
-        testfunc2("ab");        // okay
-        testfunc2("abc");       // okay
-        testfunc2({1,2,3,4});   // okay
+        testfunc2(''ab'');      // okay
+        testfunc2(''abc'');     // okay
+        testfunc2([1,2,3,4]);   // okay
     #endif
     #if defined PASS_WRONG_LENGTH
-        testfunc2("abcd");      // error
-        testfunc2({1,2});       // error
-        testfunc2({1,2,3,4,5}); // error
+        testfunc2(''abcd'');    // error
+        testfunc2([1,2]);       // error
+        testfunc2([1,2,3,4,5]); // error
     #endif
     }
 #endif

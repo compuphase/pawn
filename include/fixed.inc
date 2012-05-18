@@ -1,12 +1,12 @@
 /* Fixed point arithmetic
  *
- * (c) Copyright 1998-2008, ITB CompuPhase
+ * (c) Copyright 1998-2011, ITB CompuPhase
  * This file is provided as is (no warranties).
  */
 #pragma library Fixed
 
-enum fround_method {
-  fround_round,
+const fround_method: {
+  fround_round = 0,
   fround_floor,
   fround_ceil,
   fround_tozero,

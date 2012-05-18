@@ -1,18 +1,26 @@
 /* Set operations, using bit arithmetic */
 
+const
+    { A = 0b0000001,
+      B = 0b0000010,
+      C = 0b0000100,
+      D = 0b0001000,
+      E = 0b0010000,
+      F = 0b0100000,
+      G = 0b1000000
+    }
+
 main()
     {
-    enum (<<= 1) { A = 1, B, C, D, E, F, G }
     new nextstep[] =
-        { C | E,     /* A can reach C and E */
+        [ C | E,     /* A can reach C and E */
           D | E,     /* B  "    "   D and E */
           G,         /* C  "    "   G */
           C | F,     /* D  "    "   C and F */
           0,         /* E  "    "   none */
           0,         /* F  "    "   none */
           E | F,     /* G  "    "   E and F */
-        }
-    #pragma unused A, B
+        ]
 
     print "The departure point: "
     new start = clamp( .value = toupper(getchar()) - 'A',

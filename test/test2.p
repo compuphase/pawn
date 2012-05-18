@@ -5,7 +5,7 @@
 
 #if defined ASSERT_LINENO
 /* NOTE: make sure the function heading of ispacked stays at line 10, see
- *       test 3 in TEST.BAT (and ASSERT_LINENO below)
+ *       test 3 in test.rexx (and ASSERT_LINENO below)
  */
 bool: ispacked(string[])        /* line 10 */
     return bool: (string[0] > charmax);
@@ -16,11 +16,11 @@ bool: ispacked(string[])        /* line 10 */
   new Array[0.5]
 #endif
 #if defined COUNT_ARRAY_SIZE
-    new Array[][2] =
-        {
-        	{ 123, 456 },
-        	{ 321, 987 }
-        }
+    new Array[][3] =
+        [
+        	[ 123, 456, 789 ],
+        	[ 987, 654, 321 ]
+        ]
 #endif
 
 #if defined DECLARATION_POSITION
@@ -34,14 +34,14 @@ bool: ispacked(string[])        /* line 10 */
 #if defined REFERENCE_ARG
 func(&va)
 {
-    printf(!"func1: %d\n",va);
-    printf(!"func2: %d\n",va);
+    printf("func1: %d\n",va);
+    printf("func2: %d\n",va);
     va++;
 }
 #endif
 
 #if defined DEF_ARRAY_ARG
-DefArg(const cStruc[]="")
+DefArg(const cStruc[]='''')
     return cStruc[0]    /* just to avoid a warning */
 #endif
 
@@ -59,18 +59,8 @@ increment(a)
     return ++a
 #endif
 
-#if defined ENUM_REDEFINES_SYM
-native add();
-
-enum
-    {
-    add,
-    del,
-    };
-#endif
-
 #if defined CONST_WRITE_USAGE
-enum
+const
     {
     PARAM_CELL=1,
     PARAM_CELL_REF,
@@ -84,11 +74,11 @@ native RegPublicFunction(ParameterCount, ...);
     test({Sentient,Foo,_}:param,paramTag = tagof param)
     {
 	if (paramTag == tagof Sentient:)
-		printf(!"Passed a Sentient %d\n",_:param);
+		printf("Passed a Sentient %d\n",_:param);
 	else if (paramTag == tagof Foo:)
-		printf(!"Passed a Foo %d\n",_:param);
+		printf("Passed a Foo %d\n",_:param);
 	else
-		printf(!"Passed something else %d\n",_:param);
+		printf("Passed something else %d\n",_:param);
     }
 #endif
 
@@ -102,7 +92,7 @@ native RegPublicFunction(ParameterCount, ...);
 #endif
 
 #if defined NATIVE_RET_ARRAY
-    native [1]netsocket(value);
+    native netsocket[1](value);
 #endif
 
 #if defined STRINGIZE_OPER
@@ -112,32 +102,32 @@ native RegPublicFunction(ParameterCount, ...);
 
 #if defined PACKED_OPCODE_LIMITS
     printvalue(d, const s[])
-        printf !"%d (should be %s)\n", d, s
+        printf "%d (should be %s)\n", d, s
 #endif
 
 
 main()
     {
     #if defined ASSERT_LINENO
-        assert ispacked("unpacked");
+        assert ispacked(''unpacked'');
     #endif
 
     #if defined CASCADED_ASSIGN
         new a = 4, b = 5;
         a ^= b ^= a ^= b;
-        printf("a==%d, b==%d  (should be a==5, b==4)\n", a, b);
+        printf(''a==%d, b==%d  (should be a==5, b==4)\n'', a, b);
     #endif
 
     #if defined LINE_CAT
-    print("hello");     \
-    print("\n");        // a somewhat long line
+    print(''hello'');     \
+    print(''\n'');        // a somewhat long line
     #endif
 
     #if defined REFERENCE_ARG
         new test=40;
-        printf("before: %d\n",test);
+        printf(''before: %d\n'',test);
         func(test);
-        printf("after: %d\n",test);
+        printf(''after: %d\n'',test);
     #endif
 
     #if defined UNTERMINATED_STRING
@@ -146,79 +136,79 @@ main()
          * variable number of parameters and the closing ')' was not found
          * (the closing ')' was assumed to be part of the literal string)
          */
-        printf("Bye\n);
+        printf(''Bye\n);
     #endif
 
     #if defined IMPLICIT_POSTFIX
         new a, b = 4
         a = 3
         ++b; ++a
-        printf("%d %d\n", a, b)
+        printf(''%d %d\n'', a, b)
     #endif
 
     #if defined REDUNDANT_TEST
         if (1==1)
-            print(!"Hello ")
-        print(!"world\n")
+            print("Hello ")
+        print("world\n")
     #endif
 
     #if defined REDUNDANT_CODE
         if (1==2)
-            print(!"NOT ")
-        print(!"Okay\n")
+            print("NOT ")
+        print("Okay\n")
     #endif
 
     #if defined COND_EXPR_CONST
-        new str[] = !"monkey"
+        new str{} = "monkey"
         new index
         for (index = 0; str{index}; index += 1)
             if ('e' == str{index})
                 break
         new result = str{index} ? index : -1
-        printf(!"Result: %d\n", result)
+        printf("Result: %d\n", result)
     #endif
 
     #if defined DEF_ARRAY_ARG
         new cRef = DefArg()
-        printf("Result: %d\n", cRef)
+        printf(''Result: %d\n'', cRef)
     #endif
 
     #if defined COND_OPER_ARRAY
       new a = 1
-      new str[] = "Second"
-      printf("result = %s\n", a ? "First" : str)
-      printf("result = %s\n", !a ? "First" : str)
+      new str[] = ''Second''
+      printf(''result = %s\n'', a ? ''First'' : str)
+      printf(''result = %s\n'', !a ? ''First'' : str)
     #endif
 
     #if defined POST_INCREMENT_REF
       new pos = 0
-      printf("Before: %d\n", pos++ )
-      printf("After:  %d\n", pos )
+      printf(''Before: %d\n'', pos++ )
+      printf(''After:  %d\n'', pos )
     #endif
 
     #if defined NEGATIVE_INDEX1
-        new array[10] = { 1, 2, ... }
+        new array[10] = [ 1, 2, ... ]
         new v = array[-1]
         v = v + 1       // to avoid a compiler warning
     #endif
     #if defined NEGATIVE_INDEX2
-        new array[10] = { 1, 2, ... }
-        printf("field %d = %d\n",-1,array[-1])
+        new array[10] = [ 1, 2, ... ]
+        printf(''field %d = %d\n'',-1,array[-1])
     #endif
     #if defined NEGATIVE_INDEX3
-        new array[10] = { 1, 2, ... }
+        new array[10] = [ 1, 2, ... ]
         new i = -1
         new v = array[i]
         v = v + 1       // to avoid a compiler warning
     #endif
     #if defined NEGATIVE_INDEX4
-        new array[10] = { 1, 2, ... }
+        new array[10] = [ 1, 2, ... ]
         new i = -1
-        printf("field %d = %d\n",i,array[i])
+        printf(''field %d = %d\n'',i,array[i])
     #endif
 
     #if defined DOUBLE_NATIVE_DECLARE
-        printf "Hello world\n"
+        printf ''Hello world\n''
     #endif
 
     #if defined CALL_BEFORE_DEF
@@ -227,7 +217,7 @@ main()
             {
             case 1: x = Test()
             }
-	printf("bug")
+	printf(''bug'')
     #endif
 
     #if defined SWITCH_SIDE_EFFECT
@@ -235,20 +225,20 @@ main()
         switch (a++)
             {
             case 0:
-                print "zero"
+                print ''zero''
             case 1:
-                print "one"
+                print ''one''
             case 2:
-                print "two"
+                print ''two''
             }
-        print " (should be one)\n"
-        printf "exit = %d (should be 2)\n", a
+        print '' (should be one)\n''
+        printf ''exit = %d (should be 2)\n'', a
     #endif
 
     #if defined CHAINED_ARRAY_ASSIGN
         new a[3]
         a[0] = a[1] = a[2] = 5
-        printf "%d %d %d\n", a[0], a[1], a[2]
+        printf ''%d %d %d\n'', a[0], a[1], a[2]
     #endif
 
     #if defined CONST_WRITE_USAGE
@@ -257,7 +247,7 @@ main()
 
     #if defined SYMBOL_TOO_LONG_FOR_OPTIMIZER
         new desired_velocity_towards_A
-        printf "%d\n", desired_velocity_towards_A
+        printf ''%d\n'', desired_velocity_towards_A
     #endif
 
     #if defined TAGOF_PARAM
@@ -267,57 +257,57 @@ main()
     #endif
 
     #if defined MACRO_PARM_INSTR
-        #define TEST    "%1test"
+        #define TEST    ''%1test''
         print TEST
     #endif
 
     #if defined MACRO_PARM_UNKNOWN
         #define TEST    %1+4
-        printf "%d", TEST
+        printf ''%d'', TEST
     #endif
 
     #if defined FLOORED_DIVISION
         new n = 8, q = 3, n2 = 9
-        printf "\t(%+d,%+d)  q=%+d r=%+d\n", n, q, n / q, n % q
-        printf "\t(%+d,%+d)  q=%+d r=%+d\n", n, -q, n / -q, n % -q
-        printf "\t(%+d,%+d)  q=%+d r=%+d\n", -n, q, -n / q, -n % q
-        printf "\t(%+d,%+d)  q=%+d r=%+d\n", -n, -q, -n / -q, -n % -q
-        printf "\t(%+d,%+d)  q=%+d r=%+d\n", n2, q, n2 / q, n2 % q
-        printf "\t(%+d,%+d)  q=%+d r=%+d\n", n2, -q, n2 / -q, n2 % -q
-        printf "\t(%+d,%+d)  q=%+d r=%+d\n", -n2, q, -n2 / q, -n2 % q
-        printf "\t(%+d,%+d)  q=%+d r=%+d\n", -n2, -q, -n2 / -q, -n2 % -q
+        printf ''\t(%+d,%+d)  q=%+d r=%+d\n'', n, q, n / q, n % q
+        printf ''\t(%+d,%+d)  q=%+d r=%+d\n'', n, -q, n / -q, n % -q
+        printf ''\t(%+d,%+d)  q=%+d r=%+d\n'', -n, q, -n / q, -n % q
+        printf ''\t(%+d,%+d)  q=%+d r=%+d\n'', -n, -q, -n / -q, -n % -q
+        printf ''\t(%+d,%+d)  q=%+d r=%+d\n'', n2, q, n2 / q, n2 % q
+        printf ''\t(%+d,%+d)  q=%+d r=%+d\n'', n2, -q, n2 / -q, n2 % -q
+        printf ''\t(%+d,%+d)  q=%+d r=%+d\n'', -n2, q, -n2 / q, -n2 % q
+        printf ''\t(%+d,%+d)  q=%+d r=%+d\n'', -n2, -q, -n2 / -q, -n2 % -q
     #endif
 
     #if defined RETURN_WITH_INCR
         new b
         b = increment(1)
-        printf "%d", b
+        printf ''%d'', b
     #endif
 
     #if defined COND_EXP_ARRAY
         new b=0
-        new other[]="123"
-        printf "result=%s\n", b ? return_array(1) : other
+        new other[]=''123''
+        printf ''result=%s\n'', b ? return_array(1) : other
         b=1
-        printf "result=%s\n", b ? return_array(1) : other
+        printf ''result=%s\n'', b ? return_array(1) : other
     #endif
 
     #if defined PRINTF_PCT
         new result = 15
-        printf "queue: %d%%\n", result
-        printf "queue: %d\n"
+        printf ''queue: %d%%\n'', result
+        printf ''queue: %d\n''
     #endif
 
     #if defined PARTIAL_ARRAY_SIZE
         Array[Float:0] = 0  /* only to avoid a "symbol not used" warning */
     #endif
     #if defined COUNT_ARRAY_SIZE
-        printf !"size: %d x %d\n", sizeof Array, sizeof Array[]
+        printf "size: %d x %d\n", sizeof Array, sizeof Array[]
         Array[0][0] = 0     /* only to avoid a "symbol not used" warning */
     #endif
 
     #if defined DECLARATION_POSITION
-        printf "hello...\n"
+        printf ''hello...\n''
     #endif
 
     #if defined UNBALANCED_BRACES
@@ -331,29 +321,25 @@ main()
     #endif
 
     #if defined NATIVE_RET_ARRAY
-        new addr[4 char]
+        new addr[4]
         addr = netsocket(25)
         print addr
     #endif
 
     #if defined LIT_STRING_CAT
-        print "Eenie " ... "Meenie\n"
-        print !"Meinie " ... !"Moe\n"
+        print ''Eenie '' ... ''Meenie\n''
+        print "Meinie " ... "Moe\n"
     #endif
 
     #if defined LIT_STRING_CAT_MIX
-        print "Eenie " ... \"Meenie\n"
-        print "Meinie " ... !"Moe\n"
+        print ''Eenie '' ... \''Meenie\n''
+        print ''Meinie '' ... "Moe\n"
     #endif
 
     #if defined ENUM_ELLIPSIS
-        enum Rect
-            {
-            left, top, right, bottom
-            }
-
-        new r[Rect] = { -1, ... }
-        printf "%d, %d, %d, %d\n", r[left], r[top], r[right], r[bottom]
+        #define Rect[ .left, .top, .right, .bottom ]
+        new r[Rect] = [ -1, ... ]
+        printf ''%d, %d, %d, %d\n'', r.left, r.top, r.right, r.bottom
     #endif
 
     #if defined STRINGIZE_OPER
@@ -361,10 +347,26 @@ main()
     #endif
 
     #if defined PACKED_OPCODE_LIMITS
-        printvalue 32767, !"32767"
-        printvalue 32768, !"32768"
-        printvalue -32767, !"-32767"
-        printvalue -32768, !"-32768"
-        printvalue -32769, !"-32769"
+        printvalue 32767, "32767"
+        printvalue 32768, "32768"
+        printvalue -32767, "-32767"
+        printvalue -32768, "-32768"
+        printvalue -32769, "-32769"
+    #endif
+
+    #if defined CONST_REL_CHAINED_OP
+        printf ''Result = %d (should be 1)\n'', (0 < 1 <= 2)
+    #endif
+
+    #if defined MULTI_DIM_PARTIAL_COUNT
+        new const seethis[][2]{8} = [
+            ["bye", "hello"],
+            ["bye", "hello"],
+            ["bye", "hello"],
+            ["bye", "hello"],
+            ["bye", "hello"]
+        ]
+
+        print(seethis[0][1]);
     #endif
     }

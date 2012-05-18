@@ -1,13 +1,13 @@
 /* Console input/output functions
  *
- * (c) Copyright 1998-2007, ITB CompuPhase
+ * (c) Copyright 1998-2011, ITB CompuPhase
  * This file is provided as is (no warranties).
  */
 #pragma library Console
 
-enum
+const
     {
-    black,      /* colours as per the ANSI Escape sequences, ISO 6429 */
+    black = 0,  /* colours as per the ANSI Escape sequences, ISO 6429 */
     red,
     green,
     yellow,
@@ -18,7 +18,7 @@ enum
     }
 
 native getchar(echo=true);
-native getstring(string[], maxlength=sizeof string, bool:pack=false);
+native getstring(string[], maxlength=sizeof string, bool:pack=true);
 native getvalue(base=10, term=0x0d, ...);    /* 0x0d == '\r' */
 native print(const string[], foreground=-1, background=-1, highlight=-1);
 native printf(const format[], {Float,Fixed,_}:...);

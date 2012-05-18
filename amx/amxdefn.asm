@@ -1,6 +1,6 @@
 ; Definition of the AMX structure for assembler syntax (NASM)
 
-	struc amx_s
+struc amx_s
 _base:       resd 1
 _codeseg:    resd 1
 _dataseg:    resd 1
@@ -30,9 +30,9 @@ _codesize:   resd 1          ; memory size of the overlay or of the native code
         ; the non-JIT version of the abstract machine
 _reloc_size: resd 1          ; memory block for relocations
 %endif
-	endstruc
+endstruc
 
-	struc amxhead_s
+struc amxhead_s
 _size:       resd 1  ; size of the "file"
 _magic:      resw 1  ; signature
 _file_version: resb 1; file format version
@@ -51,7 +51,7 @@ _pubvars:    resd 1  ; offset to the "public variables" table
 _tags:       resd 1  ; offset to the "public tagnames" table
 _nametable:  resd 1  ; offset to the name table, file version 7+ only
 _overlaytbl: resd 1  ; offset to the overlay table, file version 10+ only
-	endstruc
+endstruc
 
 
 AMX_ERR_NONE        EQU 0

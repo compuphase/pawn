@@ -2,27 +2,26 @@
 #include <rational>
 #include <string>
 
-enum token
-    {
-              t_type,           /* operator or token type */
-    Rational: t_value,          /* value, if t_type is "Number" */
-              t_word[20],       /* raw string */
-    }
+#define Token [
+              .type,          /* operator or token type */
+    Rational: .value,         /* value, if t_type is "Number" */
+              .word{20},      /* raw string */
+    ]
 
 const Number    = '0'
 const EndOfExpr = '#'
 
-rpncalc(const string[])
+rpncalc(const string{})
     {
     new index
-    new field[token]
+    new field[Token]
     for ( ;; )
         {
         field = gettoken(string, index)
-        switch (field[t_type])
+        switch (field.type)
             {
             case Number:
-                push field[t_value]
+                push field.value
             case '+':
                 push pop() + pop()
             case '-':
@@ -34,7 +33,7 @@ rpncalc(const string[])
             case EndOfExpr:
                 break   /* exit "for" loop */
             default:
-                printf "Unknown operator '%s'\n", field[t_word]
+                printf "Unknown operator '%s'\n", field.word
             }
         }
     printf "Result = %r\n", pop()
@@ -42,29 +41,29 @@ rpncalc(const string[])
         print "Stack not empty\n", red
     }
 
-gettoken(const string[], &index)
+gettoken(const string{}, &index)
     {
     /* first get the next "word" from the string */
-    new word[20]
+    new word{20}
     word = strtok(string, index)
 
     /* then parse it */
-    new field[token]
-    field[t_word] = word
+    new field[Token]
+    field.word = word
     if (strlen(word) == 0)
         {
-        field[t_type] = EndOfExpr /* special "stop" symbol */
-        field[t_value] = 0
+        field.type = EndOfExpr /* special "stop" symbol */
+        field.value = 0
         }
-    else if ('0' <= word[0] <= '9')
+    else if ('0' <= word{0} <= '9')
         {
-        field[t_type] = Number
-        field[t_value] = rval(word)
+        field.type = Number
+        field.value = rval(word)
         }
     else
         {
-        field[t_type] = word[0]
-        field[t_value] = 0
+        field.type = word{0}
+        field.value = 0
         }
 
     return field

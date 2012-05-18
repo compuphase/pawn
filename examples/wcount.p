@@ -1,4 +1,5 @@
 /* word count: count words on a string that the user types */
+#include <string>
 
 main()
     {

@@ -1,27 +1,21 @@
 /* Priority queue (for simple text strings) */
 #include <string>
 
-enum message
-    {
-    text[40 char],
-    priority
-    }
-
 main()
     {
-    new msg[message]
+    new msg[.text{40}, .priority]
 
     /* insert a few items (read from console input) */
-    printf "Please insert a few messages and their priorities; \
-            end with an empty string\n"
+    printf "Please insert a few messages and their priorities; " ...
+           "end with an empty string\n"
     for ( ;; )
         {
         printf "Message:  "
-        getstring .string = msg[text], .maxlength = 40, .pack = true
-        if (strlen(msg[text]) == 0)
+        getstring msg.text, .pack = true
+        if (strlen(msg.text) == 0)
             break
         printf "Priority: "
-        msg[priority] = getvalue()
+        msg.priority = getvalue()
         if (!insert(msg))
             {
             printf "Queue is full, cannot insert more items\n"
@@ -32,14 +26,14 @@ main()
     /* now print the messages extracted from the queue */
     printf "\nContents of the queue:\n"
     while (extract(msg))
-        printf "[%d] %s\n", msg[priority], msg[text]
+        printf "[%d] %s\n", msg.priority, msg.text
     }
 
 const queuesize = 10
-new queue[queuesize][message]
+new queue[queuesize][.text{40}, .priority]
 new queueitems = 0
 
-insert(const item[message])
+insert(const item[.text{40}, .priority])
     {
     /* check if the queue can hold one more message */
     if (queueitems == queuesize)
@@ -47,7 +41,7 @@ insert(const item[message])
 
     /* find the position to insert it to */
     new pos = queueitems        /* start at the bottom */
-    while (pos > 0 && item[priority] > queue[pos-1][priority])
+    while (pos > 0 && item.priority > queue[pos-1].priority)
         --pos                   /* higher priority: move up a slot */
 
     /* make place for the item at the insertion spot */
@@ -61,7 +55,7 @@ insert(const item[message])
     return true
     }
 
-extract(item[message])
+extract(item[.text{40}, .priority])
     {
     /* check whether the queue has one more message */
     if (queueitems == 0)

@@ -1,25 +1,22 @@
 /*  Pawn compiler - Error message system
+ *
  *  In fact a very simple system, using only 'panic mode'.
  *
- *  Copyright (c) ITB CompuPhase, 1997-2009
+ *  Copyright (c) ITB CompuPhase, 1997-2011
  *
- *  This software is provided "as-is", without any express or implied warranty.
- *  In no event will the authors be held liable for any damages arising from
- *  the use of this software.
+ *  Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ *  use this file except in compliance with the License. You may obtain a copy
+ *  of the License at
  *
- *  Permission is granted to anyone to use this software for any purpose,
- *  including commercial applications, and to alter it and redistribute it
- *  freely, subject to the following restrictions:
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
- *  1.  The origin of this software must not be misrepresented; you must not
- *      claim that you wrote the original software. If you use this software in
- *      a product, an acknowledgment in the product documentation would be
- *      appreciated but is not required.
- *  2.  Altered source versions must be plainly marked as such, and must not be
- *      misrepresented as being the original software.
- *  3.  This notice may not be removed or altered from any source distribution.
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ *  WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ *  License for the specific language governing permissions and limitations
+ *  under the License.
  *
- *  Version: $Id: sc5.c 4057 2009-01-15 08:21:31Z thiadmer $
+ *  Version: $Id: sc5.c 4611 2011-12-05 17:46:53Z thiadmer $
  */
 #include <assert.h>
 #if defined	__WIN32__ || defined _WIN32 || defined __MSDOS__
@@ -132,7 +129,7 @@ static short lastfile;
     int len;
     assert(notice<sizearray(noticemsg));
     strcat(string,"; ");
-    len=strlen(string);
+    len=(int)strlen(string);
     strexpand(string+len,(unsigned char *)noticemsg[notice],sizeof string-len-1,SCPACK_TABLE);
   } /* if */
   strcat(string,"\n");
@@ -143,10 +140,15 @@ static short lastfile;
     errline=fline;              /* normal error, errstart may (or may not) have been marked, endpoint is current line */
   if (errstart>errline)
     errstart=errline;           /* special case: error found at end of included file */
-  if (errfile>=0)
+  if (errfile>=0) {
     filename=get_inputfile(errfile);/* forced filename */
-  else
+  } else {
     filename=inpfname;          /* current file */
+    if (filename==NULL || strlen(filename)==0)
+      filename=get_sourcefile(0);
+    if (filename==NULL || strlen(filename)==0)
+      filename="(none)";
+  } /* if */
   assert(filename!=NULL);
 
   va_start(argptr,number);
@@ -163,9 +165,9 @@ static short lastfile;
     FILE *fp=fopen(errfname,"a");
     if (fp!=NULL) {
       if (errstart>=0 && errstart!=errline)
-        fprintf(fp,"%s(%d -- %d) : %s %03d: ",filename,errstart,errline,pre,number);
+        fprintf(fp,"%s(%d -- %d) : %s %03d: ",filename,errstart,errline,pre,(int)number);
       else
-        fprintf(fp,"%s(%d) : %s %03d: ",filename,errline,pre,number);
+        fprintf(fp,"%s(%d) : %s %03d: ",filename,errline,pre,(int)number);
       vfprintf(fp,string,argptr);
       fclose(fp);
     } /* if */
@@ -210,6 +212,31 @@ SC_FUNC int error_suggest(int number,const char *name,int ident)
   return 0;
 }
 
+SC_FUNC int error_suggest_list(int number,const char *name,constvalue *list)
+{
+  assert(name!=NULL);
+  assert(list!=NULL);
+  if (sc_status==statWRITE) {
+    constvalue *closest=NULL;
+    if (strlen(name)>0) {
+      int dist,closestdist=INT_MAX;
+      while (list->next!=NULL) {
+        list=list->next;
+        dist=levenshtein_distance(list->name,name);
+        if (dist<closestdist && dist<=MAX_EDIT_DIST) {
+          closest=list;
+          closestdist=dist;
+        } /* if */
+      } /* while */
+    } /* if */
+    if (closest!=NULL && strcmp(name,closest->name)!=0)
+      error(makelong(number,1),name,closest->name);
+    else
+      error(number,name);
+  } /* if */
+  return 0;
+}
+
 SC_FUNC void errorset(int code,int line)
 {
   switch (code) {
@@ -247,10 +274,10 @@ SC_FUNC void errorset(int code,int line)
  *  o  1 for enable
  *  o  2 for toggle
  */
-DLLEXPORT
 #if defined __cplusplus
   extern "C"
 #endif
+DLLEXPORT
 int pc_enablewarning(int number,int enable)
 {
   int index;
@@ -294,9 +321,10 @@ static int minimum(int a,int b,int c)
 SC_FUNC int levenshtein_distance(const char *s,const char*t)
 {
   //Step 1
-  int k,i,j,cost,*d,distance;
-  int n=strlen(s);
-  int m=strlen(t);
+  int k,i,j,cost,distance;
+  int *d;
+  int n=(int)strlen(s);
+  int m=(int)strlen(t);
   assert(n>0 && m>0);
   d=(int*)malloc((sizeof(int))*(m+1)*(n+1));
   m++;
@@ -330,7 +358,7 @@ static int find_closestsymbol_table(const char *name,const symbol *root,int symb
   assert(closestsym!=NULL);
   *closestsym=NULL;
   assert(name!=NULL);
-  critdist=strlen(name)/2;  /* for short names, allow only a single edit */
+  critdist=(int)strlen(name)/2;  /* for short names, allow only a single edit */
   if (critdist>MAX_EDIT_DIST)
     critdist=MAX_EDIT_DIST;
   while (sym!=NULL) {

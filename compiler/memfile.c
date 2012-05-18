@@ -2,17 +2,23 @@
  *  memory.
  *
  *  Copyright (c) faluco / http://www.amxmodx.org/, 2006
- *  Version: $Id: memfile.c 3860 2007-12-04 11:49:34Z thiadmer $
+ *  Version: $Id: memfile.c 4611 2011-12-05 17:46:53Z thiadmer $
  */
 
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>
-#include "memfile.h"
-#include "sc.h"
+
+#ifdef MACOS
+  #include <malloc/malloc.h>
+#else
+  #include <malloc.h>
+#endif
 #if defined FORTIFY
   #include <alloc/fortify.h>
 #endif
+
+#include "sc.h"
 
 memfile_t *memfile_creat(const char *name, size_t init)
 {
@@ -51,7 +57,7 @@ void memfile_seek(memfile_t *mf, long seek)
 	mf->offs = seek;
 }
 
-long memfile_tell(const memfile_t *mf)
+size_t memfile_tell(const memfile_t *mf)
 {
 	assert(mf != NULL);
 	return mf->offs;
@@ -62,17 +68,13 @@ size_t memfile_read(memfile_t *mf, void *buffer, size_t maxsize)
 	assert(mf != NULL);
 	assert(buffer != NULL);
 	if (!maxsize || mf->offs >= mf->usedoffs)
-	{
 		return 0;
-	}
 
-	if (mf->usedoffs - mf->offs < (long)maxsize)
+	if (mf->usedoffs - mf->offs < maxsize)
 	{
 		maxsize = mf->usedoffs - mf->offs;
 		if (!maxsize)
-		{
 			return 0;
-		}
 	}
 
 	memcpy(buffer, mf->base + mf->offs, maxsize);

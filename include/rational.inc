@@ -1,7 +1,7 @@
 /* Rational number support
  * Loads either Float.inc or Fixed.inc, depending on the configuration
  *
- * (c) Copyright 2004-2008, ITB CompuPhase
+ * (c) Copyright 2004-2011, ITB CompuPhase
  * This file is provided as is (no warranties).
  */
 

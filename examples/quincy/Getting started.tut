@@ -1,0 +1,5 @@
+[Documents]
+Docct=0
+
+[Summary]
+RTF={\rtf1\ansi\ansicpg1252\deff0\deflang1043{\fonttbl{\f0\fswiss\fcharset0 Arial;}}{\colortbl ;\red128\green0\blue0;}{\*\generator Msftedit 5.41.15.1507;}\viewkind4\uc1\pard\cf1\b\f0\fs24 Getting started\b0\fs28\par\cf0\fs20\par This category contains simple scripts that follow the tutorial section in the Pawn manual. Each of the scripts illustrates one particular concept. The scripts gradually become bigger (and more useful).\par}

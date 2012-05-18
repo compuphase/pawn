@@ -1,31 +1,29 @@
 /*  Pawn compiler
  *
- *  Drafted after the Small-C compiler Version 2.01, originally created
- *  by Ron Cain, july 1980, and enhanced by James E. Hendrix.
+ *  Pawn is a scripting language system consisting of a compiler and an
+ *  abstract machine, for building and running programs in the Pawn language.
+ *  The Pawn compiler is drafted after the Small-C compiler Version 2.01,
+ *  originally created by Ron Cain, july 1980, and enhanced by James E. Hendrix.
  *
  *  This version comes close to a complete rewrite.
  *
- *  Copyright R. Cain, 1980
+ *  Copyright ITB CompuPhase, 1997-2011
  *  Copyright J.E. Hendrix, 1982, 1983
- *  Copyright ITB CompuPhase, 1997-2009
+ *  Copyright R. Cain, 1980
  *
- *  This software is provided "as-is", without any express or implied warranty.
- *  In no event will the authors be held liable for any damages arising from
- *  the use of this software.
+ *  Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ *  use this file except in compliance with the License. You may obtain a copy
+ *  of the License at
  *
- *  Permission is granted to anyone to use this software for any purpose,
- *  including commercial applications, and to alter it and redistribute it
- *  freely, subject to the following restrictions:
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
- *  1.  The origin of this software must not be misrepresented; you must not
- *      claim that you wrote the original software. If you use this software in
- *      a product, an acknowledgment in the product documentation would be
- *      appreciated but is not required.
- *  2.  Altered source versions must be plainly marked as such, and must not be
- *      misrepresented as being the original software.
- *  3.  This notice may not be removed or altered from any source distribution.
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ *  WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ *  License for the specific language governing permissions and limitations
+ *  under the License.
  *
- *  Version: $Id: sc.h 4057 2009-01-15 08:21:31Z thiadmer $
+ *  Version: $Id: sc.h 4611 2011-12-05 17:46:53Z thiadmer $
  */
 #ifndef SC_H_INCLUDED
 #define SC_H_INCLUDED
@@ -42,6 +40,9 @@
   #include <setjmp.h>
 #endif
 
+#if !defined PAWN_CELL_SIZE
+  #define PAWN_CELL_SIZE 64 /* by default, maximum cell size = 64-bit */
+#endif
 #include "../amx/osdefs.h"
 #include "../amx/amx.h"
 
@@ -64,15 +65,27 @@ typedef union {
   int i;
 } stkitem;                  /* type of items stored on the compiler stack */
 
+/*  Equate table, tagname table, library table, ... */
+typedef struct s_constvalue {
+  struct s_constvalue *next;
+  char name[sNAMEMAX+1];
+  cell value;
+  int index;            /* tag for symbolic-array fields; automaton id. for states and automatons */
+  char usage;           /* currently only for pseudo-arrays in symbolic-array fields */
+} constvalue;
+
 typedef struct s_arginfo {  /* function argument info */
   char name[sNAMEMAX+1];
   char ident;           /* iVARIABLE, iREFERENCE, iREFARRAY or iVARARGS */
-  char usage;           /* uCONST */
+  char usage;           /* uCONST, uPACKED */
+  /* tags */
   int *tags;            /* argument tag id. list */
   int numtags;          /* number of tags in the tag list */
-  int dim[sDIMEN_MAX];
-  int idxtag[sDIMEN_MAX];
+  /* dimension */
+  int dim[sDIMEN_MAX];  /* length of each dimension */
+  constvalue *dimnames[sDIMEN_MAX]; /* for symbolic dimensions, the name list */
   int numdim;           /* number of dimensions */
+  /* default value */
   unsigned char hasdefault; /* bit0: is there a default value? bit6: "tagof"; bit7: "sizeof" */
   union {
     cell val;           /* default value */
@@ -89,16 +102,6 @@ typedef struct s_arginfo {  /* function argument info */
   } defvalue;           /* default value, or pointer to default array */
   int defvalue_tag;     /* tag of the default value */
 } arginfo;
-
-/*  Equate table, tagname table, library table */
-typedef struct s_constvalue {
-  struct s_constvalue *next;
-  char name[sNAMEMAX+1];
-  cell value;
-  int index;            /* index level for constants referring to array sizes/tags;
-                         * automaton id. for states and automatons;
-                         * tag for enumeration lists */
-} constvalue;
 
 typedef struct s_statelist {
   struct s_statelist *next;
@@ -140,20 +143,17 @@ typedef struct s_symbol {
 
   union {
     int declared;       /* label: how many local variables are declared */
-    struct {
-      int index;        /* array & enum: tag of array indices of the enum item */
-      int field;        /* enumeration fields, where a size is attached to the field */
-    } tags;             /* extra tags */
     constvalue *lib;    /* native function: library it is part of */
     long stacksize;     /* normal/public function: stack requirements */
+    int enumlist;       /* enumerated constants: unique sequence number */
   } x;                  /* 'x' for 'extra' */
 
   union {
     arginfo *arglist;   /* types of all parameters for functions */
-    constvalue *enumlist;/* list of names for the "root" of an enumeration */
     struct {
-      cell length;      /* arrays: length (size) */
+      cell length;      /* arrays: length (size) of this dimension */
       short level;      /* number of dimensions below this level */
+      constvalue *names;/* for symbolic dimensions, the name list */
     } array;
   } dim;                /* for 'dimension', both functions and arrays */
 
@@ -198,6 +198,7 @@ typedef struct s_symbol {
  *        2     (uWRITTEN) the variable is altered (assigned a value)
  *        3     (uCONST) the variable is constant (may not be assigned to)
  *        4     (uPUBLIC) the variable is public
+ *        5     (uPACKED) the array variable is defined as packed (only for the last dimension of an array)
  *        6     (uSTOCK) the variable is discardable (without warning)
  *
  *  FUNCTION
@@ -216,8 +217,7 @@ typedef struct s_symbol {
  *        1     (uREAD) the constant is "read" (accessed) in the source file
  *        2     (uWRITTEN) redundant, but may be set for constants passed by reference
  *        3     (uPREDEF) the constant is pre-defined and should be kept between passes
- *        5     (uENUMROOT) the constant is the "root" of an enumeration
- *        6     (uENUMFIELD) the constant is a field in a named enumeration
+ *        5     (uPACKED) the constant refers to a packed pseudo-array
  */
 #define uDEFINE   0x001
 #define uREAD     0x002
@@ -228,9 +228,8 @@ typedef struct s_symbol {
 #define uPREDEF   0x008 /* constant is pre-defined */
 #define uPUBLIC   0x010
 #define uNATIVE   0x020
-#define uENUMROOT 0x020
+#define uPACKED   0x020
 #define uSTOCK    0x040
-#define uENUMFIELD 0x040
 #define uMISSING  0x080
 #define uFORWARD  0x100
 #define uVISITED  0x200 /* temporary flag, to mark fields as "visited" in recursive loops */
@@ -260,10 +259,9 @@ typedef struct s_value {
   cell constval;        /* value of the constant expression (if ident==iCONSTEXPR)
                          * also used for the size of a literal array */
   int tag;              /* tag (of the expression) */
-  int cmptag;           /* for searching symbols: choose the one with the matching tag */
   char ident;           /* iCONSTEXPR, iVARIABLE, iARRAY, iARRAYCELL,
                          * iEXPRESSION or iREFERENCE */
-  char boolresult;      /* boolean result for relational operators */
+  char boolresult;      /* boolean result for relational operators, also used to flag "packed arrays" for literal arrays */
   cell *arrayidx;       /* last used array indices, for checking self assignment */
 } value;
 
@@ -312,8 +310,8 @@ typedef struct s_valuepair {
 } valuepair;
 
 /* macros for code generation */
-#define opcodes(n)      ((n)*sizeof(cell))      /* opcode size */
-#define opargs(n)       ((n)*sizeof(cell))      /* size of typical argument */
+#define opcodes(n)      ((n)*pc_cellsize)   /* opcode size */
+#define opargs(n)       ((n)*pc_cellsize)   /* size of typical argument */
 
 /* general purpose macros */
 #if !defined sizearray
@@ -328,7 +326,7 @@ typedef struct s_valuepair {
  */
 #define tFIRST      256 /* value of first multi-character operator */
 #define tMIDDLE     280 /* value of last multi-character operator */
-#define tLAST       323 /* value of last multi-character match-able token */
+#define tLAST       321 /* value of last multi-character match-able token */
 /* multi-character operators */
 #define taMULT      256 /* *= */
 #define taDIV       257 /* /= */
@@ -359,57 +357,57 @@ typedef struct s_valuepair {
 #define tASSERT     281
 #define tBREAK      282
 #define tCASE       283
-#define tCHAR       284
-#define tCONST      285
-#define tCONTINUE   286
-#define tDEFAULT    287
-#define tDEFINED    288
-#define tDO         289
-#define tELSE       290
-#define tENUM       291
-#define tEXIT       292
-#define tFOR        293
-#define tFORWARD    294
-#define tGOTO       295
-#define tIF         296
-#define tNATIVE     297
-#define tNEW        298
-#define tOPERATOR   299
-#define tPUBLIC     300
-#define tRETURN     301
-#define tSIZEOF     302
-#define tSLEEP      303
-#define tSTATE      304
-#define tSTATIC     305
-#define tSTOCK      306
-#define tSWITCH     307
-#define tTAGOF      308
-#define tWHILE      309
+#define tCONST      284
+#define tCONTINUE   285
+#define tDEFAULT    286
+#define tDEFINED    287
+#define tDO         288
+#define tELSE       289
+#define tEXIT       290
+#define tFOR        291
+#define tFORWARD    292
+#define tGOTO       293
+#define tIF         294
+#define tNATIVE     295
+#define tNEW        296
+#define tOPERATOR   297
+#define tPUBLIC     298
+#define tRETURN     299
+#define tSIZEOF     300
+#define tSLEEP      301
+#define tSTATE      302
+#define tSTATIC     303
+#define tSTOCK      304
+#define tSWITCH     305
+#define tTAGOF      306
+#define tWHILE      307
 /* compiler directives */
-#define tpASSERT    310 /* #assert */
-#define tpDEFINE    311
-#define tpELSE      312 /* #else */
-#define tpELSEIF    313 /* #elseif */
-#define tpENDIF     314
-#define tpENDINPUT  315
-#define tpERROR     316
-#define tpFILE      317
-#define tpIF        318 /* #if */
-#define tINCLUDE    319
-#define tpLINE      320
-#define tpPRAGMA    321
-#define tpTRYINCLUDE 322
-#define tpUNDEF     323
+#define tpASSERT    308 /* #assert */
+#define tpDEFINE    309
+#define tpELSE      310 /* #else */
+#define tpELSEIF    311 /* #elseif */
+#define tpENDIF     312
+#define tpENDINPUT  313
+#define tpERROR     314
+#define tpFILE      315
+#define tpIF        316 /* #if */
+#define tINCLUDE    317
+#define tpLINE      318
+#define tpPRAGMA    319
+#define tpTRYINCLUDE 320
+#define tpUNDEF     321
 /* semicolon and comma are special cases, because they can be optional */
-#define tTERM       324 /* semicolon or newline */
-#define tSEPARATOR  325 /* comma or newline */
-#define tENDEXPR    326 /* forced end of expression */
+#define tTERM       322 /* semicolon or newline */
+#define tSEPARATOR  323 /* comma or newline */
+#define tENDEXPR    324 /* forced end of expression */
 /* other recognized tokens */
-#define tNUMBER     327 /* integer number */
-#define tRATIONAL   328 /* rational number */
-#define tSYMBOL     329
-#define tLABEL      330
-#define tSTRING     331
+#define tNUMBER     325 /* integer number */
+#define tRATIONAL   326 /* rational number */
+#define tSYMBOL     327
+#define tLABEL      328
+#define tSYMLABEL   329 /* ".name" syntax for named parameters and symbolic array indices */
+#define tSTRING     330
+#define tPACKSTRING 331
 #define tEXPR       332 /* for assigment to "lastst" only (see SC1.C) */
 #define tENDLESS    333 /* endless loop, for assigment to "lastst" only */
 
@@ -451,8 +449,9 @@ typedef struct s_valuepair {
 
 enum {
   sOPTIMIZE_NONE,               /* no optimization */
-  sOPTIMIZE_NOMACRO,            /* no macro instructions */
-  sOPTIMIZE_FULL,               /* full optimization */
+  sOPTIMIZE_CORE,               /* optimize using core instruction set only */
+  sOPTIMIZE_MACRO,              /* core + supplemental instruction sets */
+  sOPTIMIZE_FULL,               /* full optimization, packed instructions */
   /* ----- */
   sOPTIMIZE_NUMBER
 };
@@ -559,7 +558,8 @@ SC_FUNC int constexpr(cell *val,int *tag,symbol **symptr);
 SC_FUNC constvalue *append_constval(constvalue *table,const char *name,cell val,int index);
 SC_FUNC constvalue *find_constval(constvalue *table,char *name,int index);
 SC_FUNC void delete_consttable(constvalue *table);
-SC_FUNC symbol *add_constant(const char *name,cell val,int vclass,int tag,int allow_redef);
+SC_FUNC int compare_consttable(constvalue *table1, constvalue *table2);
+SC_FUNC symbol *add_constant(const char *name,cell val,int vclass,int tag);
 SC_FUNC void exporttag(int tag);
 SC_FUNC void sc_attachdocumentation(symbol *sym,int onlylastblock);
 
@@ -598,12 +598,12 @@ SC_FUNC void markusage(symbol *sym,int usage);
 SC_FUNC uint32_t namehash(const char *name);
 SC_FUNC symbol *findglb(const char *name,int filter);
 SC_FUNC symbol *findloc(const char *name);
-SC_FUNC symbol *findconst(const char *name,int *matchtag);
+SC_FUNC symbol *findconst(const char *name);
 SC_FUNC symbol *finddepend(const symbol *parent);
 SC_FUNC symbol *addsym(const char *name,cell addr,int ident,int vclass,int tag,
                        int usage);
 SC_FUNC symbol *addvariable(const char *name,cell addr,int ident,int vclass,int tag,
-                            int dim[],int numdim,int idxtag[]);
+                            int dim[],constvalue *dimnames[],int numdim,int ispacked);
 SC_FUNC int getlabel(void);
 SC_FUNC char *itoh(ucell val);
 
@@ -638,7 +638,7 @@ SC_FUNC void memcopy(cell size);
 SC_FUNC void copyarray2d(int majordim,int minordim);
 SC_FUNC void fillarray(symbol *sym,cell size,cell value);
 SC_FUNC void ldconst(cell val,regid reg);
-SC_FUNC void moveto1(void);
+SC_FUNC void swapregs(void);
 SC_FUNC void pushreg(regid reg);
 SC_FUNC void pushreloc(void);
 SC_FUNC void pushval(cell val);
@@ -708,6 +708,7 @@ SC_FUNC void outval(cell val,int fullcell,int newline);
 /* function prototypes in SC5.C */
 SC_FUNC int error(long number,...);
 SC_FUNC int error_suggest(int error,const char *name,int ident);
+SC_FUNC int error_suggest_list(int number,const char *name,constvalue *list);
 SC_FUNC void errorset(int code,int line);
 #define MAX_EDIT_DIST 2 /* allow two mis-typed characters; when there are more,
                          * the names are too different, and no match is returned */
@@ -768,19 +769,16 @@ SC_FUNC char *get_dbgstring(int index);
 SC_FUNC void delete_dbgstringtable(void);
 
 /* function prototypes in SCMEMFILE.C */
-#if !defined tMEMFILE
-  typedef unsigned char MEMFILE;
-  #define tMEMFILE  1
-#endif
-MEMFILE *mfcreate(const char *filename);
-void mfclose(MEMFILE *mf);
-int mfdump(MEMFILE *mf);
-long mflength(const MEMFILE *mf);
-long mfseek(MEMFILE *mf,long offset,int whence);
-unsigned int mfwrite(MEMFILE *mf,const unsigned char *buffer,unsigned int size);
-unsigned int mfread(MEMFILE *mf,unsigned char *buffer,unsigned int size);
-char *mfgets(MEMFILE *mf,char *string,unsigned int size);
-int mfputs(MEMFILE *mf,const char *string);
+#include "memfile.h"
+SC_FUNC memfile_t *mfcreate(const char *filename);
+SC_FUNC void mfclose(memfile_t *mf);
+SC_FUNC int mfdump(memfile_t *mf);
+SC_FUNC size_t mflength(const memfile_t *mf);
+SC_FUNC size_t mfseek(memfile_t *mf,long offset,int whence);
+SC_FUNC size_t mfwrite(memfile_t *mf,const unsigned char *buffer,size_t size);
+SC_FUNC size_t mfread(memfile_t *mf,unsigned char *buffer,size_t size);
+SC_FUNC char *mfgets(memfile_t *mf,char *string,size_t size);
+SC_FUNC int mfputs(memfile_t *mf,const char *string);
 
 /* function prototypes in SCI18N.C */
 #define MAXCODEPAGE 12
@@ -820,6 +818,7 @@ SC_VDECL constvalue tagname_tab;/* tagname table */
 SC_VDECL constvalue libname_tab;/* library table (#pragma library "..." syntax) */
 SC_VDECL constvalue *curlibrary;/* current library */
 SC_VDECL int pc_addlibtable;  /* is the library table added to the AMX file? */
+SC_VDECL constvalue ntvindex_tab;/* native function index table */
 SC_VDECL symbol *curfunc;     /* pointer to current function */
 SC_VDECL char *inpfname;      /* name of the file currently read from */
 SC_VDECL char outfname[];     /* intermediate (assembler) file name */
@@ -839,10 +838,8 @@ SC_VDECL int ntv_funcid;      /* incremental number of native function */
 SC_VDECL int errnum;          /* number of errors */
 SC_VDECL int warnnum;         /* number of warnings */
 SC_VDECL int sc_debug;        /* debug/optimization options (bit field) */
-SC_VDECL int sc_packstr;      /* strings are packed by default? */
 SC_VDECL int sc_asmfile;      /* create .ASM file? */
 SC_VDECL int sc_listing;      /* create .LST file? */
-SC_VDECL int pc_compress;     /* compress bytecode? */
 SC_VDECL int sc_needsemicolon;/* semicolon required to terminate expressions? */
 SC_VDECL int sc_dataalign;    /* data alignment value */
 SC_VDECL int sc_alignnext;    /* must frame of the next function be aligned? */
@@ -873,6 +870,8 @@ SC_VDECL int pc_optimize;     /* (peephole) optimization level */
 SC_VDECL int pc_memflags;     /* special flags for the stack/heap usage */
 SC_VDECL int pc_overlays;     /* generate overlay table + instructions? (abstract machine overay size limit) */
 SC_VDECL int pc_ovl0size[][2];/* size (in bytes) of the first (special) overlays */
+SC_VDECL int pc_cellsize;     /* size (in bytes) of a cell */
+SC_VDECL uint64_t pc_cryptkey;/* key for encryption of the generated script */
 
 SC_VDECL constvalue sc_automaton_tab; /* automaton table */
 SC_VDECL constvalue sc_state_tab;     /* state table */

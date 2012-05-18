@@ -1,0 +1,7 @@
+[Documents]
+Docct=0
+
+[Summary]
+RTF={\rtf1\ansi\ansicpg1252\deff0\deflang1043{\fonttbl{\f0\fswiss\fcharset0 Arial;}}{\colortbl ;\red128\green0\blue0;}{\*\generator Msftedit 5.41.15.1507;}\viewkind4\uc1\pard\cf1\b\f0\fs24 States and automatons\b0\fs28\par\cf0\fs20\par This category contains scripts that use states and automatons.\par\par As the Pawn manual makes the point that state machines are only useful in the context of event-driven programs, all of the programs in this category are event-driven as well.\par}
+
+
