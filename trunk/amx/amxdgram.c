@@ -2,25 +2,21 @@
  *
  *  This module uses the UDP protocol (from the TCP/IP protocol suite).
  *
- *  Copyright (c) ITB CompuPhase, 2005-2009
+ *  Copyright (c) ITB CompuPhase, 2005-2011
  *
- *  This software is provided "as-is", without any express or implied warranty.
- *  In no event will the authors be held liable for any damages arising from
- *  the use of this software.
+ *  Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ *  use this file except in compliance with the License. You may obtain a copy
+ *  of the License at
  *
- *  Permission is granted to anyone to use this software for any purpose,
- *  including commercial applications, and to alter it and redistribute it
- *  freely, subject to the following restrictions:
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
- *  1.  The origin of this software must not be misrepresented; you must not
- *      claim that you wrote the original software. If you use this software in
- *      a product, an acknowledgment in the product documentation would be
- *      appreciated but is not required.
- *  2.  Altered source versions must be plainly marked as such, and must not be
- *      misrepresented as being the original software.
- *  3.  This notice may not be removed or altered from any source distribution.
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ *  WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ *  License for the specific language governing permissions and limitations
+ *  under the License.
  *
- *  Version: $Id: amxdgram.c 4057 2009-01-15 08:21:31Z thiadmer $
+ *  Version: $Id: amxdgram.c 4611 2011-12-05 17:46:53Z thiadmer $
  */
 #include <assert.h>
 #include <ctype.h>
@@ -135,9 +131,11 @@ static int udp_Receive(char *message,size_t maxmsg,char *source)
   int slen=sizeof(sSource);
   int size;
 
-  size=recvfrom(sLocal, message, maxmsg, 0, (struct sockaddr *)&sSource, &slen);
+  size=recvfrom(sLocal, message, maxmsg - 1, 0, (struct sockaddr *)&sSource, &slen);
   if (size==-1)
     return -1;
+  assert((size_t)size < maxmsg);
+  message[size] = '\0';
   if (source!=NULL)
     sprintf(source, "%s:%d", inet_ntoa(sSource.sin_addr), ntohs(sSource.sin_port));
 
@@ -158,7 +156,7 @@ static int udp_IsPacket(void)
   time.tv_usec=1;
   FD_ZERO(&rdset);
   FD_SET(sLocal,&rdset);
-  result=select(0,&rdset,NULL,NULL,&time);
+  result=select(sLocal+1,&rdset,NULL,NULL,&time);
   if (result==SOCKET_ERROR)
     return -1;
 
@@ -200,7 +198,7 @@ static cell AMX_NATIVE_CALL n_sendstring(AMX *amx, const cell *params)
   char *host, *message, *ptr;
   short port=AMX_DGRAMPORT;
 
-  amx_GetAddr(amx, params[1], &cstr);
+  cstr = amx_Address(amx, params[1]);
   amx_UTF8Len(cstr, &length);
 
   if ((message = alloca(length + 3 + 1)) != NULL) {
@@ -240,7 +238,7 @@ static cell AMX_NATIVE_CALL n_sendpacket(AMX *amx, const cell *params)
   char *host, *ptr;
   short port=AMX_DGRAMPORT;
 
-  amx_GetAddr(amx, params[1], &cstr);
+  cstr = amx_Address(amx, params[1]);
   amx_StrParam(amx, params[3], host);
   if (host != NULL && (ptr=strchr(host,':'))!=NULL && isdigit(ptr[1])) {
     *ptr++='\0';
@@ -263,7 +261,7 @@ static cell AMX_NATIVE_CALL n_listenport(AMX *amx, const cell *params)
 static int AMXAPI amx_DGramIdle(AMX *amx, int AMXAPI Exec(AMX *, cell *, int))
 {
   char message[BUFLEN], source[SRC_BUFSIZE];
-  cell amx_addr_msg, amx_addr_src;
+  cell *amx_addr_src;
   int len, chars;
   int err=0;
 
@@ -283,7 +281,7 @@ static int AMXAPI amx_DGramIdle(AMX *amx, int AMXAPI Exec(AMX *, cell *, int))
 
   if (udp_IsPacket()) {
     len=udp_Receive(message, sizeof message / sizeof message[0], source);
-    amx_PushString(amx,&amx_addr_src,NULL,source,1,0);
+    amx_PushString(amx,&amx_addr_src,source,1,0);
     /* check the presence of a byte order mark: if it is absent, the received
      * packet is no string; also check the packet size against string length
      */
@@ -292,7 +290,7 @@ static int AMXAPI amx_DGramIdle(AMX *amx, int AMXAPI Exec(AMX *, cell *, int))
     {
       /* receive as "packet" */
       amx_Push(amx,len);
-      amx_PushArray(amx,&amx_addr_msg,NULL,(cell*)message,len);
+      amx_PushArray(amx,NULL,(cell*)message,len);
       err=Exec(amx,NULL,idxReceivePacket);
     } else {
       const char *msg=message;
@@ -306,16 +304,15 @@ static int AMXAPI amx_DGramIdle(AMX *amx, int AMXAPI Exec(AMX *, cell *, int))
           while (err==AMX_ERR_NONE && *msg!='\0')
             amx_UTF8Get(msg,&msg,ptr++);
           *ptr=0;               /* zero-terminate */
-          amx_PushArray(amx,&amx_addr_msg,NULL,array,chars+1);
+          amx_PushArray(amx,NULL,array,chars+1);
         } /* if */
       } else {
-        amx_PushString(amx,&amx_addr_msg,NULL,msg,1,0);
+        amx_PushString(amx,NULL,msg,1,0);
       } /* if */
       err=Exec(amx,NULL,idxReceiveString);
     } /* if */
     while (err==AMX_ERR_SLEEP)
       err=Exec(amx,NULL,AMX_EXEC_CONT);
-    amx_Release(amx,amx_addr_msg);
     amx_Release(amx,amx_addr_src);
   } /* if */
 

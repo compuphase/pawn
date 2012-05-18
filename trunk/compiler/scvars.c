@@ -2,25 +2,21 @@
  *
  *  Global (cross-module) variables.
  *
- *  Copyright (c) ITB CompuPhase, 1997-2009
+ *  Copyright (c) ITB CompuPhase, 1997-2011
  *
- *  This software is provided "as-is", without any express or implied warranty.
- *  In no event will the authors be held liable for any damages arising from
- *  the use of this software.
+ *  Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ *  use this file except in compliance with the License. You may obtain a copy
+ *  of the License at
  *
- *  Permission is granted to anyone to use this software for any purpose,
- *  including commercial applications, and to alter it and redistribute it
- *  freely, subject to the following restrictions:
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
- *  1.  The origin of this software must not be misrepresented; you must not
- *      claim that you wrote the original software. If you use this software in
- *      a product, an acknowledgment in the product documentation would be
- *      appreciated but is not required.
- *  2.  Altered source versions must be plainly marked as such, and must not be
- *      misrepresented as being the original software.
- *  3.  This notice may not be removed or altered from any source distribution.
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ *  WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ *  License for the specific language governing permissions and limitations
+ *  under the License.
  *
- *  Version: $Id: scvars.c 4057 2009-01-15 08:21:31Z thiadmer $
+ *  Version: $Id: scvars.c 4535 2011-07-07 09:15:22Z thiadmer $
  */
 #include <stdio.h>
 #include <stdlib.h>     /* for _MAX_PATH */
@@ -40,6 +36,7 @@ SC_VDEFINE constvalue tagname_tab = { NULL, "", 0, 0};  /* tagname table */
 SC_VDEFINE constvalue libname_tab = { NULL, "", 0, 0};  /* library table (#pragma library "..." syntax) */
 SC_VDEFINE constvalue *curlibrary = NULL;   /* current library */
 SC_VDEFINE int pc_addlibtable = TRUE;       /* is the library table added to the AMX file? */
+SC_VDEFINE constvalue ntvindex_tab = { NULL, "", 0, 0}; /* native function index table */
 SC_VDEFINE symbol *curfunc;                 /* pointer to current function */
 SC_VDEFINE char *inpfname;                  /* pointer to name of the file currently read from */
 SC_VDEFINE char outfname[_MAX_PATH];        /* intermediate (assembler) file name */
@@ -59,12 +56,11 @@ SC_VDEFINE int ntv_funcid= 0;      /* incremental number of native function */
 SC_VDEFINE int errnum    = 0;      /* number of errors */
 SC_VDEFINE int warnnum   = 0;      /* number of warnings */
 SC_VDEFINE int sc_debug  = sCHKBOUNDS; /* by default: bounds checking+assertions */
-SC_VDEFINE int sc_packstr= FALSE;  /* strings are packed by default? */
 SC_VDEFINE int sc_asmfile= FALSE;  /* create .ASM file? */
 SC_VDEFINE int sc_listing= FALSE;  /* create .LST file? */
-SC_VDEFINE int pc_compress=TRUE;   /* compress bytecode? */
 SC_VDEFINE int sc_needsemicolon=TRUE;/* semicolon required to terminate expressions? */
-SC_VDEFINE int sc_dataalign=sizeof(cell);/* data alignment value */
+SC_VDEFINE int pc_cellsize=4;      /* size (in bytes) of a cell */
+SC_VDEFINE int sc_dataalign=4;     /* data alignment value (same as a cell) */
 SC_VDEFINE int sc_alignnext=FALSE; /* must frame of the next function be aligned? */
 SC_VDEFINE int pc_docexpr=FALSE;   /* must expression be attached to documentation comment? */
 SC_VDEFINE int curseg    = 0;      /* 1 if currently parsing CODE, 2 if parsing DATA */
@@ -89,10 +85,11 @@ SC_VDEFINE int sc_allowproccall=0; /* allow/detect tagnames in lex() */
 SC_VDEFINE short sc_is_utf8=FALSE; /* is this source file in UTF-8 encoding */
 SC_VDEFINE char *pc_deprecate=NULL;/* if non-null, mark next declaration as deprecated */
 SC_VDEFINE int sc_curstates=0;     /* ID of the current state list */
-SC_VDEFINE int pc_optimize=sOPTIMIZE_NOMACRO; /* (peephole) optimization level */
+SC_VDEFINE int pc_optimize=sOPTIMIZE_CORE; /* (peephole) optimization level */
 SC_VDEFINE int pc_memflags=0;      /* special flags for the stack/heap usage */
 SC_VDEFINE int pc_overlays=0;      /* generate overlay table + instructions? */
 SC_VDEFINE int pc_ovl0size[ovlFIRST][2];/* offset & size (in bytes) of the first (special) overlays */
+SC_VDEFINE uint64_t pc_cryptkey=0; /* key for encryption of the generated script */
 
 SC_VDEFINE constvalue sc_automaton_tab = { NULL, "", 0, 0}; /* automaton table */
 SC_VDEFINE constvalue sc_state_tab = { NULL, "", 0, 0};   /* state table */

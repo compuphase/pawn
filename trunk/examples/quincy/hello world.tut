@@ -1,0 +1,7 @@
+[Documents]
+Directory=".."
+Docct=1
+Doc01=hello.p
+
+[Summary]
+RTF={\rtf1\ansi\ansicpg1252\deff0\deflang1043{\fonttbl{\f0\fswiss\fcharset0 Arial;}}{\colortbl ;\red128\green0\blue0;}{\*\generator Msftedit 5.41.15.1507;}\viewkind4\uc1\pard\cf1\b\f0\fs24 Hello World\b0\fs28\par\cf0\fs20\par The very first program that is traditionally written in a new language, is one that prints the words "Hello world".\par\par Compiling and running this program, and adapting the text that it prints, makes you get aquainted with the lnguage and the tools.\par}

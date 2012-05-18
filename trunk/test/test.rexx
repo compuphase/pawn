@@ -72,7 +72,7 @@ syntax_err:
   exit
 
 test1:
-  say '1. The compilation should issue error 17 ("undefined symbol").'
+  say '1. The compilation should issue error 017 ("undefined symbol").'
   say ''
   say '   Calling an undefined function.'
   say ''
@@ -107,22 +107,16 @@ test3:
   return
 
 test4:
-  say '4. Obsolete test case, please ignore.'
-/*
-        Cascaded assignment test; specifically the "swap without temporary variable"
-        trick. The epxression "a ^= b ^= a ^= b" swaps the values of a and b.
-
-     Symptoms of detected bug: this does not work; it does not work in Java either.
-     It is not a hard bug, but a dependency on the evaluation order of the parser.
- */
+  say '4. The compilation should issue warning 229.'
+  say ''
+  say '   Array assignment: the following three tests attempt to assign arrays where'
+  say '   the size does not match, or the size of an array is unspecified.'
   say '-----'
-/*  pawncc ' CASCADED_ASSIGN= test2'
-    pawnrun ' test2.amx'
- */
+  pawncc ' MIX_PACKED_UNPACKED= test3'
   return
 
 test5:
-  say '5. The compilation should issue error 37 ("invalid string")'
+  say '5. The compilation should issue error 037 ("invalid string")'
   say ''
   say '   An unterminated string in a function that accepts a variable number of'
   say '   parameters re-enters the lexer indefinitely searching for the closing ")".'
@@ -142,7 +136,7 @@ test6:
   return
 
 test7:
-  say '7. The following THREE compilations should all issue error 47.'
+  say '7. The following THREE compilations should all issue error 047.'
   say ''
   say '   Array assignment: the following three tests attempt to assign arrays where'
   say '   the size does not match, or the size of an array is unspecified.'
@@ -153,7 +147,7 @@ test7:
   return
 
 test8:
-  say '8. The compilation should issue error 6.'
+  say '8. The compilation should issue error 006.'
   say ''
   say '   Array assignment: the program attempts to assign an array to an indexed cell'
   say '   in a second array. Both arrays have a single dimension. A cell cannot hold'
@@ -281,7 +275,7 @@ test18:
   return
 
 test19:
-  say '19. The compilation should issue error 22 (after warning 211).'
+  say '19. The compilation should issue error 022 (after warning 211).'
   say ''
   say '    An attempt to assign a value to a constant in a test should issue error 22'
   say '    and warning 211.'
@@ -302,7 +296,7 @@ test20:
   return
 
 test21:
-  say '21. The compilation should issue error 42.'
+  say '21. The compilation should issue error 042.'
   say ''
   say '    A variable is declared both "public" and "native" (which is invalid).'
   say '-----'
@@ -310,7 +304,7 @@ test21:
   return
 
 test22:
-  say '22. The next TWO compilations should each issue error 42.'
+  say '22. The next TWO compilations should each issue error 042.'
   say ''
   say '    Two functions are flagged as both "public" and "native" (which is invalid).'
   say '-----'
@@ -319,7 +313,7 @@ test22:
   return
 
 test23:
-  say '23. The compilation should issue error 56 TWICE.'
+  say '23. The compilation should issue error 056 TWICE.'
   say ''
   say '    Both function arguments and local variables cannot be "public".'
   say '-----'
@@ -379,7 +373,7 @@ test27:
   return
 
 test28:
-  say '28. The compilation should issue error 47 THREE times.'
+  say '28. The compilation should issue error 047 THREE times.'
   say ''
   say '    A string or a literal array that is passed to a function must be smaller'
   say '    or equal to the size of the array of the function''s formal argument.'
@@ -401,7 +395,7 @@ test29:
   return
 
 test30:
-  say '30. The compilation should issue error 1, expecting "#endif" before end of'
+  say '30. The compilation should issue error 001, expecting "#endif" before end of'
   say '    file.'
   say ''
   say '    The program has an #if 0 without a matching #endif before the end of'
@@ -413,7 +407,7 @@ test30:
   return
 
 test31:
-  say '31. The compilation should issue error 1, expecting "*/" before end of file.'
+  say '31. The compilation should issue error 001, expecting "*/" before end of file.'
   say ''
   say '    The program has a /* without a matching */ before the end of compilation.'
   say ''
@@ -507,7 +501,7 @@ test37:
   return
 
 test38:
-  say '38. The following test should issue error 1, expecting ":" (THREE times).'
+  say '38. The following test should issue error 001, expecting ":" (THREE times).'
   say ''
   say '    The colons on case statements in a switch are missing, this should be'
   say '    flagged.'
@@ -554,14 +548,10 @@ test40:
   return
 
 test41:
-  say '41. The following test should issue error 021 (symbol already defined).'
+  say '41. Redundant test, please ignore.'
   say ''
-  say '    An enum and a variable are declared at the same scope and with the same'
-  say '    name.'
-  say ''
-  say 'Symptoms of detected bug: the compiler crashed.'
+  say 'This test has become redundant because of syntax changes in Pawn.'
   say '-----'
-  pawncc ' -p REDECL_ENUM_VAR= test1'
   return
 
 test42:
@@ -611,8 +601,8 @@ test44:
 test45:
   say '45. The following test should compile successfully. When it runs, it should'
   say '    print:'
-  say '           "a" okay'
-  say '           "b" okay'
+  say '           ''''a'''' okay'
+  say '           ''''b'''' okay'
   say ''
   say '    The script contains an expression with chained relational operators, like'
   say '    "if (0.0 <= b <= 10.0) ...", where "<=" is a user-defined operator (in this'
@@ -966,21 +956,17 @@ test71:
   return
 
 test72:
-  say '72. The following test should give warning 229.'
+  say '72. The following test should give warning 047.'
   say ''
-  say '    Arrays declared with different tags for their indices are not "coercible".'
-  say ''
-  say 'Symptoms of detected bug: this case was not detected in assignments.'
+  say '    Arrays declared with symbolic indices are not "coercible" in assignments.'
   say '-----'
   pawncc ' ARRAY_INDEX_TAG_ASSIGN= test11'
   return
 
 test73:
-  say '73. The following test should give warning 229.'
+  say '73. The following test should give warning 047.'
   say ''
-  say '    Arrays declared with different tags for their indices are not "coercible".'
-  say ''
-  say 'Symptoms of detected bug: this case was not detected in function calls.'
+  say '    Arrays declared with symbolic indices are not "coercible" in function calls.'
   say '-----'
   pawncc ' ARRAY_INDEX_TAG_CALL= test11'
   return
@@ -988,10 +974,8 @@ test73:
 test74:
   say '74. The following test should give error 025.'
   say ''
-  say '    Arrays indices should be tag checked between declaration and definition.'
-  say ''
-  say 'Symptoms of detected bug: only array dimensions and sizes were checked (and the'
-  say 'tag of an array cell), but not the tags of the indices.'
+  say '    Symbolic indices of array arguments indices should be checked between'
+  say '    declaration and definition.'
   say '-----'
   pawncc ' ARRAY_INDEX_TAG_DECL= test11'
   return
@@ -999,8 +983,8 @@ test74:
 test75:
   say '75. The following test should compile successfully.'
   say ''
-  say '    When copying an array into an indexed array, the index tag checking should'
-  say '    be skipped.'
+  say '    When copying an array into a symbolic array field, the index checking'
+  say '    should be relaxed.'
   say ''
   say 'Symptoms of detected bug: warning 229, which could not be avoided by whatever'
   say 'tag override you could think of.'
@@ -1049,15 +1033,11 @@ test78:
   return
 
 test79:
-  say '79. The following test should issue error 021, but NOT crash.'
+  say '79. The following test should compile successfully.'
   say ''
-  say '    A field of an enumeration has the same name as another symbol.'
-  say ''
-  say 'Symptoms of detected bug: The compiler crashed; the redefinition was caught'
-  say 'in the first pass (error messages are silenced), but the redefinition proceeded'
-  say 'anyway (no "drop-out").'
+  say '    Combinations of "sizeof" and symbolic array subscripts.'
   say '-----'
-  pawncc ' ENUM_REDEFINES_SYM= test2'
+  pawncc ' -p SIZEOF_PSEUDO_ARRAY= test1'
   return
 
 test80:
@@ -1141,10 +1121,10 @@ test86:
   return
 
 test87:
-  say '87. The following test should issue error 009 (followed by others).'
+  say '87. The following test should issue error 009.'
   say ''
   say '    A 2-dimensional array with a variable last dimension and an absent'
-  say '    initialization (due to a syntax error).'
+  say '    initialization.'
   say ''
   say 'Symptoms of detected bug: The error was detected, but the compiler dropped in'
   say 'an assertion when proceeding to initialize the indirection tables.'
@@ -1153,24 +1133,24 @@ test87:
   return
 
 test88:
-  say '88. The following test should compile correctly. When run, it should print the'
-  say '    values that follow behind in parentheses.'
+  say '88. The following test should issue error 001 (followed by more errors).'
   say ''
-  say '    Various tests on arrays combined with enumerations.'
+  say '    A multi-dimensional array in initialized with {...} syntax for the major'
+  say '    dimension.'
   say '-----'
-  pawncc ' test12'
-  pawnrun ' test12'
+  pawncc ' -p ARRAY_VARDIM_WRONGBRACKETS= test1'
   return
 
 test89:
-  say '89. The following test should issue error 032.'
+  say '89. The following test should compile successfully. When running, it must.'
+  say '    print:'
   say ''
-  say '    Out-of-range error on an enumerated sub-array.'
+  say '	        hello'
   say ''
-  say 'Symptoms of detected bug: the error was not detected, because the compiler'
-  say 'used the size of the array symbol instead of the size of the enumeration field.'
+  say 'Symptoms of detected bug: No or incorrect text printed.'
   say '-----'
-  pawncc ' OUT_OF_BOUNDS= test12'
+  pawncc ' MULTI_DIM_PARTIAL_COUNT= test2'
+  pawnrun ' test2.amx'
   return
 
 test90:
@@ -1314,7 +1294,7 @@ test101:
   return
 
 test102:
-  say '102. The following test should issue warning 21 TWICE (redefined symbol)'
+  say '102. The following test should issue warning 201 TWICE (redefined symbol)'
   say ''
   say '     Redefinition of constants.'
   say ''
@@ -1324,11 +1304,10 @@ test102:
   return
 
 test103:
-  say '103. The following test should compile successfully'
+  say '103. Redundant test, please ignore.'
   say ''
-  say '     Redefinition of enumeration fields (with different tags) is allowed.'
+  say 'This test has become redundant because of syntax changes in Pawn.'
   say '-----'
-  pawncc ' REDEFINE_ENUM= test1'
   return
 
 test104:
@@ -1336,15 +1315,15 @@ test104:
   say ''
   say '     #elseif with an expression.'
   say ''
-  say 'Symptoms of detected bug: #elseif did not parse through the expression when.'
-  say 'it had already found a "true" case; it should parse and ignore the expression.'
+  say 'Symptoms of detected bug: #elseif did not parse through the expression when it'
+  say 'had already found a "true" case; it should parse and ignore the expression.'
   say '-----'
   pawncc ' ELSEIF_EXPR=1 test1'
   pawncc ' ELSEIF_EXPR=2 test1'
   return
 
 test105:
-  say '105. The following test should compile successfully. When running, it should'
+  say '105. The following test should issue warning 236. When running, it should'
   say '     print:'
   say ''
   say '        %1test'
@@ -1498,7 +1477,7 @@ test116:
 test117:
   say '117. The following test should compile successfully; when run, it should print'
   say ''
-  say '         size: 2 x 2'
+  say '         size: 2 x 3'
   say ''
   say '     Declaring an array with a zero-sized major dimension and initiallers'
   say ''
@@ -1559,7 +1538,8 @@ test121:
 test122:
   say '122. The following test should compile successfully.'
   say ''
-  say '     Variants in enumeration declarations (optional terminating commas).'
+  say '     Several declarations of enumerated constants declarations (optional'
+  say '     terminating commas).'
   say '-----'
   pawncc ' ENUM_GOOD_DECL= test1'
   return
@@ -1681,3 +1661,25 @@ test132:
   pawnrun ' test2.amx'
   return
 
+test133:
+  say '133. The following test should issue error 001, expecting a "]".'
+  say ''
+  say '     An array of strings where the strings are not separated with commas.'
+  say ''
+  say 'Symptoms of detected bug: an assertion in the compiler.'
+  say '-----'
+  pawncc ' ARRAY2D_NO_COMMA= test1'
+  return
+
+test134:
+  say '134. The following test should compile successfully; when run, it should print:'
+  say ''
+  say '         Result = 1 (should be 1)'
+  say ''
+  say '     Chained relational expression with constant values (e.g. "1 < 2 < 3").'
+  say ''
+  say 'Symptoms of detected bug: all expressions of such kind were evaluated as 0.'
+  say '-----'
+  pawncc ' CONST_REL_CHAINED_OP= test2'
+  pawnrun ' test2.amx'
+  return

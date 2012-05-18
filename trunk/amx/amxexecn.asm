@@ -11,83 +11,76 @@
 ; * The borland compiler uses different segment definitions as Microsoft
 ;   Visual C/C++ and GNU GCC. To assemble the abstract machine with "Borland"
 ;   segments, add the definition "BORLAND" on the command line.
-; * You will need to compile the standard AMX.C file with the macro ASM32
+; * You will need to compile the standard AMX.C file with the macro AMX_ASM
 ;   defined. On the command line, use:
-;       nasmw -O1 -f obj -d BORLAND amxexecn.asm
-;       bcc32 -DASM32 srun.c amx.c amxcore.c amxcons.c amxexecn.obj
+;       nasmw -Ox -f obj -d BORLAND amxexecn.asm
+;       bcc32 -DAMX_ASM srun.c amx.c amxcore.c amxcons.c amxexecn.obj
 ;   or
-;       nasmw -O1 -f win32 amxexecn.asm
+;       nasmw -Ox -f win32 amxexecn.asm
 ;   or
-;       nasm -O1 -f elf amxexecn.asm
-;       gcc -o srun -DLINUX -DASM32 -I../linux srun.c amx.c amxcore.c amxcons.c amxexecn.o
+;       nasm -Ox -f elf amxexecn.asm
+;       gcc -o srun -DLINUX -DAMX_ASM -I../linux srun.c amx.c amxcore.c amxcons.c amxexecn.o
 ; * See the notes in AMXEXEC.ASM for more information and a change log).
 ;
 ;
 ;Copyright and license of use, please read
 ;-----------------------------------------
-;The assembler implementation of the abstract machine for the Pawn language,
-;specifically the file AMXEXEC.ASM, is copyright (c) 1998-2000 by Marc Peter.
+;This implementation of the abstract machine for NASM is a port of the
+;abstract machine core written by Marc Peter.
 ;
-;Permission is hereby granted, without written agreement and without paid
-;license or royalty fees, to use, copy, modify, and distribute this software
-;and its documentation for any purpose, subject to the following conditions:
+;Copyright 2003-2011 ITB CompuPhase, portions copyright 1998-2000 by Marc Peter.
 ;
-;1. The above copyright notice and this permission notice shall appear in all
-;   copies or substantial portions of this software.
+;Licensed under the Apache License, Version 2.0 (the "License"); you may not
+;use this file except in compliance with the License. You may obtain a copy
+;of the License at
 ;
-;2. Modifications of this software that do not originate from me (Marc Peter)
-;   must be explicitly mentioned in a README file or another appropriate
-;   place.
+;    http://www.apache.org/licenses/LICENSE-2.0
 ;
-;The use of this software as a subsystem of a larger software product is
-;explicitly allowed, regardless of whether that larger product is proprietary,
-;gratis or commercially available.
-;
-;I (Marc Peter) specifically disclaim any warranties, including, but not
-;limited to, the implied warranties of merchantability and fitness for a
-;particular purpose. The software is provided on an "as is" basis,
-;and I have no obligation to provide maintenance, support, updates,
-;enhancements or modifications.
-;
-;I cannot be held liable for any damage or loss of profits that results
-;from the use of the software (or part thereof), or from the inability to
-;use it.
+;Unless required by applicable law or agreed to in writing, software
+;distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+;WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+;License for the specific language governing permissions and limitations
+;under the License.
 ;
 ;
 ;History (list of changes)
 ;-------------------------
-; 26 august 2007  by Thiadmer Riemersma
-;       Minor clean-up; removed unneeded parameters
-; 31 may 2007  by Thiadmer Riemersma
+;  1 March 2010  by Thiadmer Riemersma
+;       The instruction set has been reorganized: a minimal "core" instruction
+;       set was picked and three supplemental instruction sets: overlay
+;       instructions, macro instructions and packed instructions.
+; 14 March 2009  by Thiadmer Riemersma
+;       Addition of the relocation instructions (PUSHR_xxx).
+; 26 August 2007  by Thiadmer Riemersma
+;       Minor clean-up; removed unneeded parameter.
+; 31 May 2007  by Thiadmer Riemersma
 ;       Added packed opcodes
-; 30 april 2007  by Thiadmer Riemersma (TR)
+; 30 April 2007  by Thiadmer Riemersma
 ;       Move to position-independent code (no more relocation needed for
 ;       branches).
 ;       Removed cases for obsolete instructions.
-; 14 december 2005  by Thiadmer Riemersma (TR)
+; 14 December 2005  by Thiadmer Riemersma
 ;       Addition of macro instructions, to speed up instruction decoding
-; 17 february 2005  by Thiadmer Riemersma (TR)
+; 17 February 2005  by Thiadmer Riemersma
 ;       Addition of the BREAK opcode, removal of the older debugging opcode table.
-;  6 march 2004  by Thiadmer Riemersma
+;  6 March 2004  by Thiadmer Riemersma
 ;       Corrected a bug in OP_FILL, where a cell preceding the array would
 ;       be overwritten (zero'ed out). This bug was brought to my attention
 ;       by Robert Daniels.
-;  2 february 2004  by Thiadmer Riemersma (TR)
+;  2 February 2004  by Thiadmer Riemersma
 ;       Added checking of the return address in the RET and RETN opcodes.
 ;       Changed handling of LINE opcode, so that the debugger can force a
 ;       sleep.
-; 22 december 2003  by Thiadmer Riemersma (TR)
+; 22 December 2003  by Thiadmer Riemersma
 ;       Added support for the SYMTAG and SYSCALL.D opcodes
-;  3 october 2003  by Thiadmer Riemersma (TR)
+;  3 October 2003  by Thiadmer Riemersma
 ;       Added "non-debug" versions of various opcodes, to avoid repetitive
 ;       checking of the "debug" flag.
-; 15 September 2003 by Thiadmer Riemersma (TR)
+; 15 September 2003 by Thiadmer Riemersma
 ;       Minor corrections, mostly to support older versions of NASM
-; 26 January 2003 by Thiadmer Riemersma (TR)
+; 26 January 2003 by Thiadmer Riemersma
 ;       Port to NASM
 ;-----
-
-;CPU 386        -- some older versions of NASM do not support this keyword
 
 ; Macro to begin a code segment
 %macro Start_CODE 0
@@ -106,6 +99,11 @@
     segment .data
   %endif
 %endmacro
+
+
+%ifdef BORLAND
+  Start_CODE
+%endif
 
 %include "amxdefn.asm"
 
@@ -135,7 +133,7 @@
       %ifndef AMX_NO_PACKED_OPC
         and     ebp, 0ffh
       %endif
-        jmp     DWORD [_amx_opcodelist + 4*ebp]
+        jmp     DWORD [opcodelist + 4*ebp]
     %else
       %ifndef AMX_NO_PACKED_OPC
         %error opcode packing requires token threading
@@ -206,16 +204,14 @@
 
 Start_CODE
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;                                                               ;
-;cell   asm_exec( AMX *amx, cell *retval, char *data )          ;
-;                                                               ;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;---------------------------------------------------------------------------
+;cell   asm_exec_run( AMX *amx, cell *retval, char *data )
+;---------------------------------------------------------------------------
 
-        GLOBAL  _amx_exec_asm
-        GLOBAL  amx_exec_asm
-amx_exec_asm:
-_amx_exec_asm: ;PROC
+        GLOBAL  amx_exec_run
+        GLOBAL  _amx_exec_run
+amx_exec_run:
+_amx_exec_run: ;PROC
 
         push    ebx
         mov     eax,[esp+08h]
@@ -248,9 +244,6 @@ _amx_exec_asm: ;PROC
 %define frm     [esp]           ; FRM is NOT stored in ebp, rather FRM+DAT
                                 ; is being held in ebx.
 
-        mov     edx,code        ; change the code size to an...
-        add     codesiz,edx     ; ..."end of code" address
-
         mov     edi,ebx         ; get pointer to data segment
         mov     edx,[eax+_alt]  ; get ALT
         mov     esi,[eax+_cip]  ; get CIP
@@ -263,11 +256,17 @@ _amx_exec_asm: ;PROC
         NEXT                    ; start interpreting
 
 
+OP_NOP:
+        add     esi,4
+        NEXT
+
+
 OP_LOAD_PRI:
         mov     eax,[esi+4]
         add     esi,8
         mov     eax,[edi+eax]
         NEXT
+
 
 OP_LOAD_ALT:
         mov     edx,[esi+4]
@@ -290,41 +289,13 @@ OP_LOAD_S_ALT:
         NEXT
 
 
-OP_LOAD_I:
-        add     esi,4
-        _VERIFYADDRESS  eax
-        mov     eax,[edi+eax]
-        NEXT
-
-
-OP_LODB_I:
-        _VERIFYADDRESS  eax
-        mov     ebp,[esi+4]
-        mov     eax,[edi+eax]           ;subject to misalignment stalls
-        add     esi,8
-        and     eax,DWORD [(lodb_and-4)+ebp*4]
-        NEXT
-
-OP_LREF_PRI:
-        mov     eax,[esi+4]
-        add     esi,8
-        mov     eax,[edi+eax]
-        mov     eax,[edi+eax]
-        NEXT
-
-OP_LREF_ALT:
-        mov     edx,[esi+4]
-        add     esi,8
-        mov     edx,[edi+edx]
-        mov     edx,[edi+edx]
-        NEXT
-
 OP_LREF_S_PRI:
         mov     eax,[esi+4]
         add     esi,8
         mov     eax,[ebx+eax]
         mov     eax,[edi+eax]
         NEXT
+
 
 OP_LREF_S_ALT:
         mov     edx,[esi+4]
@@ -334,157 +305,13 @@ OP_LREF_S_ALT:
         NEXT
 
 
-OP_CONST_PRI:
-        mov     eax,[esi+4]
-        add     esi,8
-        NEXT
-
-
-OP_CONST_ALT:
-        mov     edx,[esi+4]
-        add     esi,8
-        NEXT
-
-
-OP_ADDR_PRI:
-        mov     eax,[esi+4]
-        add     esi,8
-        add     eax,frm
-        NEXT
-
-
-OP_ADDR_ALT:
-        mov     edx,[esi+4]
-        add     esi,8
-        add     edx,frm
-        NEXT
-
-OP_STOR_PRI:
-        mov     ebp,[esi+4]
-        add     esi,8
-        mov     [ebp+edi],eax
-        NEXT
-
-OP_STOR_ALT:
-        mov     ebp,[esi+4]
-        add     esi,8
-        mov     [ebp+edi],edx
-        NEXT
-
-
-OP_STOR_S_PRI:
-        mov     ebp,[esi+4]
-        add     esi,8
-        mov     [ebp+ebx],eax
-        NEXT
-
-
-OP_STOR_S_ALT:
-        mov     ebp,[esi+4]
-        add     esi,8
-        mov     [ebp+ebx],edx
-        NEXT
-
-
-OP_STOR_I:
-        add     esi,4
-        _VERIFYADDRESS  edx
-        mov     [edi+edx],eax
-        NEXT
-
-OP_STRB_I:
-        mov     ebp,[esi+4]
-        add     esi,8
-    strb_entry:
-        _VERIFYADDRESS  edx
-        cmp     ebp,1
-        jne     short strb_not1byte
-        mov     [edi+edx],al
-        NEXT
-    strb_not1byte:
-        cmp     ebp,4
-        je      short strb_4byte
-        mov     [edi+edx],ax
-        NEXT
-    strb_4byte:
-        mov     [edi+edx],eax
-        NEXT
-
-OP_SREF_PRI:
-        mov     ebp,[esi+4]
-        add     esi,8
-        mov     ebp,[edi+ebp]
-        mov     [edi+ebp],eax
-        NEXT
-
-OP_SREF_ALT:
-        mov     ebp,[esi+4]
-        add     esi,8
-        mov     ebp,[edi+ebp]
-        mov     [edi+ebp],edx
-        NEXT
-
-OP_SREF_S_PRI:
-        mov     ebp,[esi+4]
-        add     esi,8
-        mov     ebp,[ebx+ebp]
-        mov     [edi+ebp],eax
-        NEXT
-
-OP_SREF_S_ALT:
-        mov     ebp,[esi+4]
-        add     esi,8
-        mov     ebp,[ebx+ebp]
-        mov     [edi+ebp],edx
-        NEXT
-
-
-OP_LIDX:
-        lea     eax,[edx+4*eax]
-        add     esi,4
-        _VERIFYADDRESS  eax
-        mov     eax,[edi+eax]
-        NEXT
-
-OP_LIDX_B:
-        push    ecx
-        mov     ecx,[esi+4]
-        shl     eax,cl
-        add     esi,8
-        add     eax,edx
-        pop     ecx
-        _VERIFYADDRESS  eax
-        mov     eax,[edi+eax]
-        NEXT
-
-
-OP_IDXADDR:
-        add     esi,4
-        lea     eax,[edx+4*eax]
-        NEXT
-
-OP_IDXADDR_B:
-        push    ecx
-        mov     ecx,[esi+4]
-        add     esi,8
-        shl     eax,cl
-        pop     ecx
-        add     eax,edx
-        NEXT
-
 OP_ALIGN_PRI:
-        mov     ebp,4   ; ??? one operation too many?
+        mov     ebp,4
         sub     ebp,[esi+4]
         add     esi,8
         xor     eax,ebp
         NEXT
 
-OP_ALIGN_ALT:
-        mov     ebp,4
-        sub     ebp,[esi+4]
-        add     esi,8
-        xor     edx,ebp
-        NEXT
 
 OP_LCTRL:
         mov     ebp,[esi+4]
@@ -524,6 +351,7 @@ OP_LCTRL:
         sub     eax,code
         NEXT
 
+
 OP_SCTRL:
         mov     ebp,[esi+4]
         add     esi,8
@@ -545,16 +373,6 @@ OP_SCTRL:
     sctrl_6:
         NEXT
 
-OP_MOVE_PRI:
-        add     esi,4
-        mov     eax,edx
-        NEXT
-
-
-OP_MOVE_ALT:
-        add     esi,4
-        mov     edx,eax
-        NEXT
 
 OP_XCHG:
         add     esi,4
@@ -574,34 +392,103 @@ OP_PUSH_ALT:
         NEXT
 
 
-OP_PICK:
-        mov     eax,[esi+4]
-        add     esi,8
-        add     eax,ecx
+OP_LOAD_I:
+        add     esi,4
+        _VERIFYADDRESS  eax
         mov     eax,[edi+eax]
         NEXT
 
 
-OP_PUSH_C:
+OP_LODB_I:
+        _VERIFYADDRESS  eax
         mov     ebp,[esi+4]
+        mov     eax,[edi+eax]           ;subject to misalignment stalls
         add     esi,8
-        _PUSH   ebp
-        NEXT
-
-OP_PUSH:
-        mov     ebp,[esi+4]
-        add     esi,8
-        mov     ebp,[ebp+edi]
-        _PUSH   ebp
+        and     eax,DWORD [(lodb_and-4)+ebp*4]
         NEXT
 
 
-OP_PUSH_S:
+OP_CONST_PRI:
+        mov     eax,[esi+4]
+        add     esi,8
+        NEXT
+
+
+OP_CONST_ALT:
+        mov     edx,[esi+4]
+        add     esi,8
+        NEXT
+
+
+OP_ADDR_PRI:
+        mov     eax,[esi+4]
+        add     esi,8
+        add     eax,frm
+        NEXT
+
+
+OP_ADDR_ALT:
+        mov     edx,[esi+4]
+        add     esi,8
+        add     edx,frm
+        NEXT
+
+
+OP_STOR:
         mov     ebp,[esi+4]
         add     esi,8
-        mov     ebp,[ebp+ebx]
+        mov     [ebp+edi],eax
+        NEXT
+
+
+OP_STOR_S:
+        mov     ebp,[esi+4]
+        add     esi,8
+        mov     [ebp+ebx],eax
+        NEXT
+
+
+OP_SREF_S:
+        mov     ebp,[esi+4]
+        add     esi,8
+        mov     ebp,[ebx+ebp]
+        mov     [edi+ebp],eax
+        NEXT
+
+
+OP_STOR_I:
+        add     esi,4
+        _VERIFYADDRESS  edx
+        mov     [edi+edx],eax
+        NEXT
+
+
+OP_STRB_I:
+        mov     ebp,[esi+4]
+        add     esi,8
+    strb_entry:
+        _VERIFYADDRESS  edx
+        cmp     ebp,1
+        jne     short strb_not1byte
+        mov     [edi+edx],al
+        NEXT
+    strb_not1byte:
+        cmp     ebp,4
+        je      short strb_4byte
+        mov     [edi+edx],ax
+        NEXT
+    strb_4byte:
+        mov     [edi+edx],eax
+        NEXT
+
+
+OP_PUSHR_PRI:
+        mov     ebp,eax
+        add     esi,4
+        add     ebp,edi
         _PUSH   ebp
         NEXT
+
 
 OP_POP_PRI:
         add     esi,4
@@ -612,6 +499,14 @@ OP_POP_PRI:
 OP_POP_ALT:
         add     esi,4
         _POP    edx
+        NEXT
+
+
+OP_PICK:
+        mov     eax,[esi+4]
+        add     esi,8
+        add     eax,ecx
+        mov     eax,[edi+eax]
         NEXT
 
 
@@ -644,14 +539,14 @@ OP_PROC:
         _CHKMARGIN
         NEXT
 
+
 OP_RET:
         _POP    ebx
         _POP    esi
-        cmp     esi,code        ; verify ESI>=code
-        jb      near err_memaccess
-        cmp     esi,codesiz     ; verify ESI<codesiz ("end-of-code" pointer)
-        jae     near err_memaccess
+        cmp     esi,codesiz     ; verify ESI<codesiz
+        jae     err_memaccess
         mov     frm,ebx
+        add     esi,code        ; relocate ESI and EBI
         add     ebx,edi
         NEXT
 
@@ -659,163 +554,42 @@ OP_RET:
 OP_RETN:
         _POP    ebx
         _POP    esi
-        cmp     esi,code        ; verify ESI>=code
-        jb      near err_memaccess
-        cmp     esi,codesiz     ; verify ESI<codesiz ("end-of-code" pointer)
-        jae     near err_memaccess
+        cmp     esi,codesiz     ; verify ESI<codesiz
+        jae     err_memaccess
         mov     frm,ebx
+        add     esi,code        ; relocate ESI and EBI
         add     ebx,edi
         mov     ebp,[edi+ecx]
         lea     ecx,[ecx+ebp+4]
         NEXT
 
+
 OP_CALL:
         lea     ebp,[esi+8]
         JUMPREL ; add esi,[esi+4]
+        sub     ebp,code        ; reverse relocate (before push)
         _PUSH   ebp
         NEXT
 
 
-OP_ICALL:
-        mov     alt,edx         ; save ALT
-        lea     edx,[esi+8]     ; EDX=address of next instruction
-        sub     edx,code        ; EDX=relative address (to start of code segment)
-        mov     ebp,amx
-        shl     edx,16
-        or      edx,[ebp+_ovl_index] ; EDX=(relative address << 16) | ovl_index
-        _PUSH   edx
-        mov     edx,[esi+4]     ; EDX=ovl_index
-        mov     [ebp+_ovl_index],edx
-        mov     eax,ebp         ; 1st parm: amx
-%ifdef CDECL_STDCALL
-        _SAVEREGS
-        push    edx             ; EDX (2nd parm)=overlay index
-        push    eax
-%endif
-        call    [ebp+_overlay]  ; call overlay function
-        _DROPARGS 8             ; remove arguments from stack
-        _RESTOREREGS
-        mov     edx,alt         ; restore ALT
-        mov     esi,[ebp+_codeseg] ; get new code base
-        mov     code,esi        ; save new code base in local variable
-        NEXT
-
-
-OP_IRETN:
-        mov     pri,eax         ; save PRI
-        mov     alt,edx         ; save ALT
-        _POP    ebx             ; restore FRM
-        _POP    esi             ; restore code offset + overlay index
-        mov     frm,ebx
-        add     ebx,edi
-        mov     edx,esi
-        mov     ebp,amx
-        and     edx,0ffffh      ; EDX=overlay index (popped from stack)
-        mov     [ebp+_ovl_index],edx ; store overlay index returning to
-        shr     esi,16          ; ESI=offset into overlay
-        mov     eax,[edi+ecx]   ; EAX=dataseg[stk]
-        lea     ecx,[ecx+eax+4] ; STK=STK+dataseg[stk]+4
-        mov     eax,ebp         ; 1st parm: amx
-%ifdef CDECL_STDCALL
-        _SAVEREGS
-        push    edx             ; EDX (2nd parm)=overlay index
-        push    eax
-%endif
-        call    [ebp+_overlay]  ; call overlay function
-        _DROPARGS 8             ; remove arguments from stack
-        _RESTOREREGS
-        mov     eax,[ebp+_codeseg] ; get new code base
-        mov     code,eax        ; save new code base in local variable
-        add     esi,eax         ; ESI=code base + offset
-        mov     eax,pri         ; restore PRI
-        mov     edx,alt         ; restore ALT
-        NEXT
-
-
 OP_JUMP:
-OP_JREL:                        ; JREL is now obsolete
         JUMPREL ; add esi,[esi+4]
         NEXT
 
 
 OP_JZER:
         or      eax,eax
-        jz      short jump_taken
+        jz      short OP_JUMP
         add     esi,8
-        NEXT
-
-    jump_taken:
-        JUMPREL ; add esi,[esi+4]
         NEXT
 
 
 OP_JNZ:
         or      eax,eax
-        jnz     short jump_taken
+        jnz     short OP_JUMP
         add     esi,8
         NEXT
 
-
-OP_JEQ:
-        cmp     eax,edx
-        je      short jump_taken
-        add     esi,8
-        NEXT
-
-OP_JNEQ:
-        cmp     eax,edx
-        jne     short jump_taken
-        add     esi,8
-        NEXT
-
-OP_JLESS:
-        cmp     eax,edx
-        jb      short jump_taken
-        add     esi,8
-        NEXT
-
-OP_JLEQ:
-        cmp     eax,edx
-        jbe     near jump_taken
-        add     esi,8
-        NEXT
-
-OP_JGRTR:
-        cmp     eax,edx
-        ja      near jump_taken
-        add     esi,8
-        NEXT
-
-OP_JGEQ:
-        cmp     eax,edx
-        jae     near jump_taken
-        add     esi,8
-        NEXT
-
-OP_JSLESS:
-        cmp     eax,edx
-        jl      near jump_taken
-        add     esi,8
-        NEXT
-
-
-OP_JSLEQ:
-        cmp     eax,edx
-        jle     near jump_taken
-        add     esi,8
-        NEXT
-
-OP_JSGRTR:
-        cmp     eax,edx
-        jg      near jump_taken
-        add     esi,8
-        NEXT
-
-OP_JSGEQ:
-        cmp     eax,edx
-        jge     near jump_taken
-        add     esi,8
-        NEXT
 
 OP_SHL:
         push    ecx
@@ -825,6 +599,7 @@ OP_SHL:
         pop     ecx
         NEXT
 
+
 OP_SHR:
         push    ecx
         mov     ecx,edx
@@ -832,6 +607,7 @@ OP_SHR:
         shr     eax,cl
         pop     ecx
         NEXT
+
 
 OP_SSHR:
         push    ecx
@@ -841,6 +617,7 @@ OP_SSHR:
         pop     ecx
         NEXT
 
+
 OP_SHL_C_PRI:
         push    ecx
         mov     ecx,[esi+4]
@@ -848,6 +625,7 @@ OP_SHL_C_PRI:
         shl     eax,cl
         pop     ecx
         NEXT
+
 
 OP_SHL_C_ALT:
         push    ecx
@@ -857,21 +635,6 @@ OP_SHL_C_ALT:
         pop     ecx
         NEXT
 
-OP_SHR_C_PRI:
-        push    ecx
-        mov     ecx,[esi+4]
-        add     esi,8
-        shr     eax,cl
-        pop     ecx
-        NEXT
-
-OP_SHR_C_ALT:
-        push    ecx
-        mov     ecx,[esi+4]
-        add     esi,8
-        shr     edx,cl
-        pop     ecx
-        NEXT
 
 OP_SMUL:
         add     esi,4
@@ -881,11 +644,14 @@ OP_SMUL:
         NEXT
 
 
-OP_SDIV_ALT:
+OP_SDIV:
         xchg    eax,edx
         ALIGN   4
 
-OP_SDIV:
+        ; Although SDIV.INV is a supplemental instruction, it is implemented
+        ; as a core instruction here, because SDIV is implemented in terms
+        ; of SDIV.INV
+OP_SDIV_INV:
         mov     ebp,edx
         xor     edx,eax         ; Check signs of the operands.
         cdq
@@ -908,30 +674,6 @@ OP_SDIV:
     sdiv_goon:
         NEXT
 
-OP_UMUL:
-        add     esi,4
-        push    edx
-        mul     edx
-        pop     edx
-        NEXT
-
-OP_UDIV:
-        mov     ebp,edx
-        sub     edx,edx
-        _CHKDIVIDEZERO
-        add     esi,4
-        div     ebp
-        NEXT
-
-OP_UDIV_ALT:
-        mov     ebp,eax
-        mov     eax,edx
-        sub     edx,edx
-        _CHKDIVIDEZERO
-        add     esi,4
-        div     ebp
-        NEXT
-
 
 OP_ADD:
         add     esi,4
@@ -940,31 +682,29 @@ OP_ADD:
 
 
 OP_SUB:
-        add     esi,4
-        sub     eax,edx
-        NEXT
-
-
-OP_SUB_ALT:
         neg     eax
         add     esi,4
         add     eax,edx
         NEXT
+
 
 OP_AND:
         add     esi,4
         and     eax,edx
         NEXT
 
+
 OP_OR:
         add     esi,4
         or      eax,edx
         NEXT
 
+
 OP_XOR:
         add     esi,4
         xor     eax,edx
         NEXT
+
 
 OP_NOT:
         add     esi,4
@@ -973,66 +713,18 @@ OP_NOT:
         inc     eax             ; -1 => 0 and 0 => 1
         NEXT
 
+
 OP_NEG:
         add     esi,4
         neg     eax
         NEXT
+
 
 OP_INVERT:
         add     esi,4
         not     eax
         NEXT
 
-
-OP_ADD_C:
-        add     eax,[esi+4]
-        add     esi,8
-        NEXT
-
-
-OP_SMUL_C:
-        mov     ebp,[esi+4]
-        push    edx
-        imul    ebp
-        pop     edx
-        add     esi,8
-        NEXT
-
-
-OP_ZERO_PRI:
-        add     esi,4
-        sub     eax,eax
-        NEXT
-
-
-OP_ZERO_ALT:
-        add     esi,4
-        sub     edx,edx
-        NEXT
-
-OP_ZERO:
-        mov     ebp,[esi+4]
-        add     esi,8
-        mov     DWORD [edi+ebp],0
-        NEXT
-
-OP_ZERO_S:
-        mov     ebp,[esi+4]
-        add     esi,8
-        mov     DWORD [ebx+ebp],0
-        NEXT
-
-OP_SIGN_PRI:
-        shl     eax,24
-        add     esi,4
-        sar     eax,24
-        NEXT
-
-OP_SIGN_ALT:
-        shl     edx,24
-        add     esi,4
-        sar     edx,24
-        NEXT
 
 OP_EQ:
         add     esi,4
@@ -1041,39 +733,12 @@ OP_EQ:
         sete    al
         NEXT
 
+
 OP_NEQ:
         add     esi,4
         cmp     eax,edx         ; PRI != ALT ?
         mov     eax,0
         setne   al
-        NEXT
-
-OP_LESS:
-        add     esi,4
-        cmp     eax,edx         ; PRI < ALT ? (unsigned)
-        mov     eax,0
-        setb    al
-        NEXT
-
-OP_LEQ:
-        add     esi,4
-        cmp     eax,edx         ; PRI <= ALT ? (unsigned)
-        mov     eax,0
-        setbe   al
-        NEXT
-
-OP_GRTR:
-        add     esi,4
-        cmp     eax,edx         ; PRI > ALT ? (unsigned)
-        mov     eax,0
-        seta    al
-        NEXT
-
-OP_GEQ:
-        add     esi,4
-        cmp     eax,edx         ; PRI >= ALT ? (unsigned)
-        mov     eax,0
-        setae   al
         NEXT
 
 
@@ -1084,12 +749,14 @@ OP_SLESS:
         setl    al
         NEXT
 
+
 OP_SLEQ:
         add     esi,4
         cmp     eax,edx         ; PRI <= ALT ? (signed)
         mov     eax,0
         setle   al
         NEXT
+
 
 OP_SGRTR:
         add     esi,4
@@ -1098,6 +765,7 @@ OP_SGRTR:
         setg    al
         NEXT
 
+
 OP_SGEQ:
         add     esi,4
         cmp     eax,edx         ; PRI >= ALT ? (signed)
@@ -1105,74 +773,42 @@ OP_SGEQ:
         setge   al
         NEXT
 
-OP_EQ_C_PRI:
-        cmp     eax,[esi+4]     ; PRI == value ?
-        lea     esi,[esi+8]
-        mov     eax,0
-        sete    al
-        NEXT
-
-OP_EQ_C_ALT:
-        xor     eax,eax
-        cmp     edx,[esi+4]     ; ALT == value ?
-        lea     esi,[esi+8]
-        sete    al
-        NEXT
 
 OP_INC_PRI:
         add     esi,4
         inc     eax
         NEXT
 
+
 OP_INC_ALT:
         add     esi,4
         inc     edx
         NEXT
 
-OP_INC:
-        mov     ebp,[esi+4]
-        add     esi,8
-        inc     DWORD [edi+ebp]
-        NEXT
-
-
-OP_INC_S:
-        mov     ebp,[esi+4]
-        add     esi,8
-        inc     DWORD [ebx+ebp]
-        NEXT
 
 OP_INC_I:
         add     esi,4
         inc     DWORD [edi+eax]
         NEXT
 
+
 OP_DEC_PRI:
         add     esi,4
         dec     eax
         NEXT
+
 
 OP_DEC_ALT:
         add     esi,4
         dec     edx
         NEXT
 
-OP_DEC:
-        mov     ebp,[esi+4]
-        add     esi,8
-        dec     DWORD [edi+ebp]
-        NEXT
-
-OP_DEC_S:
-        mov     ebp,[esi+4]
-        add     esi,8
-        dec     DWORD [ebx+ebp]
-        NEXT
 
 OP_DEC_I:
         add     esi,4
         sub     DWORD [edi+eax],1
         NEXT
+
 
 OP_MOVS:
         _VERIFYADDRESS  eax             ; PRI
@@ -1181,9 +817,8 @@ OP_MOVS:
         add     ebp,[esi+4]
         dec     ebp
         _VERIFYADDRESS  ebp             ; PRI + size - 1
-        mov     ebp,edx
-        add     ebp,[esi+4]
-        dec     ebp
+        sub     ebp,eax                 ; EBP = size - 1
+        add     ebp,edx
         _VERIFYADDRESS  ebp             ; ALT + size - 1
 
         push    ecx
@@ -1206,6 +841,7 @@ OP_MOVS:
         pop     edi
         pop     ecx
         NEXT
+
 
 OP_CMPS:
         _VERIFYADDRESS  eax             ; PRI
@@ -1231,7 +867,7 @@ OP_CMPS:
         repe cmpsb
         je      short cmps1
         sbb     eax,eax
-        sbb     eax,0ffffffffh
+        sbb     eax,-1
     cmps1:
         pop     esi
         pop     edi
@@ -1292,19 +928,14 @@ OP_BOUNDS:
         mov     ebp,[esi+4]
         add     esi,8
         cmp     eax,ebp
-        ja      near err_bounds ; use unsigned comparison, so <0 is >bounds
+        ja      err_bounds      ; use unsigned comparison, so <0 is >bounds
         NEXT
 
 
-OP_SYSREQ_C:
+OP_SYSREQ:
         mov     eax,[esi+4]     ; get function number
-        add     esi,4
-
-
-OP_SYSREQ_PRI:
+        add     esi,8
         mov     ebp,amx         ; get amx into ebp
-        add     esi,4
-
         mov     stk,ecx         ; save STK
         mov     alt,edx         ; save ALT
 
@@ -1340,13 +971,499 @@ OP_SYSREQ_PRI:
         pop     esi
         pop     ebp
         cmp     eax,AMX_ERR_NONE
-        jne     near _return    ; return error code, if any
+        jne     _return         ; return error code, if any
 
         mov     eax,pri         ; get retval into eax (PRI)
         mov     edx,alt         ; restore ALT
         mov     ebx,frm
         mov     ecx,stk         ; restore STK
         add     ebx,edi         ; restore FRM
+        NEXT
+
+
+OP_SWITCH:
+        push    ecx
+        mov     ebp,esi         ; EBP = CIP
+        add     ebp,[esi+4]     ; EBP = offset of the casetable
+        add     ebp,4           ; skip the "OP_CASETBL" opcode
+        mov     ecx,[ebp]       ; ECX = number of records
+        mov     esi,ebp         ; ESI = address of first record
+        add     esi,[ebp+4]     ; preset ESI to "none-matched" case
+    op_switch_loop:
+        or      ecx, ecx        ; number of records == 0?
+        jz      short op_switch_end ; yes, no more records, exit loop
+        add     ebp,8           ; skip previous record
+        dec     ecx             ; already decrement cases to do
+        cmp     eax,[ebp]       ; PRI == case label?
+        jne     short op_switch_loop ; no, continue loop
+        mov     esi,ebp         ; yes, get jump address and exit loop
+        add     esi,[ebp+4]
+    op_switch_end:
+        pop     ecx
+        NEXT
+
+
+OP_SWAP_PRI:
+        mov     ebp,[edi+ecx]
+        add     esi,4
+        mov     [edi+ecx],eax
+        mov     eax,ebp
+        NEXT
+
+
+OP_SWAP_ALT:
+        mov     ebp,[edi+ecx]
+        add     esi,4
+        mov     [edi+ecx],edx
+        mov     edx,ebp
+        NEXT
+
+
+OP_BREAK:
+        mov     ebp,amx         ; get amx into ebp
+        add     esi,4
+        cmp     DWORD [ebp+_debug], 0
+        jnz     break_calldebug
+        NEXT                    ; debug hook not active, ignore
+
+    break_calldebug:
+        ; store the status in the AMX (FRM, STK, HEA, CIP, and PRI + ALT)
+        mov     [ebp+_pri],eax
+        mov     [ebp+_alt],edx  ; EAX and EDX are now free to use
+        mov     eax,frm
+        mov     edx,hea
+        mov     [ebp+_frm],eax  ; store values in AMX structure (STK, FRM & HEA)
+        mov     [ebp+_hea],edx
+        mov     [ebp+_stk],ecx
+        mov     eax,esi
+        sub     eax,code        ; EAX = CIP (relative to start of code segment)
+        mov     [ebp+_cip],eax
+        ; call the debug hook
+        mov     eax,ebp         ; 1st parm: amx
+        _SAVEREGS
+        push    eax
+        call    [ebp+_debug]    ; call debug function
+        _DROPARGS 4             ; remove arguments from stack
+        cmp     eax,AMX_ERR_NONE
+        je      short break_noabort; continue running
+        mov     [ebp+_error],eax   ; save EAX (error code) before restoring all regs
+        _RESTOREREGS               ; abort run, but restore stack first
+        mov     eax,[ebp+_error]   ; get error code in EAX back again
+        jmp     _return         ; return error code
+    break_noabort:
+        _RESTOREREGS
+        mov     eax,[ebp+_pri]  ; restore PRI and ALT
+        mov     edx,[ebp+_alt]
+        NEXT
+
+
+OP_CASETBL:
+OP_CASETBL_OVL:
+        mov     eax,AMX_ERR_INVINSTR
+        jmp     _return
+
+
+OP_SYSREQ_D:
+        mov     ebx,[esi+4]     ; get function address
+        mov     ebp,amx         ; get amx into ebp
+        add     esi,8
+
+        mov     stk,ecx         ; save STK
+        mov     alt,edx         ; save ALT
+
+        mov     [ebp+_stk],ecx  ; store values in AMX structure (STK, HEA, FRM)
+        mov     ecx,hea
+        mov     eax,frm
+        mov     [ebp+_hea],ecx
+        mov     [ebp+_frm],eax  ; eax & ecx are invalid by now
+
+        mov     eax,ebp         ; 1st param: amx
+        mov     edx,stk
+        add     edx,edi         ; 2nd param: addr. of function parameters
+        ; save a few registers (it is not necessary to save them all
+        ; and EAX should *not* be saved because it will hold the return
+        ; value)
+        push    ebp
+        push    esi
+        push    edi
+        ; push the parameters
+        push    edx
+        push    eax
+        call    ebx             ; direct call
+        _DROPARGS 8             ; remove arguments from stack
+        pop     edi             ; restore saved registers
+        pop     esi
+        pop     ebp
+        cmp     DWORD [ebp+_error],AMX_ERR_NONE
+        jne     _return         ; return error code, if any
+
+        ; function result is in eax (PRI)
+        mov     edx,alt         ; restore ALT
+        mov     ebx,frm
+        mov     ecx,stk         ; restore STK
+        add     ebx,edi         ; restore FRM
+        NEXT
+
+
+OP_SYSREQ_ND:
+        mov     ebp,[esi+8]     ; get # of bytes passed as parameters
+        mov     ebx,[esi+4]     ; get function number
+        _PUSH   ebp             ; push 2nd parameter
+        add     esi,12
+        mov     ebp,amx         ; get amx into ebp
+
+        mov     stk,ecx         ; save STK
+        mov     alt,edx         ; save ALT
+
+        mov     [ebp+_stk],ecx  ; store values in AMX structure (STK, HEA, FRM)
+        mov     ecx,hea
+        mov     eax,frm
+        mov     [ebp+_hea],ecx
+        mov     [ebp+_frm],eax  ; eax & ecx are invalid by now
+
+        mov     eax,ebp         ; 1st param: amx
+        mov     edx,stk
+        add     edx,edi         ; 2nd param: addr. of function parameters
+        ; save a few registers (it is not necessary to save them all
+        ; and EAX should *not* be saved because it will hold the return
+        ; value)
+        push    ebp
+        push    esi
+        push    edi
+        ; push the parameters
+        push    edx
+        push    eax
+        call    ebx             ; direct call
+        _DROPARGS 8             ; remove arguments from stack
+        pop     edi             ; restore saved registers
+        pop     esi
+        pop     ebp
+        ; function result is in eax (PRI)
+        mov     edx,alt         ; restore ALT
+        mov     ebx,frm
+        mov     ecx,stk         ; restore STK
+        add     ebx,edi         ; restore FRM
+        add     ecx,[esi-4]     ; remove "number of parameter bytes" from the stack
+        add     ecx,4           ; also remove the extra DWORD pushed
+
+        cmp     DWORD [ebp+_error],AMX_ERR_NONE
+        jne     _return         ; return error code, if any
+        NEXT
+
+
+        ; overlay instructions
+%ifndef AMX_NO_OVERLAY
+
+OP_CALL_OVL:
+        mov     alt,edx         ; save ALT
+        lea     edx,[esi+8]     ; EDX=address of next instruction
+        sub     edx,code        ; EDX=relative address (to start of code segment)
+        mov     ebp,amx
+        shl     edx,16
+        or      edx,[ebp+_ovl_index] ; EDX=(relative address << 16) | ovl_index
+        _PUSH   edx
+        mov     edx,[esi+4]     ; EDX=ovl_index
+        mov     [ebp+_ovl_index],edx
+        mov     eax,ebp         ; 1st parm: amx
+        _SAVEREGS
+        push    edx             ; EDX (2nd parm)=overlay index
+        push    eax
+        call    [ebp+_overlay]  ; call overlay function
+        _DROPARGS 8             ; remove arguments from stack
+        _RESTOREREGS
+        mov     edx,alt         ; restore ALT
+        mov     esi,[ebp+_codeseg] ; get new code base
+        mov     code,esi        ; save new code base in local variable
+        NEXT
+
+
+OP_RETN_OVL:
+        mov     pri,eax         ; save PRI
+        mov     alt,edx         ; save ALT
+        _POP    ebx             ; restore FRM
+        _POP    esi             ; restore code offset + overlay index
+        mov     frm,ebx
+        add     ebx,edi
+        mov     edx,esi
+        mov     ebp,amx
+        and     edx,0ffffh      ; EDX=overlay index (popped from stack)
+        mov     [ebp+_ovl_index],edx ; store overlay index returning to
+        shr     esi,16          ; ESI=offset into overlay
+        mov     eax,[edi+ecx]   ; EAX=dataseg[stk]
+        lea     ecx,[ecx+eax+4] ; STK=STK+dataseg[stk]+4
+        mov     eax,ebp         ; 1st parm: amx
+        _SAVEREGS
+        push    edx             ; EDX (2nd parm)=overlay index
+        push    eax
+        call    [ebp+_overlay]  ; call overlay function
+        _DROPARGS 8             ; remove arguments from stack
+        _RESTOREREGS
+        mov     eax,[ebp+_codeseg] ; get new code base
+        mov     code,eax        ; save new code base in local variable
+        add     esi,eax         ; ESI=code base + offset
+        mov     eax,pri         ; restore PRI
+        mov     edx,alt         ; restore ALT
+        NEXT
+
+
+OP_SWITCH_OVL:
+        push    ecx
+        mov     ebp,esi         ; EBP = CIP
+        add     ebp,[esi+4]     ; EBP = offset of the icasetable
+        add     ebp,4           ; skip the "OP_ICASETBL" opcode
+        mov     ecx,[ebp]       ; ECX = number of records
+        mov     edx,[ebp+4]     ; preset EDX to "none-matched" case
+    op_iswitch_loop:
+        or      ecx, ecx        ; number of records == 0?
+        jz      short op_iswitch_end ; yes, no more records, exit loop
+        add     ebp,8           ; skip previous record
+        dec     ecx             ; already decrement cases to do
+        cmp     eax,[ebp]       ; PRI == icase label?
+        jne     short op_iswitch_loop ; no, continue loop
+        mov     edx,[ebp+4]     ; yes, get jump address and exit loop
+    op_iswitch_end:
+        pop     ecx
+        ;load overlay
+        mov     eax,amx
+        mov     [eax+_ovl_index],edx
+        _SAVEREGS
+        push    edx             ; EDX (2nd parm)=overlay index
+        push    eax             ; EAX (1st parm)=amx structure
+        call    [eax+_overlay]  ; call overlay function
+        _DROPARGS 8             ; remove arguments from stack
+        _RESTOREREGS
+        mov     esi,[eax+_codeseg] ; get new code base
+        mov     code,esi        ; save new code base in local variable
+        NEXT
+
+%endif  ; AMX_NO_OVERLAY
+
+
+        ; supplemental instructions
+%ifndef AMX_NO_MACRO_INSTR
+
+OP_LIDX:
+        lea     eax,[edx+4*eax]
+        add     esi,4
+        _VERIFYADDRESS  eax
+        mov     eax,[edi+eax]
+        NEXT
+
+
+OP_LIDX_B:
+        push    ecx
+        mov     ecx,[esi+4]
+        add     esi,8
+        shl     eax,cl
+        pop     ecx
+        add     eax,edx
+        _VERIFYADDRESS  eax
+        mov     eax,[edi+eax]
+        NEXT
+
+
+OP_IDXADDR:
+        add     esi,4
+        lea     eax,[edx+4*eax]
+        NEXT
+
+
+OP_IDXADDR_B:
+        push    ecx
+        mov     ecx,[esi+4]
+        add     esi,8
+        shl     eax,cl
+        pop     ecx
+        add     eax,edx
+        NEXT
+
+
+OP_PUSH_C:
+        mov     ebp,[esi+4]
+        add     esi,8
+        _PUSH   ebp
+        NEXT
+
+
+OP_PUSH:
+        mov     ebp,[esi+4]
+        add     esi,8
+        mov     ebp,[ebp+edi]
+        _PUSH   ebp
+        NEXT
+
+
+OP_PUSH_S:
+        mov     ebp,[esi+4]
+        add     esi,8
+        mov     ebp,[ebp+ebx]
+        _PUSH   ebp
+        NEXT
+
+
+OP_PUSH_ADR:
+        mov     ebp,[esi+4]
+        add     esi,8
+        add     ebp,frm
+        _PUSH   ebp
+        NEXT
+
+
+OP_PUSHR_C:
+        mov     ebp,[esi+4]
+        add     esi,8
+        add     ebp,edi
+        _PUSH   ebp
+        NEXT
+
+
+OP_PUSHR_S:
+        mov     ebp,[esi+4]
+        add     esi,8
+        mov     ebp,[ebp+ebx]
+        add     ebp,edi
+        _PUSH   ebp
+        NEXT
+
+
+OP_PUSHR_ADR:
+        mov     ebp,[esi+4]
+        add     esi,8
+        add     ebp,ebx         ; EBX = dat+frm
+        _PUSH   ebp
+        NEXT
+
+
+OP_JEQ:
+        cmp     eax,edx
+        je      OP_JUMP
+        add     esi,8
+        NEXT
+
+
+OP_JNEQ:
+        cmp     eax,edx
+        jne     OP_JUMP
+        add     esi,8
+        NEXT
+
+
+OP_JSLESS:
+        cmp     eax,edx
+        jl      OP_JUMP
+        add     esi,8
+        NEXT
+
+
+OP_JSLEQ:
+        cmp     eax,edx
+        jle     OP_JUMP
+        add     esi,8
+        NEXT
+
+
+OP_JSGRTR:
+        cmp     eax,edx
+        jg      OP_JUMP
+        add     esi,8
+        NEXT
+
+
+OP_JSGEQ:
+        cmp     eax,edx
+        jge     OP_JUMP
+        add     esi,8
+        NEXT
+
+
+OP_SUB_INV:
+        add     esi,4
+        sub     eax,edx
+        NEXT
+
+
+OP_ADD_C:
+        add     eax,[esi+4]
+        add     esi,8
+        NEXT
+
+
+OP_SMUL_C:
+        mov     ebp,[esi+4]
+        push    edx
+        imul    ebp
+        pop     edx
+        add     esi,8
+        NEXT
+
+
+OP_ZERO_PRI:
+        add     esi,4
+        sub     eax,eax
+        NEXT
+
+
+OP_ZERO_ALT:
+        add     esi,4
+        sub     edx,edx
+        NEXT
+
+
+OP_ZERO:
+        mov     ebp,[esi+4]
+        add     esi,8
+        mov     DWORD [edi+ebp],0
+        NEXT
+
+
+OP_ZERO_S:
+        mov     ebp,[esi+4]
+        add     esi,8
+        mov     DWORD [ebx+ebp],0
+        NEXT
+
+
+OP_EQ_C_PRI:
+        cmp     eax,[esi+4]     ; PRI == value ?
+        lea     esi,[esi+8]
+        mov     eax,0
+        sete    al
+        NEXT
+
+
+OP_EQ_C_ALT:
+        xor     eax,eax
+        cmp     edx,[esi+4]     ; ALT == value ?
+        lea     esi,[esi+8]
+        sete    al
+        NEXT
+
+
+OP_INC:
+        mov     ebp,[esi+4]
+        add     esi,8
+        inc     DWORD [edi+ebp]
+        NEXT
+
+
+OP_INC_S:
+        mov     ebp,[esi+4]
+        add     esi,8
+        inc     DWORD [ebx+ebp]
+        NEXT
+
+
+OP_DEC:
+        mov     ebp,[esi+4]
+        add     esi,8
+        dec     DWORD [edi+ebp]
+        NEXT
+
+
+OP_DEC_S:
+        mov     ebp,[esi+4]
+        add     esi,8
+        dec     DWORD [ebx+ebp]
         NEXT
 
 
@@ -1391,7 +1508,6 @@ OP_SYSREQ_N:
         pop     edi             ; restore saved registers
         pop     esi
         pop     ebp
-
         mov     edx,alt         ; restore ALT
         mov     ebx,frm
         mov     ecx,stk         ; restore STK
@@ -1400,460 +1516,117 @@ OP_SYSREQ_N:
         add     ecx,4           ; also remove the extra DWORD pushed
 
         cmp     eax,AMX_ERR_NONE
-        jne     near _return    ; return error code, if any
+        jne     _return         ; return error code, if any
         mov     eax,pri         ; get retval into eax (PRI)
         NEXT
 
 
-OP_SYSREQ_D:
-        mov     ebx,[esi+4]     ; get function address
-        mov     ebp,amx         ; get amx into ebp
-        add     esi,8
-
-        mov     stk,ecx         ; save STK
-        mov     alt,edx         ; save ALT
-
-        mov     [ebp+_stk],ecx  ; store values in AMX structure (STK, HEA, FRM)
-        mov     ecx,hea
-        mov     eax,frm
-        mov     [ebp+_hea],ecx
-        mov     [ebp+_frm],eax  ; eax & ecx are invalid by now
-
-        mov     eax,ebp         ; 1st param: amx
-        mov     edx,stk
-        add     edx,edi         ; 2nd param: addr. of function parameters
-        ; save a few registers (it is not necessary to save them all
-        ; and EAX should *not* be saved because it will hold the return
-        ; value)
-        push    ebp
-        push    esi
-        push    edi
-        ; push the parameters
-        push    edx
-        push    eax
-        call    ebx             ; direct call
-        _DROPARGS 8             ; remove arguments from stack
-        pop     edi             ; restore saved registers
-        pop     esi
-        pop     ebp
-        cmp     DWORD [ebp+_error],AMX_ERR_NONE
-        jne     near _return    ; return error code, if any
-
-        ; function result is in eax (PRI)
-        mov     edx,alt         ; restore ALT
-        mov     ebx,frm
-        mov     ecx,stk         ; restore STK
-        add     ebx,edi         ; restore FRM
-        NEXT
-
-
-OP_SYSREQ_ND:
-        mov     ebp,[esi+8]     ; get # of bytes passed as parameters
-        mov     ebx,[esi+4]     ; get function number
-        _PUSH   ebp             ; push 2nd parameter
-        add     esi,12
-        mov     ebp,amx         ; get amx into ebp
-
-        mov     stk,ecx         ; save STK
-        mov     alt,edx         ; save ALT
-
-        mov     [ebp+_stk],ecx  ; store values in AMX structure (STK, HEA, FRM)
-        mov     ecx,hea
-        mov     eax,frm
-        mov     [ebp+_hea],ecx
-        mov     [ebp+_frm],eax  ; eax & ecx are invalid by now
-
-        mov     eax,ebp         ; 1st param: amx
-        mov     edx,stk
-        add     edx,edi         ; 2nd param: addr. of function parameters
-        ; save a few registers (it is not necessary to save them all
-        ; and EAX should *not* be saved because it will hold the return
-        ; value)
-        push    ebp
-        push    esi
-        push    edi
-        ; push the parameters
-        push    edx
-        push    eax
-        call    ebx             ; direct call
-        _DROPARGS 8             ; remove arguments from stack
-        pop     edi             ; restore saved registers
-        pop     esi
-        pop     ebp
-
-        ; function result is in eax (PRI)
-        mov     edx,alt         ; restore ALT
-        mov     ebx,frm
-        mov     ecx,stk         ; restore STK
-        add     ebx,edi         ; restore FRM
-        add     ecx,[esi-4]     ; remove "number of parameter bytes" from the stack
-        add     ecx,4           ; also remove the extra DWORD pushed
-
-        cmp     DWORD [ebp+_error],AMX_ERR_NONE
-        jne     near _return    ; return error code, if any
-        NEXT
-
-
-OP_FILE:
-OP_LINE:
-OP_SYMBOL:
-OP_SRANGE:
-OP_SYMTAG:
-OP_JUMP_PRI:
-OP_CALL_PRI:
-        jmp     OP_INVALID
-
-
-OP_SWITCH:
-        push    ecx
-        mov     ebp,esi         ; EBP = CIP
-        add     ebp,[esi+4]     ; EBP = offset of the switch table
-        add     ebp,4           ; skip the "OP_CASETBL" opcode
-        mov     ecx,[ebp]       ; ECX = number of records
-        mov     esi,ebp         ; ESI = address of first record
-        add     esi,[ebp+4]     ; preset ESI to "none-matched" case
-    op_switch_loop:
-        or      ecx, ecx        ; number of records == 0?
-        jz      short op_switch_end ; yes, no more records, exit loop
-        add     ebp,8           ; skip previous record
-        dec     ecx             ; already decrement cases to do
-        cmp     eax,[ebp]       ; PRI == case label?
-        jne     short op_switch_loop ; no, continue loop
-        mov     esi,ebp         ; yes, get jump address and exit loop
-        add     esi,[ebp+4]
-    op_switch_end:
-        pop     ecx
-        NEXT
-
-
-OP_ISWITCH:
-        push    ecx
-        mov     ebp,esi         ; EBP = CIP
-        add     ebp,[esi+4]     ; EBP = offset of the icasetable
-        add     ebp,4           ; skip the "OP_ICASETBL" opcode
-        mov     ecx,[ebp]       ; ECX = number of records
-        mov     edx,[ebp+4]     ; preset EDX to "none-matched" case
-    op_iswitch_loop:
-        or      ecx, ecx        ; number of records == 0?
-        jz      short op_iswitch_end ; yes, no more records, exit loop
-        add     ebp,8           ; skip previous record
-        dec     ecx             ; already decrement cases to do
-        cmp     eax,[ebp]       ; PRI == icase label?
-        jne     short op_iswitch_loop ; no, continue loop
-        mov     edx,[ebp+4]     ; yes, get jump address and exit loop
-    op_iswitch_end:
-        pop     ecx
-        ;load overlay
-        mov     eax,amx
-        mov     [eax+_ovl_index],edx
-%ifdef CDECL_STDCALL
-        _SAVEREGS
-        push    edx             ; EDX (2nd parm)=overlay index
-        push    eax             ; EAX (1st parm)=amx structure
-%endif
-        call    [eax+_overlay]  ; call overlay function
-        _DROPARGS 8             ; remove arguments from stack
-        _RESTOREREGS
-        mov     esi,[eax+_codeseg] ; get new code base
-        mov     code,esi        ; save new code base in local variable
-        NEXT
-
-
-OP_CASETBL:
-OP_ICASETBL:
-        jmp     OP_INVALID
-
-
-OP_SWAP_PRI:
-        mov     ebp,[edi+ecx]
+OP_PUSHM_C:
+        mov     pri,eax         ; save PRI
+        add     esi,8           ; skip opcode and parameter count
+        mov     eax,[esi-4]     ; get parameter count
+    op_pushm_c_loop:
+        mov     ebp,[esi]       ; get and push parameter
         add     esi,4
-        mov     [edi+ecx],eax
-        mov     eax,ebp
+        _PUSH   ebp
+        dec     eax             ; decrement cound and loop
+        jnz     op_pushm_c_loop
+        mov     eax,pri         ; restore PRI
         NEXT
 
 
-OP_SWAP_ALT:
-        mov     ebp,[edi+ecx]
+OP_PUSHM:
+        mov     pri,eax         ; save PRI
+        add     esi,8           ; skip opcode and parameter count
+        mov     eax,[esi-4]     ; get parameter count
+    op_pushm_loop:
+        mov     ebp,[esi]       ; get and push parameter
         add     esi,4
-        mov     [edi+ecx],edx
-        mov     edx,ebp
-        NEXT
-
-
-OP_PUSH_ADR:
-        mov     ebp,[esi+4]
-        add     esi,8
-        add     ebp,frm
+        mov     ebp,[ebp+edi]
         _PUSH   ebp
+        dec     eax             ; decrement cound and loop
+        jnz     op_pushm_loop
+        mov     eax,pri         ; restore PRI
         NEXT
 
 
-OP_NOP:
+OP_PUSHM_S:
+        mov     pri,eax         ; save PRI
+        add     esi,8           ; skip opcode and parameter count
+        mov     eax,[esi-4]     ; get parameter count
+    op_pushm_s_loop:
+        mov     ebp,[esi]       ; get and push parameter
         add     esi,4
+        mov     ebp,[ebp+ebx]
+        _PUSH   ebp
+        dec     eax             ; decrement cound and loop
+        jnz     op_pushm_s_loop
+        mov     eax,pri         ; restore PRI
         NEXT
 
 
-OP_BREAK:
-        mov     ebp,amx         ; get amx into ebp
+OP_PUSHM_ADR:
+        mov     pri,eax         ; save PRI
+        add     esi,8           ; skip opcode and parameter count
+        mov     eax,[esi-4]     ; get parameter count
+    op_pushm_adr_loop:
+        mov     ebp,[esi]       ; get and push parameter
         add     esi,4
-        cmp     DWORD [ebp+_debug], 0
-        jnz     break_calldebug
-        NEXT                    ; debug hook not active, ignore
-
-    break_calldebug:
-        ; store the status in the AMX (FRM, STK, HEA, CIP, and PRI + ALT)
-        mov     [ebp+_pri],eax
-        mov     [ebp+_alt],edx  ; EAX and EDX are now free to use
-        mov     eax,frm
-        mov     edx,hea
-        mov     [ebp+_frm],eax  ; store values in AMX structure (STK, FRM & HEA)
-        mov     [ebp+_hea],edx
-        mov     [ebp+_stk],ecx
-        mov     eax,esi
-        sub     eax,code        ; EAX = CIP (relative to start of code segment)
-        mov     [ebp+_cip],eax
-        ; call the debug hook
-        mov     eax,ebp         ; 1st parm: amx
-        _SAVEREGS
-        push    eax
-        call    [ebp+_debug]    ; call debug function
-        _DROPARGS 4             ; remove arguments from stack
-        cmp     eax,AMX_ERR_NONE
-        je      short break_noabort; continue running
-        mov     [ebp+_error],eax   ; save EAX (error code) before restoring all regs
-        _RESTOREREGS               ; abort run, but restore stack first
-        mov     eax,[ebp+_error]   ; get error code in EAX back again
-        jmp     _return         ; return error code
-    break_noabort:
-        _RESTOREREGS
-        mov     eax,[ebp+_pri]  ; restore PRI and ALT
-        mov     edx,[ebp+_alt]
-        NEXT
-
-
-OP_PUSH2_C:
-        add     esi,12
-        mov     ebp,[esi-8]
-        _PUSH   ebp
-        mov     ebp,[esi-4]
-        _PUSH   ebp
-        NEXT
-
-OP_PUSH2:
-        add     esi,12
-        mov     ebp,[esi-8]
-        mov     ebp,[ebp+edi]
-        _PUSH   ebp
-        mov     ebp,[esi-4]
-        mov     ebp,[ebp+edi]
-        _PUSH   ebp
-        NEXT
-
-OP_PUSH2_S:
-        add     esi,12
-        mov     ebp,[esi-8]
-        mov     ebp,[ebp+ebx]
-        _PUSH   ebp
-        mov     ebp,[esi-4]
-        mov     ebp,[ebp+ebx]
-        _PUSH   ebp
-        NEXT
-
-OP_PUSH2_ADR:
-        add     esi,12
-        mov     ebp,[esi-8]
         add     ebp,frm
         _PUSH   ebp
-        mov     ebp,[esi-4]
-        add     ebp,frm
-        _PUSH   ebp
+        dec     eax             ; decrement cound and loop
+        jnz     op_pushm_adr_loop
+        mov     eax,pri         ; restore PRI
         NEXT
 
 
-OP_PUSH3_C:
-        add     esi,16
-        mov     ebp,[esi-12]
+OP_PUSHRM_C:
+        mov     pri,eax         ; save PRI
+        add     esi,8           ; skip opcode and parameter count
+        mov     eax,[esi-4]     ; get parameter count
+    op_pushrm_c_loop:
+        mov     ebp,[esi]       ; get and push parameter
+        add     esi,4
+        add     ebp,edi
         _PUSH   ebp
-        mov     ebp,[esi-8]
-        _PUSH   ebp
-        mov     ebp,[esi-4]
-        _PUSH   ebp
+        dec     eax             ; decrement cound and loop
+        jnz     op_pushrm_c_loop
+        mov     eax,pri         ; restore PRI
         NEXT
 
-OP_PUSH3:
-        add     esi,16
-        mov     ebp,[esi-12]
-        mov     ebp,[ebp+edi]
-        _PUSH   ebp
-        mov     ebp,[esi-8]
-        mov     ebp,[ebp+edi]
-        _PUSH   ebp
-        mov     ebp,[esi-4]
-        mov     ebp,[ebp+edi]
-        _PUSH   ebp
-        NEXT
 
-OP_PUSH3_S:
-        add     esi,16
-        mov     ebp,[esi-12]
+OP_PUSHRM_S:
+        mov     pri,eax         ; save PRI
+        add     esi,8           ; skip opcode and parameter count
+        mov     eax,[esi-4]     ; get parameter count
+    op_pushrm_s_loop:
+        mov     ebp,[esi]       ; get and push parameter
+        add     esi,4
         mov     ebp,[ebp+ebx]
+        add     ebp,edi
         _PUSH   ebp
-        mov     ebp,[esi-8]
-        mov     ebp,[ebp+ebx]
-        _PUSH   ebp
-        mov     ebp,[esi-4]
-        mov     ebp,[ebp+ebx]
-        _PUSH   ebp
-        NEXT
-
-OP_PUSH3_ADR:
-        add     esi,16
-        mov     ebp,[esi-12]
-        add     ebp,frm
-        _PUSH   ebp
-        mov     ebp,[esi-8]
-        add     ebp,frm
-        _PUSH   ebp
-        mov     ebp,[esi-4]
-        add     ebp,frm
-        _PUSH   ebp
+        dec     eax             ; decrement cound and loop
+        jnz     op_pushrm_s_loop
+        mov     eax,pri         ; restore PRI
         NEXT
 
 
-OP_PUSH4_C:
-        add     esi,20
-        mov     ebp,[esi-16]
+OP_PUSHRM_ADR:
+        mov     pri,eax         ; save PRI
+        add     esi,8           ; skip opcode and parameter count
+        mov     eax,[esi-4]     ; get parameter count
+    op_pushrm_adr_loop:
+        mov     ebp,[esi]       ; get and push parameter
+        add     esi,4
+        add     ebp,ebx         ; EBX = dat+frm
         _PUSH   ebp
-        mov     ebp,[esi-12]
-        _PUSH   ebp
-        mov     ebp,[esi-8]
-        _PUSH   ebp
-        mov     ebp,[esi-4]
-        _PUSH   ebp
-        NEXT
-
-OP_PUSH4:
-        add     esi,20
-        mov     ebp,[esi-16]
-        mov     ebp,[ebp+edi]
-        _PUSH   ebp
-        mov     ebp,[esi-12]
-        mov     ebp,[ebp+edi]
-        _PUSH   ebp
-        mov     ebp,[esi-8]
-        mov     ebp,[ebp+edi]
-        _PUSH   ebp
-        mov     ebp,[esi-4]
-        mov     ebp,[ebp+edi]
-        _PUSH   ebp
-        NEXT
-
-OP_PUSH4_S:
-        add     esi,20
-        mov     ebp,[esi-16]
-        mov     ebp,[ebp+ebx]
-        _PUSH   ebp
-        mov     ebp,[esi-12]
-        mov     ebp,[ebp+ebx]
-        _PUSH   ebp
-        mov     ebp,[esi-8]
-        mov     ebp,[ebp+ebx]
-        _PUSH   ebp
-        mov     ebp,[esi-4]
-        mov     ebp,[ebp+ebx]
-        _PUSH   ebp
-        NEXT
-
-OP_PUSH4_ADR:
-        add     esi,20
-        mov     ebp,[esi-16]
-        add     ebp,frm
-        _PUSH   ebp
-        mov     ebp,[esi-12]
-        add     ebp,frm
-        _PUSH   ebp
-        mov     ebp,[esi-8]
-        add     ebp,frm
-        _PUSH   ebp
-        mov     ebp,[esi-4]
-        add     ebp,frm
-        _PUSH   ebp
+        dec     eax             ; decrement cound and loop
+        jnz     op_pushrm_adr_loop
+        mov     eax,pri         ; restore PRI
         NEXT
 
 
-OP_PUSH5_C:
-        add     esi,24
-        mov     ebp,[esi-20]
-        _PUSH   ebp
-        mov     ebp,[esi-16]
-        _PUSH   ebp
-        mov     ebp,[esi-12]
-        _PUSH   ebp
-        mov     ebp,[esi-8]
-        _PUSH   ebp
-        mov     ebp,[esi-4]
-        _PUSH   ebp
-        NEXT
-
-OP_PUSH5:
-        add     esi,24
-        mov     ebp,[esi-20]
-        mov     ebp,[ebp+edi]
-        _PUSH   ebp
-        mov     ebp,[esi-16]
-        mov     ebp,[ebp+edi]
-        _PUSH   ebp
-        mov     ebp,[esi-12]
-        mov     ebp,[ebp+edi]
-        _PUSH   ebp
-        mov     ebp,[esi-8]
-        mov     ebp,[ebp+edi]
-        _PUSH   ebp
-        mov     ebp,[esi-4]
-        mov     ebp,[ebp+edi]
-        _PUSH   ebp
-        NEXT
-
-OP_PUSH5_S:
-        add     esi,24
-        mov     ebp,[esi-20]
-        mov     ebp,[ebp+ebx]
-        _PUSH   ebp
-        mov     ebp,[esi-16]
-        mov     ebp,[ebp+ebx]
-        _PUSH   ebp
-        mov     ebp,[esi-12]
-        mov     ebp,[ebp+ebx]
-        _PUSH   ebp
-        mov     ebp,[esi-8]
-        mov     ebp,[ebp+ebx]
-        _PUSH   ebp
-        mov     ebp,[esi-4]
-        mov     ebp,[ebp+ebx]
-        _PUSH   ebp
-        NEXT
-
-OP_PUSH5_ADR:
-        add     esi,24
-        mov     ebp,[esi-20]
-        add     ebp,frm
-        _PUSH   ebp
-        mov     ebp,[esi-16]
-        add     ebp,frm
-        _PUSH   ebp
-        mov     ebp,[esi-12]
-        add     ebp,frm
-        _PUSH   ebp
-        mov     ebp,[esi-8]
-        add     ebp,frm
-        _PUSH   ebp
-        mov     ebp,[esi-4]
-        add     ebp,frm
-        _PUSH   ebp
-        NEXT
-
-
-OP_LOAD_BOTH:
+OP_LOAD2:
         mov     eax,[esi+4]
         mov     edx,[esi+8]
         add     esi,12
@@ -1862,7 +1635,7 @@ OP_LOAD_BOTH:
         NEXT
 
 
-OP_LOAD_S_BOTH:
+OP_LOAD2_S:
         mov     eax,[esi+4]
         mov     edx,[esi+8]
         add     esi,12
@@ -1890,13 +1663,10 @@ OP_CONST_S:
         pop     eax
         NEXT
 
-
-OP_INVALID:
-        mov     eax,AMX_ERR_INVINSTR
-        jmp     _return
+%endif  ; AMX_NO_MACRO_INSTR
 
 
-;----- packed opcodes
+        ; packed opcodes
 %ifndef AMX_NO_PACKED_OPC
 
 OP_LOAD_P_PRI:
@@ -1926,31 +1696,6 @@ OP_LOAD_P_S_ALT:
         NEXT
 
 
-OP_LODB_P_I:
-        _VERIFYADDRESS  eax
-        GETPARAM_P ebp
-        mov     eax,[edi+eax]           ;subject to misalignment stalls
-        add     esi,4
-        and     eax,DWORD [(lodb_and-4)+ebp*4]
-        NEXT
-
-
-OP_LREF_P_PRI:
-        GETPARAM_P eax
-        add     esi,4
-        mov     eax,[edi+eax]
-        mov     eax,[edi+eax]
-        NEXT
-
-
-OP_LREF_P_ALT:
-        GETPARAM_P edx
-        add     esi,4
-        mov     edx,[edi+edx]
-        mov     edx,[edi+edx]
-        NEXT
-
-
 OP_LREF_P_S_PRI:
         GETPARAM_P eax
         add     esi,4
@@ -1964,6 +1709,15 @@ OP_LREF_P_S_ALT:
         add     esi,4
         mov     edx,[ebx+edx]
         mov     edx,[edi+edx]
+        NEXT
+
+
+OP_LODB_P_I:
+        _VERIFYADDRESS  eax
+        GETPARAM_P ebp
+        mov     eax,[edi+eax]           ;subject to misalignment stalls
+        add     esi,4
+        and     eax,DWORD [(lodb_and-4)+ebp*4]
         NEXT
 
 
@@ -1993,70 +1747,32 @@ OP_ADDR_P_ALT:
         NEXT
 
 
-OP_STOR_P_PRI:
+OP_STOR_P:
         GETPARAM_P ebp
         add     esi,4
         mov     [ebp+edi],eax
         NEXT
 
 
-OP_STOR_P_ALT:
-        GETPARAM_P ebp
-        add     esi,4
-        mov     [ebp+edi],edx
-        NEXT
-
-
-OP_STOR_P_S_PRI:
+OP_STOR_P_S:
         GETPARAM_P ebp
         add     esi,4
         mov     [ebp+ebx],eax
         NEXT
 
 
-OP_STOR_P_S_ALT:
+OP_SREF_P_S:
         GETPARAM_P ebp
         add     esi,4
-        mov     [ebp+ebx],edx
+        mov     ebp,[ebx+ebp]
+        mov     [edi+ebp],eax
         NEXT
 
 
 OP_STRB_P_I:
         GETPARAM_P ebp
         add     esi,4
-        jmp     near strb_entry
-
-
-OP_SREF_P_PRI:
-        GETPARAM_P ebp
-        add     esi,4
-        mov     ebp,[edi+ebp]
-        mov     [edi+ebp],eax
-        NEXT
-
-
-OP_SREF_P_ALT:
-        GETPARAM_P ebp
-        add     esi,4
-        mov     ebp,[edi+ebp]
-        mov     [edi+ebp],edx
-        NEXT
-
-
-OP_SREF_P_S_PRI:
-        GETPARAM_P ebp
-        add     esi,4
-        mov     ebp,[ebx+ebp]
-        mov     [edi+ebp],eax
-        NEXT
-
-
-OP_SREF_P_S_ALT:
-        GETPARAM_P ebp
-        add     esi,4
-        mov     ebp,[ebx+ebp]
-        mov     [edi+ebp],edx
-        NEXT
+        jmp     strb_entry
 
 
 OP_LIDX_P_B:
@@ -2090,15 +1806,6 @@ OP_ALIGN_P_PRI:
         NEXT
 
 
-OP_ALIGN_P_ALT:
-        GETPARAM_P ebp
-        add     esi,4
-        neg     ebp
-        add     ebp,4
-        xor     edx,ebp
-        NEXT
-
-
 OP_PUSH_P_C:
         GETPARAM_P ebp
         add     esi,4
@@ -2119,6 +1826,144 @@ OP_PUSH_P_S:
         add     esi,4
         mov     ebp,[ebp+ebx]
         _PUSH   ebp
+        NEXT
+
+
+OP_PUSH_P_ADR:
+        GETPARAM_P ebp
+        add     esi,4
+        add     ebp,frm
+        _PUSH   ebp
+        NEXT
+
+
+OP_PUSHR_P_C:
+        GETPARAM_P ebp
+        add     esi,4
+        add     ebp,edi
+        _PUSH   ebp
+        NEXT
+
+
+OP_PUSHR_P_S:
+        GETPARAM_P ebp
+        add     esi,4
+        mov     ebp,[ebp+ebx]
+        add     ebp,edi
+        _PUSH   ebp
+        NEXT
+
+
+OP_PUSHR_P_ADR:
+        GETPARAM_P ebp
+        add     esi,4
+        add     ebp,ebx         ; EBX = dat+frm
+        _PUSH   ebp
+        NEXT
+
+
+OP_PUSHM_P_C:
+        mov     pri,eax         ; save PRI
+        GETPARAM_P eax          ; get parameter count
+        add     esi,4
+    op_pushm_p_c_loop:
+        mov     ebp,[esi]       ; get and push parameter
+        add     esi,4
+        _PUSH   ebp
+        dec     eax             ; decrement cound and loop
+        jnz     op_pushm_p_c_loop
+        mov     eax,pri         ; restore PRI
+        NEXT
+
+
+OP_PUSHM_P:
+        mov     pri,eax         ; save PRI
+        GETPARAM_P eax          ; get parameter count
+        add     esi,4
+    op_pushm_p_loop:
+        mov     ebp,[esi]       ; get and push parameter
+        add     esi,4
+        mov     ebp,[ebp+edi]
+        _PUSH   ebp
+        dec     eax             ; decrement cound and loop
+        jnz     op_pushm_p_loop
+        mov     eax,pri         ; restore PRI
+        NEXT
+
+
+OP_PUSHM_P_S:
+        mov     pri,eax         ; save PRI
+        GETPARAM_P eax          ; get parameter count
+        add     esi,4
+    op_pushm_p_s_loop:
+        mov     ebp,[esi]       ; get and push parameter
+        add     esi,4
+        mov     ebp,[ebp+ebx]
+        _PUSH   ebp
+        dec     eax             ; decrement cound and loop
+        jnz     op_pushm_p_s_loop
+        mov     eax,pri         ; restore PRI
+        NEXT
+
+
+OP_PUSHM_P_ADR:
+        mov     pri,eax         ; save PRI
+        GETPARAM_P eax          ; get parameter count
+        add     esi,4
+    op_pushm_p_adr_loop:
+        mov     ebp,[esi]       ; get and push parameter
+        add     esi,4
+        add     ebp,frm
+        _PUSH   ebp
+        dec     eax             ; decrement cound and loop
+        jnz     op_pushm_p_adr_loop
+        mov     eax,pri         ; restore PRI
+        NEXT
+
+
+OP_PUSHRM_P_C:
+        mov     pri,eax         ; save PRI
+        GETPARAM_P eax          ; get parameter count
+        add     esi,4
+    op_pushrm_p_c_loop:
+        mov     ebp,[esi]       ; get and push parameter
+        add     esi,4
+        add     ebp,edi
+        _PUSH   ebp
+        dec     eax             ; decrement cound and loop
+        jnz     op_pushrm_p_c_loop
+        mov     eax,pri         ; restore PRI
+        NEXT
+
+
+OP_PUSHRM_P_S:
+        mov     pri,eax         ; save PRI
+        GETPARAM_P eax          ; get parameter count
+        add     esi,4
+    op_pushrm_p_s_loop:
+        mov     ebp,[esi]       ; get and push parameter
+        add     esi,4
+        mov     ebp,[ebp+ebx]
+        add     ebp,edi
+        _PUSH   ebp
+        dec     eax             ; decrement cound and loop
+        jnz     op_pushrm_p_s_loop
+        mov     eax,pri         ; restore PRI
+        NEXT
+
+
+OP_PUSHRM_P_ADR:
+        mov     pri,eax         ; save PRI
+        GETPARAM_P eax          ; get parameter count
+        add     esi,4
+    op_pushrm_p_adr_loop:
+        mov     ebp,[esi]       ; get and push parameter
+        add     esi,4
+        add     ebp,ebx         ; EBX = dat+frm
+        _PUSH   ebp
+        dec     eax             ; decrement cound and loop
+        jnz     op_pushrm_p_adr_loop
+        mov     eax,pri         ; restore PRI
         NEXT
 
 
@@ -2156,24 +2001,6 @@ OP_SHL_P_C_ALT:
         GETPARAM_P ecx
         add     esi,4
         shl     edx,cl
-        pop     ecx
-        NEXT
-
-
-OP_SHR_P_C_PRI:
-        push    ecx
-        GETPARAM_P ecx
-        add     esi,4
-        shr     eax,cl
-        pop     ecx
-        NEXT
-
-
-OP_SHR_P_C_ALT:
-        push    ecx
-        GETPARAM_P ecx
-        add     esi,4
-        shr     edx,cl
         pop     ecx
         NEXT
 
@@ -2268,7 +2095,7 @@ OP_MOVS_P:
         push    ecx                     ; matching POP is in movs_entry
         GETPARAM_P ecx
         add     esi,4
-        jmp     near movs_entry
+        jmp     movs_entry
 
 
 OP_CMPS_P:
@@ -2285,13 +2112,13 @@ OP_CMPS_P:
         push    ecx                     ; matching pop is in cmps_entry
         GETPARAM_P ecx
         add     esi,4
-        jmp     near cmps_entry
+        jmp     cmps_entry
 
 
 OP_FILL_P:
         GETPARAM_P ebp                  ; get byte count
         add     esi,4
-        jmp     near fill_entry
+        jmp     fill_entry
 
 
 OP_HALT_P:
@@ -2325,15 +2152,7 @@ OP_BOUNDS_P:
         ja      err_bounds      ; use unsigned comparison, so <0 is >bounds
         NEXT
 
-
-OP_PUSH_P_ADR:
-        GETPARAM_P ebp
-        add     esi,4
-        add     ebp,frm
-        _PUSH   ebp
-        NEXT
-
-%endif ; AMX_NO_PACKED_OPC
+%endif  ; AMX_NO_PACKED_OPC
 
 
 err_call:
@@ -2389,24 +2208,46 @@ _return:
         pop     ebx
         ret
 
-; _amx_exec_asm ENDP
 
+
+;----------------------------------------------------------------------------
+;int amx_exec_list(const AMX *amx,const cell **opcodelist,int *numopcodes)
+;----------------------------------------------------------------------------
+
+        GLOBAL  amx_exec_list
+        GLOBAL  _amx_exec_list
+amx_exec_list:
+_amx_exec_list: ;PROC
+        push    ebx
+        ;mov     eax,[esp+08h]
+        mov     edx,[esp+0ch]
+        mov     ebx,[esp+10h]
+
+        mov     eax,opcodelist
+        mov     [edx],eax
+        neg     eax
+        add     eax,opcodelist_end   ; EAX = terminator - start
+        shr     eax,2
+        mov     [ebx],eax       ; store number of opcodes
+        xor     eax, eax        ; return value = 0
+        pop     ebx
+        ret
+
+
+;============================================================================
 
 Start_DATA
         ALIGN   4       ; This is essential to avoid misalignment stalls.
 
 lodb_and DD     0ffh, 0ffffh, 0, 0ffffffffh
 
-        GLOBAL  amx_opcodelist
-        GLOBAL  _amx_opcodelist
-amx_opcodelist:
-_amx_opcodelist DD OP_INVALID
+opcodelist:
+        ; core set
+        DD      OP_NOP
         DD      OP_LOAD_PRI
         DD      OP_LOAD_ALT
         DD      OP_LOAD_S_PRI
         DD      OP_LOAD_S_ALT
-        DD      OP_LREF_PRI
-        DD      OP_LREF_ALT
         DD      OP_LREF_S_PRI
         DD      OP_LREF_S_ALT
         DD      OP_LOAD_I
@@ -2415,163 +2256,130 @@ _amx_opcodelist DD OP_INVALID
         DD      OP_CONST_ALT
         DD      OP_ADDR_PRI
         DD      OP_ADDR_ALT
-        DD      OP_STOR_PRI
-        DD      OP_STOR_ALT
-        DD      OP_STOR_S_PRI
-        DD      OP_STOR_S_ALT
-        DD      OP_SREF_PRI
-        DD      OP_SREF_ALT
-        DD      OP_SREF_S_PRI
-        DD      OP_SREF_S_ALT
+        DD      OP_STOR
+        DD      OP_STOR_S
+        DD      OP_SREF_S
         DD      OP_STOR_I
         DD      OP_STRB_I
-        DD      OP_LIDX
-        DD      OP_LIDX_B
-        DD      OP_IDXADDR
-        DD      OP_IDXADDR_B
         DD      OP_ALIGN_PRI
-        DD      OP_ALIGN_ALT
         DD      OP_LCTRL
         DD      OP_SCTRL
-        DD      OP_MOVE_PRI
-        DD      OP_MOVE_ALT
         DD      OP_XCHG
         DD      OP_PUSH_PRI
         DD      OP_PUSH_ALT
-        DD      OP_PICK
-        DD      OP_PUSH_C
-        DD      OP_PUSH
-        DD      OP_PUSH_S
+        DD      OP_PUSHR_PRI
         DD      OP_POP_PRI
         DD      OP_POP_ALT
+        DD      OP_PICK
         DD      OP_STACK
         DD      OP_HEAP
         DD      OP_PROC
         DD      OP_RET
         DD      OP_RETN
         DD      OP_CALL
-        DD      OP_CALL_PRI     ; obsolete (invalid instruction)
         DD      OP_JUMP
-        DD      OP_JREL
         DD      OP_JZER
         DD      OP_JNZ
-        DD      OP_JEQ
-        DD      OP_JNEQ
-        DD      OP_JLESS
-        DD      OP_JLEQ
-        DD      OP_JGRTR
-        DD      OP_JGEQ
-        DD      OP_JSLESS
-        DD      OP_JSLEQ
-        DD      OP_JSGRTR
-        DD      OP_JSGEQ
         DD      OP_SHL
         DD      OP_SHR
         DD      OP_SSHR
         DD      OP_SHL_C_PRI
         DD      OP_SHL_C_ALT
-        DD      OP_SHR_C_PRI
-        DD      OP_SHR_C_ALT
         DD      OP_SMUL
         DD      OP_SDIV
-        DD      OP_SDIV_ALT
-        DD      OP_UMUL
-        DD      OP_UDIV
-        DD      OP_UDIV_ALT
         DD      OP_ADD
         DD      OP_SUB
-        DD      OP_SUB_ALT
         DD      OP_AND
         DD      OP_OR
         DD      OP_XOR
         DD      OP_NOT
         DD      OP_NEG
         DD      OP_INVERT
-        DD      OP_ADD_C
-        DD      OP_SMUL_C
-        DD      OP_ZERO_PRI
-        DD      OP_ZERO_ALT
-        DD      OP_ZERO
-        DD      OP_ZERO_S
-        DD      OP_SIGN_PRI
-        DD      OP_SIGN_ALT
         DD      OP_EQ
         DD      OP_NEQ
-        DD      OP_LESS
-        DD      OP_LEQ
-        DD      OP_GRTR
-        DD      OP_GEQ
         DD      OP_SLESS
         DD      OP_SLEQ
         DD      OP_SGRTR
         DD      OP_SGEQ
-        DD      OP_EQ_C_PRI
-        DD      OP_EQ_C_ALT
         DD      OP_INC_PRI
         DD      OP_INC_ALT
-        DD      OP_INC
-        DD      OP_INC_S
         DD      OP_INC_I
         DD      OP_DEC_PRI
         DD      OP_DEC_ALT
-        DD      OP_DEC
-        DD      OP_DEC_S
         DD      OP_DEC_I
         DD      OP_MOVS
         DD      OP_CMPS
         DD      OP_FILL
         DD      OP_HALT
         DD      OP_BOUNDS
-        DD      OP_SYSREQ_PRI
-        DD      OP_SYSREQ_C
-        DD      OP_FILE         ; obsolete
-        DD      OP_LINE         ; obsolete
-        DD      OP_SYMBOL       ; obsolete
-        DD      OP_SRANGE       ; obsolete
-        DD      OP_JUMP_PRI     ; obsolete (invalid instruction)
+        DD      OP_SYSREQ
         DD      OP_SWITCH
-        DD      OP_CASETBL
         DD      OP_SWAP_PRI
         DD      OP_SWAP_ALT
-        DD      OP_PUSH_ADR
-        DD      OP_NOP
-        DD      OP_SYSREQ_N
-        DD      OP_SYMTAG       ; obsolete
         DD      OP_BREAK
-        ; macro opcodes
-        DD      OP_PUSH2_C
-        DD      OP_PUSH2
-        DD      OP_PUSH2_S
-        DD      OP_PUSH2_ADR
-        DD      OP_PUSH3_C
-        DD      OP_PUSH3
-        DD      OP_PUSH3_S
-        DD      OP_PUSH3_ADR
-        DD      OP_PUSH4_C
-        DD      OP_PUSH4
-        DD      OP_PUSH4_S
-        DD      OP_PUSH4_ADR
-        DD      OP_PUSH5_C
-        DD      OP_PUSH5
-        DD      OP_PUSH5_S
-        DD      OP_PUSH5_ADR
-        DD      OP_LOAD_BOTH
-        DD      OP_LOAD_S_BOTH
+        DD      OP_CASETBL
+        ; patched instructions
+        DD      OP_SYSREQ_D
+        DD      OP_SYSREQ_ND
+        ; overlay instructions
+%ifndef AMX_NO_OVERLAY
+        DD      OP_CALL_OVL
+        DD      OP_RETN_OVL
+        DD      OP_SWITCH_OVL
+        DD      OP_CASETBL_OVL
+%endif  ; AMX_NO_OVERLAY
+        ; supplemental instructions
+%ifndef AMX_NO_MACRO_INSTR
+        DD      OP_LIDX
+        DD      OP_LIDX_B
+        DD      OP_IDXADDR
+        DD      OP_IDXADDR_B
+        DD      OP_PUSH_C
+        DD      OP_PUSH
+        DD      OP_PUSH_S
+        DD      OP_PUSH_ADR
+        DD      OP_PUSHR_C
+        DD      OP_PUSHR_S
+        DD      OP_PUSHR_ADR
+        DD      OP_JEQ
+        DD      OP_JNEQ
+        DD      OP_JSLESS
+        DD      OP_JSLEQ
+        DD      OP_JSGRTR
+        DD      OP_JSGEQ
+        DD      OP_SDIV_INV
+        DD      OP_SUB_INV
+        DD      OP_ADD_C
+        DD      OP_SMUL_C
+        DD      OP_ZERO_PRI
+        DD      OP_ZERO_ALT
+        DD      OP_ZERO
+        DD      OP_ZERO_S
+        DD      OP_EQ_C_PRI
+        DD      OP_EQ_C_ALT
+        DD      OP_INC
+        DD      OP_INC_S
+        DD      OP_DEC
+        DD      OP_DEC_S
+        DD      OP_SYSREQ_N
+        DD      OP_PUSHM_C
+        DD      OP_PUSHM
+        DD      OP_PUSHM_S
+        DD      OP_PUSHM_ADR
+        DD      OP_PUSHRM_C
+        DD      OP_PUSHRM_S
+        DD      OP_PUSHRM_ADR
+        DD      OP_LOAD2
+        DD      OP_LOAD2_S
         DD      OP_CONST
         DD      OP_CONST_S
-        ; overlay opcodes
-        DD      OP_ICALL
-        DD      OP_IRETN
-        DD      OP_ISWITCH
-        DD      OP_ICASETBL
+%endif  ; AMX_NO_MACRO_INSTR
         ; packed opcodes
 %ifndef AMX_NO_PACKED_OPC
         DD      OP_LOAD_P_PRI
         DD      OP_LOAD_P_ALT
         DD      OP_LOAD_P_S_PRI
         DD      OP_LOAD_P_S_ALT
-        DD      OP_LREF_P_PRI
-        DD      OP_LREF_P_ALT
         DD      OP_LREF_P_S_PRI
         DD      OP_LREF_P_S_ALT
         DD      OP_LODB_P_I
@@ -2579,28 +2387,31 @@ _amx_opcodelist DD OP_INVALID
         DD      OP_CONST_P_ALT
         DD      OP_ADDR_P_PRI
         DD      OP_ADDR_P_ALT
-        DD      OP_STOR_P_PRI
-        DD      OP_STOR_P_ALT
-        DD      OP_STOR_P_S_PRI
-        DD      OP_STOR_P_S_ALT
-        DD      OP_SREF_P_PRI
-        DD      OP_SREF_P_ALT
-        DD      OP_SREF_P_S_PRI
-        DD      OP_SREF_P_S_ALT
+        DD      OP_STOR_P
+        DD      OP_STOR_P_S
+        DD      OP_SREF_P_S
         DD      OP_STRB_P_I
         DD      OP_LIDX_P_B
         DD      OP_IDXADDR_P_B
         DD      OP_ALIGN_P_PRI
-        DD      OP_ALIGN_P_ALT
         DD      OP_PUSH_P_C
         DD      OP_PUSH_P
         DD      OP_PUSH_P_S
+        DD      OP_PUSH_P_ADR
+        DD      OP_PUSHR_P_C
+        DD      OP_PUSHR_P_S
+        DD      OP_PUSHR_P_ADR
+        DD      OP_PUSHM_P_C
+        DD      OP_PUSHM_P
+        DD      OP_PUSHM_P_S
+        DD      OP_PUSHM_P_ADR
+        DD      OP_PUSHRM_P_C
+        DD      OP_PUSHRM_P_S
+        DD      OP_PUSHRM_P_ADR
         DD      OP_STACK_P
         DD      OP_HEAP_P
         DD      OP_SHL_P_C_PRI
         DD      OP_SHL_P_C_ALT
-        DD      OP_SHR_P_C_PRI
-        DD      OP_SHR_P_C_ALT
         DD      OP_ADD_P_C
         DD      OP_SMUL_P_C
         DD      OP_ZERO_P
@@ -2616,9 +2427,5 @@ _amx_opcodelist DD OP_INVALID
         DD      OP_FILL_P
         DD      OP_HALT_P
         DD      OP_BOUNDS_P
-        DD      OP_PUSH_P_ADR
 %endif  ; AMX_NO_PACKED_OPC
-        ; "patch" opcodes
-        DD      OP_SYSREQ_D
-        DD      OP_SYSREQ_ND
-
+opcodelist_end:

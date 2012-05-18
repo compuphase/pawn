@@ -1,24 +1,20 @@
 /* Text file I/O module for the Pawn Abstract Machine
  *
- *  Copyright (c) ITB CompuPhase, 2003-2009
+ *  Copyright (c) ITB CompuPhase, 2003-2011
  *
- *  This software is provided "as-is", without any express or implied warranty.
- *  In no event will the authors be held liable for any damages arising from
- *  the use of this software.
+ *  Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ *  use this file except in compliance with the License. You may obtain a copy
+ *  of the License at
  *
- *  Permission is granted to anyone to use this software for any purpose,
- *  including commercial applications, and to alter it and redistribute it
- *  freely, subject to the following restrictions:
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
- *  1.  The origin of this software must not be misrepresented; you must not
- *      claim that you wrote the original software. If you use this software in
- *      a product, an acknowledgment in the product documentation would be
- *      appreciated but is not required.
- *  2.  Altered source versions must be plainly marked as such, and must not be
- *      misrepresented as being the original software.
- *  3.  This notice may not be removed or altered from any source distribution.
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ *  WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ *  License for the specific language governing permissions and limitations
+ *  under the License.
  *
- *  Version: $Id: amxfile.c 4057 2009-01-15 08:21:31Z thiadmer $
+ *  Version: $Id: amxfile.c 4611 2011-12-05 17:46:53Z thiadmer $
  */
 #if defined _UNICODE || defined __UNICODE__ || defined UNICODE
 # if !defined UNICODE   /* for Windows */
@@ -36,14 +32,20 @@
 #include <string.h>
 #include <time.h>
 #include <sys/stat.h>
+#include "osdefs.h"
 #if defined __BORLANDC__
+  #include <dir.h>
+#endif
+#if defined __BORLANDC__ || defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__ || defined MACOS
   #include <utime.h>
 #else
   #include <sys/utime.h>
 #endif
-#include "osdefs.h"
 #if defined __WIN32__ || defined __MSDOS__
   #include <malloc.h>
+#endif
+#if defined __WATCOMC__
+  #include <direct.h>
 #endif
 #if defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__ || defined MACOS
   #include <dirent.h>
@@ -59,8 +61,6 @@
 
 #if !defined AMXFILE_VAR
   #define AMXFILE_VAR   "AMXFILE"
-#elif AMXFILE_VAR==""
-  #undef AMXFILE_VAR
 #endif
 
 #if !defined sizearray
@@ -68,35 +68,40 @@
 #endif
 
 #if defined _UNICODE
-# include <tchar.h>
+  #include <tchar.h>
 #elif !defined __T
   typedef char          TCHAR;
-# define __T(string)    string
-# define _tchmod        chmod
-# define _tcscat        strcat
-# define _tcschr        strchr
-# define _tcscpy        strcpy
-# define _tcsdup        strdup
-# define _tcslen        strlen
-# define _tcsncpy       strncpy
-# define _tcsnicmp      strnicmp
-# define _tcspbrk       strpbrk
-# define _tcsrchr       strrchr
-# define _tcstol        strtol
-# define _tfopen        fopen
-# define _tfputs        fputs
-# define _tgetenv       getenv
-# define _tremove       remove
-# define _trename       rename
-# define _tstat         _stat
-# define _tutime        _utime
+  #define __T(string)   string
+  #define _tchmod       chmod
+  #define _tcscat       strcat
+  #define _tcschr       strchr
+  #define _tcscmp       strcmp
+  #define _tcscpy       strcpy
+  #define _tcsdup       strdup
+  #define _tcslen       strlen
+  #define _tcsncpy      strncpy
+  #define _tcsnicmp     strnicmp
+  #define _tcspbrk      strpbrk
+  #define _tcsrchr      strrchr
+  #define _tcstol       strtol
+  #define _tfopen       fopen
+  #define _tfputs       fputs
+  #define _tgetenv      getenv
+  #define _tmkdir       _mkdir
+  #define _tremove      remove
+  #define _trename      rename
+  #define _trmdir       _rmdir
+  #define _tstat        _stat
+  #define _tutime       _utime
+#endif
+#if !(defined __WIN32__ || defined _WIN32 || defined WIN32)
+  #define _stat(n,b)  stat(n,b)
+#endif
+#if !defined S_ISDIR
+  #define S_ISDIR(mode) (((mode) & _S_IFDIR) != 0)
 #endif
 
 #include "minIni.c"
-
-#if !defined UNUSED_PARAM
-  #define UNUSED_PARAM(p) ((void)(p))
-#endif
 
 enum filemode {
   io_read,      /* file must exist */
@@ -449,6 +454,7 @@ static cell AMX_NATIVE_CALL n_fopen(AMX *amx, const cell *params)
   TCHAR *name,fullname[_MAX_PATH];
   FILE *f = NULL;
 
+  (void)amx;
   altattrib=NULL;
   switch (params[2] & 0x7fff) {
   case io_read:
@@ -481,7 +487,7 @@ static cell AMX_NATIVE_CALL n_fopen(AMX *amx, const cell *params)
 /* fclose(File: handle) */
 static cell AMX_NATIVE_CALL n_fclose(AMX *amx, const cell *params)
 {
-  UNUSED_PARAM(amx);
+  (void)amx;
   return fclose((FILE*)params[1]) == 0;
 }
 
@@ -493,7 +499,8 @@ static cell AMX_NATIVE_CALL n_fwrite(AMX *amx, const cell *params)
   char *str;
   int len;
 
-  amx_GetAddr(amx,params[2],&cptr);
+  (void)amx;
+  cptr=amx_Address(amx,params[2]);
   amx_StrLen(cptr,&len);
   if (len==0)
     return 0;
@@ -524,7 +531,7 @@ static cell AMX_NATIVE_CALL n_fread(AMX *amx, const cell *params)
   if (params[4])
     max*=sizeof(cell);
 
-  amx_GetAddr(amx,params[2],&cptr);
+  cptr=amx_Address(amx,params[2]);
   str=(char *)alloca(max);
   if (str==NULL || cptr==NULL) {
     amx_RaiseError(amx, AMX_ERR_NATIVE);
@@ -550,7 +557,7 @@ static cell AMX_NATIVE_CALL n_fputchar(AMX *amx, const cell *params)
 {
   size_t result;
 
-  UNUSED_PARAM(amx);
+  (void)amx;
   if (params[3]) {
     cell str[2];
     str[0]=params[2];
@@ -569,7 +576,7 @@ static cell AMX_NATIVE_CALL n_fgetchar(AMX *amx, const cell *params)
   cell str[2];
   size_t result;
 
-  UNUSED_PARAM(amx);
+  (void)amx;
   if (params[2]) {
     result=fgets_cell((FILE*)params[1],str,2,1);
   } else {
@@ -599,7 +606,8 @@ static cell AMX_NATIVE_CALL n_fblockwrite(AMX *amx, const cell *params)
   cell *cptr;
   cell count;
 
-  amx_GetAddr(amx,params[2],&cptr);
+  (void)amx;
+  cptr=amx_Address(amx,params[2]);
   if (cptr!=NULL) {
     cell max=params[3];
     ucell v;
@@ -618,7 +626,8 @@ static cell AMX_NATIVE_CALL n_fblockread(AMX *amx, const cell *params)
   cell *cptr;
   cell count;
 
-  amx_GetAddr(amx,params[2],&cptr);
+  (void)amx;
+  cptr=amx_Address(amx,params[2]);
   if (cptr!=NULL) {
     cell max=params[3];
     ucell v;
@@ -634,8 +643,8 @@ static cell AMX_NATIVE_CALL n_fblockread(AMX *amx, const cell *params)
 /* File: ftemp() */
 static cell AMX_NATIVE_CALL n_ftemp(AMX *amx, const cell *params)
 {
-  UNUSED_PARAM(amx);
-  UNUSED_PARAM(params);
+  (void)amx;
+  (void)params;
   return (cell)tmpfile();
 }
 
@@ -643,6 +652,7 @@ static cell AMX_NATIVE_CALL n_ftemp(AMX *amx, const cell *params)
 static cell AMX_NATIVE_CALL n_fseek(AMX *amx, const cell *params)
 {
   int whence;
+  (void)amx;
   switch (params[3]) {
   case seek_start:
     whence=SEEK_SET;
@@ -658,7 +668,6 @@ static cell AMX_NATIVE_CALL n_fseek(AMX *amx, const cell *params)
   default:
     return 0;
   } /* switch */
-  UNUSED_PARAM(amx);
   return lseek(fileno((FILE*)params[1]),params[2],whence);
 }
 
@@ -668,9 +677,40 @@ static cell AMX_NATIVE_CALL n_fremove(AMX *amx, const cell *params)
   int r=1;
   TCHAR *name,fullname[_MAX_PATH];
 
+  (void)amx;
   amx_StrParam(amx,params[1],name);
-  if (name!=NULL && completename(fullname,name,sizearray(fullname))!=NULL)
-    r=_tremove(fullname);
+  if (name!=NULL && completename(fullname,name,sizearray(fullname))!=NULL) {
+    /* if this is a directory, try _trmdir() */
+    struct stat stbuf;
+    _tstat(fullname, &stbuf);
+    if (S_ISDIR(stbuf.st_mode))
+      r=_trmdir(fullname);
+    else
+      r=_tremove(fullname);
+  } /* if */
+  return r==0;
+}
+
+/* bool: fcopy(const source[], const target[]) */
+static cell AMX_NATIVE_CALL n_fcopy(AMX *amx, const cell *params)
+{
+  int r=1;
+  TCHAR *name,oldname[_MAX_PATH],newname[_MAX_PATH];
+
+  (void)amx;
+  amx_StrParam(amx,params[1],name);
+  if (name!=NULL && completename(oldname,name,sizearray(oldname))!=NULL) {
+    amx_StrParam(amx,params[2],name);
+    if (name!=NULL && completename(newname,name,sizearray(newname))!=NULL) {
+      #if defined __WIN32__
+        r= CopyFile(oldname,newname,FALSE)==FALSE;
+      #else
+        TCHAR cmd[2*_MAX_PATH + 10];
+        sprintf(cmd,"cp %s %s",oldname,newname);
+        r= system(cmd)<0;
+      #endif
+    } /* if */
+  } /* if */
   return r==0;
 }
 
@@ -680,6 +720,7 @@ static cell AMX_NATIVE_CALL n_frename(AMX *amx, const cell *params)
   int r=1;
   TCHAR *name,oldname[_MAX_PATH],newname[_MAX_PATH];
 
+  (void)amx;
   amx_StrParam(amx,params[1],name);
   if (name!=NULL && completename(oldname,name,sizearray(oldname))!=NULL) {
     amx_StrParam(amx,params[2],name);
@@ -697,7 +738,7 @@ static cell AMX_NATIVE_CALL n_flength(AMX *amx, const cell *params)
   c=lseek(fn,0,SEEK_CUR); /* save the current position */
   l=lseek(fn,0,SEEK_END); /* return the file position at its end */
   lseek(fn,c,SEEK_SET);   /* restore the file pointer */
-  UNUSED_PARAM(amx);
+  (void)amx;
   return l;
 }
 
@@ -773,6 +814,7 @@ static cell AMX_NATIVE_CALL n_fexist(AMX *amx, const cell *params)
   int r=0;
   TCHAR *name,fullname[_MAX_PATH];
 
+  (void)amx;
   amx_StrParam(amx,params[1],name);
   if (name!=NULL && completename(fullname,name,sizearray(fullname))!=NULL)
     r=matchfiles(fullname,0,NULL,0);
@@ -785,13 +827,14 @@ static cell AMX_NATIVE_CALL n_fmatch(AMX *amx, const cell *params)
   TCHAR *name,fullname[_MAX_PATH]="";
   cell *cptr;
 
+  (void)amx;
   amx_StrParam(amx,params[2],name);
   if (name!=NULL && completename(fullname,name,sizearray(fullname))!=NULL) {
     if (!matchfiles(fullname,params[3],fullname,sizearray(fullname))) {
       fullname[0]='\0';
     } else {
       /* copy the string into the destination */
-      amx_GetAddr(amx,params[1],&cptr);
+      cptr=amx_Address(amx,params[1]);
       amx_SetString(cptr,fullname,1,0,params[4]);
     } /* if */
   } /* if */
@@ -801,24 +844,22 @@ static cell AMX_NATIVE_CALL n_fmatch(AMX *amx, const cell *params)
 /* bool: fstat(const name[], &size = 0, &timestamp = 0, &attrib = 0, &inode = 0) */
 static cell AMX_NATIVE_CALL n_fstat(AMX *amx, const cell *params)
 {
-  #if !(defined __WIN32__ || defined _WIN32 || defined WIN32)
-    #define _stat(n,b)  stat(n,b)
-  #endif
   TCHAR *name,fullname[_MAX_PATH]="";
   cell *cptr;
   int result=0;
 
+  (void)amx;
   amx_StrParam(amx,params[1],name);
   if (name!=NULL && completename(fullname,name,sizearray(fullname))!=NULL) {
     struct stat stbuf;
     if (_tstat(name, &stbuf) == 0) {
-      amx_GetAddr(amx,params[2],&cptr);
+      cptr=amx_Address(amx,params[2]);
       *cptr=stbuf.st_size;
-      amx_GetAddr(amx,params[3],&cptr);
+      cptr=amx_Address(amx,params[3]);
       *cptr=(cell)stbuf.st_mtime;
-      amx_GetAddr(amx,params[4],&cptr);
+      cptr=amx_Address(amx,params[4]);
       *cptr=stbuf.st_mode;  /* mode/protection bits */
-      amx_GetAddr(amx,params[5],&cptr);
+      cptr=amx_Address(amx,params[5]);
       *cptr=stbuf.st_ino;   /* inode number, unique id for a file */
       result=1;
     } /* if */
@@ -835,6 +876,7 @@ static cell AMX_NATIVE_CALL n_fattrib(AMX *amx, const cell *params)
   TCHAR *name,fullname[_MAX_PATH]="";
   int result=0;
 
+  (void)amx;
   amx_StrParam(amx,params[1],name);
   if (name!=NULL && completename(fullname,name,sizearray(fullname))!=NULL) {
     result=1;
@@ -848,6 +890,24 @@ static cell AMX_NATIVE_CALL n_fattrib(AMX *amx, const cell *params)
       result=result && (_tchmod(name,(int)params[3])==0);
   } /* if */
   return result;
+}
+
+/* bool: fcreatedir(const name[]) */
+static cell AMX_NATIVE_CALL n_fcreatedir(AMX *amx, const cell *params)
+{
+  TCHAR *name,fullname[_MAX_PATH]="";
+  int r=1;
+
+  (void)amx;
+  amx_StrParam(amx,params[1],name);
+  if (name!=NULL && completename(fullname,name,sizearray(fullname))!=NULL) {
+    #if defined __WIN32__ || defined __DOS__
+      r=_tmkdir(fullname);
+    #else
+      r=_tmkdir(fullname,0755);
+    #endif
+  } /* if */
+  return r==0;
 }
 
 /* CRC32 functions are adapted from source code from www.networkdls.com
@@ -942,6 +1002,7 @@ static cell AMX_NATIVE_CALL n_filecrc(AMX *amx, const cell *params)
   unsigned long ulCRC = 0xffffffff;
   int numread;
 
+  (void)amx;
   amx_StrParam(amx,params[1],name);
   if (name!=NULL && completename(fullname,name,sizearray(fullname))!=NULL
       && (fp=_tfopen(fullname,"rb"))!=NULL)
@@ -981,7 +1042,7 @@ static cell AMX_NATIVE_CALL n_readcfg(AMX *amx, const cell *params)
     amx_StrParam(amx,params[3],key);
     amx_StrParam(amx,params[6],defvalue);
 
-    amx_GetAddr(amx,params[4],&cptr);
+    cptr=amx_Address(amx,params[4]);
     buffer=(char *)alloca(size);
     if (buffer==NULL || cptr==NULL) {
       amx_RaiseError(amx, AMX_ERR_NATIVE);
@@ -1000,6 +1061,7 @@ static cell AMX_NATIVE_CALL n_readcfgvalue(AMX *amx, const cell *params)
   TCHAR *section,*key;
   long result=0;
 
+  (void)amx;
   amx_StrParam(amx,params[1],name);
   if (name!=NULL && *name=='\0')
     name=(TCHAR*)default_ini_name;
@@ -1018,6 +1080,7 @@ static cell AMX_NATIVE_CALL n_writecfg(AMX *amx, const cell *params)
   TCHAR *section,*key,*value;
   int result=0;
 
+  (void)amx;
   amx_StrParam(amx,params[1],name);
   if (name!=NULL && *name=='\0')
     name=(TCHAR*)default_ini_name;
@@ -1037,6 +1100,7 @@ static cell AMX_NATIVE_CALL n_writecfgvalue(AMX *amx, const cell *params)
   TCHAR *section,*key;
   int result=0;
 
+  (void)amx;
   amx_StrParam(amx,params[1],name);
   if (name!=NULL && *name=='\0')
     name=(TCHAR*)default_ini_name;
@@ -1055,6 +1119,7 @@ static cell AMX_NATIVE_CALL n_deletecfg(AMX *amx, const cell *params)
   TCHAR *section,*key;
   int result=0;
 
+  (void)amx;
   amx_StrParam(amx,params[1],name);
   if (name!=NULL && *name=='\0')
     name=(TCHAR*)default_ini_name;
@@ -1086,12 +1151,14 @@ AMX_NATIVE_INFO file_Natives[] = {
   { "fseek",        n_fseek },
   { "flength",      n_flength },
   { "fremove",      n_fremove },
+  { "fcopy",        n_fcopy },
   { "frename",      n_frename },
   { "fexist",       n_fexist },
   { "fmatch",       n_fmatch },
   { "fstat",        n_fstat },
   { "fattrib",      n_fattrib },
   { "filecrc",      n_filecrc },
+  { "fcreatedir",   n_fcreatedir },
   { "readcfg",      n_readcfg },
   { "readcfgvalue", n_readcfgvalue },
   { "writecfg",     n_writecfg },
@@ -1107,6 +1174,6 @@ int AMXEXPORT AMXAPI amx_FileInit(AMX *amx)
 
 int AMXEXPORT AMXAPI amx_FileCleanup(AMX *amx)
 {
-  UNUSED_PARAM(amx);
+  (void)amx;
   return AMX_ERR_NONE;
 }

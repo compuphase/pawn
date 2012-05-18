@@ -1,6 +1,6 @@
 <?xml version="1.0" ?>
 <xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="1.0">
-<!-- Version: $Id: pawndoc.xsl 4032 2008-11-14 15:06:02Z thiadmer $ -->
+<!-- Version: $Id: pawndoc.xsl 4258 2010-06-17 10:21:31Z thiadmer $ -->
 
 <xsl:template match="/">
 <HTML>
@@ -87,6 +87,7 @@
 				<h3>Depends on</h3>
 				<ul><xsl:apply-templates select="dependency"/></ul>
 			</xsl:if>
+			<xsl:apply-templates select="location"/>
 			<xsl:if test="seealso">
 				<h3>See Also</h3>
 				<ul><xsl:apply-templates select="seealso"/></ul>
@@ -102,7 +103,7 @@
 				<h3>Remarks</h3>
 				<xsl:apply-templates select="remarks"/>
 				<xsl:if test="text()">
-  			  <p><xsl:apply-templates select="text()"/></p>
+				<p><xsl:apply-templates select="text()"/></p>
   			</xsl:if>
 			</xsl:if>
 			<xsl:apply-templates select="example"/>
@@ -114,6 +115,7 @@
 				<h3>Depends on</h3>
 				<ul><xsl:apply-templates select="dependency"/></ul>
 			</xsl:if>
+			<xsl:apply-templates select="location"/>
 			<xsl:if test="seealso">
 				<h3>See Also</h3>
 				<ul><xsl:apply-templates select="seealso"/></ul>
@@ -132,7 +134,7 @@
 				<h3>Remarks</h3>
 				<xsl:apply-templates select="remarks"/>
 				<xsl:if test="text()">
-  			  <p><xsl:apply-templates select="text()"/></p>
+				<p><xsl:apply-templates select="text()"/></p>
   			</xsl:if>
 			</xsl:if>
 			<xsl:apply-templates select="example"/>
@@ -158,6 +160,7 @@
 					</table>
 				</p>
 			</xsl:if>
+			<xsl:apply-templates select="location"/>
 			<xsl:apply-templates select="stacksize"/>
 			<xsl:if test="seealso">
 				<h3>See Also</h3>
@@ -173,7 +176,7 @@
 				<h3>Remarks</h3>
 				<xsl:apply-templates select="remarks"/>
 				<xsl:if test="text()">
-  			  <p><xsl:apply-templates select="text()"/></p>
+				<p><xsl:apply-templates select="text()"/></p>
   			</xsl:if>
 			</xsl:if>
 			<xsl:apply-templates select="example"/>
@@ -185,6 +188,7 @@
 				<h3>Depends on</h3>
 				<ul><xsl:apply-templates select="dependency"/></ul>
 			</xsl:if>
+			<xsl:apply-templates select="location"/>
 			<xsl:if test="seealso">
 				<h3>See Also</h3>
 				<ul><xsl:apply-templates select="seealso"/></ul>
@@ -225,6 +229,11 @@
 <xsl:template match="returns">
 	<h3>Returns</h3>
 	<p><xsl:apply-templates/></p>
+</xsl:template>
+
+<xsl:template match="location">
+	<h3>Defined in</h3>
+	<p><xsl:value-of select="@file"/>, line <xsl:value-of select="@line"/></p>
 </xsl:template>
 
 <xsl:template match="remarks">

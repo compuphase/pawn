@@ -1,0 +1,114 @@
+# core
+numargs()                                               Return the argument count of a function
+getarg(arg, index=0)                                    Return the indexed argument of a function
+setarg(arg, index=0, value)                             Set the indexed argument of a function
+tolower(c)                                              Convert a character to lower case
+toupper(c)                                              Convert a character to upper case
+swapchars(c)                                            Swap all four bytes of a cell
+random(max)                                             Return a pseudo-random value
+min(value1, value2)                                     Return the lowest of two numbers
+max(value1, value2)                                     Return the highest of two numbers
+clamp(value, min=cellmin, max=cellmax)                  Force a value in the given range
+
+# console (extract)
+console(columns, rows, LCDcursor: cursor=CursorNone)    Initialize the display; columns & rows must be pixels for graphic displays
+print(const string[], start=0, end=cellmax)             Print a string, or part of it
+printf(const format[], {Fixed,_}:...)                   Print a string with formatting (numbers)
+image(const filename[], x=0, y=0)                       Displays an image (on graphic displays)
+clrscr()                                                Clears the display and resets the cursor to (1,1)
+clreol()                                                Clear from the cursor to the end if the current line
+gotoxy(x=1, y=1)                                        Set cursor position; (1,1) is upper left
+wherexy(&x, &y)                                         Get the current cursor position
+setattr(contrast)                                       Set the display contrast (LCD's)
+consctrl(code, value)                                   Set various display attributes
+
+# fixed
+Fixed:fixed(value)                                      Convert a whole number to a fixed-point value
+Fixed:strfixed(const string[])                          Convert a string to a fixed-point value
+Fixed:fmul(Fixed:oper1, Fixed:oper2)                    Multiply two fixed-point numbers
+Fixed:fdiv(Fixed:dividend, Fixed:divisor)               Divide a fixed-point number by another
+Fixed:ffract(Fixed:value)                               Return the fractional part of a fixed-point number
+fround(Fixed:value, fround_method:method=fround_round)  Round a fixed-point number (convert to a whole number)
+Fixed:fpower(Fixed:value, exponent)                     Raise a fixed-point number to a power
+Fixed:fsqroot(Fixed:value)                              Return the square root of a fixed-point number
+Fixed:fabs(Fixed:value)                                 Return the absolute value of a fixed-point number
+
+# float
+Float:float(value)                                      Convert a whole number to a floating point value
+Float:strfloat(const string[])                          Convert a string to a a floating point value
+Float:floatfract(Float:value)                           Return the fractional part of a floating point value
+floatround(Float:value, floatround_method:method=floatround_round)      Round a floating point value
+Float:floatsqroot(Float:value)                          Return the square root of a floating point value
+Float:floatpower(Float:value, Float:exponent)           Raise a floating point value to a power
+Float:floatlog(Float:value, Float:base=10.0)            Return the logarithm of a floating point value
+Float:floatsin(Float:value, anglemode:mode=radian)      Return the sine of a floating point value
+Float:floatcos(Float:value, anglemode:mode=radian)      Return the cosine of a floating point value
+Float:floattan(Float:value, anglemode:mode=radian)      Return the tangent of a floating point value
+Float:floatabs(Float:value)                             Return the absolute value of a floating point value
+
+# file
+File: fopen(const name[], filemode: mode=io_readwrite)  Open a file for reading or writing
+bool: fclose(File: handle)                              Close a file
+bool: fremove(const name[])                             Delete a file (or a directory)
+bool: fcopy(const source[], const target[])             Copy a file
+bool: frename(const oldname[], const newname[])         Rename or move a file
+bool: fcreatedir(const name[])                          Create a directory
+fwrite(File: handle, const string[])                    Write text to a file
+fread(File: handle, string[], size=sizeof string, bool:pack=false)  read a line of text from a file
+bool: fputchar(File: handle, value)                     Write a character (or byte) to a file
+fgetchar(File: handle)                                  Read a character from a file
+fblockwrite(File: handle, const buffer[], size=sizeof buffer)   Write binary data to a file
+fblockread(File: handle, buffer[], size=sizeof buffer)  Read binary data from a file
+bool: freserve(File: handle, size, filler=-1)           Force the file to a given minimal size
+fseek(File: handle, position=0, seek_whence:whence=seek_start)  Set the "current position" (for reading or writing) in a file
+flength(File: handle)                                   Return the size of the file in bytes
+bool: fstat(const name[], &size=0, &timestamp=0, &attrib=0, &inode=0)   Return file attributes and technical data
+bool: fattrib(const name[], timestamp=0, attrib=0x0f)   Change the file attributes and time stamp
+filecrc(const name[])                                   Return the CRC-32 value of the file
+fexist(const pattern[])                                 Return the count of files that match the pattern
+bool: fmatch(name[], const pattern[], index=0, size=sizeof name)    Select a file matching the pattern
+readcfg(const filename[]="", const section[]="", const key[], value[], size=sizeof value, const defvalue[]="", bool:pack=false) Read a setting from an INI file
+readcfgvalue(const filename[]="", const section[]="", const key[], defvalue=0)  Read a numeric setting from an INI file
+bool: writecfg(const filename[]="", const section[]="", const key[], const value[]) Write a setting in an INI file
+bool: writecfgvalue(const filename[]="", const section[]="", const key[], value)    Write a numeric setting in an INI file
+bool: deletecfg(const filename[]="", const section[]="", const key[]="")            Delete a setting from an INI file
+
+# string
+strlen(const string[])                                  Return the length of a string
+strpack(dest[], const source[], maxlength=sizeof dest)  Copy a string into a packed string
+strunpack(dest[], const source[], maxlength=sizeof dest)    Copy a string into an unpacked string
+strcopy(dest[], const source[], maxlength=sizeof dest)      Copy a string
+strcat(dest[], const source[], maxlength=sizeof dest)       Append one string to another
+strmid(dest[], const source[], start=0, end=cellmax, maxlength=sizeof dest) Extract part of a string
+bool: strins(string[], const substr[], index, maxlength=sizeof string)      Insert text in a string
+bool: strdel(string[], start, end)                                          Delete part of a string
+strcmp(const string1[], const string2[], bool:ignorecase=false, length=cellmax) Compare two strings
+strfind(const string[], const sub[], bool:ignorecase=false, index=0)    Find a sub-string in a string
+strval(const string[], index=0)                         Convert a string to a number
+valstr(dest[], value, bool:pack=false)                  Convert a number to a string
+bool: ispacked(const string[])                          Check whether a string is packed or unpacked
+strformat(dest[], size=sizeof dest, bool:pack=false, const format[], {Fixed,Float,_}:...)   Format values in a string, like printf()
+uudecode(dest[], const source[], maxlength=sizeof dest)             Decode binary data from UU-encoded format
+uuencode(dest[], const source[], numbytes, maxlength=sizeof dest)   Encode binary data into UU-encoded format
+memcpy(dest[], const source[], index=0, numbytes, maxlength=sizeof dest)    Copy binary data
+bool: strequal(const string1[], const string2[], bool:ignorecase=false, length=cellmax) Test if two strings are equal, see strcmp()
+
+# time
+gettime(&hour=0, &minute=0, &second=0)                  Return the current time, plus a time stamp
+settime(hour=cellmin, minute=cellmin, second=cellmin)   Set the clock
+getdate(&year=0, &month=0, &day=0)                      Return the current date, plus a time stamp
+setdate(year=cellmin, month=cellmin, day=cellmin)       Set the date
+settimestamp(seconds1970)                               Set date and time from a time-stamp
+cvttimestamp(seconds1970, &year=0, &month=0, &day=0, &hour=0, &minute=0, &second=0) Convert a time stamp to date and time
+settimer(milliseconds, bool: singleshot=false)          Set a timer (periodic or single-shot)
+tickcount(&granularity=0)                               Return a high-resolution time stamp
+delay(milliseconds)                                     Suspend execution for the given number of milliseconds
+@timer()                                                Called when a timer event occurs, see settimer()
+
+# process
+libcall(const libname[], const funcname[], const typestring[], ...)     Call a library function (DLL or shared library)
+bool: libfree(const libname[]="")                       Free a library (DLL or shared library)
+PID:  procexec(const progname[])                        Run an external program
+      procwait(PID:pid)                                 Wait for a launched program to finish
+bool: procwrite(const line[], bool:appendlf=false)      Send "input" to a launched program
+bool: procread(line[], size=sizeof line, bool:striplf=false, bool:packed=false) Read "output" from a launched program

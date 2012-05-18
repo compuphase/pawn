@@ -3,53 +3,42 @@
  *  Routines to maintain a "text file" in memory, based on memory interface
  *  functions by faluco of the AMX Mod X team.
  *
- *  Copyright (c) ITB CompuPhase, 2003-2009
+ *  Copyright (c) ITB CompuPhase, 2003-2011
  *
- *  This software is provided 'as-is', without any express or implied warranty.
- *  In no event will the authors be held liable for any damages arising from the
- *  use of this software.
+ *  Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ *  use this file except in compliance with the License. You may obtain a copy
+ *  of the License at
  *
- *  Permission is granted to anyone to use this software for any purpose,
- *  including commercial applications, and to alter it and redistribute it
- *  freely, subject to the following restrictions:
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
- *  1. The origin of this software must not be misrepresented; you must not
- *     claim that you wrote the original software. If you use this software in
- *     a product, an acknowledgment in the product documentation would be
- *     appreciated but is not required.
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ *  WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ *  License for the specific language governing permissions and limitations
+ *  under the License.
  *
- *  2. Altered source versions must be plainly marked as such, and must not be
- *     misrepresented as being the original software.
- *
- *  3. This notice may not be removed or altered from any source distribution.
- *
- *  Version: $Id: scmemfil.c 4057 2009-01-15 08:21:31Z thiadmer $
+ *  Version: $Id: scmemfil.c 4611 2011-12-05 17:46:53Z thiadmer $
  */
 
 #include <assert.h>
 #include <string.h>
-#include "memfile.h"
-
 #if defined FORTIFY
   #include <alloc/fortify.h>
 #endif
-
-typedef memfile_t MEMFILE;
-#define tMEMFILE  1
 #include "sc.h"
 
 
-MEMFILE *mfcreate(const char *filename)
+SC_FUNC memfile_t *mfcreate(const char *filename)
 {
   return memfile_creat(filename, 4096);
 }
 
-void mfclose(MEMFILE *mf)
+SC_FUNC void mfclose(memfile_t *mf)
 {
   memfile_destroy(mf);
 }
 
-int mfdump(MEMFILE *mf)
+SC_FUNC int mfdump(memfile_t *mf)
 {
   FILE *fp;
   int okay;
@@ -66,12 +55,12 @@ int mfdump(MEMFILE *mf)
   return okay;
 }
 
-long mflength(const MEMFILE *mf)
+SC_FUNC size_t mflength(const memfile_t *mf)
 {
   return mf->usedoffs;
 }
 
-long mfseek(MEMFILE *mf,long offset,int whence)
+SC_FUNC size_t mfseek(memfile_t *mf,long offset,int whence)
 {
   long length;
 
@@ -80,18 +69,18 @@ long mfseek(MEMFILE *mf,long offset,int whence)
     return 0L;          /* early exit: not a single byte in the file */
 
   /* find the size of the memory file */
-  length=mflength(mf);
+  length=(long)mflength(mf);
 
   /* convert the offset to an absolute position */
   switch (whence) {
   case SEEK_SET:
     break;
   case SEEK_CUR:
-    offset+=mf->offs;
+    offset+=(long)mf->offs;
     break;
   case SEEK_END:
     assert(offset<=0);
-    offset+=length;
+    offset+=(long)length;
     break;
   } /* switch */
 
@@ -102,24 +91,24 @@ long mfseek(MEMFILE *mf,long offset,int whence)
     offset=length;
 
   /* set new position and return it */
-  memfile_seek(mf, offset);
+  memfile_seek(mf, (size_t)offset);
   return offset;
 }
 
-unsigned int mfwrite(MEMFILE *mf,const unsigned char *buffer,unsigned int size)
+SC_FUNC size_t mfwrite(memfile_t *mf,const unsigned char *buffer,size_t size)
 {
   return (memfile_write(mf, buffer, size) ? size : 0);
 }
 
-unsigned int mfread(MEMFILE *mf,unsigned char *buffer,unsigned int size)
+SC_FUNC size_t mfread(memfile_t *mf,unsigned char *buffer,size_t size)
 {
   return memfile_read(mf, buffer, size);
 }
 
-char *mfgets(MEMFILE *mf,char *string,unsigned int size)
+SC_FUNC char *mfgets(memfile_t *mf,char *string,size_t size)
 {
   char *ptr;
-  unsigned int read;
+  size_t read;
   long seek;
 
   assert(mf!=NULL);
@@ -153,9 +142,9 @@ char *mfgets(MEMFILE *mf,char *string,unsigned int size)
   return string;
 }
 
-int mfputs(MEMFILE *mf,const char *string)
+SC_FUNC int mfputs(memfile_t *mf,const char *string)
 {
-  unsigned int written,length;
+  size_t written,length;
 
   assert(mf!=NULL);
 

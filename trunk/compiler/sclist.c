@@ -6,25 +6,21 @@
  *  o  Documentation tags and automatic listings
  *  o  Debug strings
  *
- *  Copyright (c) ITB CompuPhase, 2001-2009
+ *  Copyright (c) ITB CompuPhase, 2001-2011
  *
- *  This software is provided "as-is", without any express or implied warranty.
- *  In no event will the authors be held liable for any damages arising from
- *  the use of this software.
+ *  Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ *  use this file except in compliance with the License. You may obtain a copy
+ *  of the License at
  *
- *  Permission is granted to anyone to use this software for any purpose,
- *  including commercial applications, and to alter it and redistribute it
- *  freely, subject to the following restrictions:
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
- *  1.  The origin of this software must not be misrepresented; you must not
- *      claim that you wrote the original software. If you use this software in
- *      a product, an acknowledgment in the product documentation would be
- *      appreciated but is not required.
- *  2.  Altered source versions must be plainly marked as such, and must not be
- *      misrepresented as being the original software.
- *  3.  This notice may not be removed or altered from any source distribution.
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ *  WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ *  License for the specific language governing permissions and limitations
+ *  under the License.
  *
- *  Version: $Id: sclist.c 4057 2009-01-15 08:21:31Z thiadmer $
+ *  Version: $Id: sclist.c 4611 2011-12-05 17:46:53Z thiadmer $
  */
 #include <assert.h>
 #include <limits.h>
@@ -217,14 +213,14 @@ SC_FUNC stringpair *insert_alias(char *name,char *alias)
   assert(strlen(name)<=sNAMEMAX);
   assert(alias!=NULL);
   assert(strlen(alias)<=sNAMEMAX);
-  if ((cur=insert_stringpair(&alias_tab,name,alias,strlen(name)))==NULL)
+  if ((cur=insert_stringpair(&alias_tab,name,alias,(int)strlen(name)))==NULL)
     error(103);       /* insufficient memory (fatal error) */
   return cur;
 }
 
 SC_FUNC int lookup_alias(char *target,char *name)
 {
-  stringpair *cur=find_stringpair(alias_tab.next,name,strlen(name));
+  stringpair *cur=find_stringpair(alias_tab.next,name,(int)strlen(name));
   if (cur!=NULL) {
     assert(strlen(cur->second)<=sNAMEMAX);
     strcpy(target,cur->second);
@@ -322,7 +318,7 @@ SC_FUNC void delete_substtable(void)
     substindex[i]=NULL;
 }
 
-#endif /* !defined NO_SUBST */
+#endif /* !defined NO_DEFINE */
 
 
 /* ----- input file list (explicit files) ------------------------ */
@@ -350,9 +346,7 @@ static stringlist inputfiles = {NULL, NULL};
 
 SC_FUNC stringlist *insert_inputfile(char *string)
 {
-  if (sc_status!=statFIRST)
-    return insert_string(&inputfiles,string,1);
-  return NULL;
+  return insert_string(&inputfiles,string,1);
 }
 
 SC_FUNC char *get_inputfile(int index)
@@ -470,21 +464,20 @@ SC_FUNC void delete_heaplisttable(void)
   #define __STDC_CONSTANT_MACROS
   #include <inttypes.h>         /* automatically includes stdint.h */
 #elif (defined _MSC_VER || defined __BORLANDC__) && (defined _I64_MAX || defined HAVE_I64)
-  #define PRId64 "I64d"
-  #define PRIx64 "I64x"
+  #define PRId64    "I64d"
+  #define PRIx64    "I64x"
 #else
-  #define PRId64 "lld"
-  #define PRIx64 "llx"
+  #define PRId64    "lld"
+  #define PRIx64    "llx"
 #endif
 #if PAWN_CELL_SIZE==64
-  #define PRIdC  PRId64
-  #define PRIxC  PRIx64
-#elif PAWN_CELL_SIZE==32
-  #define PRIdC  "ld"
-  #define PRIxC  "lx"
+  #define PRIdC         PRId64
+  #define PRIxC         PRIx64
+  #define CELLCAST(c)   (uint64_t)(c)
 #else
-  #define PRIdC  "d"
-  #define PRIxC  "x"
+  #define PRIdC         "ld"
+  #define PRIxC         "lx"
+  #define CELLCAST(c)   (unsigned long)(c)
 #endif
 
 static stringlist dbgstrings = {NULL, NULL};
@@ -496,7 +489,7 @@ SC_FUNC stringlist *insert_dbgfile(const char *filename)
     char string[_MAX_PATH+40];
     assert(filename!=NULL);
     assert(strlen(filename)+40<sizeof string);
-    sprintf(string,"F:%" PRIxC " %s",code_idx,filename);
+    sprintf(string,"F:%" PRIxC " %s",CELLCAST(code_idx),filename);
     return insert_string(&dbgstrings,string,1);
   } /* if */
   return NULL;
@@ -508,7 +501,7 @@ SC_FUNC stringlist *insert_dbgline(int linenr)
     char string[40];
     if (linenr>0)
       linenr--;         /* line numbers are zero-based in the debug information */
-    sprintf(string,"L:%" PRIxC " %x",code_idx,linenr);
+    sprintf(string,"L:%" PRIxC " %x",CELLCAST(code_idx),linenr);
     return insert_string(&dbgstrings,string,1);
   } /* if */
   return NULL;
@@ -524,10 +517,12 @@ SC_FUNC stringlist *insert_dbgsymbol(symbol *sym)
     /* address tag:name codestart codeend ident vclass [tag:dim ...] */
     if (sym->ident==iFUNCTN) {
       sprintf(string,"S:%" PRIxC " %x:%s %" PRIxC " %" PRIxC " %x %x",
-              sym->addr,sym->tag,symname,sym->addr,sym->codeaddr,sym->ident,sym->vclass);
+              CELLCAST(sym->addr),sym->tag,symname,CELLCAST(sym->addr),
+              CELLCAST(sym->codeaddr),sym->ident,sym->vclass);
     } else {
       sprintf(string,"S:%" PRIxC " %x:%s %" PRIxC " %" PRIxC " %x %x",
-              sym->addr,sym->tag,symname,sym->codeaddr,code_idx,sym->ident,sym->vclass);
+              CELLCAST(sym->addr),sym->tag,symname,CELLCAST(sym->codeaddr),
+              CELLCAST(code_idx),sym->ident,sym->vclass);
     } /* if */
     if (sym->ident==iARRAY || sym->ident==iREFARRAY) {
       #if !defined NDEBUG
@@ -537,7 +532,8 @@ SC_FUNC stringlist *insert_dbgsymbol(symbol *sym)
       strcat(string," [ ");
       for (sub=sym; sub!=NULL; sub=finddepend(sub)) {
         assert(sub->dim.array.level==count--);
-        sprintf(string+strlen(string),"%x:%x ",sub->x.tags.index,sub->dim.array.length);
+        sprintf(string+strlen(string),"%x ",(unsigned)sub->dim.array.length);
+        /* ??? also dump the index field names (but need a dynamically growing string for this) */
       } /* for */
       strcat(string,"]");
     } /* if */

@@ -1,24 +1,20 @@
 /*  Pawn compiler - Binary code generation (the "assembler")
  *
- *  Copyright (c) ITB CompuPhase, 1997-2009
+ *  Copyright (c) ITB CompuPhase, 1997-2011
  *
- *  This software is provided "as-is", without any express or implied warranty.
- *  In no event will the authors be held liable for any damages arising from
- *  the use of this software.
+ *  Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ *  use this file except in compliance with the License. You may obtain a copy
+ *  of the License at
  *
- *  Permission is granted to anyone to use this software for any purpose,
- *  including commercial applications, and to alter it and redistribute it
- *  freely, subject to the following restrictions:
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
- *  1.  The origin of this software must not be misrepresented; you must not
- *      claim that you wrote the original software. If you use this software in
- *      a product, an acknowledgment in the product documentation would be
- *      appreciated but is not required.
- *  2.  Altered source versions must be plainly marked as such, and must not be
- *      misrepresented as being the original software.
- *  3.  This notice may not be removed or altered from any source distribution.
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ *  WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ *  License for the specific language governing permissions and limitations
+ *  under the License.
  *
- *  Version: $Id: sc6.c 4057 2009-01-15 08:21:31Z thiadmer $
+ *  Version: $Id: sc6.c 4641 2012-01-16 08:15:57Z thiadmer $
  */
 #include <assert.h>
 #include <stdio.h>
@@ -32,6 +28,7 @@
 #include "lstring.h"
 #include "sc.h"
 #include "../amx/amxdbg.h"
+#include "../amx/keeloq.h"
 #if defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__
   #include <sclinux.h>
 #endif
@@ -47,12 +44,20 @@ typedef struct {
   char *name;
   int segment;          /* sIN_CSEG=parse in cseg, sIN_DSEG=parse in dseg */
   OPCODE_PROC func;
+  #if !defined NDEBUG
+    int opt_level;      /* optimization level for this instruction set */
+  #endif
 } OPCODE;
 
 static cell *lbltab;    /* label table */
 static int writeerror;
-static int bytes_in, bytes_out;
-static jmp_buf compact_err;
+
+static char *skipwhitespace(const char *str)
+{
+  while (isspace(*str))
+    str++;
+  return (char*)str;
+}
 
 /* apparently, strtol() does not work correctly on very large hexadecimal values */
 SC_FUNC ucell hex2ucell(const char *s,const char **n)
@@ -62,8 +67,8 @@ SC_FUNC ucell hex2ucell(const char *s,const char **n)
   int digit;
 
   /* ignore leading whitespace */
-  while (*s==' ' || *s=='\t')
-    s++;
+  s=skipwhitespace(s);
+  assert(*s!='\0');
 
   /* allow a negation sign to create the two's complement of numbers */
   if (*s=='-') {
@@ -137,48 +142,48 @@ static uint32_t *align32(uint32_t *v)
 #if PAWN_CELL_SIZE>=64
 static uint64_t *align64(uint64_t *v)
 {
-	unsigned char *s = (unsigned char *)v;
-	unsigned char t;
+  unsigned char *s = (unsigned char *)v;
+  unsigned char t;
 
-	t=s[0];
-	s[0]=s[7];
-	s[7]=t;
+  t=s[0];
+  s[0]=s[7];
+  s[7]=t;
 
-	t=s[1];
-	s[1]=s[6];
-	s[6]=t;
+  t=s[1];
+  s[1]=s[6];
+  s[6]=t;
 
-	t=s[2];
-	s[2]=s[5];
-	s[5]=t;
+  t=s[2];
+  s[2]=s[5];
+  s[5]=t;
 
-	t=s[3];
-	s[3]=s[4];
-	s[4]=t;
+  t=s[3];
+  s[3]=s[4];
+  s[4]=t;
 
-	return v;
+  return v;
 }
 #endif
 
-  #if PAWN_CELL_SIZE==16
-    #define aligncell(v)  align16(v)
-  #elif PAWN_CELL_SIZE==32
-    #define aligncell(v)  align32(v)
-  #elif PAWN_CELL_SIZE==64
-    #define aligncell(v)  align64(v)
+static ucell *aligncell(ucell *v)
+{
+  if (pc_cellsize==2)
+    return align16(v);
+  if (pc_cellsize==4)
+    return align32(v);
+  #if PAWN_CELL_SIZE>=64
+    if (pc_cellsize==8)
+      return align64(v);
   #endif
+  assert(0);
+}
+
 #else
   #define align16(v)    (v)
   #define align32(v)    (v)
+  #define align64(v)    (v)
   #define aligncell(v)  (v)
 #endif
-
-static char *skipwhitespace(const char *str)
-{
-  while (isspace(*str))
-    str++;
-  return (char*)str;
-}
 
 static char *stripcomment(char *str)
 {
@@ -190,55 +195,20 @@ static char *stripcomment(char *str)
   return str;
 }
 
-static void write_encoded(FILE *fbin,ucell *c,int num)
+static void write_cell(FILE *fbin,ucell c)
 {
-  #if PAWN_CELL_SIZE == 16
-    #define ENC_MAX   3     /* a 16-bit cell is encoded in max. 3 bytes */
-    #define ENC_MASK  0x03  /* after 2x7 bits, 2 bits remain to make 16 bits */
-  #elif PAWN_CELL_SIZE == 32
-    #define ENC_MAX   5     /* a 32-bit cell is encoded in max. 5 bytes */
-    #define ENC_MASK  0x0f  /* after 4x7 bits, 4 bits remain to make 32 bits */
-  #elif PAWN_CELL_SIZE == 64
-    #define ENC_MAX   10    /* a 32-bit cell is encoded in max. 10 bytes */
-    #define ENC_MASK  0x01  /* after 9x7 bits, 1 bit remains to make 64 bits */
-  #endif
-
   assert(fbin!=NULL);
-  while (num-->0) {
-    if (pc_compress) {
-      ucell p=(ucell)*c;
-      unsigned char t[ENC_MAX];
-      unsigned char code;
-      int index;
-      for (index=0; index<ENC_MAX; index++) {
-        t[index]=(unsigned char)(p & 0x7f);     /* store 7 bits */
-        p>>=7;
-      } /* for */
-      /* skip leading zeros */
-      while (index>1 && t[index-1]==0 && (t[index-2] & 0x40)==0)
-        index--;
-      /* skip leading -1s */
-      if (index==ENC_MAX && t[index-1]==ENC_MASK && (t[index-2] & 0x40)!=0)
-        index--;
-      while (index>1 && t[index-1]==0x7f && (t[index-2] & 0x40)!=0)
-        index--;
-      /* write high byte first, write continuation bits */
-      assert(index>0);
-      while (index-->0) {
-        code=(unsigned char)((index==0) ? t[index] : (t[index]|0x80));
-        writeerror |= !pc_writebin(fbin,&code,1);
-        bytes_out++;
-      } /* while */
-      bytes_in+=sizeof *c;
-      assert(AMX_COMPACTMARGIN>2);
-      if (bytes_out-bytes_in>=AMX_COMPACTMARGIN-2)
-        longjmp(compact_err,1);
-    } else {
-      assert((pc_lengthbin(fbin) % sizeof(cell)) == 0);
-      writeerror |= !pc_writebin(fbin,aligncell(c),sizeof *c);
+  assert((pc_lengthbin(fbin) % pc_cellsize) == 0);
+  if (pc_cryptkey!=0) {
+    uint32_t *ptr=(uint32_t*)&c;
+    assert(pc_cellsize==4 || pc_cellsize==8);
+    *ptr=KeeLoq_Encrypt(*ptr,pc_cryptkey);
+    if (pc_cellsize==8) {
+      ptr++;
+      *ptr=KeeLoq_Encrypt(*ptr,pc_cryptkey);
     } /* if */
-    c++;
-  } /* while */
+  } /* if */
+  writeerror |= !pc_writebin(fbin,aligncell(&c),pc_cellsize);
 }
 
 static cell noop(FILE *fbin,const char *params,cell opcode,cell cip)
@@ -264,7 +234,7 @@ static cell parm0(FILE *fbin,const char *params,cell opcode,cell cip)
   (void)params;
   (void)cip;
   if (fbin!=NULL)
-    write_encoded(fbin,(ucell*)&opcode,1);
+    write_cell(fbin,opcode);
   return opcodes(1);
 }
 
@@ -273,8 +243,8 @@ static cell parm1(FILE *fbin,const char *params,cell opcode,cell cip)
   ucell p=getparamvalue(params,NULL);
   (void)cip;
   if (fbin!=NULL) {
-    write_encoded(fbin,(ucell*)&opcode,1);
-    write_encoded(fbin,&p,1);
+    write_cell(fbin,opcode);
+    write_cell(fbin,p);
   } /* if */
   return opcodes(1)+opargs(1);
 }
@@ -283,11 +253,11 @@ static cell parm1_p(FILE *fbin,const char *params,cell opcode,cell cip)
 {
   ucell p=getparamvalue(params,NULL);
   (void)cip;
-  assert(p<(1<<(sizeof(cell)*4)));
+  assert(p<((ucell)1<<(pc_cellsize*4)));
   assert(opcode>=0 && opcode<=255);
   if (fbin!=NULL) {
-    p=(p<<sizeof(cell)*4) | opcode;
-    write_encoded(fbin,&p,1);
+    p=(p<<pc_cellsize*4) | opcode;
+    write_cell(fbin,p);
   } /* if */
   return opcodes(1);
 }
@@ -298,62 +268,49 @@ static cell parm2(FILE *fbin,const char *params,cell opcode,cell cip)
   ucell p2=getparamvalue(params,NULL);
   (void)cip;
   if (fbin!=NULL) {
-    write_encoded(fbin,(ucell*)&opcode,1);
-    write_encoded(fbin,&p1,1);
-    write_encoded(fbin,&p2,1);
+    write_cell(fbin,opcode);
+    write_cell(fbin,p1);
+    write_cell(fbin,p2);
   } /* if */
   return opcodes(1)+opargs(2);
 }
 
-static cell parm3(FILE *fbin,const char *params,cell opcode,cell cip)
+static cell parmx(FILE *fbin,const char *params,cell opcode,cell cip)
 {
-  ucell p1=getparamvalue(params,&params);
-  ucell p2=getparamvalue(params,&params);
-  ucell p3=getparamvalue(params,NULL);
+  int idx;
+  ucell count=getparamvalue(params,&params);
   (void)cip;
   if (fbin!=NULL) {
-    write_encoded(fbin,(ucell*)&opcode,1);
-    write_encoded(fbin,&p1,1);
-    write_encoded(fbin,&p2,1);
-    write_encoded(fbin,&p3,1);
+    write_cell(fbin,opcode);
+    write_cell(fbin,(ucell)count);
   } /* if */
-  return opcodes(1)+opargs(3);
+  for (idx=0; idx<count; idx++) {
+    ucell p=getparamvalue(params,&params);
+    if (fbin!=NULL)
+      write_cell(fbin,p);
+  } /* for */
+  return opcodes(1)+opargs(count+1);
 }
 
-static cell parm4(FILE *fbin,const char *params,cell opcode,cell cip)
+static cell parmx_p(FILE *fbin,const char *params,cell opcode,cell cip)
 {
-  ucell p1=getparamvalue(params,&params);
-  ucell p2=getparamvalue(params,&params);
-  ucell p3=getparamvalue(params,&params);
-  ucell p4=getparamvalue(params,NULL);
+  int idx;
+  ucell p;
+  ucell count=getparamvalue(params,&params);
   (void)cip;
+  assert(count<((ucell)1<<(pc_cellsize*4)));
+  assert(opcode>=0 && opcode<=255);
+  /* write the instruction (optionally) */
   if (fbin!=NULL) {
-    write_encoded(fbin,(ucell*)&opcode,1);
-    write_encoded(fbin,&p1,1);
-    write_encoded(fbin,&p2,1);
-    write_encoded(fbin,&p3,1);
-    write_encoded(fbin,&p4,1);
+    p=(count<<pc_cellsize*4) | opcode;
+    write_cell(fbin,p);
   } /* if */
-  return opcodes(1)+opargs(4);
-}
-
-static cell parm5(FILE *fbin,const char *params,cell opcode,cell cip)
-{
-  ucell p1=getparamvalue(params,&params);
-  ucell p2=getparamvalue(params,&params);
-  ucell p3=getparamvalue(params,&params);
-  ucell p4=getparamvalue(params,&params);
-  ucell p5=getparamvalue(params,NULL);
-  (void)cip;
-  if (fbin!=NULL) {
-    write_encoded(fbin,(ucell*)&opcode,1);
-    write_encoded(fbin,&p1,1);
-    write_encoded(fbin,&p2,1);
-    write_encoded(fbin,&p3,1);
-    write_encoded(fbin,&p4,1);
-    write_encoded(fbin,&p5,1);
-  } /* if */
-  return opcodes(1)+opargs(5);
+  for (idx=0; idx<count; idx++) {
+    p=getparamvalue(params,&params);
+    if (fbin!=NULL)
+      write_cell(fbin,p);
+  } /* for */
+  return opcodes(1)+opargs(count);
 }
 
 static cell do_dump(FILE *fbin,const char *params,cell opcode,cell cip)
@@ -366,12 +323,12 @@ static cell do_dump(FILE *fbin,const char *params,cell opcode,cell cip)
   while (*params!='\0') {
     p=getparamvalue(params,&params);
     if (fbin!=NULL)
-      write_encoded(fbin,&p,1);
+      write_cell(fbin,p);
     num++;
     while (isspace(*params))
       params++;
   } /* while */
-  return num*sizeof(cell);
+  return num*pc_cellsize;
 }
 
 static cell do_call(FILE *fbin,const char *params,cell opcode,cell cip)
@@ -408,8 +365,8 @@ static cell do_call(FILE *fbin,const char *params,cell opcode,cell cip)
   } /* if */
 
   if (fbin!=NULL) {
-    write_encoded(fbin,(ucell*)&opcode,1);
-    write_encoded(fbin,&p,1);
+    write_cell(fbin,opcode);
+    write_cell(fbin,p);
   } /* if */
   return opcodes(1)+opargs(1);
 }
@@ -425,8 +382,8 @@ static cell do_jump(FILE *fbin,const char *params,cell opcode,cell cip)
   if (fbin!=NULL) {
     assert(lbltab!=NULL);
     p=lbltab[i]-cip;            /* make relative address */
-    write_encoded(fbin,(ucell*)&opcode,1);
-    write_encoded(fbin,&p,1);
+    write_cell(fbin,opcode);
+    write_cell(fbin,p);
   } /* if */
   return opcodes(1)+opargs(1);
 }
@@ -442,8 +399,8 @@ static cell do_switch(FILE *fbin,const char *params,cell opcode,cell cip)
   if (fbin!=NULL) {
     assert(lbltab!=NULL);
     p=lbltab[i]-cip;
-    write_encoded(fbin,(ucell*)&opcode,1);
-    write_encoded(fbin,&p,1);
+    write_cell(fbin,opcode);
+    write_cell(fbin,p);
   } /* if */
   return opcodes(1)+opargs(1);
 }
@@ -461,263 +418,210 @@ static cell do_case(FILE *fbin,const char *params,cell opcode,cell cip)
   if (fbin!=NULL) {
     assert(lbltab!=NULL);
     p=lbltab[i]-cip;
-    write_encoded(fbin,&v,1);
-    write_encoded(fbin,&p,1);
+    write_cell(fbin,v);
+    write_cell(fbin,p);
   } /* if */
   return opcodes(0)+opargs(2);
 }
 
-#if 0//???
-static cell do_iswitch(FILE *fbin,const char *params,cell opcode,cell cip)
-{
-  ucell p=hex2ucell(params,NULL);
-  (void)cip;
-  if (fbin!=NULL) {
-    write_encoded(fbin,(ucell*)&opcode,1);
-    write_encoded(fbin,&p,1);
-  } /* if */
-  return opcodes(1)+opargs(1);
-}
-#endif
-
-static cell do_icase(FILE *fbin,const char *params,cell opcode,cell cip)
+static cell do_caseovl(FILE *fbin,const char *params,cell opcode,cell cip)
 {
   ucell v=hex2ucell(params,&params);
   ucell p=hex2ucell(params,NULL);
   (void)opcode;
   (void)cip;
   if (fbin!=NULL) {
-    write_encoded(fbin,&v,1);
-    write_encoded(fbin,&p,1);
+    write_cell(fbin,v);
+    write_cell(fbin,p);
   } /* if */
   return opcodes(0)+opargs(2);
 }
 
 static OPCODE opcodelist[] = {
   /* node for "invalid instruction" */
-  {  0, NULL,         0,        noop },
-  /* standard opcodes (in alphapetically sorted order) */
-  { 78, "add",        sIN_CSEG, parm0 },
-  { 87, "add.c",      sIN_CSEG, parm1 },
-  {197, "add.p.c",    sIN_CSEG, parm1_p },
-  { 14, "addr.alt",   sIN_CSEG, parm1 },
-  {174, "addr.p.alt", sIN_CSEG, parm1_p },
-  {173, "addr.p.pri", sIN_CSEG, parm1_p },
-  { 13, "addr.pri",   sIN_CSEG, parm1 },
-  { 30, "align.alt",  sIN_CSEG, parm1 },
-  {187, "align.p.alt",sIN_CSEG, parm1_p },
-  {186, "align.p.pri",sIN_CSEG, parm1_p },
-  { 29, "align.pri",  sIN_CSEG, parm1 },
-  { 81, "and",        sIN_CSEG, parm0 },
-  {121, "bounds",     sIN_CSEG, parm1 },
-  {211, "bounds.p",   sIN_CSEG, parm1_p },
-  {137, "break",      sIN_CSEG, parm0 },        /* version 8 */
-  { 49, "call",       sIN_CSEG, do_call },
-/*{ 50, "call.pri",   sIN_CSEG, parm0 },        removed for security reasons */
-  {  0, "case",       sIN_CSEG, do_case },
-  {130, "casetbl",    sIN_CSEG, parm0 },        /* version 1 */
-  {118, "cmps",       sIN_CSEG, parm1 },
-  {208, "cmps.p",     sIN_CSEG, parm1_p },
-  {  0, "code",       sIN_CSEG, set_currentfile },
-  {156, "const",      sIN_CSEG, parm2 },        /* version 9 */
-  { 12, "const.alt",  sIN_CSEG, parm1 },
-  {172, "const.p.alt",sIN_CSEG, parm1_p },
-  {171, "const.p.pri",sIN_CSEG, parm1_p },
-  { 11, "const.pri",  sIN_CSEG, parm1 },
-  {157, "const.s",    sIN_CSEG, parm2 },        /* version 9 */
-  {  0, "data",       sIN_DSEG, set_currentfile },
-  {114, "dec",        sIN_CSEG, parm1 },
-  {113, "dec.alt",    sIN_CSEG, parm0 },
-  {116, "dec.i",      sIN_CSEG, parm0 },
-  {205, "dec.p",      sIN_CSEG, parm1_p },
-  {206, "dec.p.s",    sIN_CSEG, parm1_p },
-  {112, "dec.pri",    sIN_CSEG, parm0 },
-  {115, "dec.s",      sIN_CSEG, parm1 },
-  {  0, "dump",       sIN_DSEG, do_dump },
-  { 95, "eq",         sIN_CSEG, parm0 },
-  {106, "eq.c.alt",   sIN_CSEG, parm1 },
-  {105, "eq.c.pri",   sIN_CSEG, parm1 },
-  {202, "eq.p.c.alt", sIN_CSEG, parm1_p },
-  {201, "eq.p.c.pri", sIN_CSEG, parm1_p },
-  {119, "fill",       sIN_CSEG, parm1 },
-  {209, "fill.p",     sIN_CSEG, parm1_p },
-  {100, "geq",        sIN_CSEG, parm0 },
-  { 99, "grtr",       sIN_CSEG, parm0 },
-  {120, "halt",       sIN_CSEG, parm1 },
-  {210, "halt.p",     sIN_CSEG, parm1_p },
-  { 45, "heap",       sIN_CSEG, parm1 },
-  {192, "heap.p",     sIN_CSEG, parm1_p },
-  {158, "icall",      sIN_CSEG, parm1 },        /* version 10 */
-  {  0, "icase",      sIN_CSEG, do_icase },     /* version 10 */
-  {161, "icasetbl",   sIN_CSEG, parm0 },        /* version 10 */
-  { 27, "idxaddr",    sIN_CSEG, parm0 },
-  { 28, "idxaddr.b",  sIN_CSEG, parm1 },
-  {185, "idxaddr.p.b",sIN_CSEG, parm1_p },
-  {109, "inc",        sIN_CSEG, parm1 },
-  {108, "inc.alt",    sIN_CSEG, parm0 },
-  {111, "inc.i",      sIN_CSEG, parm0 },
-  {203, "inc.p",      sIN_CSEG, parm1_p },
-  {204, "inc.p.s",    sIN_CSEG, parm1_p },
-  {107, "inc.pri",    sIN_CSEG, parm0 },
-  {110, "inc.s",      sIN_CSEG, parm1 },
-  { 86, "invert",     sIN_CSEG, parm0 },
-  {159, "iretn",      sIN_CSEG, parm0 },
-  {160, "iswitch",    sIN_CSEG, do_switch },    /* version 10 */
-  { 55, "jeq",        sIN_CSEG, do_jump },
-  { 60, "jgeq",       sIN_CSEG, do_jump },
-  { 59, "jgrtr",      sIN_CSEG, do_jump },
-  { 58, "jleq",       sIN_CSEG, do_jump },
-  { 57, "jless",      sIN_CSEG, do_jump },
-  { 56, "jneq",       sIN_CSEG, do_jump },
-  { 54, "jnz",        sIN_CSEG, do_jump },
-/*{ 52, "jrel",       sIN_CSEG, parm1 },  same as jump, since version 10 */
-  { 64, "jsgeq",      sIN_CSEG, do_jump },
-  { 63, "jsgrtr",     sIN_CSEG, do_jump },
-  { 62, "jsleq",      sIN_CSEG, do_jump },
-  { 61, "jsless",     sIN_CSEG, do_jump },
-  { 51, "jump",       sIN_CSEG, do_jump },
-/*{128, "jump.pri",   sIN_CSEG, parm0 },        removed for security reasons */
-  { 53, "jzer",       sIN_CSEG, do_jump },
-  { 31, "lctrl",      sIN_CSEG, parm1 },
-  { 98, "leq",        sIN_CSEG, parm0 },
-  { 97, "less",       sIN_CSEG, parm0 },
-  { 25, "lidx",       sIN_CSEG, parm0 },
-  { 26, "lidx.b",     sIN_CSEG, parm1 },
-  {184, "lidx.p.b",   sIN_CSEG, parm1_p },
-  {  2, "load.alt",   sIN_CSEG, parm1 },
-  {154, "load.both",  sIN_CSEG, parm2 },        /* version 9 */
-  {  9, "load.i",     sIN_CSEG, parm0 },
-  {163, "load.p.alt", sIN_CSEG, parm1_p },
-  {162, "load.p.pri", sIN_CSEG, parm1_p },
-  {165, "load.p.s.alt",sIN_CSEG,parm1_p },
-  {164, "load.p.s.pri",sIN_CSEG,parm1_p },
-  {  1, "load.pri",   sIN_CSEG, parm1 },
-  {  4, "load.s.alt", sIN_CSEG, parm1 },
-  {155, "load.s.both",sIN_CSEG, parm2 },        /* version 9 */
-  {  3, "load.s.pri", sIN_CSEG, parm1 },
-  { 10, "lodb.i",     sIN_CSEG, parm1 },
-  {170, "lodb.p.i",   sIN_CSEG, parm1_p },
-  {  6, "lref.alt",   sIN_CSEG, parm1 },
-  {167, "lref.p.alt", sIN_CSEG, parm1_p },
-  {166, "lref.p.pri", sIN_CSEG, parm1_p },
-  {169, "lref.p.s.alt",sIN_CSEG,parm1_p },
-  {168, "lref.p.s.pri",sIN_CSEG,parm1_p },
-  {  5, "lref.pri",   sIN_CSEG, parm1 },
-  {  8, "lref.s.alt", sIN_CSEG, parm1 },
-  {  7, "lref.s.pri", sIN_CSEG, parm1 },
-  { 34, "move.alt",   sIN_CSEG, parm0 },
-  { 33, "move.pri",   sIN_CSEG, parm0 },
-  {117, "movs",       sIN_CSEG, parm1 },
-  {207, "movs.p",     sIN_CSEG, parm1_p },
-  { 85, "neg",        sIN_CSEG, parm0 },
-  { 96, "neq",        sIN_CSEG, parm0 },
-  {134, "nop",        sIN_CSEG, parm0 },        /* version 6 */
-  { 84, "not",        sIN_CSEG, parm0 },
-  { 82, "or",         sIN_CSEG, parm0 },
-  { 38, "pick",       sIN_CSEG, parm1 },        /* version 10 */
-  { 43, "pop.alt",    sIN_CSEG, parm0 },
-  { 42, "pop.pri",    sIN_CSEG, parm0 },
-  { 46, "proc",       sIN_CSEG, parm0 },
-  { 40, "push",       sIN_CSEG, parm1 },
-  {133, "push.adr",   sIN_CSEG, parm1 },        /* version 4 */
-  { 37, "push.alt",   sIN_CSEG, parm0 },
-  { 39, "push.c",     sIN_CSEG, parm1 },
-  {189, "push.p",     sIN_CSEG, parm1_p },
-  {212, "push.p.adr", sIN_CSEG, parm1_p },
-  {188, "push.p.c",   sIN_CSEG, parm1_p },
-  {190, "push.p.s",   sIN_CSEG, parm1_p },
-  { 36, "push.pri",   sIN_CSEG, parm0 },
-  { 41, "push.s",     sIN_CSEG, parm1 },
-  {139, "push2",      sIN_CSEG, parm2 },        /* version 9 */
-  {141, "push2.adr",  sIN_CSEG, parm2 },        /* version 9 */
-  {138, "push2.c",    sIN_CSEG, parm2 },        /* version 9 */
-  {140, "push2.s",    sIN_CSEG, parm2 },        /* version 9 */
-  {143, "push3",      sIN_CSEG, parm3 },        /* version 9 */
-  {145, "push3.adr",  sIN_CSEG, parm3 },        /* version 9 */
-  {142, "push3.c",    sIN_CSEG, parm3 },        /* version 9 */
-  {144, "push3.s",    sIN_CSEG, parm3 },        /* version 9 */
-  {147, "push4",      sIN_CSEG, parm4 },        /* version 9 */
-  {149, "push4.adr",  sIN_CSEG, parm4 },        /* version 9 */
-  {146, "push4.c",    sIN_CSEG, parm4 },        /* version 9 */
-  {148, "push4.s",    sIN_CSEG, parm4 },        /* version 9 */
-  {151, "push5",      sIN_CSEG, parm5 },        /* version 9 */
-  {153, "push5.adr",  sIN_CSEG, parm5 },        /* version 9 */
-  {150, "push5.c",    sIN_CSEG, parm5 },        /* version 9 */
-  {152, "push5.s",    sIN_CSEG, parm5 },        /* version 9 */
-  {127, "pushr.adr",  sIN_CSEG, parm1 },        /* version 11 */
-  {125, "pushr.c",    sIN_CSEG, parm1 },        /* version 11 */
-  {215, "pushr.p.adr",sIN_CSEG, parm1_p },      /* version 11 */
-  {213, "pushr.p.c",  sIN_CSEG, parm1_p },      /* version 11 */
-  {214, "pushr.p.s",  sIN_CSEG, parm1_p },      /* version 11 */
-  {124, "pushr.pri",  sIN_CSEG, parm0 },        /* version 11 */
-  {126, "pushr.s",    sIN_CSEG, parm1 },        /* version 11 */
-  { 47, "ret",        sIN_CSEG, parm0 },
-  { 48, "retn",       sIN_CSEG, parm0 },
-  { 32, "sctrl",      sIN_CSEG, parm1 },
-  { 73, "sdiv",       sIN_CSEG, parm0 },
-  { 74, "sdiv.alt",   sIN_CSEG, parm0 },
-  {104, "sgeq",       sIN_CSEG, parm0 },
-  {103, "sgrtr",      sIN_CSEG, parm0 },
-  { 65, "shl",        sIN_CSEG, parm0 },
-  { 69, "shl.c.alt",  sIN_CSEG, parm1 },
-  { 68, "shl.c.pri",  sIN_CSEG, parm1 },
-  {194, "shl.p.c.alt",sIN_CSEG, parm1_p },
-  {193, "shl.p.c.pri",sIN_CSEG, parm1_p },
-  { 66, "shr",        sIN_CSEG, parm0 },
-  { 71, "shr.c.alt",  sIN_CSEG, parm1 },
-  { 70, "shr.c.pri",  sIN_CSEG, parm1 },
-  {196, "shr.p.c.alt",sIN_CSEG, parm1_p },
-  {195, "shr.p.c.pri",sIN_CSEG, parm1_p },
-  { 94, "sign.alt",   sIN_CSEG, parm0 },
-  { 93, "sign.pri",   sIN_CSEG, parm0 },
-  {102, "sleq",       sIN_CSEG, parm0 },
-  {101, "sless",      sIN_CSEG, parm0 },
-  { 72, "smul",       sIN_CSEG, parm0 },
-  { 88, "smul.c",     sIN_CSEG, parm1 },
-  {198, "smul.p.c",   sIN_CSEG, parm1_p },
-  { 20, "sref.alt",   sIN_CSEG, parm1 },
-  {180, "sref.p.alt", sIN_CSEG, parm1_p },
-  {179, "sref.p.pri", sIN_CSEG, parm1_p },
-  {182, "sref.p.s.alt",sIN_CSEG,parm1_p },
-  {181, "sref.p.s.pri",sIN_CSEG,parm1_p },
-  { 19, "sref.pri",   sIN_CSEG, parm1 },
-  { 22, "sref.s.alt", sIN_CSEG, parm1 },
-  { 21, "sref.s.pri", sIN_CSEG, parm1 },
-  { 67, "sshr",       sIN_CSEG, parm0 },
-  { 44, "stack",      sIN_CSEG, parm1 },
-  {191, "stack.p",    sIN_CSEG, parm1_p },
-  {  0, "stksize",    0,        noop },
-  { 16, "stor.alt",   sIN_CSEG, parm1 },
-  { 23, "stor.i",     sIN_CSEG, parm0 },
-  {176, "stor.p.alt", sIN_CSEG, parm1_p },
-  {175, "stor.p.pri", sIN_CSEG, parm1_p },
-  {178, "stor.p.s.alt",sIN_CSEG,parm1_p },
-  {177, "stor.p.s.pri",sIN_CSEG,parm1_p },
-  { 15, "stor.pri",   sIN_CSEG, parm1 },
-  { 18, "stor.s.alt", sIN_CSEG, parm1 },
-  { 17, "stor.s.pri", sIN_CSEG, parm1 },
-  { 24, "strb.i",     sIN_CSEG, parm1 },
-  {183, "strb.p.i",   sIN_CSEG, parm1_p },
-  { 79, "sub",        sIN_CSEG, parm0 },
-  { 80, "sub.alt",    sIN_CSEG, parm0 },
-  {132, "swap.alt",   sIN_CSEG, parm0 },        /* version 4 */
-  {131, "swap.pri",   sIN_CSEG, parm0 },        /* version 4 */
-  {129, "switch",     sIN_CSEG, do_switch },    /* version 1 */
-/*{136, "symtag",     sIN_CSEG, parm1 },        -- version 7 */
-  {123, "sysreq.c",   sIN_CSEG, parm1 },
-  {135, "sysreq.n",   sIN_CSEG, parm2 },        /* version 9 (replaces SYSREQ.d from earlier version) */
-  {122, "sysreq.pri", sIN_CSEG, parm0 },
-  { 76, "udiv",       sIN_CSEG, parm0 },
-  { 77, "udiv.alt",   sIN_CSEG, parm0 },
-  { 75, "umul",       sIN_CSEG, parm0 },
-  { 35, "xchg",       sIN_CSEG, parm0 },
-  { 83, "xor",        sIN_CSEG, parm0 },
-  { 91, "zero",       sIN_CSEG, parm1 },
-  { 90, "zero.alt",   sIN_CSEG, parm0 },
-  {199, "zero.p",     sIN_CSEG, parm1_p },
-  {200, "zero.p.s",   sIN_CSEG, parm1_p },
-  { 89, "zero.pri",   sIN_CSEG, parm0 },
-  { 92, "zero.s",     sIN_CSEG, parm1 },
+  {  0, NULL,          0,        noop,     0 },
+  /* opcodes in alphapetically sorted order */
+  { 44, "add",         sIN_CSEG, parm0,    1 },
+  {100, "add.c",       sIN_CSEG, parm1,    2 },
+  {160, "add.p.c",     sIN_CSEG, parm1_p,  3 },
+  { 12, "addr.alt",    sIN_CSEG, parm1,    1 },
+  {134, "addr.p.alt",  sIN_CSEG, parm1_p,  3 },
+  {133, "addr.p.pri",  sIN_CSEG, parm1_p,  3 },
+  { 11, "addr.pri",    sIN_CSEG, parm1,    1 },
+  {141, "align.p.pri", sIN_CSEG, parm1_p,  3 },
+  { 18, "align.pri",   sIN_CSEG, parm1,    1 },
+  { 46, "and",         sIN_CSEG, parm0,    1 },
+  { 68, "bounds",      sIN_CSEG, parm1,    1 },
+  {174, "bounds.p",    sIN_CSEG, parm1_p,  3 },
+  { 73, "break",       sIN_CSEG, parm0,    1 },
+  { 33, "call",        sIN_CSEG, do_call,  1 },
+  { 77, "call.ovl",    sIN_CSEG, parm1,    1 },
+  {  0, "case",        sIN_CSEG, do_case,  1 },
+  {  0, "case.ovl",    sIN_CSEG, do_caseovl, 1 },
+  { 74, "casetbl",     sIN_CSEG, parm0,    1 },
+  { 80, "casetbl.ovl", sIN_CSEG, parm0,    1 },
+  { 65, "cmps",        sIN_CSEG, parm1,    1 },
+  {171, "cmps.p",      sIN_CSEG, parm1_p,  3 },
+  {  0, "code",        sIN_CSEG, set_currentfile, 1 },
+  {122, "const",       sIN_CSEG, parm2,    2 },
+  { 10, "const.alt",   sIN_CSEG, parm1,    1 },
+  {132, "const.p.alt", sIN_CSEG, parm1_p,  3 },
+  {131, "const.p.pri", sIN_CSEG, parm1_p,  3 },
+  {  9, "const.pri",   sIN_CSEG, parm1,    1 },
+  {123, "const.s",     sIN_CSEG, parm2,    2 },
+  {  0, "data",        sIN_DSEG, set_currentfile, 1 },
+  {110, "dec",         sIN_CSEG, parm1,    2 },
+  { 62, "dec.alt",     sIN_CSEG, parm0,    1 },
+  { 63, "dec.i",       sIN_CSEG, parm0,    1 },
+  {168, "dec.p",       sIN_CSEG, parm1_p,  3 },
+  {169, "dec.p.s",     sIN_CSEG, parm1_p,  3 },
+  { 61, "dec.pri",     sIN_CSEG, parm0,    1 },
+  {111, "dec.s",       sIN_CSEG, parm1,    2 },
+  {  0, "dump",        sIN_DSEG, do_dump,  1 },
+  { 52, "eq",          sIN_CSEG, parm0,    1 },
+  {107, "eq.c.alt",    sIN_CSEG, parm1,    2 },
+  {106, "eq.c.pri",    sIN_CSEG, parm1,    2 },
+  {165, "eq.p.c.alt",  sIN_CSEG, parm1_p,  3 },
+  {164, "eq.p.c.pri",  sIN_CSEG, parm1_p,  3 },
+  { 66, "fill",        sIN_CSEG, parm1,    1 },
+  {172, "fill.p",      sIN_CSEG, parm1_p,  3 },
+  { 67, "halt",        sIN_CSEG, parm1,    1 },
+  {173, "halt.p",      sIN_CSEG, parm1_p,  3 },
+  { 29, "heap",        sIN_CSEG, parm1,    1 },
+  {157, "heap.p",      sIN_CSEG, parm1_p,  3 },
+  { 83, "idxaddr",     sIN_CSEG, parm0,    2 },
+  { 84, "idxaddr.b",   sIN_CSEG, parm1,    2 },
+  {140, "idxaddr.p.b", sIN_CSEG, parm1_p,  3 },
+  {108, "inc",         sIN_CSEG, parm1,    2 },
+  { 59, "inc.alt",     sIN_CSEG, parm0,    1 },
+  { 60, "inc.i",       sIN_CSEG, parm0,    1 },
+  {166, "inc.p",       sIN_CSEG, parm1_p,  3 },
+  {167, "inc.p.s",     sIN_CSEG, parm1_p,  3 },
+  { 58, "inc.pri",     sIN_CSEG, parm0,    1 },
+  {109, "inc.s",       sIN_CSEG, parm1,    2 },
+  { 51, "invert",      sIN_CSEG, parm0,    1 },
+  { 92, "jeq",         sIN_CSEG, do_jump,  2 },
+  { 93, "jneq",        sIN_CSEG, do_jump,  2 },
+  { 36, "jnz",         sIN_CSEG, do_jump,  1 },
+  { 97, "jsgeq",       sIN_CSEG, do_jump,  2 },
+  { 96, "jsgrtr",      sIN_CSEG, do_jump,  2 },
+  { 95, "jsleq",       sIN_CSEG, do_jump,  2 },
+  { 94, "jsless",      sIN_CSEG, do_jump,  2 },
+  { 34, "jump",        sIN_CSEG, do_jump,  1 },
+  { 35, "jzer",        sIN_CSEG, do_jump,  1 },
+  { 19, "lctrl",       sIN_CSEG, parm1,    1 },
+  { 81, "lidx",        sIN_CSEG, parm0,    2 },
+  { 82, "lidx.b",      sIN_CSEG, parm1,    2 },
+  {139, "lidx.p.b",    sIN_CSEG, parm1_p,  3 },
+  {  2, "load.alt",    sIN_CSEG, parm1,    1 },
+  {  7, "load.i",      sIN_CSEG, parm0,    1 },
+  {125, "load.p.alt",  sIN_CSEG, parm1_p,  3 },
+  {124, "load.p.pri",  sIN_CSEG, parm1_p,  3 },
+  {127, "load.p.s.alt",sIN_CSEG, parm1_p,  3 },
+  {126, "load.p.s.pri",sIN_CSEG, parm1_p,  3 },
+  {  1, "load.pri",    sIN_CSEG, parm1,    1 },
+  {  4, "load.s.alt",  sIN_CSEG, parm1,    1 },
+  {  3, "load.s.pri",  sIN_CSEG, parm1,    1 },
+  {120, "load2",       sIN_CSEG, parm2,    2 },
+  {121, "load2.s",     sIN_CSEG, parm2,    2 },
+  {  8, "lodb.i",      sIN_CSEG, parm1,    1 },
+  {130, "lodb.p.i",    sIN_CSEG, parm1_p,  3 },
+  {129, "lref.p.s.alt",sIN_CSEG, parm1_p,  3 },
+  {128, "lref.p.s.pri",sIN_CSEG, parm1_p,  3 },
+  {  6, "lref.s.alt",  sIN_CSEG, parm1,    1 },
+  {  5, "lref.s.pri",  sIN_CSEG, parm1,    1 },
+  { 64, "movs",        sIN_CSEG, parm1,    1 },
+  {170, "movs.p",      sIN_CSEG, parm1_p,  3 },
+  { 50, "neg",         sIN_CSEG, parm0,    1 },
+  { 53, "neq",         sIN_CSEG, parm0,    1 },
+  {  0, "nop",         sIN_CSEG, parm0,    1 },
+  { 49, "not",         sIN_CSEG, parm0,    1 },
+  { 47, "or",          sIN_CSEG, parm0,    1 },
+  { 27, "pick",        sIN_CSEG, parm1,    1 },
+  { 26, "pop.alt",     sIN_CSEG, parm0,    1 },
+  { 25, "pop.pri",     sIN_CSEG, parm0,    1 },
+  { 30, "proc",        sIN_CSEG, parm0,    1 },
+  { 86, "push",        sIN_CSEG, parm1,    2 },
+  { 88, "push.adr",    sIN_CSEG, parm1,    2 },
+  { 23, "push.alt",    sIN_CSEG, parm0,    1 },
+  { 85, "push.c",      sIN_CSEG, parm1,    2 },
+  {143, "push.p",      sIN_CSEG, parm1_p,  3 },
+  {145, "push.p.adr",  sIN_CSEG, parm1_p,  3 },
+  {142, "push.p.c",    sIN_CSEG, parm1_p,  3 },
+  {144, "push.p.s",    sIN_CSEG, parm1_p,  3 },
+  { 22, "push.pri",    sIN_CSEG, parm0,    1 },
+  { 87, "push.s",      sIN_CSEG, parm1,    2 },
+  {114, "pushm",       sIN_CSEG, parmx,    2 },
+  {116, "pushm.adr",   sIN_CSEG, parmx,    2 },
+  {113, "pushm.c",     sIN_CSEG, parmx,    2 },
+  {150, "pushm.p",     sIN_CSEG, parmx_p,  3 },
+  {152, "pushm.p.adr", sIN_CSEG, parmx_p,  3 },
+  {149, "pushm.p.c",   sIN_CSEG, parmx_p,  3 },
+  {151, "pushm.p.s",   sIN_CSEG, parmx_p,  3 },
+  {115, "pushm.s",     sIN_CSEG, parmx,    2 },
+  { 91, "pushr.adr",   sIN_CSEG, parm1,    2 },
+  { 89, "pushr.c",     sIN_CSEG, parm1,    2 },
+  {148, "pushr.p.adr", sIN_CSEG, parm1_p,  3 },
+  {146, "pushr.p.c",   sIN_CSEG, parm1_p,  3 },
+  {147, "pushr.p.s",   sIN_CSEG, parm1_p,  3 },
+  { 24, "pushr.pri",   sIN_CSEG, parm0,    1 },
+  { 90, "pushr.s",     sIN_CSEG, parm1,    2 },
+  {119, "pushrm.adr",  sIN_CSEG, parmx,    2 },
+  {117, "pushrm.c",    sIN_CSEG, parmx,    2 },
+  {155, "pushrm.p.adr",sIN_CSEG, parmx_p,  3 },
+  {153, "pushrm.p.c",  sIN_CSEG, parmx_p,  3 },
+  {154, "pushrm.p.s",  sIN_CSEG, parmx_p,  3 },
+  {118, "pushrm.s",    sIN_CSEG, parmx,    2 },
+  { 31, "ret",         sIN_CSEG, parm0,    1 },
+  { 32, "retn",        sIN_CSEG, parm0,    1 },
+  { 78, "retn.ovl",    sIN_CSEG, parm0,    1 },
+  { 20, "sctrl",       sIN_CSEG, parm1,    1 },
+  { 43, "sdiv",        sIN_CSEG, parm0,    1 },
+  { 98, "sdiv.inv",    sIN_CSEG, parm0,    2 },
+  { 57, "sgeq",        sIN_CSEG, parm0,    1 },
+  { 56, "sgrtr",       sIN_CSEG, parm0,    1 },
+  { 37, "shl",         sIN_CSEG, parm0,    1 },
+  { 41, "shl.c.alt",   sIN_CSEG, parm1,    1 },
+  { 40, "shl.c.pri",   sIN_CSEG, parm1,    1 },
+  {159, "shl.p.c.alt", sIN_CSEG, parm1_p,  3 },
+  {158, "shl.p.c.pri", sIN_CSEG, parm1_p,  3 },
+  { 38, "shr",         sIN_CSEG, parm0,    1 },
+  { 55, "sleq",        sIN_CSEG, parm0,    1 },
+  { 54, "sless",       sIN_CSEG, parm0,    1 },
+  { 42, "smul",        sIN_CSEG, parm0,    1 },
+  {101, "smul.c",      sIN_CSEG, parm1,    2 },
+  {161, "smul.p.c",    sIN_CSEG, parm1_p,  3 },
+  {137, "sref.p.s",    sIN_CSEG, parm1_p,  3 },
+  { 15, "sref.s",      sIN_CSEG, parm1,    1 },
+  { 39, "sshr",        sIN_CSEG, parm0,    1 },
+  { 28, "stack",       sIN_CSEG, parm1,    1 },
+  {156, "stack.p",     sIN_CSEG, parm1_p,  3 },
+  {  0, "stksize",     0,        noop,     1 },
+  { 13, "stor",        sIN_CSEG, parm1,    1 },
+  { 16, "stor.i",      sIN_CSEG, parm0,    1 },
+  {135, "stor.p",      sIN_CSEG, parm1_p,  3 },
+  {136, "stor.p.s",    sIN_CSEG, parm1_p,  3 },
+  { 14, "stor.s",      sIN_CSEG, parm1,    1 },
+  { 17, "strb.i",      sIN_CSEG, parm1,    1 },
+  {138, "strb.p.i",    sIN_CSEG, parm1_p,  3 },
+  { 45, "sub",         sIN_CSEG, parm0,    1 },
+  { 99, "sub.inv",     sIN_CSEG, parm0,    2 },
+  { 72, "swap.alt",    sIN_CSEG, parm0,    1 },
+  { 71, "swap.pri",    sIN_CSEG, parm0,    1 },
+  { 70, "switch",      sIN_CSEG, do_switch,1 },
+  { 79, "switch.ovl",  sIN_CSEG, do_switch,1 },
+  { 69, "sysreq",      sIN_CSEG, parm1,    1 },
+/*{ 75, "sysreq.d",    sIN_CSEG, parm1,    1 }, not generated by the compiler */
+  {112, "sysreq.n",    sIN_CSEG, parm2,    2 },
+/*{ 76, "sysreq.nd",   sIN_CSEG, parm2,    1 }, not generated by the compiler */
+  { 21, "xchg",        sIN_CSEG, parm0,    1 },
+  { 48, "xor",         sIN_CSEG, parm0,    1 },
+  {104, "zero",        sIN_CSEG, parm1,    2 },
+  {103, "zero.alt",    sIN_CSEG, parm0,    2 },
+  {162, "zero.p",      sIN_CSEG, parm1_p,  3 },
+  {163, "zero.p.s",    sIN_CSEG, parm1_p,  3 },
+  {102, "zero.pri",    sIN_CSEG, parm0,    2 },
+  {105, "zero.s",      sIN_CSEG, parm1,    2 },
 };
 
 #define MAX_INSTR_LEN   30
@@ -754,37 +658,26 @@ static int findopcode(char *instr,int maxlen)
 SC_FUNC int assemble(FILE *fout,FILE *fin)
 {
   AMX_HEADER hdr;
-  AMX_FUNCSTUBNT func;
+  AMX_FUNCSTUB func;
   int numpublics,numnatives,numoverlays,numlibraries,numpubvars,numtags;
   int padding;
   long nametablesize,nameofs;
-  #if PAWN_CELL_SIZE > 32
-    char line[512];
-  #else
-    char line[256];
-  #endif
+  char line[512];
   char *instr,*params;
   int i,pass,size;
   int16_t count;
-  symbol *sym, **nativelist;
+  symbol *sym;
+  symbol **nativelist;
   constvalue *constptr;
   cell mainaddr;
   char nullchar;
-
-  /* if compression failed, restart the assembly with compaction switched off */
-  if (setjmp(compact_err)!=0) {
-    assert(pc_compress);  /* cannot arrive here if compact encoding was disabled */
-    pc_compress=FALSE;
-    pc_resetbin(fout,0);
-    error(232);           /* disabled compact encoding */
-  } /* if */
 
   #if !defined NDEBUG
     /* verify that the opcode list is sorted (skip entry 1; it is reserved
      * for a non-existant opcode)
      */
     {
-      #define MAX_OPCODE 215
+      #define MAX_OPCODE 176
       unsigned char opcodearray[MAX_OPCODE+1];
       assert(opcodelist[1].name!=NULL);
       memset(opcodearray,0,sizeof opcodearray);
@@ -841,7 +734,7 @@ SC_FUNC int assemble(FILE *fout,FILE *fin)
         assert(strlen(sym->name)<=sNAMEMAX);
         strcpy(alias,sym->name);
       } /* if */
-      nametablesize+=strlen(alias)+1;
+      nametablesize+=(int)strlen(alias)+1;
     } /* if */
   } /* for */
   assert(numnatives==ntv_funcid);
@@ -853,7 +746,7 @@ SC_FUNC int assemble(FILE *fout,FILE *fin)
       if (constptr->value>0) {
         assert(strlen(constptr->name)>0);
         numlibraries++;
-        nametablesize+=strlen(constptr->name)+1;
+        nametablesize+=(int)strlen(constptr->name)+1;
       } /* if */
     } /* for */
   } /* if */
@@ -864,7 +757,7 @@ SC_FUNC int assemble(FILE *fout,FILE *fin)
     if ((constptr->value & PUBLICTAG)!=0) {
       assert(strlen(constptr->name)>0);
       numtags++;
-      nametablesize+=strlen(constptr->name)+1;
+      nametablesize+=(int)strlen(constptr->name)+1;
     } /* if */
   } /* for */
 
@@ -886,32 +779,37 @@ SC_FUNC int assemble(FILE *fout,FILE *fin)
 
   /* write the abstract machine header */
   memset(&hdr, 0, sizeof hdr);
-  hdr.magic=(unsigned short)AMX_MAGIC;
+  if (pc_cellsize==2)
+    hdr.magic=(unsigned short)AMX_MAGIC_16;
+  else if (pc_cellsize==4)
+    hdr.magic=(unsigned short)AMX_MAGIC_32;
+  else if (pc_cellsize==8)
+    hdr.magic=(unsigned short)AMX_MAGIC_64;
   hdr.file_version=CUR_FILE_VERSION;
-  hdr.amx_version=(char)((pc_optimize<=sOPTIMIZE_NOMACRO) ? MIN_AMX_VER_JIT : MIN_AMX_VERSION);
+  hdr.amx_version=MIN_AMX_VERSION;
   hdr.flags=(short)(sc_debug & sSYMBOLIC);
-  if (pc_compress)
-    hdr.flags|=AMX_FLAG_COMPACT;
   if (sc_debug==0)
     hdr.flags|=AMX_FLAG_NOCHECKS;
   if (pc_memflags & suSLEEP_INSTR)
     hdr.flags|=AMX_FLAG_SLEEP;
   if (pc_overlays>0)
     hdr.flags|=AMX_FLAG_OVERLAY;
-  hdr.defsize=sizeof(AMX_FUNCSTUBNT);
+  if (pc_cryptkey!=0)
+    hdr.flags|=AMX_FLAG_CRYPT;
+  hdr.defsize=sizeof(AMX_FUNCSTUB);
   hdr.publics=sizeof hdr; /* public table starts right after the header */
-  hdr.natives=hdr.publics + numpublics*sizeof(AMX_FUNCSTUBNT);
-  hdr.libraries=hdr.natives + numnatives*sizeof(AMX_FUNCSTUBNT);
-  hdr.pubvars=hdr.libraries + numlibraries*sizeof(AMX_FUNCSTUBNT);
-  hdr.tags=hdr.pubvars + numpubvars*sizeof(AMX_FUNCSTUBNT);
-  hdr.overlays=hdr.tags + numtags*sizeof(AMX_FUNCSTUBNT);
+  hdr.natives=hdr.publics + numpublics*sizeof(AMX_FUNCSTUB);
+  hdr.libraries=hdr.natives + numnatives*sizeof(AMX_FUNCSTUB);
+  hdr.pubvars=hdr.libraries + numlibraries*sizeof(AMX_FUNCSTUB);
+  hdr.tags=hdr.pubvars + numpubvars*sizeof(AMX_FUNCSTUB);
+  hdr.overlays=hdr.tags + numtags*sizeof(AMX_FUNCSTUB);
   hdr.nametable=hdr.overlays + numoverlays*sizeof(AMX_OVERLAYINFO);
   hdr.cod=hdr.nametable + nametablesize + padding;
-  hdr.dat=hdr.cod + code_idx;
-  hdr.hea=hdr.dat + glb_declared*sizeof(cell);
-  hdr.stp=hdr.hea + pc_stksize*sizeof(cell);
-  hdr.cip=mainaddr;
-  hdr.size=hdr.hea; /* preset, this is incorrect in case of compressed output */
+  hdr.dat=(int32_t)(hdr.cod + code_idx);
+  hdr.hea=(int32_t)(hdr.dat + glb_declared*pc_cellsize);
+  hdr.stp=(int32_t)(hdr.hea + pc_stksize*pc_cellsize);
+  hdr.cip=(int32_t)(mainaddr);
+  hdr.size=hdr.hea;
   pc_writebin(fout,&hdr,sizeof hdr);
 
   /* dump zeros up to the rest of the header, so that we can easily "seek" */
@@ -928,17 +826,17 @@ SC_FUNC int assemble(FILE *fout,FILE *fin)
     {
       assert(sym->vclass==sGLOBAL);
       /* in the case of overlays, write the overlay index rather than the address */
-      func.address=(pc_overlays>0) ? sym->index : sym->addr;
+      func.address=(uint32_t)((pc_overlays>0) ? sym->index : sym->addr);
       func.nameofs=nameofs;
       #if BYTE_ORDER==BIG_ENDIAN
         align32(&func.address);
         align32(&func.nameofs);
       #endif
-      pc_resetbin(fout,hdr.publics+count*sizeof(AMX_FUNCSTUBNT));
+      pc_resetbin(fout,hdr.publics+count*sizeof(AMX_FUNCSTUB));
       pc_writebin(fout,&func,sizeof func);
       pc_resetbin(fout,nameofs);
-      pc_writebin(fout,sym->name,strlen(sym->name)+1);
-      nameofs+=strlen(sym->name)+1;
+      pc_writebin(fout,sym->name,(int)strlen(sym->name)+1);
+      nameofs+=(int)strlen(sym->name)+1;
       count++;
     } /* if */
   } /* for */
@@ -983,11 +881,11 @@ SC_FUNC int assemble(FILE *fout,FILE *fin)
         align32(&func.address);
         align32(&func.nameofs);
       #endif
-      pc_resetbin(fout,hdr.natives+count*sizeof(AMX_FUNCSTUBNT));
+      pc_resetbin(fout,hdr.natives+count*sizeof(AMX_FUNCSTUB));
       pc_writebin(fout,&func,sizeof func);
       pc_resetbin(fout,nameofs);
-      pc_writebin(fout,alias,strlen(alias)+1);
-      nameofs+=strlen(alias)+1;
+      pc_writebin(fout,alias,(int)strlen(alias)+1);
+      nameofs+=(int)strlen(alias)+1;
       count++;
     } /* for */
     free(nativelist);
@@ -1005,11 +903,11 @@ SC_FUNC int assemble(FILE *fout,FILE *fin)
           align32(&func.address);
           align32(&func.nameofs);
         #endif
-        pc_resetbin(fout,hdr.libraries+count*sizeof(AMX_FUNCSTUBNT));
+        pc_resetbin(fout,hdr.libraries+count*sizeof(AMX_FUNCSTUB));
         pc_writebin(fout,&func,sizeof func);
         pc_resetbin(fout,nameofs);
-        pc_writebin(fout,constptr->name,strlen(constptr->name)+1);
-        nameofs+=strlen(constptr->name)+1;
+        pc_writebin(fout,constptr->name,(int)strlen(constptr->name)+1);
+        nameofs+=(int)strlen(constptr->name)+1;
         count++;
       } /* if */
     } /* for */
@@ -1021,17 +919,17 @@ SC_FUNC int assemble(FILE *fout,FILE *fin)
     if (sym->ident==iVARIABLE && (sym->usage & uPUBLIC)!=0 && (sym->usage & (uREAD | uWRITTEN))!=0) {
       assert((sym->usage & uDEFINE)!=0);
       assert(sym->vclass==sGLOBAL);
-      func.address=sym->addr;
+      func.address=(uint32_t)sym->addr;
       func.nameofs=nameofs;
       #if BYTE_ORDER==BIG_ENDIAN
         align32(&func.address);
         align32(&func.nameofs);
       #endif
-      pc_resetbin(fout,hdr.pubvars+count*sizeof(AMX_FUNCSTUBNT));
+      pc_resetbin(fout,hdr.pubvars+count*sizeof(AMX_FUNCSTUB));
       pc_writebin(fout,&func,sizeof func);
       pc_resetbin(fout,nameofs);
-      pc_writebin(fout,sym->name,strlen(sym->name)+1);
-      nameofs+=strlen(sym->name)+1;
+      pc_writebin(fout,sym->name,(int)strlen(sym->name)+1);
+      nameofs+=(int)strlen(sym->name)+1;
       count++;
     } /* if */
   } /* for */
@@ -1041,17 +939,17 @@ SC_FUNC int assemble(FILE *fout,FILE *fin)
   for (constptr=tagname_tab.next; constptr!=NULL; constptr=constptr->next) {
     if ((constptr->value & PUBLICTAG)!=0) {
       assert(strlen(constptr->name)>0);
-      func.address=constptr->value & TAGMASK;
+      func.address=(uint32_t)(constptr->value & TAGMASK);
       func.nameofs=nameofs;
       #if BYTE_ORDER==BIG_ENDIAN
         align32(&func.address);
         align32(&func.nameofs);
       #endif
-      pc_resetbin(fout,hdr.tags+count*sizeof(AMX_FUNCSTUBNT));
+      pc_resetbin(fout,hdr.tags+count*sizeof(AMX_FUNCSTUB));
       pc_writebin(fout,&func,sizeof func);
       pc_resetbin(fout,nameofs);
-      pc_writebin(fout,constptr->name,strlen(constptr->name)+1);
-      nameofs+=strlen(constptr->name)+1;
+      pc_writebin(fout,constptr->name,(int)strlen(constptr->name)+1);
+      nameofs+=(int)strlen(constptr->name)+1;
       count++;
     } /* if */
   } /* for */
@@ -1099,8 +997,8 @@ SC_FUNC int assemble(FILE *fout,FILE *fin)
         /* write the overlay for the stub function first */
         if (strcmp(sym->name,uENTRYFUNC)!=0) {
           /* there is no stub function for state entry functions */
-          info.offset=sym->addr;
-          info.size=sym->codeaddr - sym->addr;
+          info.offset=(int32_t)sym->addr;
+          info.size=(uint32_t)(sym->codeaddr - sym->addr);
           #if BYTE_ORDER==BIG_ENDIAN
             align32(&info.offset);
             align32(&info.size);
@@ -1112,8 +1010,8 @@ SC_FUNC int assemble(FILE *fout,FILE *fin)
           statelist *stlist;
           for (stlist=sym->states->next; stlist!=NULL; stlist=stlist->next) {
             assert(stlist->label==count++);
-            info.offset=stlist->addr;
-            info.size=stlist->endaddr - stlist->addr;
+            info.offset=(int32_t)stlist->addr;
+            info.size=(int32_t)(stlist->endaddr - stlist->addr);
             #if BYTE_ORDER==BIG_ENDIAN
               align32(&info.offset);
               align32(&info.size);
@@ -1160,10 +1058,8 @@ SC_FUNC int assemble(FILE *fout,FILE *fin)
           /* nothing */;
         assert(params>instr);
         i=findopcode(instr,(int)(params-instr));
-        if (opcodelist[i].name==NULL) {
-          *params='\0';
-          error(104,instr);     /* invalid assembler instruction */
-        } /* if */
+        assert(opcodelist[i].name!=NULL);
+        assert(opcodelist[i].opt_level<=pc_optimize || pc_optimize==0 && opcodelist[i].opt_level<=1);
         if (opcodelist[i].segment==sIN_CSEG)
           codeindex+=opcodelist[i].func(NULL,skipwhitespace(params),opcodelist[i].opcode,codeindex);
       } /* if */
@@ -1171,8 +1067,6 @@ SC_FUNC int assemble(FILE *fout,FILE *fin)
   } /* if */
 
   /* Second pass (actually 2 more passes, one for all code and one for all data) */
-  bytes_in=0;
-  bytes_out=0;
   for (pass=sIN_CSEG; pass<=sIN_DSEG; pass++) {
     cell codeindex=0; /* address of the current opcode similar to "code_idx" */
     pc_resetasm(fin);
@@ -1191,12 +1085,11 @@ SC_FUNC int assemble(FILE *fout,FILE *fin)
       assert(params>instr);
       i=findopcode(instr,(int)(params-instr));
       assert(opcodelist[i].name!=NULL);
+      assert(opcodelist[i].opt_level<=pc_optimize || pc_optimize==0 && opcodelist[i].opt_level<=1);
       if (opcodelist[i].segment==pass)
         codeindex+=opcodelist[i].func(fout,skipwhitespace(params),opcodelist[i].opcode,codeindex);
     } /* while */
   } /* for */
-  if (bytes_out-bytes_in>0)
-    error(106);         /* compression buffer overflow */
 
   if (lbltab!=NULL) {
     free(lbltab);
@@ -1205,15 +1098,14 @@ SC_FUNC int assemble(FILE *fout,FILE *fin)
     #endif
   } /* if */
 
-  if (pc_compress)
-    hdr.size=pc_lengthbin(fout);/* get this value before appending debug info */
+  assert(hdr.size==pc_lengthbin(fout));
   if (!writeerror && (sc_debug & sSYMBOLIC)!=0)
     append_dbginfo(fout);       /* optionally append debug file */
 
   if (writeerror)
     error(101,"disk full");
 
-  /* adjust the header */
+  /* adjust the header (for Big Endian architectures) */
   size=(int)hdr.cod;    /* save, the value in the header may need to be swapped */
   #if BYTE_ORDER==BIG_ENDIAN
     align32(&hdr.size);
@@ -1231,9 +1123,9 @@ SC_FUNC int assemble(FILE *fout,FILE *fin)
     align32(&hdr.hea);
     align32(&hdr.stp);
     align32(&hdr.cip);
+    pc_resetbin(fout,0);
+    pc_writebin(fout,&hdr,sizeof hdr);
   #endif
-  pc_resetbin(fout,0);
-  pc_writebin(fout,&hdr,sizeof hdr);
 
   /* return the size of the header (including name tables, but excluding code
    * or data sections)
@@ -1277,7 +1169,7 @@ static void append_dbginfo(FILE *fout)
         if (prevstr!=NULL) {
           assert(prevname!=NULL);
           dbghdr.files++;
-          dbghdr.size+=sizeof(AMX_DBG_FILE)+strlen(prevname);
+          dbghdr.size+=(int32_t)(sizeof(AMX_DBG_FILE)+strlen(prevname));
         } /* if */
         previdx=codeidx;
       } /* if */
@@ -1288,7 +1180,7 @@ static void append_dbginfo(FILE *fout)
   if (prevstr!=NULL) {
     assert(prevname!=NULL);
     dbghdr.files++;
-    dbghdr.size+=sizeof(AMX_DBG_FILE)+strlen(prevname);
+    dbghdr.size+=(int32_t)(sizeof(AMX_DBG_FILE)+strlen(prevname));
   } /* if */
 
   /* line number table */
@@ -1314,7 +1206,7 @@ static void append_dbginfo(FILE *fout)
       assert(str!=NULL);
       assert((int)(str-name)<sizeof symname);
       strlcpy(symname,name,(int)(str-name)+1);
-      dbghdr.size+=sizeof(AMX_DBG_SYMBOL)+strlen(symname);
+      dbghdr.size+=(int32_t)(sizeof(AMX_DBG_SYMBOL)+strlen(symname));
       if ((prevstr=strchr(name,'['))!=NULL)
         while ((prevstr=strchr(prevstr+1,':'))!=NULL)
           dbghdr.size+=sizeof(AMX_DBG_SYMDIM);
@@ -1325,21 +1217,21 @@ static void append_dbginfo(FILE *fout)
   for (constptr=tagname_tab.next; constptr!=NULL; constptr=constptr->next) {
     assert(strlen(constptr->name)>0);
     dbghdr.tags++;
-    dbghdr.size+=sizeof(AMX_DBG_TAG)+strlen(constptr->name);
+    dbghdr.size+=(int32_t)(sizeof(AMX_DBG_TAG)+strlen(constptr->name));
   } /* for */
 
   /* automaton table */
   for (constptr=sc_automaton_tab.next; constptr!=NULL; constptr=constptr->next) {
     assert(constptr->index==0 && strlen(constptr->name)==0 || strlen(constptr->name)>0);
     dbghdr.automatons++;
-    dbghdr.size+=sizeof(AMX_DBG_MACHINE)+strlen(constptr->name);
+    dbghdr.size+=(int32_t)(sizeof(AMX_DBG_MACHINE)+strlen(constptr->name));
   } /* for */
 
   /* state table */
   for (constptr=sc_state_tab.next; constptr!=NULL; constptr=constptr->next) {
     assert(strlen(constptr->name)>0);
     dbghdr.states++;
-    dbghdr.size+=sizeof(AMX_DBG_STATE)+strlen(constptr->name);
+    dbghdr.size+=(int32_t)(sizeof(AMX_DBG_STATE)+strlen(constptr->name));
   } /* for */
 
 
@@ -1370,10 +1262,10 @@ static void append_dbginfo(FILE *fout)
         if (prevstr!=NULL) {
           assert(prevname!=NULL);
           #if BYTE_ORDER==BIG_ENDIAN
-            aligncell(&previdx);
+            align32(&previdx);
           #endif
-          writeerror |= !pc_writebin(fout,&previdx,sizeof previdx);
-          writeerror |= !pc_writebin(fout,prevname,strlen(prevname)+1);
+          writeerror |= !pc_writebin(fout,&previdx,sizeof(uint32_t));
+          writeerror |= !pc_writebin(fout,prevname,(int)strlen(prevname)+1);
         } /* if */
         previdx=codeidx;
       } /* if */
@@ -1384,10 +1276,10 @@ static void append_dbginfo(FILE *fout)
   if (prevstr!=NULL) {
     assert(prevname!=NULL);
     #if BYTE_ORDER==BIG_ENDIAN
-      aligncell(&previdx);
+      align32(&previdx);
     #endif
-    writeerror |= !pc_writebin(fout,&previdx,sizeof previdx);
-    writeerror |= !pc_writebin(fout,prevname,strlen(prevname)+1);
+    writeerror |= !pc_writebin(fout,&previdx,sizeof(uint32_t));
+    writeerror |= !pc_writebin(fout,prevname,(int)strlen(prevname)+1);
   } /* if */
 
   /* line number table */
@@ -1395,10 +1287,10 @@ static void append_dbginfo(FILE *fout)
     assert(str!=NULL);
     assert(str[0]!='\0' && str[1]==':');
     if (str[0]=='L') {
-      dbgline.address=hex2ucell(str+2,&str);
+      dbgline.address=(uint32_t)hex2ucell(str+2,&str);
       dbgline.line=(int32_t)hex2ucell(str,NULL);
       #if BYTE_ORDER==BIG_ENDIAN
-        aligncell(&dbgline.address);
+        align32(&dbgline.address);
         align32(&dbgline.line);
       #endif
       writeerror |= !pc_writebin(fout,&dbgline,sizeof dbgline);
@@ -1410,7 +1302,7 @@ static void append_dbginfo(FILE *fout)
     assert(str!=NULL);
     assert(str[0]!='\0' && str[1]==':');
     if (str[0]=='S') {
-      dbgsym.address=hex2ucell(str+2,&str);
+      dbgsym.address=(uint32_t)hex2ucell(str+2,&str);
       dbgsym.tag=(int16_t)hex2ucell(str,&str);
       str=skipwhitespace(str);
       assert(*str==':');
@@ -1419,37 +1311,41 @@ static void append_dbginfo(FILE *fout)
       assert(str!=NULL);
       assert((int)(str-name)<sizeof symname);
       strlcpy(symname,name,(int)(str-name)+1);
-      dbgsym.codestart=hex2ucell(str,&str);
-      dbgsym.codeend=hex2ucell(str,&str);
+      dbgsym.codestart=(uint32_t)hex2ucell(str,&str);
+      dbgsym.codeend=(uint32_t)hex2ucell(str,&str);
       dbgsym.ident=(char)hex2ucell(str,&str);
       dbgsym.vclass=(char)hex2ucell(str,&str);
       dbgsym.dim=0;
       str=skipwhitespace(str);
       if (*str=='[') {
         while (*(str=skipwhitespace(str+1))!=']') {
-          dbgidxtag[dbgsym.dim].tag=(int16_t)hex2ucell(str,&str);
-          str=skipwhitespace(str);
-          assert(*str==':');
-          dbgidxtag[dbgsym.dim].size=hex2ucell(str+1,&str);
+          dbgidxtag[dbgsym.dim].size=(uint32_t)hex2ucell(str,&str);
           dbgsym.dim++;
         } /* while */
       } /* if */
       dbgsymdim = dbgsym.dim;
       #if BYTE_ORDER==BIG_ENDIAN
-        aligncell(&dbgsym.address);
+        align32(&dbgsym.address);
         align16(&dbgsym.tag);
-        aligncell(&dbgsym.codestart);
-        aligncell(&dbgsym.codeend);
+        align32(&dbgsym.codestart);
+        align32(&dbgsym.codeend);
         align16(&dbgsym.dim);
       #endif
-      writeerror |= !pc_writebin(fout,&dbgsym,offsetof(AMX_DBG_SYMBOL, name));
-      writeerror |= !pc_writebin(fout,symname,strlen(symname)+1);
+      writeerror |= !pc_writebin(fout,&dbgsym.address,sizeof dbgsym.codeend);
+      writeerror |= !pc_writebin(fout,&dbgsym.tag,sizeof dbgsym.tag);
+      writeerror |= !pc_writebin(fout,&dbgsym.codestart,sizeof dbgsym.codeend);
+      writeerror |= !pc_writebin(fout,&dbgsym.codeend,sizeof dbgsym.codeend);
+      writeerror |= !pc_writebin(fout,&dbgsym.ident,sizeof dbgsym.ident);
+      writeerror |= !pc_writebin(fout,&dbgsym.vclass,sizeof dbgsym.vclass);
+      writeerror |= !pc_writebin(fout,&dbgsym.dim,sizeof dbgsym.dim);
+      writeerror |= !pc_writebin(fout,symname,(int)strlen(symname)+1);
       for (dim=0; dim<dbgsymdim; dim++) {
         #if BYTE_ORDER==BIG_ENDIAN
           align16(&dbgidxtag[dim].tag);
-          aligncell(&dbgidxtag[dim].size);
+          align32(&dbgidxtag[dim].size);
         #endif
-        writeerror |= !pc_writebin(fout,&dbgidxtag[dim],sizeof dbgidxtag[dim]);
+        writeerror |= !pc_writebin(fout,&dbgidxtag[dim].tag,sizeof dbgidxtag[dim].tag);
+        writeerror |= !pc_writebin(fout,&dbgidxtag[dim].size,sizeof dbgidxtag[dim].size);
       } /* for */
     } /* if */
   } /* for */
@@ -1462,7 +1358,7 @@ static void append_dbginfo(FILE *fout)
       align16(&id1);
     #endif
     writeerror |= !pc_writebin(fout,&id1,sizeof id1);
-    writeerror |= !pc_writebin(fout,constptr->name,strlen(constptr->name)+1);
+    writeerror |= !pc_writebin(fout,constptr->name,(int)strlen(constptr->name)+1);
   } /* for */
 
   /* automaton table */
@@ -1472,11 +1368,11 @@ static void append_dbginfo(FILE *fout)
     address=(ucell)constptr->value;
     #if BYTE_ORDER==BIG_ENDIAN
       align16(&id1);
-      aligncell(&address);
+      align32(&address);
     #endif
     writeerror |= !pc_writebin(fout,&id1,sizeof id1);
-    writeerror |= !pc_writebin(fout,&address,sizeof address);
-    writeerror |= !pc_writebin(fout,constptr->name,strlen(constptr->name)+1);
+    writeerror |= !pc_writebin(fout,&address,sizeof(uint32_t));
+    writeerror |= !pc_writebin(fout,constptr->name,(int)strlen(constptr->name)+1);
   } /* for */
 
   /* state table */
@@ -1491,7 +1387,7 @@ static void append_dbginfo(FILE *fout)
     #endif
     writeerror |= !pc_writebin(fout,&id1,sizeof id1);
     writeerror |= !pc_writebin(fout,&id2,sizeof id2);
-    writeerror |= !pc_writebin(fout,constptr->name,strlen(constptr->name)+1);
+    writeerror |= !pc_writebin(fout,constptr->name,(int)strlen(constptr->name)+1);
   } /* for */
 
   delete_dbgstringtable();

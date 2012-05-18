@@ -4,8 +4,8 @@ main()
     {
     /* ask for a filename */
     print "Please enter a filename: "
-    new filename[128 char]
-    getstring filename, .pack=true
+    new filename{128}
+    getstring filename
 
     /* try to open the file */
     new File: file = fopen(filename, io_read)
@@ -16,9 +16,9 @@ main()
         }
 
     /* dump the file onto the console */
-    new line[200]
+    new line{200}
     while (fread(file, line))
-        print line, .highlight=true
+        print line, .highlight = true
 
     /* done */
     fclose file

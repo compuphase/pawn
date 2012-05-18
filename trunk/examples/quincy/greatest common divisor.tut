@@ -1,0 +1,7 @@
+[Documents]
+Directory=".."
+Docct=1
+Doc01=gcd.p
+
+[Summary]
+RTF={\rtf1\ansi\ansicpg1252\deff0\deflang1043{\fonttbl{\f0\fswiss\fcharset0 Arial;}}{\colortbl ;\red128\green0\blue0;}{\*\generator Msftedit 5.41.15.1507;}\viewkind4\uc1\pard\cf1\b\f0\fs24 Greatest Common Divisor\b0\fs28\par\cf0\fs20\par This script calculates the "greatest common divisor" of two values that you enter. The script uses Euclides\rquote  algorithm for the greatest common divisor.\par\par The script illustrates loops and simple arithmetic.\par}

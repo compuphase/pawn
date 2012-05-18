@@ -1,0 +1,758 @@
+#001
+A required token is omitted.
+
+#002
+Every case in a switch statement can hold exactly one statement. To put multiple
+statements in a case, enclose these statements between braces (which creates a
+compound statement).
+
+#003
+The declaration of a local variable must appear between braces ("{...}") at the
+active scope level.
+<p>
+When the parser flags this error, a variable declaration appears as <em>the only
+statement</em> of a function or <em>the only statement</em> below an <b>if</b>,
+<b>else</b>, <b>for</b>, <b>while</b> or <b>do</b> statement. Note that, since
+local variables are accessible only from (or below) the scope that their
+declaration appears in, having a variable declaration <em>as the only
+statement</em> at any scope is useless.
+
+#004
+There is no implementation for the designated function. The function may have
+been "forwardly" declared ---or prototyped--- but the full function definition
+including a statement, or statement block, is missing.
+
+#005
+The function <b>main()</b> is the program entry point. It may not have
+arguments.
+
+#006
+String literals or arrays must be assigned to an array. This error message may
+also indicate a missing index (or indices) at the array on the right side of the
+"=" sign.
+
+#007
+Only a select set of operators may be redefined, this operator is not one of
+them. See the section on user operators in the manual for details.
+
+#008
+The size of arrays and the parameters of most directives must be constant
+values.
+
+#009
+The number of elements of an array must always be 1 or more. In addition, an
+array that big that it does exceeds the range of a cell is invalid too.
+
+#010
+The compiler expects a declaration of a global variable or of a function at the
+current location, but it cannot interpret it as such.
+
+#011
+The instruction or statement is invalid at a global level. Local labels and
+(compound) statements are only valid if used within functions.
+
+#012
+The symbol is not a function.
+
+#013
+The file does not contain a <b>main()</b> function or any public function. The
+compiled file thereby does not have a starting point for the execution.
+
+#014
+The statements <b>case</b> and <b>default</b> are only valid inside a
+<b>switch</b> statement.
+
+#015
+Pawn requires the <b>default</b> clause to be the last clause in a <b>switch</b>
+statement.
+
+#016
+Each <b>switch</b> statement may only have one <b>default</b> clause.
+
+#017
+The symbol (variable, constant or function) is not declared.
+
+#018
+An array with an explicit size is initialized, but the number of initiallers
+exceeds the number of elements specified. For example, in "<b>arr[3] =
+{1,2,3,4};</b>" the array is specified to have three elements, but there are
+four initiallers.
+
+#019
+A <b>goto</b> statement branches to a symbol that is not a label.
+
+#020
+A symbol may start with a letter, an underscore or an "at" sign ("@") and may be
+followed by a series of letters, digits, underscore characters and "@"
+characters.
+
+#021
+The symbol was already defined at the current level.
+
+#022
+The symbol that is altered (incremented, decremented, assigned a value, etc.)
+must be a variable that can be modified (this kind of variable is called an
+lvalue). Functions, string literals, arrays and constants are no lvalues.
+Variables declared with the "<b>const</b>" attribute are no lvalues either.
+
+#023
+When assigning one array to another, you cannot combine an arithmetic operation
+with the assignment (e.g., you cannot use the "+=" operator).
+
+#024
+The statements <b>break</b> and <b>continue</b> are only valid inside the
+context of a loop (a <b>do</b>, <b>for</b> or <b>while</b> statement). Unlike
+the languages C/C++ and Java, <b>break</b> does not jump out of a <b>switch</b>
+statement.
+
+#025
+The number of arguments given at a previous declaration of the function does not
+match the number of arguments given at the current declaration.
+
+#026
+The directive <b>#else</b> or <b>#endif</b> was encountered, but no matching
+<b>#if</b> directive was found.
+
+#027
+One likely cause for this error is the occurrence of an unknown escape sequence,
+like "\x". Putting multiple characters between single quotes, as in 'abc' also
+issues this error message. A third cause for this error is a situation where a
+character constant was expected, but none (or a non-character expression) were
+provided.
+
+#028
+The subscript operators "[" and "]" are only valid with arrays. The number of
+square bracket pairs may not exceed the number of dimensions of the array.
+
+#029
+The compiler could not interpret the expression.
+
+#030
+An unexpected end of file occurred. One or more compound statements are still
+unfinished (i.e. the closing brace "}" has not been found).<br>
+The line number where the compound statement started is given in the message.
+
+#031
+The character "#" appears first at a line, but no valid directive was specified.
+
+#032
+The array index is larger than the highest valid entry of the array.
+
+#033
+An array as a whole cannot be used in a expression; you must indicate
+an element of the array between square brackets.
+
+#034
+You can only use the argument placeholder when the function definition specifies
+a default value for the argument.
+
+#035
+The argument that you pass is different from the argument that the function
+expects, and the compiler cannot convert the passed-in argument to the required
+type. For example, you cannot pass the literal value "1" as an argument when the
+function expects an array or a reference.
+
+#036
+The line contains a semicolon that is not preceded by an expression. Pawn does
+not support a semicolon as an empty statement, use an empty compound block
+instead.
+
+#037
+A string was not well-formed; for example, the final quote(s) that ends a string is
+missing, or a quote appears inside the string (it should then be escaped), or the
+filename for the <b>#include</b> directive was not enclosed in double quotes or
+angle brackets.
+
+#038
+There were trailing characters on a line that contained a directive (a directive
+starts with a # symbol).
+
+#039
+A variable has a size (measured in a number of cells), a constant has no size.
+That is, you cannot use a (symbolic) constant with the <b>sizeof</b> operator,
+for example.
+
+#040
+A preceding "case label" in the list of the <b>switch</b> statement evaluates to
+the same value.
+
+#041
+You used a syntax like "<b>arr[] = { 1, ... };</b>", which is invalid, because
+the compiler cannot deduce the size of the array from the declaration.
+
+#042
+A function or variable is denoted as both "public" and "native", which is
+unsupported. Other combinations may also be unsupported; for example, a function
+cannot be both "public" and "stock" (a <em>variable</em> may be declared both
+"public" and "stock").
+
+#043
+When the error occurs on a literal string, it is usually an attempt to store a
+Unicode character in a packed string where a packed character is 8-bits. For a
+literal array, one of the constants does not fit in the range for packed
+characters.
+
+#044
+When you mix positional parameters and named parameters in a function call, the
+positional parameters must come first.
+
+#045
+The maximum number of function arguments is currently limited to 64.
+
+#046
+For array assignment, the size of both arrays must be explicitly defined, also
+if they are passed as function arguments.
+
+#047
+For array assignment, the arrays on the left and the right side of the
+assignment operator must have the same number of dimensions. In addition:
+<br>o<tab>for multi-dimensional arrays, both arrays must have the same size;
+<br>o<tab>for single arrays with a single dimension, the array on the left side
+of the assignment operator must have a size that is equal or bigger than
+the one on the right side.
+<p>
+When passing arrays to a function argument, these rules also hold for the array
+that is passed to the function (in the function call) versus the array declared
+in the function definition.
+<p>
+When a function returns an array, all <b>return</b> statements must specify an
+array with the same size and dimensions.
+
+#048
+For an array assignment, the dimensions of the arrays on both sides of
+the "=" sign must match; when passing arrays to a function argument,
+the arrays passed to the function (in the function call) must match
+with the definition of the function arguments.
+<p>
+When a function returns an array, all <b>return</b> statements must specify an
+array with the same size and dimensions.
+
+#049
+A line continuation character (a backslash at the end of a line) is at an
+invalid position, for example at the end of a file or in a single line comment.
+
+#050
+A numeric range with the syntax "<em>n1</em> .. <em>n2</em>", where <em>n1</em>
+and <em>n2</em> are numeric constants, is invalid. Either one of the values in
+not a valid number, or <em>n1</em> is not smaller than <em>n2</em>.
+
+#051
+You can use the "character array index" operator (braces: "{ }" only for the
+last dimension, and only when indexing the array with a number. For other
+dimensions, and when indexing the array with a "symbolic index" (one that starts
+with a "."), you must use the cell index operator (square brackets: "[ ]").
+
+#052
+If an array with more than one dimension is initialized at its declaration, then
+there must be equally many literal vectors/sub-arrays at the right of the equal
+sign ("=") as specified for the major dimension(s) of the array.
+
+#053
+The current implementation of the Pawn compiler only supports arrays with one or
+two dimensions.
+
+#054
+A closing brace ("}") was found without matching opening brace ("{").
+
+#055
+An opening brace ("{") was found outside the scope of a function. This may be
+caused by a semicolon at the end of a preceding function header.
+
+#056
+A local variable or a function argument starts with the character "@", which is
+invalid.
+
+#057
+Compiler directives may only occur <em>between</em> statements, not
+<em>inside</em> a statement. This error typically occurs when an expression
+statement is split over multiple lines and a compiler directive appears between
+the start and the end of the expression. This is not supported.
+
+#058
+In the function call, the same argument appears twice, possibly through a
+mixture of named and positional parameters.
+
+#059
+All arguments of <em>public functions</em> must be passed explicitly. Public
+functions are typically called from the host application, who has no knowledge
+of the default parameter values. Arguments of <em>user defined operators</em>
+are implied from the expression and cannot be inferred from the default value of
+an argument.
+
+#060
+Two or more <b>#else</b> directives appear in the body between the matching
+<b>#if</b> and <b>#endif</b>.
+
+#061
+All <b>#elseif</b> directives must appear <em>before</em> the <b>#else</b>
+directive. This error may also indicate that an <b>#endif</b> directive for a
+higher level is missing.
+
+#062
+When redefining an operator, the number of operands that the operator has (1 for
+unary operators and 2 for binary operators) must be equal to the number of
+arguments of the operator function.
+
+#063
+Logical and relational operators are defined as having a result that is either
+<b>true</b> (1) or <b>false</b> (0) and having a "bool:" tag. A user defined
+operator should adhere to this definition.
+
+#064
+One cannot define operators to work on untagged values, for example, because
+Pawn already defines this operation.
+
+#065
+In a user defined operator, a function argument may not have multiple tags.
+
+#066
+In a user defined operator, all arguments must be cells (non-arrays) that are
+passed "by value".
+
+#067
+A function argument may be denoted as a "reference" or as an array, but not as
+both.
+
+#068
+The precision was negative or too high. For floating point rational numbers, the
+precision specification should be omitted.
+
+#069
+This <b>#pragma</b> conflicts with an earlier <b>#pragma</b> that specified a
+different format.
+
+#070
+A rational literal number was encountered, but the format for rational numbers
+was not specified.
+
+#071
+Like a variable, a user-defined operator must be declared before its first use.
+This message indicates that prior to the declaration of the user-defined
+operator, an instance where the operator was used on operands with the same tags
+occurred. This may either indicate that the program tries to make mixed use of
+the default operator and a user-defined operator (which is unsupported), or that
+the user-defined operator must be "forwardly declared".
+
+#072
+You used something like "<b>sizeof MyCounter</b>" where the symbol "MyCounter"
+is not a variable, but a function. You cannot request the size of a function.
+
+#073
+The function argument is a constant or a simple variable, but the function
+requires that you pass an array.
+
+#074
+Any pattern for the <b>#define</b> directive must start with a letter, an
+underscore ("_") or an "@"-character. The pattern is the first word that follows
+the <b>#define</b> keyword.
+
+#075
+Either the source file contains a very long line, or text substitutions make a
+line that was initially of acceptable length grow beyond its bounds. This may be
+caused by a text substitution that causes recursive substitution (the pattern
+matching a portion of the replacement text, so that this part of the replacement
+text is also matched and replaced, and so forth).
+
+#076
+The expression statement was not recognized as a valid statement (so it is a
+"syntax error"). From the part of the string that was parsed, it looks as if the
+source line contains a function call in a "procedure call" syntax (omitting the
+parentheses), but the function result is used ---assigned to a variable, passed
+as a parameter, used in an expression...
+
+#077
+The file starts with an UTF-8 signature, but it contains encodings that are
+invalid UTF-8. If the source file was created by an editor or converter that
+supports UTF-8, the UTF-8 support is non-conforming.
+
+#078
+The function returns both <em>with</em> and <em>without</em> a return value. The
+function should be consistent in always returning with a function result, or in
+never returning a function result.
+
+#079
+The function returns both values and arrays, which is not allowed. If a function
+returns an array, all <b>return</b> statements must specify an array (of the
+same size and dimensions).
+
+#080
+Where a constant value was expected, an unknown symbol or a non-constant symbol
+(variable) was found.
+
+#081
+Reserved error message
+
+#082
+Only standard and public functions may have states.
+
+#083
+There are multiple automatons in the state declaration for the indicated
+function or variable, which is not supported. In the case of a function:
+<em>all</em> instances of the function must belong to the same automaton. In the
+case of a variable: it is allowed to have several variables with the same name
+belonging to different automatons, but only in separate declarations ---these
+are distinct variables.
+
+#084
+The specified state appears in the state specifier of two implementations of the
+same function.
+
+#085
+When this error occurs on a function, this function has a fall-back
+implementation, but no other states. If the error refers to a variable, this
+variable does not have a list of states between the < and > characters. Use a
+state-less function or variable instead.
+
+#086
+The "<b>state</b>" statement refers to an unknown automaton.
+
+#087
+The "<b>state</b>" statement refers to an unknown state (for the specified
+automaton).
+
+#088
+Only standard (global) variables may have a list of states (and an automaton) at
+the end of a declaration.
+
+#089
+Variables with a state list may not have initializers. State variables should
+always be initialized through an assignment (instead of at their declaration),
+because their initial value is indeterminate.
+
+#090
+A public function may not return an array. Returning arrays is allowed only for
+normal functions.
+
+#091
+The first constant in a list of enumerated symbolic constants must be set to
+a value. Any subsequent symbol is automatically set the the value of the preceding
+symbol + 1.
+
+#092
+A symbol started with a digit, but is is not a valid number.
+
+#093
+In the final dimension (the ``minor'' dimension), the fields of an array may optionally
+be declared with a size that is different from a single cell. On the major dimensions
+of an array, this is not valid, however.
+
+#094
+Either the array was declared with symbolic subscripts and you are indexing it
+with an expression, or you are indexing the array with a symbolic subscript
+which is not defined for the array.
+
+#100
+The compiler cannot find the specified file or does not have access to it.
+
+#101
+The compiler cannot write to the specified output file, probably caused by
+insufficient disk space or restricted access rights (the file could be read-
+only, for example).
+
+#102
+An internal table in the Pawn parser is too small to hold the required data.
+Some tables are dynamically growable, which means that there was insufficient
+memory to resize the table. The "table name" is one of the following:
+<p>
+<b>staging buffer</b>: the staging buffer holds the code generated for an expression
+before it is passed to the peephole optimizer. The staging buffer grows
+dynamically, so an overflow of the staging buffer basically is an "out of
+memory" error.
+<p>
+<b>loop table</b>: the loop table is a stack used with nested <b>do</b>, <b>for</b>,
+and <b>while</b> statements. The table allows nesting of these statements up to
+24 levels.
+<p>
+<b>literal table</b>: this table keeps the literal constants (numbers, strings) that
+are used in expressions and as initiallers for arrays. The literal table grows
+dynamically, so an overflow of the literal table basically is an "out of memory"
+error.
+<p>
+<b>compiler stack</b>: the compiler uses a stack to store temporary information it
+needs while parsing. An overflow of this stack is probably caused by deeply
+nested (or recursive) file inclusion. The compiler stack grows dynamically, so
+an overflow of the compiler stack basically is an "out of memory" error.
+<p>
+<b>option table</b>: in case that there are more options on the command line or in
+the response file than the compiler can cope with.
+
+#103
+General "out of memory" error.
+
+#105
+A numeric constant, notably a dimension of an array, is too large for the
+compiler to handle. For example, when compiled as a 16-bit application, the
+compiler cannot handle arrays with more than 32767 elements.
+
+#106
+The memory size for the abstract machine that is needed to run the script
+exceeds the value set with <b>#pragma amxlimit</b>. This means that the script
+is too large to be supported by the host.
+
+You might try reducing the script's memory requirements by:
+<br>o<tab>setting a smaller stack/heap area ---use <b>#pragma dynamic</b>;
+<br>o<tab>using packed strings instead of unpacked strings;
+<br>o<tab>using overlays;
+<br>o<tab>putting repeated code in separate functions;
+<br>o<tab>putting repeated data (strings) in global variables;
+<br>o<tab>trying to find more compact algorithms to perform the same task.
+
+#107
+A single line that causes several error/warning messages is often an indication
+that the Pawn parser is unable to "recover" from an earlier error. In this
+situation, the parser is unlikely to make any sense of the source code that
+follows ---producing only (more) inappropriate error messages. Therefore,
+compilation is halted.
+
+#108
+The file for the codepage translation that was specified with the <b>-c</b>
+compiler option or the <b>#pragma codepage</b> directive could not be loaded.
+
+#109
+A path, for example for include files or codepage files, is invalid. Check the
+compiler options and, if used, the configuration file.
+
+#110
+Compile-time assertion failed.
+
+#111
+The parser fell on an <b>#error</b> directive.
+
+#200
+The symbol is longer than the maximum symbol length. The maximum length of a
+symbol depends on whether the symbol is native, public or neither. Truncation
+may cause different symbol names to become equal, which may cause error 021 or
+warning 219.
+
+#201
+The symbol was previously defined to a different value, or the text substitution
+macro that starts with the prefix <em>name</em> was redefined with a different
+substitution text.
+
+#202
+At a function call, the number of arguments passed to the function (actual
+arguments) differs from the number of formal arguments declared in the function
+heading. To declare functions with variable argument lists, use an ellipsis
+(...) behind the last known argument in the function heading; for example:
+<b>print(formatstring, ...);</b>.
+
+#203
+A symbol is defined but never used. Public functions are excluded from the
+symbol usage check (since these may be called from the outside).
+
+#204
+A value is assigned to a symbol, but the contents of the symbol are never
+accessed.
+
+#205
+Where a conditional expression was expected, a constant expression with the
+value zero was found, e.g. "<b>while (0)</b>" or "<b>if (0)</b>". The the
+conditional code below the test is <em>never</em> executed, and it is therefore
+redundant.
+
+#206
+Where a conditional expression was expected, a constant expression with a non-zero
+value was found, e.g. <b>if (1)</b>. The test is redundant, because the
+conditional code is <em>always</em> executed.
+
+To create an endless loop, use <b>for ( ;; )</b> instead of <b>while (1)</b>.
+
+#207
+The compiler ignores the pragma. The <b>#pragma</b> directives may change
+between compilers of different vendors and between different versions of a
+compiler of the same version.
+
+#208
+When a function is "used" (invoked) before being declared, and that function
+returns a value with a tag name, the parser must make an extra pass over the
+source code, because the presence of the tag name may change the interpretation
+of operators (in the presence of user-defined operators). You can speed up the
+parsing/compilation process by declaring the relevant functions before using
+them.
+
+#209
+The function does not have a <b>return</b> statement, or it does not have an
+expression behind the <b>return</b> statement, but the function's result is used
+in a expression.
+
+#210
+A local (uninitialized) variable appears to be read before a value is assigned
+to it. The compiler cannot determine the actual order of reading from and
+storing into variables and bases its assumption of the execution order on the
+physical appearance order of statements an expressions in the source file.
+
+#211
+Where a conditional expression was expected, the assignment operator (=) was
+found instead of the equality operator (==). As this is a frequent mistake, the
+compiler issues a warning. To avoid this message, put parentheses around the
+expression, e.g. <b>if ( (a=2) )</b>.
+
+#212
+Where a conditional expression was expected, a bitwise operator (<b>&</b> or
+<b>|</b>) was found instead of a Boolean operator (<b>&&</b> or <b>||</b>). In
+situations where a bitwise operation seems unlikely, the compiler issues this
+warning. To avoid this message, put parentheses around the expression.
+
+#213
+A tag mismatch occurs when:
+<br>o<tab>assigning to a tagged variable a value that is untagged or that has a different tag
+<br>o<tab>the expressions on either side of a binary operator have different tags
+<br>o<tab>in a function call, passing an argument that is untagged or that has a different tag than what the function argument was defined with
+<br>o<tab>indexing an array which requires a tagged index with no tag or a wrong tag name
+
+#214
+Arrays are always passed by reference. If a function does not modify the array
+argument, however, the compiler can sometimes generate more compact and quicker
+code if the array argument is specifically marked as "<b>const</b>".
+
+#215
+The result of the expression is apparently not stored in a variable or used in a
+test. The expression or expression statement is therefore redundant.
+
+#216
+Pawn does not support nested comments.
+
+#217
+Statements at the same logical level do not start in the same column; that is,
+the indents of the statements are different. Although Pawn is a free format
+language, loose indentation frequently hides a logical error in the control
+flow.
+
+The compiler can also incorrectly assume loose indentation if the TAB size with
+which you indented the source code differs from the assumed size. This may
+happen if the source files use a mixture of TAB and space characters to indent
+lines. Sometimes it is then needed to tell the Pawn parser what TAB size to use,
+with <b>#pragma tabsize</b> or the compiler option <b>-t</b>.
+
+You can also disable this warning with <b>#pragma tabsize 0</b> or the compiler
+option <b>-t:0</b>.
+
+#218
+When using "optional semicolons", it is preferred to explicitly declare forward
+functions with the <b>forward</b> keyword than using terminating semicolon.
+
+#219
+A local variable has the same name as a global variable, a function, a function
+argument, or a local variable at a lower precedence level. This is called
+"shadowing", as the new local variable makes the previously defined function or
+variable inaccessible.
+
+Note: if there are also error messages further on in the script about missing
+variables (with these same names) or brace level problems, it could well be that
+the shadowing warnings are due to these syntactical and semantical errors. Fix
+the errors first before looking at the shadowing warnings.
+
+#220
+In a <b>case</b> statement and in expressions in the conditional operator ("<b>
+? : </b>"), any expression that has a tag override should be enclosed between
+parentheses, to avoid the colon to be misinterpreted as a separator of the
+<b>case</b> statement or as part of the conditional operator.
+
+#221
+A code label (for the <b>goto</b> instruction) has the same name as a previously
+defined tag. This may indicate a faultily applied tag override; a typical case
+is an attempt to apply a tag override on the variable on the left of the "="
+operator in an assignment statement.
+
+#222
+A literal rational number has more decimals in its fractional part than the
+precision of a rational number supports. The remaining decimals are ignored.
+
+#223
+A function argument has a as its default value the size of another argument of
+the same function. The "sizeof" default value is only useful when the size of
+the referred argument is unspecified in the declaration of the function; i.e.,
+if the referred argument is an array.
+
+#224
+The operand of the <b>sizeof</b> operator is an array with an unspecified size.
+That is, the size of the variable cannot be determined at compile time. If used
+in an "<b>if</b>" instruction, consider a conditionally compiled section,
+replacing <b>if</b> by <b>#if</b>.
+
+#225
+The indicated code will never run, because an instruction before (above) it
+causes a jump out of the function, out of a loop or elsewhere. Look for
+<b>return</b>, <b>break</b>, <b>continue</b> and <b>goto</b> instructions above
+the indicated line. Unreachable code can also be caused by an endless loop above
+the indicated line.
+
+#226
+There is a statement like "x = x" in the code. The parser checks for self
+assignments <em>after</em> performing any text and constant substitutions, so
+the left and right sides of an assignment may appear to be different at first
+sight. For example, if the symbol "TWO" is a constant with the value 2, then
+"var[TWO] = var[2]" is also a self-assignment.
+
+Self-assignments are, of course, redundant, and they may hide an error
+(assignment to the wrong variable, error in declaring constants).
+
+Note that the Pawn parser is limited to performing "static checks" only. In this
+case it means that it can only compare array assignments for self-assignment
+with constant array indices.
+
+#227
+An array that is declared with sumbolic subscripts contains more values/fields
+as initiallers than there are (symbolic) subscripts.
+
+#228
+The initialler for an array element contains more values than the size of that
+field allows. This occurs in an array that has symbolic subscripts, and where a
+particular subscript is declared with a size.
+
+#229
+An array is declared as packed (with <b>{</b> and <b>}</b> braces) but indexed as
+unpacked (with <b>[</b> and <b>]</b>), or vice versa. Or one array is assigned to
+another and one is packed while the other is unpacked.
+
+#230
+A function is lacking an implementation for the indicated state. The compiler
+cannot (statically) check whether the function will ever be called in that
+state, and therefore it issues this warning. When the function would be called
+for the state for which no implementation exists, the abstract machine aborts
+with a run time error.
+<p>
+To avoid this warning, implement a fall-back function for the state(s).
+
+#231
+A state specification is redundant on forward declarations. The function
+signature must be equal for all states. Only the implementations of the function
+are state-specific.
+
+#232
+The Pawn compiler was configured with predefined indices for native functions,
+but it encountered a declaration for which it does not have an index
+declaration. This usually means that the script uses include files that arenot
+appropriate for the active configuration.
+
+#233
+The state variable has the same name as a global variable (without state
+specifiers). This means that the global variable is inaccessible for a function
+with one of the same states as those of the variable.
+
+#234
+The script uses a function which as marked as "deprecated". The host application
+can mark (native) functions as deprecated when better alternatives for the
+function are available or if the function may not be supported in future
+versions of the host application.
+
+#235
+The script defines a public function, but no forward declaration of this
+function is present. Possibly the function name was written incorrectly. The
+requirement for forward declarations of public functions guards against a common
+error.
+
+#236
+A <b>#define</b> pattern contains a parameter in the replacement (e.g. "%1"),
+that is not in the match pattern.
+
+#237
+The specified function calls itself recursively. Although this is valid in Pawn,
+a self-call is often an error. Note that this warning is only generated when the
+Pawn parser/compiler is set to "verbose" mode.
+
+#238
+In concatenating literals strings, strings with different formats (such as
+packed versus unpacked, and "plain" versus standard strings) were combined. This
+is usually an error. The parser uses the format of the first (left-most) string
+in the concatenation for the result.

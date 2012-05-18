@@ -10,15 +10,15 @@
  *  All strings MUST have an explicit \0. See the Windows SDK documentation
  *  for details on version information and the VERSIONINFO structure.
  */
-#define VERSION              1
+#define VERSION              4
 #define REVISION             0
 #define BUILD                0
-#define VERSIONSTR           "1.0.0\0"
+#define VERSIONSTR           "4.0.0\0"
 #define VERSIONNAME          "amxDGram.dll\0"
 #define VERSIONDESCRIPTION   "Pawn AMX: network datagram\0"
 #define VERSIONCOMPANYNAME   "ITB CompuPhase\0"
 #define VERSIONPRODUCTNAME   "amxDGram\0"
-#define VERSIONCOPYRIGHT     "Copyright \251 2007 ITB CompuPhase\0"
+#define VERSIONCOPYRIGHT     "Copyright \251 2007-2011 ITB CompuPhase\0"
 
 VS_VERSION_INFO VERSIONINFO
 FILEVERSION    VERSION, REVISION, BUILD, 0

@@ -3,5 +3,5 @@
 
 main()
     {
-    printf "%d", stock_func()
+    printf ''%d'', stock_func()
     }

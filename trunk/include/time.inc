@@ -1,6 +1,6 @@
 /* Date/time functions
  *
- * (c) Copyright 2001-2008, ITB CompuPhase
+ * (c) Copyright 2001-2011, ITB CompuPhase
  * This file is provided as is (no warranties).
  */
 #pragma library Time

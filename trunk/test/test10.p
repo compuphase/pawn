@@ -4,19 +4,19 @@
 const Float:PI = 3.1415693
 
 new Float:values[11][8] =
-{
-  { PI, PI, PI, PI, PI, PI, PI, PI},
-//{ PI, PI, PI, PI, PI, PI, PI, PI},
-//{ PI, PI, PI, PI, PI, PI, PI, PI},
-//{ PI, PI, PI, PI, PI, PI, PI, PI},
-//{ PI, PI, PI, PI, PI, PI, PI, PI},
-//{ PI, PI, PI, PI, PI, PI, PI, PI},
-  { PI, PI, PI, PI, PI, PI, PI, PI},
-  { PI, PI, PI, PI, PI, PI, PI, PI},
-  { PI, PI, PI, PI, PI, PI, PI, PI},
-  { PI, PI, PI, PI, PI, PI, PI, PI},
-  { PI, PI, PI, PI, PI, PI, PI, PI}
-};
+[
+  [ PI, PI, PI, PI, PI, PI, PI, PI],
+//[ PI, PI, PI, PI, PI, PI, PI, PI],
+//[ PI, PI, PI, PI, PI, PI, PI, PI],
+//[ PI, PI, PI, PI, PI, PI, PI, PI],
+//[ PI, PI, PI, PI, PI, PI, PI, PI],
+//[ PI, PI, PI, PI, PI, PI, PI, PI],
+  [ PI, PI, PI, PI, PI, PI, PI, PI],
+  [ PI, PI, PI, PI, PI, PI, PI, PI],
+  [ PI, PI, PI, PI, PI, PI, PI, PI],
+  [ PI, PI, PI, PI, PI, PI, PI, PI],
+  [ PI, PI, PI, PI, PI, PI, PI, PI]
+];
 #endif
 
 main()

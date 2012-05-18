@@ -5,7 +5,7 @@ main()
     printf "Please type the string to mangle: "
 
     new str[100]
-    getstring str, sizeof str
+    getstring str, sizeof str, .pack = false
     rot13 str
 
     printf "After mangling, the string is: \"%s\"\n", str

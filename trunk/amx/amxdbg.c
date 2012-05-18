@@ -2,25 +2,21 @@
  *
  *  Support functions for debugger applications
  *
- *  Copyright (c) ITB CompuPhase, 2005-2009
+ *  Copyright (c) ITB CompuPhase, 2005-2011
  *
- *  This software is provided "as-is", without any express or implied warranty.
- *  In no event will the authors be held liable for any damages arising from
- *  the use of this software.
+ *  Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ *  use this file except in compliance with the License. You may obtain a copy
+ *  of the License at
  *
- *  Permission is granted to anyone to use this software for any purpose,
- *  including commercial applications, and to alter it and redistribute it
- *  freely, subject to the following restrictions:
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
- *  1.  The origin of this software must not be misrepresented; you must not
- *      claim that you wrote the original software. If you use this software in
- *      a product, an acknowledgment in the product documentation would be
- *      appreciated but is not required.
- *  2.  Altered source versions must be plainly marked as such, and must not be
- *      misrepresented as being the original software.
- *  3.  This notice may not be removed or altered from any source distribution.
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ *  WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ *  License for the specific language governing permissions and limitations
+ *  under the License.
  *
- *  Version: $Id: amxdbg.c 4057 2009-01-15 08:21:31Z thiadmer $
+ *  Version: $Id: amxdbg.c 4523 2011-06-21 15:03:47Z thiadmer $
  */
 #include <assert.h>
 #include <stdio.h>
@@ -93,17 +89,17 @@ int AMXAPI dbg_LoadInfo(AMX_DBG *amxdbg, FILE *fp)
 
   /* allocate all memory */
   memset(amxdbg, 0, sizeof(AMX_DBG));
-  amxdbg->hdr = malloc((size_t)dbghdr.size);
+  amxdbg->hdr = (AMX_DBG_HDR*)malloc((size_t)dbghdr.size);
   if (dbghdr.files > 0)
-    amxdbg->filetbl = malloc(dbghdr.files * sizeof(AMX_DBG_FILE *));
+    amxdbg->filetbl = (AMX_DBG_FILE**)malloc(dbghdr.files * sizeof(AMX_DBG_FILE*));
   if (dbghdr.symbols > 0)
-    amxdbg->symboltbl = malloc(dbghdr.symbols * sizeof(AMX_DBG_SYMBOL *));
+    amxdbg->symboltbl = (AMX_DBG_SYMBOL**)malloc(dbghdr.symbols * sizeof(AMX_DBG_SYMBOL*));
   if (dbghdr.tags > 0)
-    amxdbg->tagtbl = malloc(dbghdr.tags * sizeof(AMX_DBG_TAG *));
+    amxdbg->tagtbl = (AMX_DBG_TAG**)malloc(dbghdr.tags * sizeof(AMX_DBG_TAG*));
   if (dbghdr.automatons > 0)
-    amxdbg->automatontbl = malloc(dbghdr.automatons * sizeof(AMX_DBG_MACHINE *));
+    amxdbg->automatontbl = (AMX_DBG_MACHINE**)malloc(dbghdr.automatons * sizeof(AMX_DBG_MACHINE*));
   if (dbghdr.states > 0)
-    amxdbg->statetbl = malloc(dbghdr.states * sizeof(AMX_DBG_STATE *));
+    amxdbg->statetbl = (AMX_DBG_STATE**)malloc(dbghdr.states * sizeof(AMX_DBG_STATE*));
   if (amxdbg->hdr == NULL
       || (dbghdr.files > 0 && amxdbg->filetbl == NULL)
       || (dbghdr.symbols > 0 && amxdbg->symboltbl == NULL)
@@ -127,7 +123,7 @@ int AMXAPI dbg_LoadInfo(AMX_DBG *amxdbg, FILE *fp)
     assert(amxdbg->filetbl != NULL);
     amxdbg->filetbl[index] = (AMX_DBG_FILE *)ptr;
     #if BYTE_ORDER==BIG_ENDIAN
-      amx_AlignCell(&amxdbg->filetbl[index]->address);
+      amx_Align32(&amxdbg->filetbl[index]->address);
     #endif
     for (ptr = ptr + sizeof(AMX_DBG_FILE); *ptr != '\0'; ptr++)
       /* nothing */;
@@ -138,7 +134,7 @@ int AMXAPI dbg_LoadInfo(AMX_DBG *amxdbg, FILE *fp)
   amxdbg->linetbl = (AMX_DBG_LINE*)ptr;
   #if BYTE_ORDER==BIG_ENDIAN
     for (index = 0; index < dbghdr.lines; index++) {
-      amx_AlignCell(&amxdbg->linetbl[index].address);
+      amx_Align32(&amxdbg->linetbl[index].address);
       amx_Align32((uint32_t*)&amxdbg->linetbl[index].line);
     } /* for */
   #endif
@@ -149,10 +145,10 @@ int AMXAPI dbg_LoadInfo(AMX_DBG *amxdbg, FILE *fp)
     assert(amxdbg->symboltbl != NULL);
     amxdbg->symboltbl[index] = (AMX_DBG_SYMBOL *)ptr;
     #if BYTE_ORDER==BIG_ENDIAN
-      amx_AlignCell(&amxdbg->symboltbl[index]->address);
+      amx_Align32(&amxdbg->symboltbl[index]->address);
       amx_Align16((uint16_t*)&amxdbg->symboltbl[index]->tag);
-      amx_AlignCell(&amxdbg->symboltbl[index]->codestart);
-      amx_AlignCell(&amxdbg->symboltbl[index]->codeend);
+      amx_Align32(&amxdbg->symboltbl[index]->codestart);
+      amx_Align32(&amxdbg->symboltbl[index]->codeend);
       amx_Align16((uint16_t*)&amxdbg->symboltbl[index]->dim);
     #endif
     for (ptr = ptr + sizeof(AMX_DBG_SYMBOL); *ptr != '\0'; ptr++)
@@ -161,7 +157,7 @@ int AMXAPI dbg_LoadInfo(AMX_DBG *amxdbg, FILE *fp)
     for (dim = 0; dim < amxdbg->symboltbl[index]->dim; dim++) {
       symdim = (AMX_DBG_SYMDIM *)ptr;
       amx_Align16((uint16_t*)&symdim->tag);
-      amx_AlignCell(&symdim->size);
+      amx_Align32(&symdim->size);
       ptr += sizeof(AMX_DBG_SYMDIM);
     } /* for */
   } /* for */
@@ -184,7 +180,7 @@ int AMXAPI dbg_LoadInfo(AMX_DBG *amxdbg, FILE *fp)
     amxdbg->automatontbl[index] = (AMX_DBG_MACHINE *)ptr;
     #if BYTE_ORDER==BIG_ENDIAN
       amx_Align16(&amxdbg->automatontbl[index]->automaton);
-      amx_AlignCell(&amxdbg->automatontbl[index]->address);
+      amx_Align32(&amxdbg->automatontbl[index]->address);
     #endif
     for (ptr = ptr + sizeof(AMX_DBG_MACHINE) - 1; *ptr != '\0'; ptr++)
       /* nothing */;

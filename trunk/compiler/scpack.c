@@ -275,8 +275,7 @@ unsigned readbuffer(FILE *input, unsigned char *buffer)
                 i++;
                 break;
               default:
-                // ??? octal character code escapes and hexadecimal escapes
-                //     not supported
+                /* octal character code escapes and hexadecimal escapes not supported */
                 printf("Unknown escape sequence '\\%c' on line %d\n",
                        str[i], linenr);
               } /* switch */

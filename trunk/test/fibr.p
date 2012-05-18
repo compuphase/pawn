@@ -10,8 +10,8 @@ fibonacci(n)
 
 main()
     {
-    print("Enter a value: ")
+    print(''Enter a value: '')
     new v = getvalue()
-    printf("The value of Fibonacci number %d is %d\n",
+    printf(''The value of Fibonacci number %d is %d\n'',
            v, fibonacci(v) )
     }

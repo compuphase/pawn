@@ -1,24 +1,20 @@
 /*  Simple terminal using GraphApp
  *
- *  Copyright (c) ITB CompuPhase, 2004-2009
+ *  Copyright (c) ITB CompuPhase, 2004-2011
  *
- *  This software is provided "as-is", without any express or implied warranty.
- *  In no event will the authors be held liable for any damages arising from
- *  the use of this software.
+ *  Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ *  use this file except in compliance with the License. You may obtain a copy
+ *  of the License at
  *
- *  Permission is granted to anyone to use this software for any purpose,
- *  including commercial applications, and to alter it and redistribute it
- *  freely, subject to the following restrictions:
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
- *  1.  The origin of this software must not be misrepresented; you must not
- *      claim that you wrote the original software. If you use this software in
- *      a product, an acknowledgment in the product documentation would be
- *      appreciated but is not required.
- *  2.  Altered source versions must be plainly marked as such, and must not be
- *      misrepresented as being the original software.
- *  3.  This notice may not be removed or altered from any source distribution.
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ *  WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ *  License for the specific language governing permissions and limitations
+ *  under the License.
  *
- *  Version: $Id: term_ga.c 4057 2009-01-15 08:21:31Z thiadmer $
+ *  Version: $Id: term_ga.c 4523 2011-06-21 15:03:47Z thiadmer $
  */
 
 #include <assert.h>
@@ -44,8 +40,7 @@ static int csrx = 0, csry = 0;
 static int autowrap = 0;
 static unsigned char attrib = 0x07;
 
-static
-void window_redraw(Window *w, Graphics *g)
+static void window_redraw(Window *w, Graphics *g)
 {
   Rect r;
   Point p;
@@ -97,7 +92,7 @@ void window_redraw(Window *w, Graphics *g)
 }
 
 /* dx = in columns, dy = in lines */
-void scroll_window(int dx, int dy)
+static void scroll_window(int dx, int dy)
 {
   Graphics *g;
   Rect r;
@@ -145,8 +140,7 @@ void scroll_window(int dx, int dy)
   del_graphics(g);
 }
 
-static
-void refresh_screen(int top, int bottom)
+static void refresh_screen(int top, int bottom)
 {
   Rect r;
   int h;
@@ -163,14 +157,12 @@ void refresh_screen(int top, int bottom)
 }
 
 #if 0
-static
-void window_fkey_action(Window *w, unsigned long key)
+static void window_fkey_action(Window *w, unsigned long key)
 {
 }
 #endif
 
-static
-void window_key_action(Window *w, unsigned long key)
+static void window_key_action(Window *w, unsigned long key)
 {
   #if defined __WIN32__ || defined _WIN32 || defined WIN32
     /* translate the Enter key from '\n' (GraphApp convention) to '\r'
@@ -188,8 +180,7 @@ void window_key_action(Window *w, unsigned long key)
   } /* if */
 }
 
-static
-void window_close(Window *w)
+static void window_close(Window *w)
 {
   /* we cannot delete the window on this notification (GraphApp refers to it
    * on return from the function), so we just mark the global variable
@@ -218,6 +209,10 @@ int createconsole(int argc, char *argv[])
   } /* if */
 
   font = new_font(app, "unifont", PLAIN | PORTABLE_FONT, 16);
+  if (font == NULL)
+    font = new_font(app, "courier", PLAIN | NATIVE_FONT, 16);
+  if (font == NULL)
+    font = find_default_font(app);
   if (font == NULL) {
     deleteconsole();
     return 0;
@@ -264,7 +259,7 @@ int deleteconsole(void)
   return 1;
 }
 
-int amx_putstr(const TCHAR *format)
+int amx_putstr(const TCHAR *string)
 {
   if (createconsole(0, NULL)) {
     int pos, i;
@@ -376,12 +371,21 @@ int amx_getch(void)
   int c=-1;
 
   if (createconsole(0, NULL)) {
+    int cursor=0;
+    if (keyq_start==keyq_end) {
+      amx_putchar(__T('_'));         /* must wait for character, so put pseudo-cursor */
+      cursor=1;
+    } /* if */
     while (keyq_start==keyq_end && app!=NULL) {
       wait_event(app);
       do_event(app);
     } /* while */
     c=(int)keyqueue[keyq_start];
+    if (c=='\n')
+      c='\r';                       /* enter key must be '\r' for Pawn */
     keyq_start=(keyq_start+1)%KEYQUEUE_SIZE;
+    if (cursor)
+      amx_putchar(__T('\b'));        /* remove speudo-cursor */
   } /* if */
   return c;
 }

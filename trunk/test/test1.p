@@ -1,6 +1,6 @@
 /* TEST1
  *
- * This file is for regression testing of the Small compiler and the abstract
+ * This file is for regression testing of the Pawn compiler and the abstract
  * machine. It contains many conditionally compiled segments that must certify
  * the correct behaviour of the compiler or the abstract machine. Note that
  * "correct behaviour" may mean that the compiler or the abstract machine
@@ -60,11 +60,6 @@ SetString(szName[] , szValue[])
     {
     szName[0] = szValue[0];
     }
-#endif
-
-#if defined REDECL_ENUM_VAR
-    enum myvar { blah=1, sdf, xyz, frobnitz };
-    new myvar;
 #endif
 
 #if defined REDECLARE_EXPAND
@@ -155,9 +150,9 @@ increment(a)
 
 #if defined REDEFINE_CONSTANTS
 const Left = 4
-enum Rect
+const
     {
-    Left,
+    Left = 1,
     Top,
     Right,
     Bottom
@@ -165,46 +160,41 @@ enum Rect
 const Right = 4
 #endif
 
-#if defined REDEFINE_ENUM
-enum Rect
-    {
-    Left,
-    Top,
-    Right,
-    Bottom,
-    }
-enum Direction
-    {
-    Forward,
-    Reverse,
-    Left,
-    Right,
-    }
-#endif
-
 #if defined ENUM_GOOD_DECL
-enum {  /* old way of declaring an enumeration */
-    a,
+const {  /* old way of declaring an enumeration */
+    a = 1,
     b,
     c,
     }
 
-enum {  /* optional terminating commas */
-    d,    e
+const {  /* optional terminating commas */
+    d = 4,    e
     f
     }
 
-enum {
-    g, h, i
+const {
+    g = 7, h, i
     }
 #endif
 
 #if defined ENUM_BAD_DECL
-enum {
-    j k l
+const {
+    j = 0, k l
     }
 #endif
 
+
+#if defined ARRAY2D_NO_COMMA
+new Filenames[6]{} =
+    [
+    "alpha.mp3"
+    "bravo.mp3",
+    "charlie.mp3",
+    "delta.mp3",
+    "echo.mp3",
+    "foxtrot.mp3"
+    ]
+#endif
 
 main()
     {
@@ -271,7 +261,7 @@ main()
     #endif
 
     #if defined MISSING_PARM
-        SetString("Value");     /* function needs 2 parameters */
+        SetString(''Value'');     /* function needs 2 parameters */
     #endif
 
     #if defined SWITCH_NO_COLONS
@@ -334,7 +324,7 @@ main()
         new var = 0
         var = var
 
-        new array[4] = { 1, 2, ... }
+        new array[4] = [ 1, 2, ... ]
         array[2] = array[2]
     #endif
 
@@ -390,7 +380,7 @@ main()
     #endif
 
     #if defined CARET_CTRL_CHAR
-        new url[100] = "Link: ^"http://www.test.de^" foo"
+        new url{100} = "Link: ^"http://www.test.de^" foo"
         #pragma unused url
     #endif
 
@@ -404,18 +394,18 @@ main()
 
     #if defined MULTIDIM_ARRAY_VARDIM
         new bad[2][3][] =
-            {
-                {
-                    { 1, 2 },
-                    { 3, 4, 5 },
-                    { 6, 7, 8, 9 }
-                },
-                {
-                    { 1 },
-                    { 2 },
-                    { 3 }
-                }
-            }
+            [
+                [
+                    [ 1, 2 ],
+                    [ 3, 4, 5 ],
+                    [ 6, 7, 8, 9 ]
+                ],
+                [
+                    [ 1 ],
+                    [ 2 ],
+                    [ 3 ]
+                ]
+            ]
 
         assert(bad[0][0][0]==1);
         assert(bad[0][0][1]==2);
@@ -433,17 +423,27 @@ main()
     #endif
 
     #if defined ARRAY_VARDIM_INCOMPLETE
+        new iconfiles[5][] = [
+            ''Image\\Bubbles\\32x32_dudaspray.tga'',
+            ''Image\\Bubbles\\32x32_banan.tga'',
+            ''Image\\Bubbles\\32x32_bananhej.tga'',
+            ''Image\\Bubbles\\32x32_festekoldo.tga''
+        ];
+        iconfiles[0][0] = 0;    /* to avoid a warning, and verify that the array was properly declared */
+    #endif
+
+    #if defined ARRAY_VARDIM_WRONGBRACKETS
         new iconfiles[5][] = {
-            "Image\\Bubbles\\32x32_dudaspray.tga",
-            "Image\\Bubbles\\32x32_banan.tga",
-            "Image\\Bubbles\\32x32_bananhej.tga",
-            "Image\\Bubbles\\32x32_festekoldo.tga"
+            ''Image\\Bubbles\\32x32_dudaspray.tga'',
+            ''Image\\Bubbles\\32x32_banan.tga'',
+            ''Image\\Bubbles\\32x32_bananhej.tga'',
+            ''Image\\Bubbles\\32x32_festekoldo.tga''
         };
-        iconfiles[0][0] = 0;    /* just to avoid a warning */
+        iconfiles[0][0] = 0;    /* to avoid a warning, and verify that the array was properly declared */
     #endif
 
     #if defined ARRAY_VARDIM_NONINIT
-        new eventname[1][] {"test"}
+        new eventname[1][]
         eventname[0][0] = 0;    /* just to avoid a warning */
     #endif
 
@@ -483,7 +483,7 @@ main()
     #endif
 
     #if defined ARRAY_TOO_LARGE
-        new big[1000][1000][1000]
+        new big[1000][1000][2000]
         big[0][0][0] = 10
     #endif
 
@@ -497,14 +497,14 @@ main()
     #endif
 
     #if defined STRING_DBL_ESCAPE
-        new name[10 char] = !"\\"
+        new name{10} = "\\"
         #pragma unused name
     #endif
-    
+
     #if defined TERNARY_LIT_ARRAY
         new expression = 0
         new blah[8]
-        blah = (expression) ? "oh" : "22222222222222222"
+        blah = (expression) ? ''oh'' : ''22222222222222222''
     #endif
 
     #if defined TERNARY_1D_ARRAY
@@ -513,6 +513,19 @@ main()
         new x[3]
         new y[9]
         blah = (expression) ? x : y
+    #endif
+
+    #if defined ARRAY2D_NO_COMMA
+        Filenames[0][0] = 'b'   // to avoid warning 203 and the stripping
+                                // of variable "Filenames"
+    #endif
+
+    #if defined SIZEOF_PSEUDO_ARRAY
+        new array[.abc[4], .def]
+        array.def = 0   /* to avoid a warning */
+        #assert sizeof array == 5       /* 5 cells in the array definition */
+        #assert sizeof array[.abc] == 4 /* 4 cells in the pseudo-array */
+        #assert sizeof array.abc == 4   /* alternative syntax */
     #endif
     }
 

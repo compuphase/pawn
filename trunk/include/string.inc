@@ -1,6 +1,6 @@
 /* String functions
  *
- * (c) Copyright 2005-2008, ITB CompuPhase
+ * (c) Copyright 2005-2011, ITB CompuPhase
  * This file is provided as is (no warranties).
  */
 #pragma library String
@@ -19,10 +19,10 @@ native strcmp(const string1[], const string2[], bool:ignorecase=false, length=ce
 native strfind(const string[], const sub[], bool:ignorecase=false, index=0);
 
 native strval(const string[], index=0);
-native valstr(dest[], value, bool:pack=false);
+native valstr(dest[], value, bool:pack=true);
 native bool: ispacked(const string[]);
 
-native strformat(dest[], size=sizeof dest, bool:pack=false, const format[], {Fixed,Float,_}:...);
+native strformat(dest[], size=sizeof dest, bool:pack=true, const format[], {Fixed,Float,_}:...);
 
 native uudecode(dest[], const source[], maxlength=sizeof dest);
 native uuencode(dest[], const source[], numbytes, maxlength=sizeof dest);

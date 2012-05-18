@@ -4,25 +4,21 @@
  *  library decimal fixed point numbers with an configurable number of
  *  decimals. The current setting is 3 decimals.
  *
- *  Copyright (c) ITB CompuPhase, 1998-2009
+ *  Copyright (c) ITB CompuPhase, 1998-2012
  *
- *  This software is provided "as-is", without any express or implied warranty.
- *  In no event will the authors be held liable for any damages arising from
- *  the use of this software.
+ *  Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ *  use this file except in compliance with the License. You may obtain a copy
+ *  of the License at
  *
- *  Permission is granted to anyone to use this software for any purpose,
- *  including commercial applications, and to alter it and redistribute it
- *  freely, subject to the following restrictions:
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
- *  1.  The origin of this software must not be misrepresented; you must not
- *      claim that you wrote the original software. If you use this software in
- *      a product, an acknowledgment in the product documentation would be
- *      appreciated but is not required.
- *  2.  Altered source versions must be plainly marked as such, and must not be
- *      misrepresented as being the original software.
- *  3.  This notice may not be removed or altered from any source distribution.
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ *  WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ *  License for the specific language governing permissions and limitations
+ *  under the License.
  *
- *  Version: $Id: fixed.c 4057 2009-01-15 08:21:31Z thiadmer $
+ *  Version: $Id: fixed.c 4708 2012-05-18 12:52:49Z  $
  */
 #include <assert.h>
 #include <stdio.h>      /* for NULL */
@@ -53,7 +49,7 @@ static cell AMX_NATIVE_CALL n_strfixed(AMX *amx,const cell *params)
   long multiplier,divisor;
   int len,sign=1;
 
-  amx_GetAddr(amx,params[1],&cstr);
+  cstr=amx_Address(amx,params[1]);
   amx_StrLen(cstr,&len);
   if (len>=50) {
     amx_RaiseError(amx,AMX_ERR_NATIVE);
@@ -120,9 +116,11 @@ static cell AMX_NATIVE_CALL n_strfixed(AMX *amx,const cell *params)
    */
   #define USE_ANSI_C    0
 
-#elif defined __GNUC__                                  /* GNU GCC */
+#elif defined __GNUC__ && !defined __ARM_ARCH_4T__      /* GNU GCC */
   /* ANSI 64-bit division routine not needed for GNU GCC because it
-   * supports 64-bit integers
+   * supports 64-bit integers; however, on ARM7TDMI the 64-bit division
+   * is implemented in a library function that typically requires exception
+   * handling
    */
   #define USE_ANSI_C    0
 
@@ -150,6 +148,7 @@ static cell AMX_NATIVE_CALL n_strfixed(AMX *amx,const cell *params)
   static ucell div64_32(ucell t[2], ucell divisor)
   {
     /* This function was adapted from source code that appeared in
+     * "Multiple-Precision Arithmetic in C", Burton S. Kaliski, Jr.
      * Dr. Dobb's Journal, August 1992, page 117.
      */
     ucell u, v;
@@ -571,7 +570,7 @@ static cell AMX_NATIVE_CALL n_fround(AMX *amx,const cell *params)
 
   (void)amx;
   switch (params[2]) {
-  case 1:       /* round downwards (truncate) */
+  case 1:       /* round downwards */
     value=params[1] / MULTIPLIER;
     if (params[1]<0 && (params[1] % MULTIPLIER)!=0)
       value--;
@@ -715,6 +714,14 @@ static cell AMX_NATIVE_CALL n_fabs(AMX *amx,const cell *params)
   return (result>=0) ? result : -result;
 }
 
+/* fint(Fixed:value)
+ */
+static cell AMX_NATIVE_CALL n_fint(AMX *amx,const cell *params)
+{
+  (void)amx;
+  return params[1] / MULTIPLIER;
+}
+
 #if defined __cplusplus
   extern "C"
 #endif
@@ -729,6 +736,7 @@ const AMX_NATIVE_INFO fixed_Natives[] = {
   { "fsqroot",  n_fsqroot },
   { "fpower",   n_fpower },
   { "fabs",     n_fabs },
+  { "fint",     n_fint }, // also add user-defined operator "="
   { NULL, NULL }        /* terminator */
 };
 

@@ -8,7 +8,7 @@ main()
 @keypressed(key) <foo:plain>
     {
     state (key == '/') foo:plain
-    printf "%c", key
+    printf ''%c'', key
     }
 #endif
 
