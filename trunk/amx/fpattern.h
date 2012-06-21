@@ -40,7 +40,7 @@
 *			If range 'R' includes the dash '-' character, the dash
 *			must immediately follow the caret '!'.
 *
-*	    !		Not.
+*	    !		Not; optionally supported.
 *			Makes the following pattern (up to the next '/') match
 *			any filename except those what it would normally match.
 *
@@ -128,7 +128,6 @@
 *	    dtribble@flash.net
 *
 * Copyright ©1997 by David R. Tribble, all rights reserved.
-* $Id: fpattern.h 3612 2006-07-22 09:59:46Z thiadmer $
 */
 
 
@@ -141,34 +140,34 @@ extern "C"
 #endif
 
 
-/* Identification */
+/* Options */
 
-#if 0
-static const char	fpattern_h_id[] = "@(#)lib/fpattern.h 1.03";
-#endif
+//#define FPAT_DELIM        /* handle path delimiters in a special way */
+//#define FPAT_SUBCLOS      /* support alternative closure */
+//#define FPAT_NOT_ENABLED  /* !pattern is enabled */
+#define FPAT_MSET_ENABLED   /* multi-set/range is enabled */
 
 
 /* Manifest constants */
 
-#define FPAT_QUOTE	'\\'		/* Quotes a special char	*/
-#define FPAT_QUOTE2	'`'		/* Quotes a special char	*/
-#define FPAT_DEL	'/'		/* Path delimiter (used only when DELIM is true) */
-#define FPAT_DEL2	'\\'		/* Path delimiter (used only when DELIM is true) */
-#define FPAT_DOT	'.'		/* Dot char			*/
-#define FPAT_NOT	'!'		/* Exclusion			*/
-#define FPAT_ANY	'?'		/* Any one char			*/
-#define FPAT_CLOS	'*'		/* Zero or more chars		*/
-#define FPAT_CLOSP	'\x1A'		/* Zero or more nondelimiters (used only when SUBCLOS is true) */
-#define FPAT_SET_L	'['		/* Set/range open bracket	*/
-#define FPAT_SET_R	']'		/* Set/range close bracket	*/
-#define FPAT_MSET_L	'{'		/* Multi-set/range open bracket	*/
-#define FPAT_MSET_R	'}'		/* Multi-set/range close bracket*/
-#define FPAT_SET_NOT	'!'		/* Set exclusion		*/
-#define FPAT_SET_THRU	'-'		/* Set range of chars		*/
+#define FPAT_QUOTE	'`'		/* Quotes a special char	*/
+#define FPAT_DEL	'/'		/* Path delimiter (used only when FPAT_DELIM is true) */
+#define FPAT_DEL2	'\\'	/* Path delimiter (used only when FPAT_DELIM is true) */
+#define FPAT_DOT	'.'		/* Dot char */
+#define FPAT_NOT	'!'		/* Exclusion (also used for sets) */
+#define FPAT_ANY	'?'		/* Any one char */
+#define FPAT_CLOS	'*'		/* Zero or more chars */
+#define FPAT_CLOSP	'\x1A'	/* Zero or more nondelimiters (used only when FPAT_SUBCLOS is true) */
+#define FPAT_SET_L	'[' 	/* Set/range open bracket	*/
+#define FPAT_SET_R	']' 	/* Set/range close bracket	*/
+#define FPAT_MSET_L	'{' 	/* Multi-set/range open bracket	*/
+#define FPAT_MSET_R	'}' 	/* Multi-set/range close bracket*/
+#define FPAT_SET_THRU	'-'	/* Set range of chars		*/
 
 
-/* Model-dependent aliases */
-/* omitted */
+#define FPAT_INVALID	0	/* invalid pattern */
+#define FPAT_CLOSED		1	/* valid pattern */
+#define FPAT_OPEN		2	/* valid pattern */
 
 
 /* Public functions */
@@ -176,12 +175,10 @@ static const char	fpattern_h_id[] = "@(#)lib/fpattern.h 1.03";
 extern int	fpattern_isvalid(const char *pat);
 extern int	fpattern_match(const char *pat, const char *fname, int flength, int keepcase);
 extern int	fpattern_matchn(const char *pat, const char *fname, int flength, int keepcase);
-
+extern int	fpattern_matchcount(const char *pat, const char *fname, int flength, int minlength, int keepcase);
 
 #ifdef __cplusplus
 }
 #endif
 
 #endif /* fpattern_h */
-
-/* End fpattern.h */

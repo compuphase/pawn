@@ -369,4 +369,12 @@ main()
 
         print(seethis[0][1]);
     #endif
+
+    #if defined SUB_CONST_EXPR
+	new a = 40;
+        new p = 70 - a
+        new q = a - 10
+	printf "p=%d, q=%d (should be p=30, q=30)\n", p, q;
+        assert p == 30 && q == 30
+    #endif
     }

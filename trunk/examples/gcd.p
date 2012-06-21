@@ -1,6 +1,6 @@
 /*
   The greatest common divisor of two values,
-  using Euclides' algorithm .
+  using Euclides' algorithm.
 */
 
 main()

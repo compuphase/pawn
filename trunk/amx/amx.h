@@ -1,6 +1,6 @@
 /*  Pawn Abstract Machine (for the Pawn language)
  *
- *  Copyright (c) ITB CompuPhase, 1997-2011
+ *  Copyright (c) ITB CompuPhase, 1997-2012
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not
  *  use this file except in compliance with the License. You may obtain a copy
@@ -99,9 +99,6 @@
   #endif
 #endif
 
-#if !defined arraysize
-  #define arraysize(array)  (sizeof(array) / sizeof((array)[0]))
-#endif
 #if !defined assert_static
   /* see "Compile-Time Assertions" by Greg Miller,
    * (with modifications to port it to C)
@@ -415,7 +412,7 @@ enum {
   #define amx_Address(amx,addr) \
                         (cell*)(((int32_t)((amx)->data ? (amx)->data : (amx)->code) & ~CELLMASK) | ((int32_t)(addr) & CELLMASK))
 #else
-  #define amx_Address(amx,addr) (cell*)(addr)
+  #define amx_Address(amx,addr) ((void)(amx),(cell*)(addr))
 #endif
 
 #if defined __STDC_VERSION__ && __STDC_VERSION__ >= 199901L
