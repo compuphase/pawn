@@ -548,10 +548,15 @@ test40:
   return
 
 test41:
-  say '41. Redundant test, please ignore.'
+  say '41. The following test should compile successfully. When it runs, it should'
+  say '    print the following (and no assertion should be fired):'
   say ''
-  say 'This test has become redundant because of syntax changes in Pawn.'
+  say '           p=30, q=30 (should be p=30, q=30)'
+  say ''
+  say 'Symptoms of detected bug: p was set to -30, due to an optimizer bug.'
   say '-----'
+  pawncc ' SUB_CONST_EXPR= test2'
+  pawnrun ' test2.amx'
   return
 
 test42:
