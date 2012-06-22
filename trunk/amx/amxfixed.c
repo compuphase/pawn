@@ -18,7 +18,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: fixed.c 4708 2012-05-18 12:52:49Z  $
+ *  Version: $Id: amxfixed.c 4731 2012-06-21 11:11:18Z  $
  */
 #include <assert.h>
 #include <stdio.h>      /* for NULL */

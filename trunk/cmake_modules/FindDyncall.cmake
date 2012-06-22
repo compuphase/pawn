@@ -21,7 +21,7 @@ FIND_PATH(DYNCALL_INCLUDE_DIR dyncall.h
    /opt/dyncall/include
    /opt/local
   ${pawn_SOURCE_DIR}/dyncall
-  ${pawn_SOURCE_DIR}/dyncall-0.5
+  ${pawn_SOURCE_DIR}/dyncall-0.7
 )
 
 FIND_PATH(DYNLOAD_INCLUDE_DIR dynload.h
@@ -33,7 +33,7 @@ FIND_PATH(DYNLOAD_INCLUDE_DIR dynload.h
    /opt/dyncall/include
    /opt/local
   ${pawn_SOURCE_DIR}/dyncall
-  ${pawn_SOURCE_DIR}/dyncall-0.5
+  ${pawn_SOURCE_DIR}/dyncall-0.7
 )
 
 FIND_LIBRARY(DYNCALL_LIBRARIES
@@ -46,7 +46,7 @@ FIND_LIBRARY(DYNCALL_LIBRARIES
   /opt/dyncall
   /opt/local
   ${pawn_SOURCE_DIR}/dyncall
-  ${pawn_SOURCE_DIR}/dyncall-0.5
+  ${pawn_SOURCE_DIR}/dyncall-0.7
 )
 
 FIND_LIBRARY(DYNCALL_EXTRA_LIBRARY
@@ -59,7 +59,7 @@ FIND_LIBRARY(DYNCALL_EXTRA_LIBRARY
   /opt/dyncall
   /opt/local
   ${pawn_SOURCE_DIR}/dyncall
-  ${pawn_SOURCE_DIR}/dyncall-0.5
+  ${pawn_SOURCE_DIR}/dyncall-0.7
 )
 
 IF(DYNCALL_EXTRA_LIBRARY)

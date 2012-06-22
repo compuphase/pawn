@@ -4,4 +4,4 @@ Docct=1
 Doc01=fib.p
 
 [Summary]
-RTF={\rtf1\ansi\ansicpg1252\deff0\deflang1043{\fonttbl{\f0\fswiss\fcharset0 Arial;}}{\colortbl ;\red128\green0\blue0;}{\*\generator Msftedit 5.41.15.1507;}\viewkind4\uc1\pard\cf1\b\f0\fs24 Fibinacci numbers\b0\fs28\par\cf0\fs20\par A simple script that calculates the Fibonacci number of a given value, using an iterative algorithm.\par\par The script illustrates funtions (as well as loops and arithmetic).\par}
+RTF={\rtf1\ansi\ansicpg1252\deff0\deflang1043{\fonttbl{\f0\fswiss\fcharset0 Arial;}}{\colortbl ;\red128\green0\blue0;}\viewkind4\uc1\pard\cf1\b\f0\fs24 Fibonacci numbers\b0\fs28\par\cf0\fs20\par A simple script that calculates the Fibonacci number of a given value, using an iterative algorithm.\par\par The script illustrates funtions (as well as loops and arithmetic).\par}

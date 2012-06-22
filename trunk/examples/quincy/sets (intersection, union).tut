@@ -1,0 +1,7 @@
+[Documents]
+Directory=".."
+Docct=1
+Doc01=set.p
+
+[Summary]
+RTF={\rtf1\ansi\ansicpg1252\deff0\deflang1043{\fonttbl{\f0\fswiss\fcharset0 Arial;}}{\colortbl ;\red128\green0\blue0;}\viewkind4\uc1\pard\cf1\b\f0\fs24 Sets (intersection, union)\cf0\b0\fs20\par\par Set operations can make some complex looking algorithms, like path finding, relatively easy. This script contains a virtual map with positions and it returns all destinations that can be reached from a specific location on this map in a given number of steps.\par\par The script illustrates sets and bit operations.\par}

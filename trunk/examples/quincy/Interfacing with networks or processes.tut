@@ -1,0 +1,5 @@
+[Documents]
+Docct=0
+
+[Summary]
+RTF={\rtf1\ansi\ansicpg1252\deff0\deflang1043{\fonttbl{\f0\fswiss\fcharset0 Arial;}}{\colortbl ;\red128\green0\blue0;}{\*\generator Msftedit 5.41.15.1507;}\viewkind4\uc1\pard\cf1\b\f0\fs24 Interfacing with networks or processes\b0\fs28\par\cf0\fs20\par Pawn scripts do not run in isolation. Usually the Pawn scripting system is part of a large application or an advanced device. The scripts in this category show how Pawn might be extended, by adding interfaces to network functions, process functions, or other peripherals.\par}

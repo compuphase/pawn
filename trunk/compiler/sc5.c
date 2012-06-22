@@ -2,7 +2,7 @@
  *
  *  In fact a very simple system, using only 'panic mode'.
  *
- *  Copyright (c) ITB CompuPhase, 1997-2011
+ *  Copyright (c) ITB CompuPhase, 1997-2012
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not
  *  use this file except in compliance with the License. You may obtain a copy
@@ -16,7 +16,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: sc5.c 4611 2011-12-05 17:46:53Z thiadmer $
+ *  Version: $Id: sc5.c 4733 2012-06-22 08:39:46Z thiadmer $
  */
 #include <assert.h>
 #if defined	__WIN32__ || defined _WIN32 || defined __MSDOS__

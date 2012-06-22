@@ -4,7 +4,22 @@
     Greatest Common Divisor
     Sieve of Eratosthenes
     Fibonacci numbers
+    Julian day numbers and dates
+    Celsius to Fahrenheit
+    Obfuscating text
+    Word count
+    Message queue
+    Sets (intersection, union)
+    Reverse-Polish Notation calulator
+    Faculty numbers
+    Calculating the day of the week
+    The Towers of Hanoi
 ; States and automatons
   States and automatons
     An interactive comment parser
     Pedestrian crossing lights
+    Improved pedestrian crossing lights
+; Interfacing with networks or processes
+  Interfacing with networks or processes
+    A peer-to-peer chat program
+    Desktop calculator

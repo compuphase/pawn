@@ -15,7 +15,7 @@
 ;   machine.
 ;
 ;
-;   Copyright (c) ITB CompuPhase, 2006-2010
+;   Copyright (c) ITB CompuPhase, 2006-2012
 ;
 ;   Licensed under the Apache License, Version 2.0 (the "License"); you may not
 ;   use this file except in compliance with the License. You may obtain a copy
@@ -29,7 +29,7 @@
 ;   License for the specific language governing permissions and limitations
 ;   under the License.
 ;
-;   Version: $Id: amxexec_arm7.s 4641 2012-01-16 08:15:57Z thiadmer $
+;   Version: $Id: amxexec_arm7.s 4733 2012-06-22 08:39:46Z thiadmer $
 
 
     AREA    amxexec_data, DATA, READONLY

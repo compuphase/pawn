@@ -1,0 +1,8 @@
+[Documents]
+Directory=".."
+Docct=1
+Doc01=julian.p
+
+[Summary]
+RTF={\rtf1\ansi\ansicpg1252\deff0\deflang1043{\fonttbl{\f0\fswiss\fcharset0 Arial;}}{\colortbl ;\red128\green0\blue0;}\viewkind4\uc1\pard\cf1\b\f0\fs24 Julian day numbers and dates\cf0\b0\fs20\par\par\ldblquote Julian Day Number\rdblquote  are used to reconcile dates in historic documents, and in astronomy to calculate intervals between two events more easily. This script calculates the Julian Day Number for a given date, and inversely returns the date for a given Julian Day Number.\par\par Julian Day Numbers and the Julian Calendar are unrelated concepts, by the way.\par\par The script illustrates function calling conventions, specifically "call-by-value" versus "call-by-reference".\par}
+

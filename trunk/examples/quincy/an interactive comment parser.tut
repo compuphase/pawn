@@ -1,0 +1,7 @@
+[Documents]
+Directory=".."
+Docct=1
+Doc01=comment.p
+
+[Summary]
+RTF={\rtf1\ansi\ansicpg1252\deff0\deflang1043{\fonttbl{\f0\fswiss\fcharset0 Arial;}}{\colortbl ;\red128\green0\blue0;}{\*\generator Msftedit 5.41.15.1507;}\viewkind4\uc1\pard\cf1\b\f0\fs24 An interactive comment parser\b0\fs28\par\cf0\fs20\par This script does "syntax colouring" for programming comments (that start with /* and end with */). What is special about this script is that it does this interactively, and without stepping back on a decision taken earlier.\par\par The script illustrates state machines (automatons) event-driven programming.\par}

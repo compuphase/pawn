@@ -1,0 +1,7 @@
+[Documents]
+Directory=".."
+Docct=1
+Doc01=faculty.p
+
+[Summary]
+RTF={\rtf1\ansi\ansicpg1252\deff0\deflang1043{\fonttbl{\f0\fswiss\fcharset0 Arial;}}{\colortbl ;\red128\green0\blue0;}\viewkind4\uc1\pard\cf1\b\f0\fs24 Faculty numbers\b0\fs28\par\cf0\fs20\par A simple script that calculates the "faculty" of a given value, using an iterative algorithm.\par\par The script illustrates funtions and loops.\par}

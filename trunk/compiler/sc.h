@@ -7,7 +7,7 @@
  *
  *  This version comes close to a complete rewrite.
  *
- *  Copyright ITB CompuPhase, 1997-2011
+ *  Copyright ITB CompuPhase, 1997-2012
  *  Copyright J.E. Hendrix, 1982, 1983
  *  Copyright R. Cain, 1980
  *
@@ -23,7 +23,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: sc.h 4611 2011-12-05 17:46:53Z thiadmer $
+ *  Version: $Id: sc.h 4733 2012-06-22 08:39:46Z thiadmer $
  */
 #ifndef SC_H_INCLUDED
 #define SC_H_INCLUDED

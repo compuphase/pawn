@@ -1,6 +1,6 @@
 /* Pawn disassembler  - crude, but (perhaps) useful
  *
- *  Copyright (c) ITB CompuPhase, 2007-2011
+ *  Copyright (c) ITB CompuPhase, 2007-2012
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not
  *  use this file except in compliance with the License. You may obtain a copy
@@ -14,7 +14,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: pawndisasm.c 4641 2012-01-16 08:15:57Z thiadmer $
+ *  Version: $Id: pawndisasm.c 4733 2012-06-22 08:39:46Z thiadmer $
  */
 #include <assert.h>
 #include <stdio.h>
