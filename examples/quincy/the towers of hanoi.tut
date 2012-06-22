@@ -1,0 +1,7 @@
+[Documents]
+Directory=".."
+Docct=1
+Doc01=hanoi.p
+
+[Summary]
+RTF={\rtf1\ansi\ansicpg1252\deff0\deflang1043{\fonttbl{\f0\fswiss\fcharset0 Arial;}{\f1\fnil\fcharset2 Symbol;}}{\colortbl ;\red128\green0\blue0;}{\*\generator Msftedit 5.41.15.1507;}\viewkind4\uc1\pard\cf1\b\f0\fs24 The Towers of Hanoi\b0\fs28\par\cf0\fs20\par The Towers of Hanoi is a simple puzzle involving three rods and a number of disks. All disks have a hole in the middle, which allows them to slide over the rods, and the disk all have different sizes. At the start of the puzzle, the disks are stacked on one rod with the largest disk at the bottom and the smallest on top. The goal is to move the entire stack to another rod, obeying the following rules:\par\pard{\pntext\f1\'B7\tab}{\*\pn\pnlvlblt\pnf1\pnindent0{\pntxtb\'B7}}\fi-284\li284 you can only move one disk at a time (from one rod to another)\par{\pntext\f1\'B7\tab}you may stack a disk on top of a larger disk, or on an empty rod\par{\pntext\f1\'B7\tab}you may not stack a disk on top of a smaller disk\par\pard\par This script gives a solution for the puzzle, using an arbitrary number of disks. The script illustrates recursion.\par}

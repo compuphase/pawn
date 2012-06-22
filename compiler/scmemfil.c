@@ -3,7 +3,7 @@
  *  Routines to maintain a "text file" in memory, based on memory interface
  *  functions by faluco of the AMX Mod X team.
  *
- *  Copyright (c) ITB CompuPhase, 2003-2011
+ *  Copyright (c) ITB CompuPhase, 2003-2012
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not
  *  use this file except in compliance with the License. You may obtain a copy
@@ -17,7 +17,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: scmemfil.c 4611 2011-12-05 17:46:53Z thiadmer $
+ *  Version: $Id: scmemfil.c 4733 2012-06-22 08:39:46Z thiadmer $
  */
 
 #include <assert.h>

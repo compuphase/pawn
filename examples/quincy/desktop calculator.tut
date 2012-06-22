@@ -1,0 +1,7 @@
+[Documents]
+Directory=".."
+Docct=1
+Doc01=gtkcalc.p
+
+[Summary]
+RTF={\rtf1\ansi\ansicpg1252\deff0\deflang1043{\fonttbl{\f0\fswiss\fcharset0 Arial;}}{\colortbl ;\red128\green0\blue0;}\viewkind4\uc1\pard\cf1\b\f0\fs24 Desktop calculator\cf0\b0\fs20\par\par This is a simple four-function calculator, but one that pops up a nice windowed interface.\par\par The script requires the "process control" and "string" modules, plus GTK-server. In addition to demonstrating how to interface Pawn with GUI builders and libraries, this script also illustrates using multiple automatons to simplify larger tasks.\par}

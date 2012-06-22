@@ -1,0 +1,7 @@
+[Documents]
+Directory=".."
+Docct=1
+Doc01=queue.p
+
+[Summary]
+RTF={\rtf1\ansi\ansicpg1252\deff0\deflang1043{\fonttbl{\f0\fswiss\fcharset0 Arial;}}{\colortbl ;\red128\green0\blue0;}\viewkind4\uc1\pard\cf1\b\f0\fs24 Message queue\cf0\b0\fs20\par\par This script allows the user to type in a series of messages (maximum 10) and assign a priority to each message. The script will then print the messages in the order of decreasing priority.\par\par The script illustrates structured data, using arrays and enumerations.\par}

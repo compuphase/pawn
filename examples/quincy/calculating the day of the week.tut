@@ -1,0 +1,7 @@
+[Documents]
+Directory=".."
+Docct=1
+Doc01=weekday.p
+
+[Summary]
+RTF={\rtf1\ansi\ansicpg1252\deff0\deflang1043{\fonttbl{\f0\fswiss\fcharset0 Arial;}}{\colortbl ;\red128\green0\blue0;}\viewkind4\uc1\pard\cf1\b\f0\fs24 Calculating the day of the week\cf0\b0\fs20\par\par For every date (on the Gregorian calendar), the day of the week can be calculated with an ingeneous algorithm by the German mathematician Zeller.\par\par The script illustrates arithmetic (division and remainder after division), and the "switch" instruction, as well as embedding documentation in the source code.\par}

@@ -7,7 +7,7 @@
  *  originally created by Ron Cain, july 1980, and enhanced by James E. Hendrix.
  *  The modifications in Pawn come close to a complete rewrite, though.
  *
- *  Copyright ITB CompuPhase, 1997-2011
+ *  Copyright ITB CompuPhase, 1997-2012
  *  Copyright J.E. Hendrix, 1982, 1983
  *  Copyright R. Cain, 1980
  *
@@ -23,7 +23,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: sc1.c 4548 2011-08-01 09:35:40Z thiadmer $
+ *  Version: $Id: sc1.c 4731 2012-06-21 11:11:18Z thiadmer $
  */
 #include <assert.h>
 #include <ctype.h>
@@ -1541,7 +1541,7 @@ static void setconfig(char *root)
 
 static void setcaption(void)
 {
-  pc_printf("Pawn compiler %-25s Copyright (c) 1997-2011, ITB CompuPhase\n\n",VERSION_STR);
+  pc_printf("Pawn compiler %-25s Copyright (c) 1997-2012, ITB CompuPhase\n\n",VERSION_STR);
 }
 
 static void about(void)

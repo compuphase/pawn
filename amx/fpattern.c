@@ -57,7 +57,7 @@
 * Copyright (c) 2005-2012, ITB CompuPhase, all rights reserved.
 * www.compuphase.com
 *
-* Version: $Id: fpattern.c 4439 2011-02-17 10:39:20Z thiadmer $
+* Version: $Id: fpattern.c 4732 2012-06-21 16:02:52Z thiadmer $
 */
 
 
@@ -65,7 +65,7 @@
 /* System includes */
 #if defined TEST
 	#include <assert.h>
-#else
+#elif !defined assert
 	#define assert(e)
 #endif
 #include <string.h>

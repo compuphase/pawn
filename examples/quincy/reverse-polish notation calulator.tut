@@ -1,0 +1,10 @@
+[Documents]
+Directory=".."
+Docct=4
+Doc01=strtok.inc
+Doc02=stack.inc
+Doc03=rpnparse.inc
+Doc04=rpn.p
+
+[Summary]
+RTF={\rtf1\ansi\ansicpg1252\deff0\deflang1043{\fonttbl{\f0\fswiss\fcharset0 Arial;}}{\colortbl ;\red128\green0\blue0;}\viewkind4\uc1\pard\cf1\b\f0\fs24 Reverse-Polish Notation calulator\cf0\b0\fs20\par\par RPN calculators make you type the numbers before the operation. For example, to add the value 4 and 6, you would type "4 6 +" in an RPN calculator (without the quotes). Similarly, "12 3 /" divides 12 by 3 (giving 4).\par\par The script illustrates how to decompose a larger program into separate source files.\par}
