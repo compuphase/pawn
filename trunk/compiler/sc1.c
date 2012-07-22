@@ -23,7 +23,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: sc1.c 4731 2012-06-21 11:11:18Z thiadmer $
+ *  Version: $Id: sc1.c 4731 2012-06-21 11:11:18Z  $
  */
 #include <assert.h>
 #include <ctype.h>
@@ -2837,7 +2837,7 @@ static cell initvector(int ident,int usage,int tag,cell size,int fillzero,
   cell prev1=0,prev2=0;
   int ellips=FALSE;
   int curlit=litidx;
-  int ctag;
+  int ctag,ftag;
   int match=0;
   int packcount=-1;
   cell packitem=0;
@@ -2877,9 +2877,13 @@ static cell initvector(int ident,int usage,int tag,cell size,int fillzero,
           matchbrace='}';
         fieldusage=field->usage;
       } /* if */
+      ftag=-1;
       for ( ;; ) {
         prev2=prev1;
         prev1=init(ident,fieldusage,&ctag,errorfound,&packcount,&packitem);
+        if (ftag!=-1 && ftag!=ctag)
+          error(213);     /* tag mismatch */
+        ftag=ctag;
         if (!matchbrace)
           break;
         if ((ellips=matchtoken(tELLIPS))!=0)
@@ -2924,9 +2928,12 @@ static cell initvector(int ident,int usage,int tag,cell size,int fillzero,
             litadd(val);
           } /* if */
         } /* for */
+        ftag=field->index;
         field=field->next;
+      } else {
+        ftag=tag;
       } /* if */
-      if (!matchtag(tag,ctag,TRUE))
+      if (!matchtag(ftag,ctag,TRUE))
         error(213);             /* tag mismatch */
     } while (matchtoken(','));
     if (packcount!=0 && match=='}' && !ellips)
