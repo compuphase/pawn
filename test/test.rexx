@@ -1309,10 +1309,11 @@ test102:
   return
 
 test103:
-  say '103. Redundant test, please ignore.'
+  say '103. The following test should compile successfully (NO warnings 213).'
   say ''
-  say 'This test has become redundant because of syntax changes in Pawn.'
+  say '		Symbolic array indices with tag overrides.'
   say '-----'
+  pawncc ' TAGGED_SYMBOLIC_INDEX= rational'
   return
 
 test104:

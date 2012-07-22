@@ -14,7 +14,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: amx.h 4731 2012-06-21 11:11:18Z thiadmer $
+ *  Version: $Id: amx.h 4734 2012-06-25 12:09:56Z  $
  */
 
 #ifndef AMX_H_INCLUDED
@@ -490,11 +490,24 @@ int AMXAPI amx_UTF8Len(const cell *cstr, int *length);
 int AMXAPI amx_UTF8Put(char *string, char **endptr, int maxchars, cell value);
 
 #if PAWN_CELL_SIZE==16
-  #define amx_AlignCell(v) amx_Align16(v)
+  void amx_Swap16(uint16_t *v);
+#endif
+#if PAWN_CELL_SIZE==32
+  void amx_Swap32(uint32_t *v);
+#endif
+#if PAWN_CELL_SIZE==64 && (defined _I64_MAX || defined INT64_MAX || defined HAVE_I64)
+  void amx_Swap64(uint64_t *v);
+#endif
+
+#if PAWN_CELL_SIZE==16
+  #define amx_AlignCell(v) amx_Align16((uint16_t*)v)
+  #define amx_SwapCell(v)  amx_Swap16((uint16_t*)v)
 #elif PAWN_CELL_SIZE==32
-  #define amx_AlignCell(v) amx_Align32(v)
+  #define amx_AlignCell(v) amx_Align32((uint32_t*)v)
+  #define amx_SwapCell(v)  amx_Swap32((uint32_t*)v)
 #elif PAWN_CELL_SIZE==64 && (defined _I64_MAX || defined INT64_MAX || defined HAVE_I64)
-  #define amx_AlignCell(v) amx_Align64(v)
+  #define amx_AlignCell(v) amx_Align64((uint64_t*)v)
+  #define amx_SwapCell(v)  amx_Swap64((uint64_t*)v)
 #else
   #error Unsupported cell size
 #endif

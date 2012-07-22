@@ -119,10 +119,10 @@
   #define amx_console(c,l,f)  ((void)(c),(void)(l),(void)(f))
   unsigned int amx_setattr(int foregr,int backgr,int highlight)
   {
-    int attribs=A_NORMAL;
     if (highlight>0)
-      attribs=(attribs & ~A_NORMAL) | A_STANDOUT;
-    attrset(attribs);
+      attron(A_STANDOUT);
+    else
+      attroff(A_STANDOUT);
     //??? in future, also handle colours
   }
   void CreateConsole(void);
@@ -507,6 +507,8 @@
   { static int createdconsole=0;
     if (!createdconsole) {
       curseswin=initscr();
+      if (has_colors())
+        start_color();
       cbreak();
       noecho();
       nonl();
