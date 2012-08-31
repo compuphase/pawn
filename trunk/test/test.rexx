@@ -1689,3 +1689,16 @@ test134:
   pawncc ' CONST_REL_CHAINED_OP= test2'
   pawnrun ' test2.amx'
   return
+
+test135:
+  say '135. The following test should compile successfully.'
+  say ''
+  say '     A public function with parameters is valid.'
+  say ''
+  say 'Symptoms of detected bug: error 25, due to an uninitialized variable.'
+  say 'This bug surfaced in Linux only.'
+  say '-----'
+  pawncc ' PUBLIC_WITH_PARAMETERS= test1'
+  return
+
+

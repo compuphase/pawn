@@ -14,7 +14,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: amx.c 4734 2012-06-25 12:09:56Z  $
+ *  Version: $Id: amx.c 4769 2012-08-31 12:21:02Z  $
  */
 
 #define WIN32_LEAN_AND_MEAN
@@ -540,7 +540,7 @@ int AMXAPI amx_Callback(AMX *amx, cell index, cell *result, const cell *params)
 #endif
     assert(index>=0 && index<(cell)NUMENTRIES(hdr,natives,libraries));
     func=GETENTRY(hdr,natives,index);
-    f=(AMX_NATIVE)func->address;
+    f=(AMX_NATIVE)(intptr_t)func->address;
 #if defined AMX_NATIVETABLE
   } /* if */
 #endif
@@ -562,14 +562,14 @@ int AMXAPI amx_Callback(AMX *amx, cell index, cell *result, const cell *params)
       code-=sizeof(cell);
     assert(amx->code!=NULL);
     assert(amx->cip>=4 && amx->cip<(hdr->dat - hdr->cod));
-    assert_static(sizeof(f)<=sizeof(cell)); /* function pointer must fit in a cell */
+    assert(sizeof(f)<=sizeof(cell)); /* function pointer must fit in a cell */
     assert(*(cell*)code==index);
     #if defined AMX_TOKENTHREADING || !(defined __GNUC__ || defined __ICC || defined AMX_ASM || defined AMX_JIT)
       assert(!(amx->flags & AMX_FLAG_SYSREQN) && *(cell*)(code-sizeof(cell))==OP_SYSREQ
              || (amx->flags & AMX_FLAG_SYSREQN) && *(cell*)(code-sizeof(cell))==OP_SYSREQ_N);
     #endif
     *(cell*)(code-sizeof(cell))=amx->sysreq_d;
-    *(cell*)code=(cell)f;
+    *(cell*)code=(cell)(intptr_t)f;
   } /* if */
 
   /* Note:
@@ -1327,7 +1327,7 @@ int AMXAPI amx_Init(AMX *amx,void *program)
         if (libinit!=NULL)
           libinit(amx);
       } /* if */
-      lib->address=(ucell)hlib;
+      lib->address=(ucell)(intptr_t)hlib;
     } /* for */
   } /* local */
   #endif
@@ -1460,14 +1460,14 @@ int AMXAPI amx_Cleanup(AMX *amx)
         #if defined _Windows
           libcleanup=(AMX_ENTRY)GetProcAddress((HINSTANCE)lib->address,funcname);
         #elif defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__
-          libcleanup=(AMX_ENTRY)dlsym((void*)lib->address,funcname);
+          libcleanup=(AMX_ENTRY)dlsym((void*)(intptr_t)lib->address,funcname);
         #endif
         if (libcleanup!=NULL)
           libcleanup(amx);
         #if defined _Windows
           FreeLibrary((HINSTANCE)lib->address);
         #elif defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__
-          dlclose((void*)lib->address);
+          dlclose((void*)(intptr_t)lib->address);
         #endif
       } /* if */
     } /* for */
@@ -1897,7 +1897,7 @@ int AMXAPI amx_Register(AMX *amx, const AMX_NATIVE_INFO *list, int number)
       /* this function is not yet located */
       funcptr=(list!=NULL) ? findfunction(GETENTRYNAME(hdr,func),list,number) : NULL;
       if (funcptr!=NULL)
-        func->address=(ucell)funcptr;
+        func->address=(ucell)(intptr_t)funcptr;
       else
         err=AMX_ERR_NOTFOUND;
     } /* if */
@@ -2407,7 +2407,7 @@ int AMXAPI amx_Exec(AMX *amx, cell *retval, int index)
       PUSH(alt);
       break;
     case OP_PUSHR_PRI:
-      PUSH(data+pri);
+      PUSH((intptr_t)data+pri);
       break;
     case OP_POP_PRI:
       POP(pri);
@@ -2743,7 +2743,7 @@ int AMXAPI amx_Exec(AMX *amx, cell *retval, int index)
       amx->hea=hea;
       amx->frm=frm;
       amx->stk=stk;
-      pri=((AMX_NATIVE)offs)(amx,(cell *)(data+(int)stk));
+      pri=((AMX_NATIVE)(intptr_t)offs)(amx,(cell*)(data+(int)stk));
       if (amx->error!=AMX_ERR_NONE) {
         if (amx->error==AMX_ERR_SLEEP) {
           amx->pri=pri;
@@ -2766,7 +2766,7 @@ int AMXAPI amx_Exec(AMX *amx, cell *retval, int index)
       amx->hea=hea;
       amx->frm=frm;
       amx->stk=stk;
-      pri=((AMX_NATIVE)offs)(amx,(cell *)(data+(int)stk));
+      pri=((AMX_NATIVE)(intptr_t)offs)(amx,(cell*)(data+(int)stk));
       stk+=val+4;
       if (amx->error!=AMX_ERR_NONE) {
         if (amx->error==AMX_ERR_SLEEP) {
@@ -2866,15 +2866,15 @@ int AMXAPI amx_Exec(AMX *amx, cell *retval, int index)
       break;
     case OP_PUSHR_C:
       GETPARAM(offs);
-      PUSH(data+offs);
+      PUSH((intptr_t)data+offs);
       break;
     case OP_PUSHR_S:
       GETPARAM(offs);
-      PUSH(data+_R(data,frm+offs));
+      PUSH((intptr_t)data+_R(data,frm+offs));
       break;
     case OP_PUSHR_ADR:
       GETPARAM(offs);
-      PUSH(data+frm+offs);
+      PUSH((intptr_t)data+frm+offs);
       break;
     case OP_JEQ:
       if (pri==alt)
@@ -3057,21 +3057,21 @@ int AMXAPI amx_Exec(AMX *amx, cell *retval, int index)
       GETPARAM(val);
       while (val--) {
         GETPARAM(offs);
-        PUSH(data+offs);
+        PUSH((intptr_t)data+offs);
       } /* while */
       break;
     case OP_PUSHRM_S:
       GETPARAM(val);
       while (val--) {
         GETPARAM(offs);
-        PUSH(data+_R(data,frm+offs));
+        PUSH((intptr_t)data+_R(data,frm+offs));
       } /* while */
       break;
     case OP_PUSHRM_ADR:
       GETPARAM(val);
       while (val--) {
         GETPARAM(offs);
-        PUSH(data+frm+offs);
+        PUSH((intptr_t)data+frm+offs);
       } /* while */
       break;
     case OP_LOAD2:
@@ -3195,15 +3195,15 @@ int AMXAPI amx_Exec(AMX *amx, cell *retval, int index)
       break;
     case OP_PUSHR_P_C:
       GETPARAM_P(offs,op);
-      PUSH(data+offs);
+      PUSH((intptr_t)data+offs);
       break;
     case OP_PUSHR_P_S:
       GETPARAM_P(offs,op);
-      PUSH(data+_R(data,frm+offs));
+      PUSH((intptr_t)data+_R(data,frm+offs));
       break;
     case OP_PUSHR_P_ADR:
       GETPARAM_P(offs,op);
-      PUSH(data+frm+offs);
+      PUSH((intptr_t)data+frm+offs);
       break;
     case OP_PUSHM_P:
       GETPARAM_P(val,op);
@@ -3237,21 +3237,21 @@ int AMXAPI amx_Exec(AMX *amx, cell *retval, int index)
       GETPARAM_P(val,op);
       while (val--) {
         GETPARAM(offs);
-        PUSH(data+offs);
+        PUSH((intptr_t)data+offs);
       } /* while */
       break;
     case OP_PUSHRM_P_S:
       GETPARAM_P(val,op);
       while (val--) {
         GETPARAM(offs);
-        PUSH(data+_R(data,frm+offs));
+        PUSH((intptr_t)data+_R(data,frm+offs));
       } /* while */
       break;
     case OP_PUSHRM_P_ADR:
       GETPARAM_P(val,op);
       while (val--) {
         GETPARAM(offs);
-        PUSH(data+frm+offs);
+        PUSH((intptr_t)data+frm+offs);
       } /* while */
       break;
     case OP_STACK_P:

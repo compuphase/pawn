@@ -238,6 +238,7 @@ SC_FUNC void writestatetables(symbol *root,int lbl_nostate,int lbl_ignorestate)
       statecount=0;
       if (strcmp(sym->name,uEXITFUNC)==0) {
         lbl_default= (pc_overlays>0) ? ovlEXITSTATE : lbl_ignorestate;
+		lbl_defnostate=-1;
       } else {
         lbl_defnostate= (pc_overlays>0) ? ovlNO_STATE : lbl_nostate;
         lbl_default=lbl_defnostate;
@@ -1549,7 +1550,7 @@ SC_FUNC void outval(cell val,int fullcell,int newline)
   #if !defined AMX_NO_PACKED_OPC
     if (!fullcell) {
       #if !defined NDEBUG
-        assert(strlen(str)==2*pc_cellsize);
+        assert(strlen(str)==2*(size_t)pc_cellsize);
         assert((str[0]=='0' || str[0]=='f') && (str[1]=='0' || str[1]=='f'));
         if (pc_cellsize>=4)
           assert((str[2]=='0' || str[2]=='f') && (str[3]=='0' || str[3]=='f'));
