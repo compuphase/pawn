@@ -116,6 +116,15 @@ useless()
     forward @proto2(bool:flg);
 #endif
 
+#if defined PUBLIC_WITH_PARAMETERS
+    forward @test(bb);
+
+    @test(bb)
+        {
+        return (bb);
+    }
+#endif
+
 #if defined AMBIGUOUS_CALL /* this function is okay, the error is in the call */
 increment(a)
     return a + 1

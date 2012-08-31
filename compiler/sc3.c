@@ -1189,6 +1189,7 @@ static int hier13(value *lval)
       checkfunction(lval);      /* if the test is a function, that function
                                  * should return a value */
     } /* if */
+	heap1=heap2=0;				/* just to avoid a compiler warning */
     if (sc_status!=statFIRST) {
       #if !defined NDEBUG
         int result=
@@ -1506,7 +1507,7 @@ static int hier2(value *lval)
       char idxname[sNAMEMAX+1],*ptr;
       constvalue *namelist=NULL;
       symbol *subsym=sym;
-      for (level=0; (symlabel=matchtoken(tSYMLABEL)) || matchtoken('['); level++) {
+      for (level=0; (symlabel=matchtoken(tSYMLABEL))!=0 || matchtoken('['); level++) {
         namelist=NULL;
         if (subsym!=NULL && (symlabel || matchtoken(tSYMLABEL))) {
           namelist=subsym->dim.array.names;
@@ -1567,7 +1568,7 @@ static int hier2(value *lval)
       char idxname[sNAMEMAX+1],*ptr;
       constvalue *namelist=NULL;
       symbol *subsym=sym;
-      for (level=0; (symlabel=matchtoken(tSYMLABEL)) || matchtoken('['); level++) {
+      for (level=0; (symlabel=matchtoken(tSYMLABEL))!=0 || matchtoken('['); level++) {
         namelist=NULL;
         if (subsym!=NULL && (symlabel || matchtoken(tSYMLABEL))) {
           namelist=subsym->dim.array.names;
@@ -1732,6 +1733,9 @@ restart:
       case tSYMLABEL:
         close=tSYMLABEL;
         break;
+      default:
+        assert(0);
+		close=0;
       } /* switch */
       if (sym==NULL) {  /* sym==NULL if lval is a constant or a literal, or an unknown variable */
         if (strlen(lastsymbol)>0)

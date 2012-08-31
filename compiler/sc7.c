@@ -41,7 +41,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: sc7.c 4731 2012-06-21 11:11:18Z thiadmer $
+ *  Version: $Id: sc7.c 4731 2012-06-21 11:11:18Z  $
  */
 #include <assert.h>
 #include <stdio.h>
@@ -518,7 +518,7 @@ static int matchsequence(char *start,char *end,const char *pattern,
         /* reconvert the value to a string (without signs or expressions) */
         ptr=itoh(v);
         #if !defined NDEBUG
-          assert(strlen(ptr)==2*pc_cellsize);
+          assert(strlen(ptr)==2*(size_t)pc_cellsize);
           assert((ptr[0]=='0' || ptr[0]=='f') && (ptr[1]=='0' || ptr[1]=='f'));
           if (pc_cellsize>=32)
             assert((ptr[2]=='0' || ptr[2]=='f') && (ptr[3]=='0' || ptr[3]=='f'));
@@ -624,7 +624,7 @@ static char *replacesequence(const char *pattern,char symbols[MAX_OPT_VARS+1][MA
       var=atoi(lptr);
       assert(var>=0 && var<=MAX_OPT_VARS);
       assert(symbols[var][0]!='\0' || optsym);  /* variable should be defined */
-      assert(var!=0 || strlen(symbols[var])==pc_cellsize || (symbols[var][0]=='-' && strlen(symbols[var])==pc_cellsize+1) || atoi(symbols[var])==0);
+      assert(var!=0 || strlen(symbols[var])==(size_t)pc_cellsize || (symbols[var][0]=='-' && strlen(symbols[var])==(size_t)pc_cellsize+1) || atoi(symbols[var])==0);
       *repl_length+=(int)strlen(symbols[var]);
       optsym=FALSE;
       break;

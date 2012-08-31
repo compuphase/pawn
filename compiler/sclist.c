@@ -20,7 +20,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: sclist.c 4733 2012-06-22 08:39:46Z thiadmer $
+ *  Version: $Id: sclist.c 4769 2012-08-31 12:21:02Z thiadmer $
  */
 #include <assert.h>
 #include <limits.h>
@@ -466,6 +466,9 @@ SC_FUNC void delete_heaplisttable(void)
 #elif (defined _MSC_VER || defined __BORLANDC__) && (defined _I64_MAX || defined HAVE_I64)
   #define PRId64    "I64d"
   #define PRIx64    "I64x"
+#elif defined __WORDSIZE && __WORDSIZE == 64
+  #define PRId64    "ld"
+  #define PRIx64    "lx"
 #else
   #define PRId64    "lld"
   #define PRIx64    "llx"

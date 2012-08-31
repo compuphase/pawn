@@ -23,7 +23,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: sc1.c 4731 2012-06-21 11:11:18Z  $
+ *  Version: $Id: sc1.c 4769 2012-08-31 12:21:02Z  $
  */
 #include <assert.h>
 #include <ctype.h>
@@ -163,9 +163,6 @@ static int *wqptr;              /* pointer to next entry */
   static char *pc_globaldoc=NULL;/* main documentation */
   static char *pc_recentdoc=NULL;/* documentation from the most recent comment block */
   int pc_docstring_suspended=FALSE;
-#endif
-#if defined __WIN32__ || defined _WIN32 || defined _Windows
-  static HWND hwndFinish = 0;
 #endif
 
 #if !defined NO_MAIN
@@ -782,9 +779,9 @@ cleanup:
     (void)POPSTK_P();   /* curlibrary */
     inpfname=(char *)POPSTK_P();
     inpf=(FILE *)POPSTK_P();
-    assert(inpfname!=NULL && (int)inpfname!=-1);
+    assert(inpfname!=NULL && inpfname!=(char*)-1);
     free(inpfname);
-    assert(inpf!=NULL && (int)inpf!=-1);
+    assert(inpf!=NULL && inpf!=(FILE*)-1);
     fclose(inpf);
   } /* if */
   lexinit(TRUE);                          /* reset and release buffers */
@@ -830,10 +827,6 @@ cleanup:
   } else {
     retcode=jmpcode;
   } /* if */
-  #if defined __WIN32__ || defined _WIN32 || defined _Windows
-    if (IsWindow(hwndFinish))
-      PostMessage(hwndFinish,RegisterWindowMessage("PawnNotify"),retcode,0L);
-  #endif
   #if defined FORTIFY
     Fortify_ListAllMemory();
   #endif
@@ -1124,16 +1117,9 @@ static void parseoptions(int argc,char **argv,char *oname,char *ename,char *pnam
       case 'e':
         strlcpy(ename,option_value(ptr),_MAX_PATH); /* set name of error file */
         break;
-#if defined __WIN32__ || defined _WIN32 || defined _Windows
-      case 'H':
-        hwndFinish=(HWND)atoi(option_value(ptr));
-        if (!IsWindow(hwndFinish))
-          hwndFinish=(HWND)0;
-        break;
-#endif
       case 'i':
         strlcpy(str,option_value(ptr),sizeof str);  /* set name of include directory */
-        i=strlen(str);
+        i=(int)strlen(str);
         if (i>0) {
           if (str[i-1]!=DIRSEP_CHAR) {
             str[i]=DIRSEP_CHAR;
@@ -1448,7 +1434,7 @@ static void setconfig(char *root)
 {
   char path[_MAX_PATH]="";
   char *ptr,*base;
-  int len;
+  size_t len;
 
   #if defined macintosh || defined __APPLE__
     /* OS X makes the directory of the binary "current" when it is launched */
@@ -1563,9 +1549,6 @@ static void about(void)
     pc_printf("             2    full debug information and dynamic checking\n");
     pc_printf("             3    same as -d2, but implies -O0\n");
     pc_printf("         -e<name> set name of error file (quiet compile)\n");
-#if defined __WIN32__ || defined _WIN32 || defined _Windows
-    pc_printf("         -H<hwnd> window handle to send a notification message on finish\n");
-#endif
     pc_printf("         -i<name> path for include files\n");
     pc_printf("         -k<hex>  key for encrypted scripts\n");
     pc_printf("         -l       create list file (preprocess only)\n");
@@ -2323,7 +2306,7 @@ static void declglb(char *firstname,int firsttag,int fpublic,int fstatic,int fst
       address=pc_cellsize*glb_declared;
       glb_incr=(int)size;
     } /* if */
-    if (address==pc_cellsize*glb_declared) {
+    if (address==(ucell)pc_cellsize*glb_declared) {
       dumplits();       /* dump the literal queue */
       dumpzero((int)size-litidx);
     } /* if */
@@ -3224,6 +3207,7 @@ static int getstates(const char *funcname)
   count=0;
   listsize=0;
   list=NULL;
+  automaton=NULL;
   fsa=-1;
 
   do {
@@ -4321,13 +4305,14 @@ static void doarg(char *name,int ident,int offset,int tags[],int numtags,
   arg->defvalue.val=0;          /* clear */
   arg->defvalue_tag=0;
   arg->numdim=0;
+  arg->usage=0;
   matchbrace=0;
+  usage=0;
   if (matchtoken('['))
     matchbrace=']';
   else if (matchtoken('{'))
     matchbrace='}';
   if (matchbrace!=0) {
-    usage=0;
     if (ident==iREFERENCE)
       error(67,name);           /* illegal declaration ("&name[]" is unsupported) */
     if (matchbrace==']') {
@@ -4476,7 +4461,7 @@ static int find_xmltag(char *source,char *xmltag,char *xmlparam,char *xmlvalue,
                        char **inner_start,int *inner_length)
 {
   char *ptr,*inner_end;
-  int xmltag_len,xmlparam_len,xmlvalue_len;
+  size_t xmltag_len,xmlparam_len,xmlvalue_len;
   int match;
 
   assert(source!=NULL);
@@ -6013,7 +5998,7 @@ static int dofor(void)
   assert(stgidx==0);
   index=stgidx;
   stgmark(sSTARTREORDER);
-  stgmark((char)(sEXPRSTART+0));    /* mark start of 2nd expression in stage */
+  stgmark((unsigned char)(sEXPRSTART+0));    /* mark start of 2nd expression in stage */
   setlabel(skiplab);                /* jump to this point after 1st expression */
   if (matchtoken(';')) {
     endlessloop=1;
@@ -6021,7 +6006,7 @@ static int dofor(void)
     endlessloop=test(wq[wqEXIT],FALSE,FALSE);/* expression 2 (jump to wq[wqEXIT] if false) */
     needtoken(';');
   } /* if */
-  stgmark((char)(sEXPRSTART+1));    /* mark start of 3th expression in stage */
+  stgmark((unsigned char)(sEXPRSTART+1));    /* mark start of 3th expression in stage */
   if (!matchtoken(endtok)) {
     doexpr(TRUE,TRUE,TRUE,TRUE,NULL,NULL,FALSE);    /* expression 3 */
     needtoken(endtok);
@@ -6525,7 +6510,8 @@ static void dostate(void)
   symbol *sym;
   constvalue dummyautomaton,dummystate;
   #if !defined PAWN_LIGHT
-    int length,index,listid,listindex,stateindex;
+    size_t length;
+	int index,listid,listindex,stateindex;
     char *doc;
   #endif
 

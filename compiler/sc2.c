@@ -309,15 +309,16 @@ static void doinclude(int silent)
  */
 static void readline(unsigned char *line,int append)
 {
-  int i,num,cont;
+  int i,cont;
   unsigned char *ptr;
   symbol *sym;
+  size_t num;
 
   if (lptr==term_expr)
     return;
   num=sLINEMAX;
   if (append) {
-    i=strlen(line);
+    i=(int)strlen((char*)line);
     num-=i;
     line+=i;
   } /* if */
@@ -363,7 +364,7 @@ static void readline(unsigned char *line,int append)
       listline=-1;              /* force a #line directive when changing the file */
     } /* if */
 
-    if (pc_readsrc(inpf,line,num)==NULL) {
+    if (pc_readsrc(inpf,line,(int)num)==NULL) {
       *line='\0';     /* delete line */
       cont=FALSE;
     } else {
@@ -1365,7 +1366,7 @@ static int command(void)
   case tpUNDEF:
     if (!SKIPPING) {
       if (lex(&val,&str)==tSYMBOL) {
-        ret=delete_subst(str,strlen(str));
+        ret=delete_subst(str,(int)strlen(str));
         if (!ret) {
           /* also undefine normal constants */
           symbol *sym=findconst(str);
@@ -1492,8 +1493,9 @@ static int substpattern(unsigned char *line,size_t buffersize,char *pattern,char
   int prefixlen;
   const unsigned char *p,*s,*e;
   unsigned char *args[10];
-  int match,arg,len,instring;
+  int match,arg,instring;
   int stringize;
+  size_t len;
 
   memset(args,0,sizeof args);
 
@@ -2843,7 +2845,7 @@ SC_FUNC void delete_symbols(symbol *root,int level,int delete_labels,int delete_
 SC_FUNC uint32_t namehash(const char *name)
 {
   const unsigned char *ptr=(const unsigned char *)name;
-  int len=strlen(name);
+  uint32_t len=(uint32_t)strlen(name);
   if (len==0)
     return 0L;
   assert(len<256);

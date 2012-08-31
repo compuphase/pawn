@@ -28,7 +28,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: pawndbg.c 4523 2011-06-21 15:03:47Z thiadmer $
+ *  Version: $Id: pawndbg.c 4769 2012-08-31 12:21:02Z thiadmer $
  *
  *
  *  Command line options:
@@ -303,7 +303,7 @@ static char hline_str[256] = "";  /* number of columns in a window should
       amx_printf("\016");          /* SO code to select the graphic set */
   #endif
 
-  amx_printf(hline_str);
+  amx_printf("%s",hline_str);
 
   #if defined VT100
     if (terminal>0)
