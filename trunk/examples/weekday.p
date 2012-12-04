@@ -162,4 +162,3 @@ daysinmonth(month, year)
     assert 1 <= month <= 12
     return daylist[month-1] + _:(month == 2 && isleapyear(year))
     }
-

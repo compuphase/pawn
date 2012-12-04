@@ -3,7 +3,7 @@
 main()
     {
     const max_primes = 100
-    new series[max_primes] = { true, ... }
+    new series[max_primes] = [ true, ... ]
 
     for (new i = 2; i < max_primes; ++i)
         if (series[i])

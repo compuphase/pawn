@@ -5,7 +5,7 @@ main()
     {
     print "Please type a string: "
     new string[100]
-    getstring string, sizeof string
+    getstring string, sizeof string, false
 
     new count = 0
 

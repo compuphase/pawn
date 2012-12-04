@@ -3,8 +3,8 @@ main()
     new HandOfCards[10]
     FillRandom(HandOfCards, 52)
 
-    print "A draw of 10 numbers from a range of 0 to 51 \
-           (inclusive) without duplicates:\n"
+    print "A draw of 10 numbers from a range of 0 to 51 " ...
+          "(inclusive) without duplicates:\n"
     for (new i = 0; i < sizeof HandOfCards; i++)
         printf "%d ", HandOfCards[i]
     }

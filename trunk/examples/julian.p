@@ -10,7 +10,7 @@ main()
     y = getvalue()
 
     jdn = DateToJulian(d, m, y)
-    printf("Date %d/%d/%d = %d JD\n", d, m, y, jdn)
+    printf "Date %d/%d/%d = %d JD\n", d, m, y, jdn
 
     print "Give a Julian Day Number: "
     jdn = getvalue()
