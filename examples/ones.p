@@ -59,4 +59,3 @@ stock ones: operator-(ones: a)
 
 stock ones: operator-(ones: a, ones: b)
     return a + -b
-

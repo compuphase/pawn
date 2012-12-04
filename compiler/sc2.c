@@ -1,6 +1,6 @@
 /*  Pawn compiler - File input, preprocessing and lexical analysis functions
  *
- *  Copyright (c) ITB CompuPhase, 1997-2011
+ *  Copyright (c) ITB CompuPhase, 1997-2012
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not
  *  use this file except in compliance with the License. You may obtain a copy
@@ -403,7 +403,7 @@ static void readline(unsigned char *line,int append)
     sym=findconst("__line");
     assert(sym!=NULL);
     sym->addr=fline;
-  } while (num>=0 && cont);
+  } while (num>0 && cont);
 }
 
 /*  stripcom

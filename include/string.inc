@@ -1,6 +1,6 @@
 /* String functions
  *
- * (c) Copyright 2005-2011, ITB CompuPhase
+ * (c) Copyright 2005-2012, ITB CompuPhase
  * This file is provided as is (no warranties).
  */
 #pragma library String

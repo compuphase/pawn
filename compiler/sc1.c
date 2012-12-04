@@ -5820,8 +5820,10 @@ static int test(int label,int parens,int invert)
                                  * code generator */
     ident=expression(&constval,&tag,&sym,TRUE);
     tok=matchtoken(',');
-    if (tok)
+    if (tok) {
       markexpr(sEXPR,NULL,0);
+      sc_allowproccall=FALSE;   /* cannot use "procedure call" syntax anymore */
+    }
   } while (tok); /* do */
   if (parens)
     needtoken(')');
@@ -5954,7 +5956,7 @@ static int dofor(void)
   int wq[wqSIZE];
   cell save_decl;
   int save_nestlevel,save_endlessloop,skiplab;
-  int index,endtok;
+  int index;
   int *ptr;
 
   save_decl=declared;
@@ -5963,8 +5965,8 @@ static int dofor(void)
 
   addwhile(wq);
   skiplab=getlabel();
-  endtok= matchtoken('(') ? ')' : tDO;
-  if (matchtoken(';')==0) {
+  needtoken('(');
+  if (!matchtoken(';')) {
     /* new variable declarations are allowed here */
     if (matchtoken(tNEW)) {
       /* The variable in expr1 of the for loop is at a
@@ -6007,9 +6009,9 @@ static int dofor(void)
     needtoken(';');
   } /* if */
   stgmark((unsigned char)(sEXPRSTART+1));    /* mark start of 3th expression in stage */
-  if (!matchtoken(endtok)) {
+  if (!matchtoken(')')) {
     doexpr(TRUE,TRUE,TRUE,TRUE,NULL,NULL,FALSE);    /* expression 3 */
-    needtoken(endtok);
+    needtoken(')');
   } /* if */
   stgmark(sENDREORDER);             /* mark end of reversed evaluation */
   stgout(index);

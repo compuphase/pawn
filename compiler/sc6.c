@@ -44,9 +44,7 @@ typedef struct {
   char *name;
   int segment;          /* sIN_CSEG=parse in cseg, sIN_DSEG=parse in dseg */
   OPCODE_PROC func;
-  #if !defined NDEBUG
-    int opt_level;      /* optimization level for this instruction set */
-  #endif
+  int opt_level;        /* optimization level for this instruction set */
 } OPCODE;
 
 static cell *lbltab;    /* label table */
