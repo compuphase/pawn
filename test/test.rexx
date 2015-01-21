@@ -1,4 +1,4 @@
-/* Regression test suite for the Small compiler and abstract machine */
+/* Regression test suite for the Pawn compiler and abstract machine */
 
 /* Create the DLLs with:
  *   bcc32 -w -tWD -eamxFixed -DAMXEXPORT="__stdcall _export" -DAMX_NATIVE_CALL=__stdcall fixed.c amx.c
@@ -30,7 +30,8 @@ say 'You can abort the test run by entering "BYE" at any "test#" prompt.'
 
 /* check whether we are running in Windows or Linux */
 sysname = uname('S')
-if sysname = WINNT | sysname = WIN2K | sysname = WINXP| sysname = WIN95 | sysname = WIN98 then
+say sysname
+if sysname = WINNT | sysname = WIN2K | sysname = WINXP | sysname = WIN7 | sysname = WIN8 | sysname = WIN95 | sysname = WIN98 then
   iswin32 = 1
 else
   iswin32 = 0
@@ -1701,4 +1702,98 @@ test135:
   pawncc ' PUBLIC_WITH_PARAMETERS= test1'
   return
 
+test136:
+  say '136. The following test should issue warnings 215 and 217, but NOT error 28'
+  say ''
+  say 'Symptoms of detected bug: error 25, due to braces being misinterpreted as an'
+  say 'array index.'
+  say '-----'
+  pawncc ' ELSE_NO_IF= test1'
+  return
+
+test137:
+  say '137. The following test should issue error 010.'
+  say ''
+  say '     A global variable initialized by a function call.'
+  say ''
+  say 'Symptoms of detected bug: assertion if the function call uses a string literal'
+  say 'and errors about unknown functions otherwise.'
+  say '-----'
+  pawncc ' INVALID_GLOBAL_DECL= test1'
+  return
+
+test138:
+  say '138. The following test should issue error 001, expecting token: "[", but '
+  say '     finding "{" (followed by more errors).'
+  say ''
+  say '     A local static array with an incorrect (packed/unpacked) initialization.'
+  say ''
+  say 'Symptoms of detected bug: assertion because the literal queue was cleared on'
+  say 'the parsing error and the indirection tables relied on data still being there.'
+  say '-----'
+  pawncc ' INVALID_STATIC_2D_PACKED= test1'
+  return
+
+test139:
+  say '139. The following test should issue warning 229 TWICE.'
+  say ''
+  say '     mismatching index operators on packed and unpacked arrays.'
+  say '-----'
+  pawncc ' MIX_PACK_ASSIGN= test2'
+  return
+
+test140:
+  say '140. The following test should compile successfully; when run, it should print:'
+  say ''
+  say '         packed: 11 22 33 44'
+  say '         unpacked: 11223344'
+  say ''
+  say '     using functions to access a full cell of a packed array.'
+  say '-----'
+  pawncc ' MIX_PACK_FUNC= test2'
+  pawnrun ' test2.amx'
+  return
+
+test141:
+  say '141. The following test should compile successfully.'
+  say ''
+  say '     Clearing a string by assigning it an empty literal string.'
+  say ''
+  say 'Symptoms of detected bug: error 046 (unknown array size).'
+  say '-----'
+  pawncc ' CLEAR_STRING= test1'
+  return
+
+test142:
+  say '142. The following test should compile successfully.'
+  say ''
+  say '     A function taking no parameters with the compound block ending on the'
+  say '     same line.'
+  say ''
+  say 'Symptoms of detected bug: error 001 (expecting ";" but finding "}").'
+  say '-----'
+  pawncc ' CLOSING_BRACE_NO_PARMS= test2'
+  return
+
+test143:
+  say '143. The following test should compile successfully.'
+  say ''
+  say '    Accessing an element in a symbolic pseudo-array declared as packed.'
+  say ''
+  say 'Symptoms of detected bug: warning 229 (mixing packed & unpacked).'
+  say '-----'
+  pawncc ' PSEUDO_PACKED_ARRAY_PACKED= test1'
+  return
+
+test144:
+  say '144. The compilation should issue error 229.'
+  say ''
+  say '    Accessing an element in a symbolic pseudo-array declared as packed, but'
+  say '    accessed as unpacked'
+  say ''
+  say 'Symptoms of detected bug: no warning, because the pseudo-array inherits the'
+  say 'packed/unpacked flag of the main array.'
+  say '-----'
+  pawncc ' PSEUDO_PACKED_ARRAY_UNPACKED= test1'
+  return
 

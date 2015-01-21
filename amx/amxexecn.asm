@@ -28,7 +28,7 @@
 ;This implementation of the abstract machine for NASM is a port of the
 ;abstract machine core written by Marc Peter.
 ;
-;Copyright 2003-2011 ITB CompuPhase, portions copyright 1998-2000 by Marc Peter.
+;Copyright 2003-2013 ITB CompuPhase, portions copyright 1998-2000 by Marc Peter.
 ;
 ;Licensed under the Apache License, Version 2.0 (the "License"); you may not
 ;use this file except in compliance with the License. You may obtain a copy

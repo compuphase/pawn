@@ -6,7 +6,7 @@
  *  o  Documentation tags and automatic listings
  *  o  Debug strings
  *
- *  Copyright (c) ITB CompuPhase, 2001-2012
+ *  Copyright (c) ITB CompuPhase, 2001-2015
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not
  *  use this file except in compliance with the License. You may obtain a copy
@@ -20,7 +20,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: sclist.c 4769 2012-08-31 12:21:02Z thiadmer $
+ *  Version: $Id: sclist.c 5181 2015-01-21 09:44:28Z thiadmer $
  */
 #include <assert.h>
 #include <limits.h>
@@ -534,8 +534,12 @@ SC_FUNC stringlist *insert_dbgsymbol(symbol *sym)
       symbol *sub;
       strcat(string," [ ");
       for (sub=sym; sub!=NULL; sub=finddepend(sub)) {
-        assert(sub->dim.array.level==count--);
+        #if !defined NDEBUG
+          assert(sub->dim.array.level==count);
+          count-=1;
+        #endif
         sprintf(string+strlen(string),"%x ",(unsigned)sub->dim.array.length);
+        /* ??? also indicate whether the last dimension is packed */
         /* ??? also dump the index field names (but need a dynamically growing string for this) */
       } /* for */
       strcat(string,"]");

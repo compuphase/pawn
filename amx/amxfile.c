@@ -1,6 +1,6 @@
 /* Text file I/O module for the Pawn Abstract Machine
  *
- *  Copyright (c) ITB CompuPhase, 2003-2012
+ *  Copyright (c) ITB CompuPhase, 2003-2015
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not
  *  use this file except in compliance with the License. You may obtain a copy
@@ -14,7 +14,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: amxfile.c 4733 2012-06-22 08:39:46Z thiadmer $
+ *  Version: $Id: amxfile.c 5181 2015-01-21 09:44:28Z thiadmer $
  */
 #if defined _UNICODE || defined __UNICODE__ || defined UNICODE
 # if !defined UNICODE   /* for Windows */
@@ -36,7 +36,7 @@
 #if defined __BORLANDC__
   #include <dir.h>
 #endif
-#if defined __BORLANDC__ || defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__ || defined MACOS
+#if defined __BORLANDC__ || defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__ || defined MACOS || defined __APPLE__
   #include <utime.h>
 #else
   #include <sys/utime.h>
@@ -44,10 +44,10 @@
 #if defined __WIN32__ || defined __MSDOS__
   #include <malloc.h>
 #endif
-#if defined __WATCOMC__
+#if defined __WATCOMC__ || defined _MSC_VER
   #include <direct.h>
 #endif
-#if defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__ || defined MACOS
+#if defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__ || defined MACOS || defined __APPLE__
   #include <dirent.h>
 #else
   #include <io.h>
@@ -87,12 +87,19 @@
   #define _tfopen       fopen
   #define _tfputs       fputs
   #define _tgetenv      getenv
-  #define _tmkdir       _mkdir
   #define _tremove      remove
   #define _trename      rename
-  #define _trmdir       _rmdir
-  #define _tstat        _stat
-  #define _tutime       _utime
+  #if defined __APPLE__
+    #define _tmkdir     mkdir
+    #define _trmdir     rmdir
+    #define _tstat      stat
+    #define _tutime     utime
+  #else
+    #define _tmkdir     _mkdir
+    #define _trmdir     _rmdir
+    #define _tstat      _stat
+    #define _tutime     _utime
+  #endif
 #endif
 #if !(defined __WIN32__ || defined _WIN32 || defined WIN32)
   #define _stat(n,b)  stat(n,b)
@@ -494,7 +501,7 @@ static cell AMX_NATIVE_CALL n_fclose(AMX *amx, const cell *params)
 /* fwrite(File: handle, const string[]) */
 static cell AMX_NATIVE_CALL n_fwrite(AMX *amx, const cell *params)
 {
-  int r = 0;
+  size_t r = 0;
   cell *cptr;
   char *str;
   int len;
@@ -515,13 +522,14 @@ static cell AMX_NATIVE_CALL n_fwrite(AMX *amx, const cell *params)
     /* the string is unpacked, write it as UTF-8 */
     r=fputs_cell((FILE*)params[1],cptr,1);
   } /* if */
-  return r;
+  return (cell)r;
 }
 
 /* fread(File: handle, string[], size=sizeof string, bool:pack=false) */
 static cell AMX_NATIVE_CALL n_fread(AMX *amx, const cell *params)
 {
-  int chars,max;
+  size_t chars;
+  int max;
   char *str;
   cell *cptr;
 
@@ -548,8 +556,8 @@ static cell AMX_NATIVE_CALL n_fread(AMX *amx, const cell *params)
     chars=fgets_cell((FILE*)params[1],cptr,max,1);
   } /* if */
 
-  assert(chars<max);
-  return chars;
+  assert((int)chars<max);
+  return (cell)chars;
 }
 
 /* fputchar(File: handle, value, bool:utf8 = true) */
@@ -567,7 +575,7 @@ static cell AMX_NATIVE_CALL n_fputchar(AMX *amx, const cell *params)
     fputc((int)params[2],(FILE*)params[1]);
   } /* if */
   assert(result==0 || result==1);
-  return result;
+  return (cell)result;
 }
 
 /* fgetchar(File: handle, bool:utf8 = true) */
@@ -604,7 +612,7 @@ static cell AMX_NATIVE_CALL n_fgetchar(AMX *amx, const cell *params)
 static cell AMX_NATIVE_CALL n_fblockwrite(AMX *amx, const cell *params)
 {
   cell *cptr;
-  cell count;
+  cell count=0;
 
   (void)amx;
   cptr=amx_Address(amx,params[2]);
@@ -624,7 +632,7 @@ static cell AMX_NATIVE_CALL n_fblockwrite(AMX *amx, const cell *params)
 static cell AMX_NATIVE_CALL n_fblockread(AMX *amx, const cell *params)
 {
   cell *cptr;
-  cell count;
+  cell count=0;
 
   (void)amx;
   cptr=amx_Address(amx,params[2]);
@@ -681,7 +689,7 @@ static cell AMX_NATIVE_CALL n_fremove(AMX *amx, const cell *params)
   amx_StrParam(amx,params[1],name);
   if (name!=NULL && completename(fullname,name,sizearray(fullname))!=NULL) {
     /* if this is a directory, try _trmdir() */
-    struct stat stbuf;
+    struct _stat stbuf;
     _tstat(fullname, &stbuf);
     if (S_ISDIR(stbuf.st_mode))
       r=_trmdir(fullname);
@@ -789,10 +797,10 @@ static int matchfiles(const TCHAR *path,int skip,TCHAR *out,int outlen)
   #else
     /* copy directory part only (zero-terminate) */
     if (basename==path) {
-      strcpy(dirname,".");
+      _tcscpy(dirname,".");
     } else {
-      strncpy(dirname,path,(int)(basename-path));
-      dirname[(int)(basename-path)]=_T('\0');
+      _tcsncpy(dirname,path,(int)(basename-path));
+      dirname[(int)(basename-path)]=__T('\0');
     } /* if */
     if ((dir=opendir(dirname))!=NULL) {
       while ((entry=readdir(dir))!=NULL) {
@@ -851,7 +859,7 @@ static cell AMX_NATIVE_CALL n_fstat(AMX *amx, const cell *params)
   (void)amx;
   amx_StrParam(amx,params[1],name);
   if (name!=NULL && completename(fullname,name,sizearray(fullname))!=NULL) {
-    struct stat stbuf;
+    struct _stat stbuf;
     if (_tstat(name, &stbuf) == 0) {
       cptr=amx_Address(amx,params[2]);
       *cptr=stbuf.st_size;
@@ -872,6 +880,7 @@ static cell AMX_NATIVE_CALL n_fattrib(AMX *amx, const cell *params)
 {
   #if !(defined __WIN32__ || defined _WIN32 || defined WIN32)
     #define _utime(n,t)  utime(n,t)
+    #define _utimbuf     utimbuf
   #endif
   TCHAR *name,fullname[_MAX_PATH]="";
   int result=0;
@@ -881,7 +890,7 @@ static cell AMX_NATIVE_CALL n_fattrib(AMX *amx, const cell *params)
   if (name!=NULL && completename(fullname,name,sizearray(fullname))!=NULL) {
     result=1;
     if (params[2]!=0) {
-      struct utimbuf times;
+      struct _utimbuf times;
       times.actime=(unsigned long)params[2];
       times.modtime=(unsigned long)params[2];
       result=result && (_tutime(name,&times)==0);
@@ -1000,7 +1009,7 @@ static cell AMX_NATIVE_CALL n_filecrc(AMX *amx, const cell *params)
   FILE *fp;
   unsigned char buffer[256];
   unsigned long ulCRC = 0xffffffff;
-  int numread;
+  size_t numread;
 
   (void)amx;
   amx_StrParam(amx,params[1],name);
@@ -1009,7 +1018,7 @@ static cell AMX_NATIVE_CALL n_filecrc(AMX *amx, const cell *params)
   {
     do {
       numread=fread(buffer,sizeof(unsigned char),sizeof buffer,fp);
-      ulCRC=PartialCRC(ulCRC,buffer,numread);
+      ulCRC=PartialCRC(ulCRC,buffer,(unsigned long)numread);
     } while(numread==sizeof buffer);
     fclose(fp);
   } /* if */

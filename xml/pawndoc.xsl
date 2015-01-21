@@ -1,6 +1,6 @@
 <?xml version="1.0" ?>
 <xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="1.0">
-<!-- Version: $Id: pawndoc.xsl 4258 2010-06-17 10:21:31Z thiadmer $ -->
+<!-- Version: $Id: pawndoc.xsl 4983 2013-10-21 07:32:57Z  $ -->
 
 <xsl:template match="/">
 <HTML>
@@ -162,6 +162,7 @@
 			</xsl:if>
 			<xsl:apply-templates select="location"/>
 			<xsl:apply-templates select="stacksize"/>
+			<xsl:apply-templates select="codesize"/>
 			<xsl:if test="seealso">
 				<h3>See Also</h3>
 				<ul><xsl:apply-templates select="seealso"/></ul>
@@ -260,6 +261,11 @@
 <xsl:template match="stacksize">
 	<h3>Estimated stack usage</h3>
 	<p><xsl:value-of select="@value"/> cells</p>
+</xsl:template>
+
+<xsl:template match="codesize">
+	<h3>Code size</h3>
+	<p><xsl:value-of select="@value"/> bytes</p>
 </xsl:template>
 
 <xsl:template match="automaton">

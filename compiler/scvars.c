@@ -2,7 +2,7 @@
  *
  *  Global (cross-module) variables.
  *
- *  Copyright (c) ITB CompuPhase, 1997-2011
+ *  Copyright (c) ITB CompuPhase, 1997-2013
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not
  *  use this file except in compliance with the License. You may obtain a copy
@@ -16,7 +16,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: scvars.c 4535 2011-07-07 09:15:22Z thiadmer $
+ *  Version: $Id: scvars.c 4983 2013-10-21 07:32:57Z  $
  */
 #include <stdio.h>
 #include <stdlib.h>     /* for _MAX_PATH */

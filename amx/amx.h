@@ -1,6 +1,6 @@
 /*  Pawn Abstract Machine (for the Pawn language)
  *
- *  Copyright (c) ITB CompuPhase, 1997-2012
+ *  Copyright (c) ITB CompuPhase, 1997-2015
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not
  *  use this file except in compliance with the License. You may obtain a copy
@@ -14,7 +14,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: amx.h 4734 2012-06-25 12:09:56Z  $
+ *  Version: $Id: amx.h 5181 2015-01-21 09:44:28Z thiadmer $
  */
 
 #ifndef AMX_H_INCLUDED
@@ -23,14 +23,20 @@
 #include <stdlib.h>   /* for size_t */
 #include <limits.h>
 
-#if defined __linux || defined __linux__
+#if (defined __linux || defined __linux__) && !defined __LINUX__
   #define __LINUX__
 #endif
 #if defined FREEBSD && !defined __FreeBSD__
   #define __FreeBSD__
 #endif
-#if defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__
+#if defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__ || defined __APPLE__
   #include <sclinux.h>
+#endif
+
+#if defined __GNUC__
+ #define GCC_VERSION (__GNUC__ * 10000 \
+                               + __GNUC_MINOR__ * 100 \
+                               + __GNUC_PATCHLEVEL__)
 #endif
 
 #if !defined HAVE_STDINT_H
@@ -41,7 +47,7 @@
   #endif
 #endif
 #if !defined HAVE_INTTYPES_H
-  #if defined __FreeBSD__
+  #if defined __FreeBSD__ || defined __APPLE__
     #define HAVE_INTTYPES_H 1
   #endif
 #endif
@@ -100,15 +106,19 @@
 #endif
 
 #if !defined assert_static
-  /* see "Compile-Time Assertions" by Greg Miller,
-   * (with modifications to port it to C)
-   */
-  #define _ASSERT_STATIC_SYMBOL_INNER(line) __ASSERT_STATIC_ ## line
-  #define _ASSERT_STATIC_SYMBOL(line) _ASSERT_STATIC_SYMBOL_INNER(line)
-  #define assert_static(test) \
-    do { \
-      typedef char _ASSERT_STATIC_SYMBOL(__LINE__)[ ((test) ? 1 : -1) ]; \
-    } while (0)
+  #if (defined __STDC_VERSION__ && __STDC_VERSION__ >= 201112) || GCC_VERSION >= 40600
+    #define assert_static(test) _Static_assert(test, "assert")
+  #else
+    /* see "Compile-Time Assertions" by Greg Miller,
+     * (with modifications to port it to C)
+     */
+    #define _ASSERT_STATIC_SYMBOL_INNER(line) __ASSERT_STATIC_ ## line
+    #define _ASSERT_STATIC_SYMBOL(line) _ASSERT_STATIC_SYMBOL_INNER(line)
+    #define assert_static(test) \
+      do { \
+        typedef char _ASSERT_STATIC_SYMBOL(__LINE__)[ ((test) ? 1 : -1) ]; \
+      } while (0)
+  #endif
 #endif
 
 #if defined  __cplusplus
@@ -205,9 +215,10 @@ typedef int (AMXAPI *AMX_IDLE)(struct tagAMX *amx, int AMXAPI Exec(struct tagAMX
 #endif
 
 #if defined _MSC_VER
+  #pragma warning(disable:4100)  /* "'%$S' : unreferenced formal parameter" */
   #pragma warning(disable:4103)  /* disable warning message 4103 that complains
                                   * about pragma pack in a header file */
-  #pragma warning(disable:4100)  /* "'%$S' : unreferenced formal parameter" */
+  #pragma warning(disable:4127)  /* "conditional expression is constant" (needed for static_assert) */
   #pragma warning(disable:4996)  /* POSIX name is deprecated */
 #endif
 
@@ -225,10 +236,10 @@ typedef int (AMXAPI *AMX_IDLE)(struct tagAMX *amx, int AMXAPI Exec(struct tagAMX
 #endif
 
 #if !defined AMX_NO_ALIGN
-  #if defined __LINUX__ || defined __FreeBSD__
+  #if defined __LINUX__ || defined __FreeBSD__ || defined __APPLE__
     #pragma pack(1)         /* structures must be packed (byte-aligned) */
   #elif defined MACOS && defined __MWERKS__
-	#pragma options align=mac68k
+    #pragma options align=mac68k
   #else
     #pragma pack(push)
     #pragma pack(1)         /* structures must be packed (byte-aligned) */
@@ -500,14 +511,14 @@ int AMXAPI amx_UTF8Put(char *string, char **endptr, int maxchars, cell value);
 #endif
 
 #if PAWN_CELL_SIZE==16
-  #define amx_AlignCell(v) amx_Align16((uint16_t*)v)
-  #define amx_SwapCell(v)  amx_Swap16((uint16_t*)v)
+  #define amx_AlignCell(v) amx_Align16((uint16_t*)(v))
+  #define amx_SwapCell(v)  amx_Swap16((uint16_t*)(v))
 #elif PAWN_CELL_SIZE==32
-  #define amx_AlignCell(v) amx_Align32((uint32_t*)v)
-  #define amx_SwapCell(v)  amx_Swap32((uint32_t*)v)
+  #define amx_AlignCell(v) amx_Align32((uint32_t*)(v))
+  #define amx_SwapCell(v)  amx_Swap32((uint32_t*)(v))
 #elif PAWN_CELL_SIZE==64 && (defined _I64_MAX || defined INT64_MAX || defined HAVE_I64)
-  #define amx_AlignCell(v) amx_Align64((uint64_t*)v)
-  #define amx_SwapCell(v)  amx_Swap64((uint64_t*)v)
+  #define amx_AlignCell(v) amx_Align64((uint64_t*)(v))
+  #define amx_SwapCell(v)  amx_Swap64((uint64_t*)(v))
 #else
   #error Unsupported cell size
 #endif
@@ -516,7 +527,7 @@ int AMXAPI amx_UTF8Put(char *string, char **endptr, int maxchars, cell value);
   amx_Register((amx), amx_NativeInfo((name),(func)), 1);
 
 #if !defined AMX_NO_ALIGN
-  #if defined __LINUX__ || defined __FreeBSD__
+  #if defined __LINUX__ || defined __FreeBSD__ || defined __APPLE__
     #pragma pack()    /* reset default packing */
   #elif defined MACOS && defined __MWERKS__
     #pragma options align=reset

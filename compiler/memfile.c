@@ -2,7 +2,7 @@
  *  memory.
  *
  *  Copyright (c) faluco / http://www.amxmodx.org/, 2006
- *  Version: $Id: memfile.c 4611 2011-12-05 17:46:53Z thiadmer $
+ *  Version: $Id: memfile.c 4983 2013-10-21 07:32:57Z  $
  */
 
 #include <assert.h>
@@ -12,7 +12,7 @@
 #ifdef MACOS
   #include <malloc/malloc.h>
 #else
-  #include <malloc.h>
+  #include <stdlib.h>
 #endif
 #if defined FORTIFY
   #include <alloc/fortify.h>

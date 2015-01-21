@@ -54,10 +54,10 @@
 *       dtribble@flash.net
 *
 * Copyright 1997-1998 by David R. Tribble, all rights reserved.
-* Copyright (c) 2005-2012, ITB CompuPhase, all rights reserved.
+* Copyright (c) 2005-2015, ITB CompuPhase, all rights reserved.
 * www.compuphase.com
 *
-* Version: $Id: fpattern.c 4732 2012-06-21 16:02:52Z thiadmer $
+* Version: $Id: fpattern.c 5181 2015-01-21 09:44:28Z thiadmer $
 */
 
 
@@ -927,7 +927,7 @@ int fpattern_match(const char *pat, const char *fname, int flength, int keepcase
 
     /* Attempt to match pattern against filename */
     if (flength < 0)
-        flength = strlen(fname);
+        flength = (int)strlen(fname);
     if (flength == 0)
         return (pat[0] == '\0');    /* Special case */
     if (keepcase)
@@ -988,7 +988,7 @@ int fpattern_matchn(const char *pat, const char *fname, int flength, int keepcas
 
     /* Attempt to match pattern against filename */
     if (flength < 0)
-        flength = strlen(fname);
+        flength = (int)strlen(fname);
     if (keepcase)
         rc = fpattern_submatch(pat, fname, flength);
     else
@@ -1012,7 +1012,7 @@ int fpattern_matchcount(const char *pat, const char *fname, int flength, int min
 
     /* Attempt to match pattern against filename */
     if (flength < 0)
-        flength = strlen(fname);
+        flength = (int)strlen(fname);
 
     if (keepcase) {
         for (len = flength; len > minlength; len--)

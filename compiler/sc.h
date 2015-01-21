@@ -7,7 +7,7 @@
  *
  *  This version comes close to a complete rewrite.
  *
- *  Copyright ITB CompuPhase, 1997-2012
+ *  Copyright ITB CompuPhase, 1997-2015
  *  Copyright J.E. Hendrix, 1982, 1983
  *  Copyright R. Cain, 1980
  *
@@ -23,7 +23,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: sc.h 4733 2012-06-22 08:39:46Z thiadmer $
+ *  Version: $Id: sc.h 5181 2015-01-21 09:44:28Z thiadmer $
  */
 #ifndef SC_H_INCLUDED
 #define SC_H_INCLUDED
@@ -244,9 +244,10 @@ typedef struct s_symbol {
 #define uTAGOF    0x40  /* set in the "hasdefault" field of the arginfo struct */
 #define uSIZEOF   0x80  /* set in the "hasdefault" field of the arginfo struct */
 
-#define uMAINFUNC "main"
-#define uENTRYFUNC "entry"
-#define uEXITFUNC "exit"
+#define _MAINFUNC  "main"
+#define _STARTFUNC "@start"	//??? alias for main, not yet fully implemented
+#define _ENTRYFUNC "entry"
+#define _EXITFUNC  "exit"
 
 #define sGLOBAL   0     /* global variable/constant class (no states) */
 #define sLOCAL    1     /* local variable/constant */
@@ -261,18 +262,19 @@ typedef struct s_value {
   int tag;              /* tag (of the expression) */
   char ident;           /* iCONSTEXPR, iVARIABLE, iARRAY, iARRAYCELL,
                          * iEXPRESSION or iREFERENCE */
-  char boolresult;      /* boolean result for relational operators, also used to flag "packed arrays" for literal arrays */
+  char boolresult;      /* boolean result for relational operators */
+  char ispacked;        /* to flag "packed arrays" for literal arrays and for pseudo-arrays */
   cell *arrayidx;       /* last used array indices, for checking self assignment */
 } value;
 
 /*  "while" statement queue (also used for "for" and "do - while" loops) */
 enum {
-  wqBRK,        /* used to restore stack for "break" */
-  wqCONT,       /* used to restore stack for "continue" */
-  wqLOOP,       /* loop start label number */
-  wqEXIT,       /* loop exit label number (jump if false) */
+  wqBRK,                /* used to restore stack for "break" */
+  wqCONT,               /* used to restore stack for "continue" */
+  wqLOOP,               /* loop start label number */
+  wqEXIT,               /* loop exit label number (jump if false) */
   /* --- */
-  wqSIZE        /* "while queue" size */
+  wqSIZE                /* "while queue" size */
 };
 #define wqTABSZ (24*wqSIZE)    /* 24 nested loop statements */
 
@@ -291,11 +293,14 @@ enum {
   ovlFIRST,     /* overlay index of the first overlay function */
 };
 
+/* general purpose list for the list of source/include files, documentation
+   strings (explicit and parsed information) & debug strings */
 typedef struct s_stringlist {
   struct s_stringlist *next;
   char *line;
 } stringlist;
 
+/* general purpose list for #define macros and aliases for native functions */
 typedef struct s_stringpair {
   struct s_stringpair *next;
   char *first;
@@ -303,11 +308,22 @@ typedef struct s_stringpair {
   int matchlength;
 } stringpair;
 
+/* general purpose list, which is currently only used to determine heap usage in
+   conditional branches (so the maximum of both branches can be established) */
 typedef struct s_valuepair {
   struct s_valuepair *next;
   long first;
   long second;
 } valuepair;
+
+/* list to collect literal strings and literal arrays, so that these can be
+   merged */
+typedef struct s_arraymerge {
+  struct s_arraymerge *next;
+  cell addr;            /* base address of the array */
+  cell size;            /* array size in cells */
+  cell *data;           /* buffer with the array data ("size" cells long) */
+} arraymerge;
 
 /* macros for code generation */
 #define opcodes(n)      ((n)*pc_cellsize)   /* opcode size */

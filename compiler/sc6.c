@@ -1,6 +1,6 @@
 /*  Pawn compiler - Binary code generation (the "assembler")
  *
- *  Copyright (c) ITB CompuPhase, 1997-2012
+ *  Copyright (c) ITB CompuPhase, 1997-2015
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not
  *  use this file except in compliance with the License. You may obtain a copy
@@ -14,7 +14,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: sc6.c 4733 2012-06-22 08:39:46Z thiadmer $
+ *  Version: $Id: sc6.c 5181 2015-01-21 09:44:28Z thiadmer $
  */
 #include <assert.h>
 #include <stdio.h>
@@ -29,7 +29,7 @@
 #include "sc.h"
 #include "../amx/amxdbg.h"
 #include "../amx/keeloq.h"
-#if defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__
+#if defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__ || defined __APPLE__
   #include <sclinux.h>
 #endif
 
@@ -708,7 +708,7 @@ SC_FUNC int assemble(FILE *fout,FILE *fin)
       if (pc_overlays>0 && (sym->usage & uNATIVE)==0
           && (sym->usage & (uREAD | uPUBLIC))!=0 && (sym->usage & uDEFINE)!=0)
       {
-        if (strcmp(sym->name,uENTRYFUNC)!=0)
+        if (strcmp(sym->name,_ENTRYFUNC)!=0)
           ++numoverlays;  /* there is no stub function for state entry functions */
         if (sym->states!=NULL) {
           /* for functions with states, write an overlay block for every implementation */
@@ -717,7 +717,7 @@ SC_FUNC int assemble(FILE *fout,FILE *fin)
             ++numoverlays;
         } /* if */
       } /* if */
-      if (strcmp(sym->name,uMAINFUNC)==0) {
+      if (strcmp(sym->name,_MAINFUNC)==0) {
         assert(sym->vclass==sGLOBAL);
         mainaddr=(pc_overlays>0) ? sym->index : sym->addr;
       } /* if */
@@ -990,10 +990,10 @@ SC_FUNC int assemble(FILE *fout,FILE *fin)
           && (sym->usage & uDEFINE)!=0)
       {
         assert(sym->vclass==sGLOBAL);
-        assert(strcmp(sym->name,uENTRYFUNC)==0 || sym->index==count++);/* overlay indices must be in sequential order */
-        assert(strcmp(sym->name,uENTRYFUNC)==0 || sym->addr<sym->codeaddr);
+        assert(strcmp(sym->name,_ENTRYFUNC)==0 || sym->index==count++);/* overlay indices must be in sequential order */
+        assert(strcmp(sym->name,_ENTRYFUNC)==0 || sym->addr<sym->codeaddr);
         /* write the overlay for the stub function first */
-        if (strcmp(sym->name,uENTRYFUNC)!=0) {
+        if (strcmp(sym->name,_ENTRYFUNC)!=0) {
           /* there is no stub function for state entry functions */
           info.offset=(int32_t)sym->addr;
           info.size=(uint32_t)(sym->codeaddr - sym->addr);

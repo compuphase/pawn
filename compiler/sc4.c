@@ -1,6 +1,6 @@
 /*  Pawn compiler - code generation (unoptimized "assembler" code)
  *
- *  Copyright (c) ITB CompuPhase, 1997-2012
+ *  Copyright (c) ITB CompuPhase, 1997-2015
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not
  *  use this file except in compliance with the License. You may obtain a copy
@@ -14,7 +14,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: sc4.c 4733 2012-06-22 08:39:46Z thiadmer $
+ *  Version: $Id: sc4.c 5181 2015-01-21 09:44:28Z thiadmer $
  */
 #include <assert.h>
 #include <ctype.h>
@@ -84,7 +84,7 @@ SC_FUNC void writeleader(symbol *root,int *lbl_nostate,int *lbl_ignorestate)
 
   /* check whether there are "exit state" functions */
   for (sym=root->next; sym!=NULL; sym=sym->next)
-    if (strcmp(sym->name,uEXITFUNC)==0)
+    if (strcmp(sym->name,_EXITFUNC)==0)
       break;
   if (sym!=NULL) {
     /* generate a stub function that is called for an undefined exit state and
@@ -224,7 +224,7 @@ SC_FUNC void writestatetables(symbol *root,int lbl_nostate,int lbl_ignorestate)
           stlist->label=getlabel();
         } /* if */
       } /* for */
-      if (strcmp(sym->name,uENTRYFUNC)==0)
+      if (strcmp(sym->name,_ENTRYFUNC)==0)
         continue;               /* do not generate stubs for this special function */
       sym->addr=code_idx;       /* fix the function address now */
       /* get automaton id for this function */
@@ -236,7 +236,7 @@ SC_FUNC void writestatetables(symbol *root,int lbl_nostate,int lbl_ignorestate)
        * whether there is a default (i.e. "fallback") state function
        */
       statecount=0;
-      if (strcmp(sym->name,uEXITFUNC)==0) {
+      if (strcmp(sym->name,_EXITFUNC)==0) {
         lbl_default= (pc_overlays>0) ? ovlEXITSTATE : lbl_ignorestate;
 		lbl_defnostate=-1;
       } else {

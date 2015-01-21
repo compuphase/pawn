@@ -1,6 +1,6 @@
 /*  String functions for the Pawn Abstract Machine
  *
- *  Copyright (c) ITB CompuPhase, 2005-2012
+ *  Copyright (c) ITB CompuPhase, 2005-2015
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not
  *  use this file except in compliance with the License. You may obtain a copy
@@ -14,7 +14,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: amxstring.c 4523 2011-06-21 15:03:47Z thiadmer $
+ *  Version: $Id: amxstring.c 5181 2015-01-21 09:44:28Z thiadmer $
  */
 #include <limits.h>
 #include <string.h>
@@ -895,7 +895,7 @@ static cell AMX_NATIVE_CALL n_urlencode(AMX *amx,const cell *params)
   cstr=amx_Address(amx,params[1]);
   amx_SetString(cstr,str,1,0,params[4]); /* store as packed ot unpacked */
 
-  return strlen(str);
+  return (cell)strlen(str);
 }
 
 /* memcpy(dest[], const source[], index=0, numbytes, maxlength=sizeof dest)
@@ -931,7 +931,7 @@ static cell AMX_NATIVE_CALL n_memcpy(AMX *amx,const cell *params)
 
   static int str_putchar(void *dest,TCHAR ch)
   {
-    int len=_tcslen((TCHAR*)dest);
+    int len=(int)_tcslen((TCHAR*)dest);
     if (len<MAX_FORMATSTR-1) {
       ((TCHAR*)dest)[len]=ch;
       ((TCHAR*)dest)[len+1]='\0';

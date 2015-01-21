@@ -1,7 +1,7 @@
 /*  Simple "run-time" for the Pawn Abstract Machine, with optional support
  *  for debugging information and overlays.
  *
- *  Copyright (c) ITB CompuPhase, 1997-2011
+ *  Copyright (c) ITB CompuPhase, 1997-2014
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not
  *  use this file except in compliance with the License. You may obtain a copy
@@ -15,7 +15,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: pawnrun.c 4523 2011-06-21 15:03:47Z thiadmer $
+ *  Version: $Id: pawnrun.c 5148 2014-11-14 13:14:56Z  $
  */
 #include <assert.h>
 #include <stdio.h>
@@ -30,7 +30,7 @@
   #define CLOCKS_PER_SEC CLK_TCK
 #endif
 
-#if !defined AMX_NODYNALOAD && defined ENABLE_BINRELOC && (defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__)
+#if !defined AMX_NODYNALOAD && defined ENABLE_BINRELOC && (defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__ || defined __APPLE__)
   #include <binreloc.h> /* from BinReloc, see www.autopackage.org */
 #endif
 
@@ -312,15 +312,15 @@ int main(int argc,char *argv[])
   AMX amx;
   cell ret = 0;
   int err, i;
-  clock_t start,end;
+  clock_t start = 0, end = 0;
   STACKINFO stackinfo = { 0 };
   AMX_IDLE idlefunc;
 
   if (argc < 2)
     PrintUsage(argv[0]);        /* function "usage" aborts the program */
 
-  #if !defined AMX_NODYNALOAD && defined ENABLE_BINRELOC && (defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__)
-    /* see www.autopackage.org for the BinReloc module */
+  #if !defined AMX_NODYNALOAD && defined ENABLE_BINRELOC && (defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__ || defined __APPLE__)
+    /* see www.autopackage.org (now Listaller) for the BinReloc module */
     if (br_init(NULL)) {
       char *libroot=br_find_exe_dir("");
       setenv("AMXLIB",libroot,0);
@@ -376,10 +376,11 @@ int main(int argc,char *argv[])
        * usage right from the beginning of the script.
        */
       amx_SetDebugHook(&amx, prun_Monitor);
+    } else if (strcmp(argv[i],"-time")) {
+      start=clock();
     } /* if */
   } /* for */
 
-  start=clock();
 
   /* Run the compiled script and time it. The "sleep" instruction causes the
    * abstract machine to return in a "restartable" state (it restarts from
@@ -425,7 +426,8 @@ int main(int argc,char *argv[])
     ExitOnError(&amx, err);
   } /* if */
 
-  end=clock();
+  if (start!=0)
+    end=clock();
 
   /* Free the compiled script and resources. This also unloads and DLLs or
    * shared libraries that were registered automatically by amx_Init().
@@ -438,7 +440,8 @@ int main(int argc,char *argv[])
   if (ret!=0)
     printf("\nReturn value: %ld\n", (long)ret);
 
-  printf("\nRun time:     %.2f seconds\n",(double)(end-start)/CLOCKS_PER_SEC);
+  if (start!=0)
+    printf("\nRun time:     %.2f seconds\n",(double)(end-start)/CLOCKS_PER_SEC);
   if (stackinfo.maxstack != 0 || stackinfo.maxheap != 0) {
     printf("Stack usage:  %ld cells (%ld bytes)\n",
            stackinfo.maxstack / sizeof(cell), stackinfo.maxstack);

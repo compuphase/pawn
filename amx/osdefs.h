@@ -121,10 +121,10 @@
 
 #if defined __MSDOS__ || defined __WIN32__ || defined _Windows
   #define DIRSEP_CHAR '\\'
-#elif defined macintosh || defined __APPLE__
+#elif defined macintosh /* only the original Macintosh uses ':', OSX uses the '/' */
   #define DIRSEP_CHAR ':'
 #else
-  #define DIRSEP_CHAR '/'   /* directory separator character */
+  #define DIRSEP_CHAR '/'
 #endif
 
 /* _MAX_PATH is sometimes called differently and it may be in limits.h or

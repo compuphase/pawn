@@ -1,6 +1,6 @@
 /*  Script Arguments support module for the Pawn Abstract Machine
  *
- *  Copyright (c) ITB CompuPhase, 2005-2011
+ *  Copyright (c) ITB CompuPhase, 2005-2015
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not
  *  use this file except in compliance with the License. You may obtain a copy
@@ -14,7 +14,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: amxargs.c 4523 2011-06-21 15:03:47Z thiadmer $
+ *  Version: $Id: amxargs.c 5181 2015-01-21 09:44:28Z thiadmer $
  */
 #if defined _UNICODE || defined __UNICODE__ || defined UNICODE
 # if !defined UNICODE   /* for Windows */
@@ -135,7 +135,10 @@ static const TCHAR *rawcmdline(void)
         skip++;
       } /* if */
     #else
-      #error Platform not supported
+      /* no mechanism for determining the commandline, so it
+       * must be supplied with amx_ArgsSetCmdLine() instead.
+       */
+      ptr = "";
     #endif
 
     /* skip leading white space */
@@ -203,7 +206,7 @@ static const TCHAR *matcharg(const TCHAR *key, int skip, int *length)
   int index, optlen, keylen;
   const TCHAR *option, *vptr;
 
-  keylen = (key != NULL) ? _tcslen(key) : 0;
+  keylen = (key != NULL) ? (int)_tcslen(key) : 0;
   index = 0;
   while ((option = tokenize(cmdline, index, length)) != NULL) {
     /* check for a colon or an equal sign (':' or '=') */

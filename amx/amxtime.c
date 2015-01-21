@@ -1,6 +1,6 @@
 /*  Date/time module for the Pawn Abstract Machine
  *
- *  Copyright (c) ITB CompuPhase, 2001-2011
+ *  Copyright (c) ITB CompuPhase, 2001-2013
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not
  *  use this file except in compliance with the License. You may obtain a copy
@@ -14,7 +14,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: amxtime.c 4541 2011-07-21 12:15:13Z thiadmer $
+ *  Version: $Id: amxtime.c 4983 2013-10-21 07:32:57Z  $
  */
 #include <time.h>
 #include <assert.h>
@@ -66,7 +66,7 @@ static unsigned long gettimestamp(void)
 
   #if defined __WIN32__ || defined _WIN32 || defined WIN32
     value=timeGetTime();        /* this value is already in milliseconds */
-  #elif defined __linux || defined __linux__ || defined __LINUX__
+  #elif defined __linux || defined __linux__ || defined __LINUX__ || defined __APPLE__
     struct timeval tv;
     gettimeofday(&tv, NULL);
     value = ((tv.tv_sec * 1000) + (tv.tv_usec / 1000));
@@ -144,10 +144,14 @@ static void settime(cell hour,cell minute,cell second)
     SetLocalTime(&systim);
   #else
     /* Linux/Unix (and some DOS compilers) have stime(); on Linux/Unix, you
-     * must have "root" permission to call stime()
+     * must have "root" permission to call stime(); many POSIX systems will
+     * have settimeofday() instead
      */
     time_t sec1970;
     struct tm gtm;
+    #if defined __APPLE__ /* also valid for other POSIX systems */
+      struct timeval tv;
+    #endif
 
     time(&sec1970);
     gtm=*localtime(&sec1970);
@@ -158,7 +162,13 @@ static void settime(cell hour,cell minute,cell second)
     if (second!=CELLMIN)
       gtm.tm_sec=wrap((int)second,0,59);
     sec1970=mktime(&gtm);
-    stime(&sec1970);
+    #if defined __APPLE__ /* also valid for other POSIX systems */
+      tv.tv_sec = sec1970;
+      tv.tv_usec = 0;
+      settimeofday(&tv, 0);
+    #else
+      stime(&sec1970);
+    #endif
   #endif
 }
 
@@ -182,10 +192,14 @@ static void setdate(cell year,cell month,cell day)
     SetLocalTime(&systim);
   #else
     /* Linux/Unix (and some DOS compilers) have stime(); on Linux/Unix, you
-     * must have "root" permission to call stime()
+     * must have "root" permission to call stime(); many POSIX systems will
+     * have settimeofday() instead
      */
     time_t sec1970;
     struct tm gtm;
+    #if defined __APPLE__ /* also valid for other POSIX systems */
+      struct timeval tv;
+    #endif
 
     time(&sec1970);
     gtm=*localtime(&sec1970);
@@ -196,7 +210,13 @@ static void setdate(cell year,cell month,cell day)
     if (day!=CELLMIN)
       gtm.tm_mday=day;
     sec1970=mktime(&gtm);
-    stime(&sec1970);
+    #if defined __APPLE__ /* also valid for other POSIX systems */
+      tv.tv_sec = sec1970;
+      tv.tv_usec = 0;
+      settimeofday(&tv, 0);
+    #else
+      stime(&sec1970);
+    #endif
   #endif
 }
 
@@ -359,10 +379,18 @@ static cell AMX_NATIVE_CALL n_settimestamp(AMX *amx, const cell *params)
     settime(hour, minute, second);
   #else
     /* Linux/Unix (and some DOS compilers) have stime(); on Linux/Unix, you
-     * must have "root" permission to call stime()
+     * must have "root" permission to call stime(); many POSIX systems will
+     * have settimeofday() instead
      */
-    time_t sec1970=(time_t)params[1];
-    stime(&sec1970);
+    #if defined __APPLE__ /* also valid for other POSIX systems */
+      struct timeval tv;
+      tv.tv_sec = params[1];
+      tv.tv_usec = 0;
+      settimeofday(&tv, 0);
+    #else
+      time_t sec1970=(time_t)params[1];
+      stime(&sec1970);
+    #endif
   #endif
   (void)amx;
 

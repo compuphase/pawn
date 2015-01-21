@@ -1,7 +1,7 @@
 /*  Pawn compiler - Peephole optimizer "sequences" strings (plain
  *                  and compressed formats)
  *
- *  Copyright (c) ITB CompuPhase, 2000-2011
+ *  Copyright (c) ITB CompuPhase, 2000-2013
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not
  *  use this file except in compliance with the License. You may obtain a copy
@@ -15,7 +15,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: sc7.sch 4731 2012-06-21 11:11:18Z thiadmer $
+ *  Version: $Id: sc7.sch 4983 2013-10-21 07:32:57Z  $
  */
 
 /* Special characters in the strings of this file:
@@ -1004,7 +1004,7 @@ static const SEQUENCE sequences_cmp[] = {
    * 1. instruction addr.pri can also be const.pri (for
    *    global arrays)
    * 2. the bounds instruction can be absent
-   * 3. when "%4" (the shift value) is the 2 (with 32-bit cells), use the
+   * 3. when "%4" (the shift value) is 2 (with 32-bit cells), use the
    *    even more optimal instructions LIDX and IDDXADDR
    *
    * If the array index is more complex, one can only optimize
@@ -2193,10 +2193,10 @@ static const SEQUENCE sequences_cmp[] = {
   {
     #ifdef SCPACK
       "push.s %1!;$par!push.s %2!;$par!push.s %3!;$par!push.s %4!;$par!push.s %5!;$par!",
-      "pushm.s #4 %1 %2 %3 %4 %5!",
+      "pushm.s #5 %1 %2 %3 %4 %5!",
     #else
       "\212\360\303\213\250\303\213\270\303\213\325\303\213\206\320\233",
-      "\323\213\3104\374\311\206\320",
+      "\323\213\3105\374\311\206\320",
     #endif
     5-1, 5-6
   },

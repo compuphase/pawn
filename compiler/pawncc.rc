@@ -31,7 +31,7 @@ AppIcon ICON "../bin/pawn.ico"
 #define VERSIONPRODUCTNAME   "pawn\0"
 #endif
 #define VERSIONCOMPANYNAME   "CompuPhase\0"
-#define VERSIONCOPYRIGHT     "Copyright \251 1998-2011 CompuPhase\0"
+#define VERSIONCOPYRIGHT     "Copyright \251 1998-2015 CompuPhase\0"
 
 VS_VERSION_INFO VERSIONINFO
 FILEVERSION    VERSION, REVISION, BUILD, 0

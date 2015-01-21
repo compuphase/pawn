@@ -3,7 +3,7 @@
  *  This file contains extra definitions that are convenient for debugger
  *  support.
  *
- *  Copyright (c) ITB CompuPhase, 2005-2011
+ *  Copyright (c) ITB CompuPhase, 2005-2013
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not
  *  use this file except in compliance with the License. You may obtain a copy
@@ -17,7 +17,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: amxdbg.h 4523 2011-06-21 15:03:47Z thiadmer $
+ *  Version: $Id: amxdbg.h 5148 2014-11-14 13:14:56Z  $
  */
 
 #ifndef AMXDBG_H_INCLUDED
@@ -45,7 +45,7 @@ extern  "C" {
 #endif
 
 #if !defined AMX_NO_ALIGN
-  #if defined __LINUX__ || defined __FreeBSD__
+  #if defined __LINUX__ || defined __FreeBSD__ || defined __APPLE__
     #pragma pack(1)         /* structures must be packed (byte-aligned) */
   #elif defined MACOS && defined __MWERKS__
 	#pragma options align=mac68k
@@ -135,6 +135,8 @@ typedef struct tagAMX_DBG {
 #endif
 
 
+#if !defined AMXDBG_STRUCTONLY
+
 int AMXAPI dbg_FreeInfo(AMX_DBG *amxdbg);
 int AMXAPI dbg_LoadInfo(AMX_DBG *amxdbg, FILE *fp);
 
@@ -151,9 +153,11 @@ int AMXAPI dbg_GetTagName(AMX_DBG *amxdbg, int tag, const char **name);
 int AMXAPI dbg_GetVariable(AMX_DBG *amxdbg, const char *symname, ucell scopeaddr, const AMX_DBG_SYMBOL **sym);
 int AMXAPI dbg_GetArrayDim(AMX_DBG *amxdbg, const AMX_DBG_SYMBOL *sym, const AMX_DBG_SYMDIM **symdim);
 
+#endif /* AMXDBG_STRUCTONLY */
+
 
 #if !defined AMX_NO_ALIGN
-  #if defined __LINUX__ || defined __FreeBSD__
+  #if defined __LINUX__ || defined __FreeBSD__ || defined __APPLE__
     #pragma pack()    /* reset default packing */
   #elif defined MACOS && defined __MWERKS__
     #pragma options align=reset

@@ -14,7 +14,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: amxcore.c 4708 2012-05-18 12:52:49Z thiadmer $
+ *  Version: $Id: amxcore.c 4708 2012-05-18 12:52:49Z  $
  */
 #if defined _UNICODE || defined __UNICODE__ || defined UNICODE
 # if !defined UNICODE   /* for Windows */

@@ -1,6 +1,6 @@
 /*  Pawn compiler - Recursive descend expresion parser
  *
- *  Copyright (c) ITB CompuPhase, 1997-2012
+ *  Copyright (c) ITB CompuPhase, 1997-2015
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not
  *  use this file except in compliance with the License. You may obtain a copy
@@ -14,7 +14,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: sc3.c 4733 2012-06-22 08:39:46Z thiadmer $
+ *  Version: $Id: sc3.c 5181 2015-01-21 09:44:28Z thiadmer $
  */
 #include <assert.h>
 #include <stdio.h>
@@ -485,7 +485,7 @@ static cell checkarrays(value *lval1,value *lval2)
   ispacked1=((lval1->sym->usage & uPACKED)!=0);
   if (IS_PSEUDO_ARRAY(*lval1)) {
     ltlength=(int)lval1->constval;
-    ispacked1=lval1->boolresult;        /* packed/unpacked status is copied to boolresult for pseudo-arrays */
+    ispacked1=lval1->ispacked;
   } /* if */
   if (!IS_ARRAY(*lval2) && !IS_PSEUDO_ARRAY(*lval2))
     error(33,lval1->sym->name);         /* array must be indexed */
@@ -500,7 +500,7 @@ static cell checkarrays(value *lval1,value *lval2)
       length=lval2->constval;
       if (lval2->sym->dim.array.level!=0)
         error(28,lval2->sym->name);     /* invalid subscript (not an array) */
-      ispacked2=lval2->boolresult;
+      ispacked2=lval2->ispacked;
     } /* if */
     level=lval2->sym->dim.array.level;
     if (level==0 && lval1->sym->dim.array.names==NULL)
@@ -508,7 +508,7 @@ static cell checkarrays(value *lval1,value *lval2)
   } else {
     length=lval2->constval;             /* literal array */
     level=0;
-    ispacked2=lval2->boolresult;        /* packed/unpacked status is copied to boolresult for literal arrays */
+    ispacked2=lval2->ispacked;
     if (lval1->sym->dim.array.names!=NULL)
       error(47);                        /* array definitions do not match */
     /* If length is negative, it means that lval2 is a literal string.
@@ -632,7 +632,7 @@ static int plnge_rel(const int *opstr,int opoff,int (*hier)(value *lval),value *
   if (lvalue)
     rvalue(lval);
   count=0;
-  lval->boolresult=1;
+  lval->boolresult=TRUE;
   do {
     /* same check as in plnge(), but "chkbitwise" is always TRUE */
     if (count>0 && bitwise_opercount!=0)
@@ -651,6 +651,8 @@ static int plnge_rel(const int *opstr,int opoff,int (*hier)(value *lval),value *
       relop_suffix();
   } while (nextop(&opidx,opstr)); /* enddo */
   lval->constval=lval->boolresult;
+  if (lval->ident!=iCONSTEXPR || lval2.ident!=iCONSTEXPR)
+    lval->ident=iEXPRESSION;
   lval->tag=pc_addtag("bool");    /* force tag to be "bool" */
   return FALSE;         /* result of expression is not an lvalue */
 }
@@ -1711,12 +1713,13 @@ restart:
   sym=cursym;
   if (matchtoken('[') || matchtoken('{') || matchtoken('(') || matchtoken(tSYMLABEL)) {
     tok=tokeninfo(&val,&symlabel);      /* get token read by matchtoken() */
-    if (sym==NULL && symtok!=tSYMBOL) {
+    if (sym==NULL && symtok!=tSYMBOL || lval1->ident==iEXPRESSION) {
       /* we do not have a valid symbol and we appear not to have read a valid
        * symbol name (so it is unlikely that we would have read a name of an
        * undefined symbol)
        */
-      error(29);                /* expression error, assumed 0 */
+      if (lval1->ident!=iEXPRESSION || tok!='{') /* no warning for '{', assume the expression had ended */
+        error(29);              /* expression error, assumed 0 */
       lexpush();                /* analyse '(', '{' or '[' again later */
       return FALSE;
     } /* if */
@@ -1737,7 +1740,8 @@ restart:
         assert(0);
 		close=0;
       } /* switch */
-      if (sym==NULL) {  /* sym==NULL if lval is a constant or a literal, or an unknown variable */
+      if (sym==NULL) {
+        /* sym==NULL if lval is a constant or a literal, or an unknown variable */
         if (strlen(lastsymbol)>0)
           error_suggest(28,lastsymbol,iARRAY);  /* cannot subscript */
         else
@@ -1772,7 +1776,7 @@ restart:
           lval2.constval=cval->value;
           lval2.tag=cval->index;
           lval2.sym=NULL;
-          lval2.boolresult=((cval->usage & uPACKED)!=0);
+          lval2.ispacked=((cval->usage & uPACKED)!=0);
         } /* if */
       } else {
         if (sym->dim.array.names!=NULL && !IS_PSEUDO_ARRAY(*lval1))
@@ -1874,7 +1878,7 @@ restart:
         assert(cval!=NULL && cval->next!=NULL);
         lval1->constval=cval->next->value - cval->value;
         if (lval1->constval>1)
-          lval1->boolresult=lval2.boolresult;   /* copy packed/unpacked status */
+          lval1->ispacked=lval2.ispacked;   /* copy packed/unpacked status */
         if (lval1->constval>1 && (matchtoken('[') || matchtoken('{'))) {
           /* an array indexed with symbolic name field may be considered a sub-array */
           lexpush();
@@ -1886,6 +1890,11 @@ restart:
           assert(sym!=NULL);
           dummysymbol=*sym;
           dummysymbol.dim.array.length=lval1->constval;
+          dummysymbol.dim.array.names=NULL; /* disallow symbolic indices in the sub-array */
+          if (lval2.ispacked)               /* copy packed/unpacked flag */
+            dummysymbol.usage |= uPACKED;
+          else
+            dummysymbol.usage &= ~uPACKED;
           cursym=&dummysymbol;
           /* recurse */
           goto restart;
@@ -2069,8 +2078,8 @@ static void clear_value(value *lval)
   lval->tag=0;
   lval->ident=0;
   lval->boolresult=FALSE;
+  lval->ispacked=FALSE;
   /* do not clear lval->arrayidx, it is preset in hier14() */
-  /* do not clear lval->cmptag */
 }
 
 static void setdefarray(cell *string,cell size,cell array_sz,cell *dataaddr,int fconst)
@@ -2227,7 +2236,7 @@ static int nesting=0;
   stgmark(sSTARTREORDER);
   memset(arglist,ARG_UNHANDLED,sizeof arglist);
   if (matchparanthesis) {
-    /* Opening brace was already parsed, if closing brace follows, this
+    /* Opening parenthesis was already parsed, if parenthesis brace follows, this
      * call passes no parameters.
      */
     close=matchtoken(')');
@@ -2242,6 +2251,13 @@ static int nesting=0;
       close=!matchtoken(tSYMLABEL);
       if (!close)
         lexpush();                /* reset the '.' */
+    } else {
+      /* There is no end-of line, but a closing brace also terminates the
+       * argument list
+       */
+      close=matchtoken('}');
+      if (close)
+        lexpush();                /* restore the '}', to be analyzed later */
     } /* if */
   } /* if */
   if (!close) {
@@ -2417,7 +2433,7 @@ static int nesting=0;
                   error(47);      /* array sizes must match */
               } /* if */
             } /* if */
-            if ((arg[argidx].usage & uPACKED)!=0 && !lval.boolresult)
+            if ((arg[argidx].usage & uPACKED)!=0 && !lval.ispacked)
               error(229);         /* formal argument is packed, real argument is unpacked */
             if (lval.ident!=iARRAYCELL || lval.constval>0) {
               /* save array size, for default values with uSIZEOF flag */
@@ -2547,12 +2563,13 @@ static int nesting=0;
         pushreg(sPRI);          /* store the argument on the stack */
       markexpr(sPARM,NULL,0);   /* mark the end of a sub-expression */
       nest_stkusage++;
+      if (arglist[argidx]==ARG_UNHANDLED)
+        nargs++;
+      arglist[argidx]=ARG_DONE;
     } else {
       error(202,argidx);        /* argument count mismatch */
+      arglist[argidx]=ARG_DONE; /* mark as done, so we do not process this parameter again */
     } /* if */
-    if (arglist[argidx]==ARG_UNHANDLED)
-      nargs++;
-    arglist[argidx]=ARG_DONE;
   } /* for */
   /* now a second loop to catch the arguments with default values that are
    * the "sizeof" or "tagof" of other arguments
@@ -2752,8 +2769,9 @@ static int constant(value *lval)
                                  * value distinguishes between literal arrays
                                  * and literal strings (this was done for
                                  * array assignment). */
-    lval->boolresult= (tok==tPACKSTRING);
+    lval->ispacked= (tok==tPACKSTRING);
     lastsymbol[0]='\0';
+    //??? add this to the list of "constant literal arrays"
   } else if (tok=='{' || tok=='[') {
     int match,packcount,tag,lasttag=-1;
     cell packitem;
@@ -2796,8 +2814,9 @@ static int constant(value *lval)
     ldconst((val+glb_declared)*pc_cellsize,sPRI);
     lval->ident=iARRAY;         /* pretend this is a global array */
     lval->constval=litidx-val;  /* constval == the size of the literal array */
-    lval->boolresult= (match=='}'); /* flag packed array */
+    lval->ispacked= (match=='}'); /* flag packed array */
     lastsymbol[0]='\0';
+    //??? add this to the list of "constant literal arrays"
   } else {
     return FALSE;               /* no, it cannot be interpreted as a constant */
   } /* if */

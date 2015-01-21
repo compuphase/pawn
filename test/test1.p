@@ -153,6 +153,14 @@ increment(a)
         }
 #endif
 
+#if defined CLEAR_STRING
+    clear(name{}, size=sizeof name)
+        {
+        name = ""
+        return size
+        }
+#endif
+
 #if 0
 #error This error message should never pop up
 #endif
@@ -203,6 +211,10 @@ new Filenames[6]{} =
     "echo.mp3",
     "foxtrot.mp3"
     ]
+#endif
+
+#if defined INVALID_GLOBAL_DECL
+    new port = readcfgvalue(.key = "proxy-port", .filename = config_network)
 #endif
 
 main()
@@ -535,6 +547,37 @@ main()
         #assert sizeof array == 5       /* 5 cells in the array definition */
         #assert sizeof array[.abc] == 4 /* 4 cells in the pseudo-array */
         #assert sizeof array.abc == 4   /* alternative syntax */
+    #endif
+
+    #if defined ELSE_NO_IF
+        new a = 1, b = 2
+        if (a > 1)
+            {
+            a = 0
+            }
+        else (a < b)
+            {
+            b = a
+            }
+        #endif
+
+    #if defined INVALID_STATIC_2D_PACKED
+        static monthnames[2]{4} = { "Jan", "Feb" }
+        static confirmtext[2]{4} = { "Yes", "No " }
+    #endif
+
+    #if defined CLEAR_STRING
+        new name{} = "monkey"
+        clear name
+    #endif
+
+    #if defined PSEUDO_PACKED_ARRAY_PACKED
+        new arr[.a, .b, .c{8}]
+        arr.c{0} = 0
+    #endif
+    #if defined PSEUDO_PACKED_ARRAY_UNPACKED
+        new arr[.a, .b, .c{8}]
+        arr.c[0] = 0
     #endif
     }
 

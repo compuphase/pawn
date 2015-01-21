@@ -1,6 +1,6 @@
 /*  Pawn compiler - File input, preprocessing and lexical analysis functions
  *
- *  Copyright (c) ITB CompuPhase, 1997-2012
+ *  Copyright (c) ITB CompuPhase, 1997-2015
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not
  *  use this file except in compliance with the License. You may obtain a copy
@@ -14,7 +14,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: sc2.c 4535 2011-07-07 09:15:22Z thiadmer $
+ *  Version: $Id: sc2.c 5181 2015-01-21 09:44:28Z thiadmer $
  */
 #include <assert.h>
 #include <stdio.h>
@@ -24,7 +24,7 @@
 #include <math.h>
 #include "lstring.h"
 #include "sc.h"
-#if defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__
+#if defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__ || defined __APPLE__
   #include <sclinux.h>
 #endif
 
@@ -2417,6 +2417,10 @@ SC_FUNC int needtoken(int token)
       strcpy(s2,"-end of file-");
     else if (_lextok<256)
       sprintf(s2,"%c",(char)_lextok);
+    else if (_lextok==tNUMBER)
+      sprintf(s2,"%d",_lexval);
+    else if (_lextok==tSYMBOL)
+      strcpy(s2,_lexstr);
     else
       strcpy(s2,sc_tokens[_lextok-tFIRST]);
     error(1,s1,s2);     /* expected ..., but found ... */

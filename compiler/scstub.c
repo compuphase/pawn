@@ -9,7 +9,7 @@ int main(int argc, char *argv[])
   int result;
 
   /* build a command line to pass on to the "DOS" program */
-  char path[80], *ptr;
+  char path[_MAX_PATH], *ptr;
   strcpy(path,argv[0]);
   ptr=strrchr(path,'\\');
   if (ptr==NULL)
@@ -26,4 +26,3 @@ int main(int argc, char *argv[])
     printf("Error launching '%s'\n",path);
   return result;
 }
-

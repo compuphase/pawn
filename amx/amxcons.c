@@ -4,7 +4,7 @@
  *  cannot always be implemented with portable C functions. In other words,
  *  these routines must be ported to other environments.
  *
- *  Copyright (c) ITB CompuPhase, 1997-2011
+ *  Copyright (c) ITB CompuPhase, 1997-2015
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not
  *  use this file except in compliance with the License. You may obtain a copy
@@ -18,7 +18,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: amxcons.c 4523 2011-06-21 15:03:47Z thiadmer $
+ *  Version: $Id: amxcons.c 5181 2015-01-21 09:44:28Z thiadmer $
  */
 
 #if defined _UNICODE || defined __UNICODE__ || defined UNICODE
@@ -343,9 +343,7 @@
   #define amx_putstr(s)       _tprintf("%s",(s))
   #define amx_putchar(c)      _puttchar(c)
   #define amx_fflush()        fflush(stdout)
-  #define amx_getch()         getch()
   #define amx_gets(s,n)       _fgetts(s,n,stdin)
-  #define amx_kbhit()         kbhit()
 
   int amx_termctl(int code,int value)
   {
@@ -356,10 +354,13 @@
     case 1: {           /* switch auto-wrap on/off */
       /* only works in Windows 2000/XP */
       HANDLE hConsole=GetStdHandle(STD_OUTPUT_HANDLE);
-      DWORD Flags=ENABLE_PROCESSED_OUTPUT;
+      DWORD mode;
+      GetConsoleMode(hConsole,&mode);
       if (value)
-        Flags |= ENABLE_WRAP_AT_EOL_OUTPUT;
-      SetConsoleMode(hConsole,Flags);
+        mode |= ENABLE_WRAP_AT_EOL_OUTPUT;
+      else
+        mode &= ~ENABLE_WRAP_AT_EOL_OUTPUT;
+      SetConsoleMode(hConsole,mode);
       return 1;
     } /* case */
 
@@ -449,15 +450,17 @@
   {
     SMALL_RECT rect;
     COORD dwSize;
+    HANDLE hConsole;
     (void)flags;
     dwSize.X=(short)columns;
     dwSize.Y=(short)lines;
-    SetConsoleScreenBufferSize(GetStdHandle(STD_OUTPUT_HANDLE),dwSize);
+    hConsole=GetStdHandle(STD_OUTPUT_HANDLE);
+    SetConsoleScreenBufferSize(hConsole,dwSize);
     rect.Left=0;
     rect.Top=0;
     rect.Right=(short)(columns-1);
     rect.Bottom=(short)(lines-1);
-    SetConsoleWindowInfo(GetStdHandle(STD_OUTPUT_HANDLE),TRUE,&rect);
+    SetConsoleWindowInfo(hConsole,TRUE,&rect);
   }
   void amx_viewsize(int *width,int *height)
   {
@@ -467,6 +470,37 @@
       *width=(int)csbi.dwSize.X;
     if (height!=NULL)
       *height=(int)(csbi.srWindow.Bottom-csbi.srWindow.Top+1);
+  }
+  int amx_getch(void)
+  {
+    TCHAR ch;
+    DWORD count,mode;
+    HANDLE hConsole=GetStdHandle(STD_INPUT_HANDLE);
+    GetConsoleMode(hConsole,&mode);
+    SetConsoleMode(hConsole,mode & ~(ENABLE_LINE_INPUT|ENABLE_ECHO_INPUT));
+    while (ReadFile(hConsole,&ch,1,&count,NULL) && count==0)
+      /* nothing */;
+    SetConsoleMode(hConsole,mode);
+    if (count>0)
+      return ch;
+    return EOF;
+  }
+  int amx_kbhit(void)
+  {
+    DWORD count=0;
+    HANDLE hConsole;
+    hConsole=GetStdHandle(STD_INPUT_HANDLE);
+    if (GetFileType(hConsole)==FILE_TYPE_PIPE) {
+      PeekNamedPipe(hConsole,NULL,0,NULL,&count,NULL);
+    } else {
+      INPUT_RECORD rec;
+      while (PeekConsoleInput(hConsole,&rec,1,&count)) {
+        if (count==0 || (rec.EventType==KEY_EVENT && rec.Event.KeyEvent.bKeyDown))
+          break;
+        ReadConsoleInput(hConsole,&rec,1,&count);
+      }
+    }
+    return (count>0);
   }
 #else
   /* assume a streaming terminal; limited features (no colour, no cursor
@@ -649,7 +683,7 @@ static TCHAR *formatfixed(TCHAR *string,cell value,TCHAR align,int width,TCHAR d
   string[0]=__T('\0');
 
   /* add sign */
-  i=_tcslen(string);
+  i=(int)_tcslen(string);
   string[i]=vsign;
   string[i+1]=__T('\0');
 
@@ -658,12 +692,12 @@ static TCHAR *formatfixed(TCHAR *string,cell value,TCHAR align,int width,TCHAR d
 
   /* add fractional part */
   if (digits>0) {
-    i=_tcslen(string);
+    i=(int)_tcslen(string);
     string[i]=decpoint;
     amx_strval(string+i+1,(long)value,SV_DECIMAL,-digits);
   } /* if */
 
-  len=_tcslen(string);
+  len=(int)_tcslen(string);
   if (len<width) {
     /* pad to the requested width */
     for (i=len; i<width; i++)
