@@ -2,17 +2,17 @@
  * (http://www.compuphase.com/svnrev.htm).
  * You should not modify it manually, as it may be re-generated.
  * 
- * $Revision: 4825$
- * $Date: 2012-12-04$
+ * $Revision: 5181$
+ * $Date: 2015-01-21$
  */
 
 #ifndef SVN_REV_H
 #define SVN_REV_H
 
-#define SVN_REV		4825
-#define SVN_REVSTR	"4825"
-#define SVN_REVDATE	"2012-12-04"
-#define SVN_REVSTAMP	20121204L
+#define SVN_REV		5181
+#define SVN_REVSTR	"5181"
+#define SVN_REVDATE	"2015-01-21"
+#define SVN_REVSTAMP	20150121L
 #define SVN_REVMODIFIED	0
 
 #endif /* SVN_REV_H */

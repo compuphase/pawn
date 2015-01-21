@@ -15,7 +15,7 @@
 @   machine.
 @
 @
-@   Copyright (c) ITB CompuPhase, 2006-2012
+@   Copyright (c) ITB CompuPhase, 2006-2013
 @
 @   Licensed under the Apache License, Version 2.0 (the "License"); you may not
 @   use this file except in compliance with the License. You may obtain a copy
@@ -29,7 +29,7 @@
 @   License for the specific language governing permissions and limitations
 @   under the License.
 @
-@   Version: $Id: $
+@   Version: $Id: amxexec_arm7_gas.s 4983 2013-10-21 07:32:57Z  $
 
     .file   "amxexec_arm7_gas.s"
     .syntax unified

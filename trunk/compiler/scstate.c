@@ -25,7 +25,7 @@
  *  function. This happens in SC4.C.
  *
  *
- *  Copyright (c) ITB CompuPhase, 2005-2011
+ *  Copyright (c) ITB CompuPhase, 2005-2015
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not
  *  use this file except in compliance with the License. You may obtain a copy
@@ -39,7 +39,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: scstate.c 4523 2011-06-21 15:03:47Z thiadmer $
+ *  Version: $Id: scstate.c 5181 2015-01-21 09:44:28Z thiadmer $
  */
 #include <assert.h>
 #include <limits.h>
@@ -47,7 +47,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "sc.h"
-#if defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__
+#if defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__ || defined __APPLE__
   #include <sclinux.h>
 #endif
 
@@ -367,7 +367,7 @@ SC_FUNC void state_conflict(symbol *root)
           continue;             /* state list id -1 is a special case */
         ptgt=state_getlist_ptr(tgtptr->id);
         assert(ptgt!=NULL);
-        if (psrc->fsa!=ptgt->fsa && strcmp(sym->name,uENTRYFUNC)!=0)
+        if (psrc->fsa!=ptgt->fsa && strcmp(sym->name,_ENTRYFUNC)!=0)
           error(83,sym->name);  /* this function is part of another machine */
         if (checkconflict(psrc,ptgt))
           error(84,sym->name);  /* state conflict */

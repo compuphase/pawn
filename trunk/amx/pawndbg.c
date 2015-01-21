@@ -14,7 +14,7 @@
  *  - ability to do remote debugging over an RS232 connection
  *
  *
- *  Copyright (c) ITB CompuPhase, 1998-2011
+ *  Copyright (c) ITB CompuPhase, 1998-2015
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not
  *  use this file except in compliance with the License. You may obtain a copy
@@ -28,17 +28,16 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: pawndbg.c 4769 2012-08-31 12:21:02Z thiadmer $
+ *  Version: $Id: pawndbg.c 5181 2015-01-21 09:44:28Z thiadmer $
  *
  *
  *  Command line options:
  *    -rs232=1,baud       set remote debugging over a serial line (port number
  *                        may be 1,2,... for Windows; 0,1,... for Linux)
  *    -term=x,y           set terminal size
- *    -term=off           force terminal off (in environments where it is on by
- *                        default)
- *    -term=hide          hide the window with the terminal, useful when using
- *                        a "dual terminal" debugger from an IDE
+ *    -term=off,prefix    force terminal emulation off (in environments where
+ *                        it is on by default); optionally set a prefix for all
+ *                        responses that the debugger sends
  *    -transfer           transfer file on start-up to the remote host (this
  *                        requires remote debugging to be set first)
  *    -quit               terminate debugger immediately, used when the debugger
@@ -75,14 +74,14 @@
       #define WIN32_CONSOLE
     #endif
   #endif
-#elif !defined macintosh || defined __APPLE__
+#elif !defined macintosh
   #include "../linux/getch.h"
   #include <fcntl.h>
   #include <termios.h>
   #include <unistd.h>
 #endif
 
-#if !defined AMX_NODYNALOAD && defined ENABLE_BINRELOC && (defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__)
+#if !defined AMX_NODYNALOAD && defined ENABLE_BINRELOC && (defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__ || defined __APPLE__)
   #include <binreloc.h> /* from BinReloc, see www.autopackage.org */
 #endif
 
@@ -103,7 +102,7 @@ extern int chdir(const char *path); /* position of this function in header files
 #define WATCHLINES      4       /* default number of watches displayed */
 #define LISTLINES       (STD_LINES - WATCHLINES - 10) /* default code lines */
 
-#if (defined AMX_TERMINAL || defined amx_Init) && !defined DBG_STREAMTERM
+#if (defined AMX_TERMINAL || defined amx_Init) && !defined DBG_DUALTERM
   /* required functions are implemented elsewhere */
   int amx_printf(char *,...);
   int amx_putchar(int);
@@ -170,8 +169,6 @@ extern int chdir(const char *path); /* position of this function in header files
   #define amx_printf      printf
   #define amx_putchar(c)  putchar(c)
   #define amx_fflush()    fflush(stdout)
-  #define amx_getch()     getch()
-  #define amx_gets(s,n)   fgets(s,n,stdin)
   int amx_termctl(int,int);
   void amx_clrscr(void);
   void amx_clreol(void);
@@ -180,6 +177,53 @@ extern int chdir(const char *path); /* position of this function in header files
   unsigned int amx_setattr(int foregr,int backgr,int highlight);
   void amx_console(int columns, int lines, int flags);
   void amx_viewsize(int *width,int *height);
+  static int localecho=1;
+  static int amx_getch(void)  /* this implementation works with redirected input */
+  {
+    char ch;
+    DWORD count,mode;
+    HANDLE hConsole=GetStdHandle(STD_INPUT_HANDLE);
+    GetConsoleMode(hConsole,&mode);
+    SetConsoleMode(hConsole,mode & ~(ENABLE_LINE_INPUT|ENABLE_ECHO_INPUT));
+    while (ReadFile(hConsole,&ch,1,&count,NULL) && count==0)
+      /* nothing */;
+    SetConsoleMode(hConsole,mode);
+    if (count>0)
+      return ch;
+    return EOF;
+  }
+  static void amx_gets(char *s,int n) /* this implementation works with redirected input */
+  {
+    if (n>0) {
+      int c,chars=0;
+      c=amx_getch();
+      while (c!=EOF && c!='\r' && chars<n-1) {
+        if (c=='\b') {
+          if (chars>0) {
+            chars--;
+            if (localecho) {
+              amx_putchar((char)c);
+              amx_putchar(' ');
+            }
+          }
+        } else {
+          s[chars++]=(char)c;
+        }
+        if (localecho) {
+          amx_putchar((char)c);
+          amx_fflush();
+        }
+        if (chars<n-1)
+          c=amx_getch();
+      } /* while */
+      if (c=='\r' && localecho) {
+        amx_putchar('\n');
+        amx_fflush();
+      } /* if */
+      assert(chars<n);
+      s[chars]='\0';
+    }
+  }
   #define STR_PROMPT    "dbg> "
   #define CHR_HLINE     '\xc4'
   #define CHR_VLINE     '\xb3'
@@ -213,7 +257,7 @@ extern int chdir(const char *path); /* position of this function in header files
 enum {
   BP_NONE,
   BP_CODE,
-  BP_DATA,    /* ??? not implemented */
+  BP_TEMP,  /* single-shot breakpoint */
   /* --- */
   BP_TYPES
 };
@@ -234,19 +278,17 @@ typedef struct tagBREAKPOINT {
   int type;             /* one of the BP_xxx types */
   ucell addr;           /* address (in code or data segment) */
   const char *name;     /* name of the symbol (function) */
-  int number;           /* sequential breakpoint number (to refer to the breakpoint) */
 } BREAKPOINT;
 
 typedef struct tagNAMELIST {
   struct tagNAMELIST *next;
   char *name;
-  int number;
 } NAMELIST;
 
 enum {
   REMOTE_NONE,  /* this means "not remote" */
   REMOTE_RS232,
-  REMOTE_UDP,   /* ??? not implemented */
+  REMOTE_USB,   /* ??? not implemented */
   /* --- */
   REMOTE_TYPES
 };
@@ -273,6 +315,7 @@ static int curtopline;  /* current line that is on top in the list */
 static int recentline=-1;
 static int terminal=0;
 static int remote=REMOTE_NONE;
+static char prefix[8]="%";
 static char chr_hline=CHR_HLINE;
 static char chr_vline=CHR_VLINE;
 #if defined __WIN32__
@@ -569,9 +612,9 @@ static void source_list(AMX_DBG *amxdbg,int startline,int numlines,int curline)
         (void)amx_setattr(-1,-1,startline==curline);
       if (terminal<=0) {
         if (startline==curline)
-          amx_printf("%3d%c %s",startline+1,CHR_CURLINE,cursource[startline]);
+          amx_printf("%s%3d%c %s",prefix,startline+1,CHR_CURLINE,cursource[startline]);
         else
-          amx_printf("%3d  %s",startline+1,cursource[startline]);
+          amx_printf("%s%3d  %s",prefix,startline+1,cursource[startline]);
       } else {
         /* see if there is a breakpoint on the line */
         if (amxdbg!=NULL && dbg_GetLineAddress(amxdbg,startline,curfilename,&address)==AMX_ERR_NONE) {
@@ -713,16 +756,16 @@ static cell *VirtAddressToPhys(AMX *amx,cell amx_addr)
  * script contains debugging information (even if it does not load the debugging
  * information). If debugging information is present, it should check for the
  * reception of packets with the character "¡". Upon reception, it replies with
- * a return packed with the character "@". The device should have a time-out on
- * the polling loop for receivng the "¡" packets, because the script should run
- * normally when no debugger is attached.
+ * the character pair "¿]". The device should have a time-out on the polling
+ * loop for receivng the "¡" packets, because the script should run normally
+ * when no debugger is attached.
  *
  * Running
  *
  * After entering in debug mode, the device runs the script, but when it drops
- * at a "BREAK" instruction, it sends a packet with the character "@" followed
- * by the new instruction pointer address (CIP) and a newline character. The
- * device then waits for a response from the host (the script is halted). To
+ * at a "BREAK" instruction, it sends a packet with the character "¿" followed
+ * by the new instruction pointer address (CIP) and a terminating "]" character.
+ * The device then waits for a response from the host (the script is halted). To
  * continue running, the host simply sends a packet with the single character
  * "!".
  *
@@ -743,9 +786,9 @@ static cell *VirtAddressToPhys(AMX *amx,cell amx_addr)
  *
  * where "address" and "size" are hexadecimal numbers. The size is in cells;
  * the address does not have to be cell-aligned, but it typically is. The
- * device responds to this command by sending a packet with an "@" character
+ * device responds to this command by sending a packet with an "¿" character
  * followed by one or more hexadecimal values, separated with commas and
- * terminated with a newline.
+ * terminated with a "]".
  *
  * Other (suggested) commands are:
  *
@@ -763,21 +806,21 @@ static cell *VirtAddressToPhys(AMX *amx,cell amx_addr)
  * When sending over scripts (or perhaps other files), the reply of the
  * ?P command carries the block size that the debugger should use to send
  * the data (like all numbers in the debugger interface, this value is in
- * hexadecimal). For example, if the remote host replies with @100, the debugger
- * should transfer the file in blocks of 256 bytes. The file itself is then
- * sent as binary data (and in blocks). After each block, the debugger must
- * wait for the reply.
+ * hexadecimal). For example, if the remote host replies with "¿100]", the
+ * debugger should transfer the file in blocks of 256 bytes. The file itself
+ * is then sent as binary data (and in blocks). After each block, the debugger
+ * must wait for the reply.
  *
  * Before sending the block, the debugger sends a "start code". This code is
  * either an ACK (ASCII 6) or a NAK (ASCII 21). If the debugger sends an ACK,
  * the block that follows is the next sequential block of data for the file. If
- * it sends a NAK, the block that follows is a repeated send of the preceding block.
- * The debugger should resend a block on a checksum mismatch. After sending a
- * block, the remote host replies. The checksum of the block is in the value
- * that follows the @ sign. Due to the way that the checksum is computed, the
- * checksum is never zero. The debugger can now compare the checksum with the
- * one it calculated itself. On a mismatch, the debugger can then send a NAK
- * and resend the block.
+ * it sends a NAK, the block that follows is a repeated send of the preceding
+ * block. The debugger should resend a block on a checksum mismatch. After
+ * sending a block, the remote host replies. The checksum of the block is in
+ * the value that follows the ¿ sign. Due to the way that the checksum is
+ * computed, the checksum is never zero. The debugger can now compare the
+ * checksum with the one it calculated itself. On a mismatch, the debugger can
+ * then send a NAK and resend the block.
  *
  * The checksum is the "Internet checksum", but as an 8-bit variant. This
  * checksum is often called the "one's complement", because it wraps the carry
@@ -787,15 +830,16 @@ static cell *VirtAddressToPhys(AMX *amx,cell amx_addr)
  * Notes
  *
  * The rationale for the debugger communication protocol is performance, and
- * especially attempting to avoid that the communication link becomes the bottleneck. Therefore, the
- * device and the host send over as little as possible until it is known that
- * the device should be halted. In the case of a serial link, data is sent byte
- * by byte. When the device is halted (on a breakpoint) and
- * waiting for user interaction, performance is no longer as important.
+ * especially attempting to avoid that the communication link becomes the
+ * bottleneck. Therefore, the device and the host send over as little as
+ * possible until it is known that the device should be halted. In the case
+ * of a serial link, data is sent byte by byte. When the device is halted (on
+ * a breakpoint) and waiting for user interaction, performance is no longer
+ * as important.
  *
  * There is a special case in the handshaking stage when the device is already
  * running in debug mode (because an earlier session was aborted). In that case,
- * it will respond with "@" and the new instruction pointer (CIP) address.
+ * it will respond with "¿" and the new instruction pointer (CIP) address.
  */
 
 static int send_rs232(const char *buffer, int len)
@@ -816,10 +860,9 @@ static int getresponse_rs232(char *buffer, int buffersize, long retries)
   int len=0;
   unsigned long size;
 
-  //assert(hCom!=INVALID_HANDLE_VALUE);
   do {
 
-    /* read character by character, so that when we see the '\n' we stop
+    /* read character by character, so that when we see the ']' we stop
      * reading and keep the rest of the waiting characters in the queue
      */
     #if defined __WIN32__
@@ -830,9 +873,9 @@ static int getresponse_rs232(char *buffer, int buffersize, long retries)
     len+=size;
 
     /* throw away dummy input characters */
-    while (buffer[0]!='@' && len>0) {
+    while (buffer[0]!='\xbf' && len>0) {
       int idx;
-      for (idx=0; idx<len && buffer[idx]!='@'; idx++)
+      for (idx=0; idx<len && buffer[idx]!='\xbf'; idx++)
         /* nothing */;
       memmove(buffer,buffer+idx,len-idx);
       len-=idx;
@@ -850,8 +893,10 @@ static int getresponse_rs232(char *buffer, int buffersize, long retries)
       retries--;
     } /* if */
 
-  } while ((len==0 || strchr(buffer,'\n')==NULL) && retries>0);
+  } while ((len==0 || strchr(buffer,']')==NULL) && retries>0);
 
+  if (len>0 && strchr(buffer,']')==NULL)
+    len=0;
   return len;
 }
 
@@ -865,18 +910,17 @@ static int settimestamp_rs232(unsigned long sec1970)
     assert(fdCom>=0);
   #endif
   sprintf(str,"?T%lx\n",sec1970);
-  send_rs232(str,strlen(str));
-  getresponse_rs232(str,sizeof str,10);
-  return strlen(str)>0 && atoi(str+1)>0;
+  send_rs232(str,(int)strlen(str));
+  return getresponse_rs232(str,sizeof str,10) && atoi(str+1)>0;
 }
 
-static int remote_rs232(int port,int baud)
+static int remote_rs232(const char *port,int baud)
 {
   #if defined __WIN32__
     DCB    dcb;
     COMMTIMEOUTS commtimeouts;
+	DWORD size;
   #endif
-  unsigned long size;
   char buffer[40];
   int sync_found,count;
 
@@ -888,7 +932,7 @@ static int remote_rs232(int port,int baud)
   #endif
     sprintf(buffer,"?U\n");
     #if defined __WIN32__
-      WriteFile(hCom,buffer,strlen(buffer),&size,NULL);
+      WriteFile(hCom,buffer,(DWORD)strlen(buffer),&size,NULL);
     #else
       write(fdCom,buffer,strlen(buffer));
     #endif
@@ -901,10 +945,13 @@ static int remote_rs232(int port,int baud)
       CloseHandle(hCom);
     if (baud==0)
       return 0;
-    sprintf(buffer,"com%d:",port);
-    hCom=CreateFile(buffer,GENERIC_READ|GENERIC_WRITE,0,NULL,OPEN_EXISTING,FILE_ATTRIBUTE_NORMAL,NULL);
-    if (hCom==INVALID_HANDLE_VALUE)
-      return 0;
+    hCom=CreateFile(port,GENERIC_READ|GENERIC_WRITE,0,NULL,OPEN_EXISTING,FILE_ATTRIBUTE_NORMAL,NULL);
+    if (hCom==INVALID_HANDLE_VALUE) {
+      sprintf(buffer,"\\\\.\\%s",port);
+      hCom=CreateFile(buffer,GENERIC_READ|GENERIC_WRITE,0,NULL,OPEN_EXISTING,FILE_ATTRIBUTE_NORMAL,NULL);
+      if (hCom==INVALID_HANDLE_VALUE)
+        return 0;
+    }
     GetCommState(hCom,&dcb);
     dcb.BaudRate=baud;
     dcb.ByteSize=8;
@@ -933,8 +980,7 @@ static int remote_rs232(int port,int baud)
     } /* if */
     if (baud==0)
       return 0;
-    sprintf(buffer,"/dev/ttyS%d",port);
-    fdCom = open(buffer,O_RDWR|O_NOCTTY|O_NONBLOCK);
+    fdCom = open(port,O_RDWR|O_NOCTTY|O_NONBLOCK);
     if (fdCom<0)
       return 0;
   	/* clear input & output buffers, then switch to "blocking mode" */
@@ -947,8 +993,12 @@ static int remote_rs232(int port,int baud)
     newtio.c_cflag=CS8 | CLOCAL | CREAD;
 
     switch (baud) {
+    #if defined B1152000
     case 1152000: newtio.c_cflag |= B1152000; break;
+    #endif
+    #if defined B576000
     case  576000: newtio.c_cflag |=  B576000; break;
+    #endif
     case  230400: newtio.c_cflag |=  B230400; break;
     case  115200: newtio.c_cflag |=  B115200; break;
     case   57600: newtio.c_cflag |=   B57600; break;
@@ -975,33 +1025,45 @@ static int remote_rs232(int port,int baud)
   do {
     #if defined __WIN32__
       WriteFile(hCom,"\xa1",1,&size,NULL);
-      for (count=0; count<50 && !sync_found; count++) {
-        Sleep(20);
+      Sleep(10);
+      for (count=0; count<4 && !sync_found; count++) {
+        Sleep(10);
         do {
           ReadFile(hCom,buffer,1,&size,NULL);
-          sync_found= (size>0 && buffer[0]=='@');
+          sync_found= (size>0 && buffer[0]=='\xbf');
+          if (sync_found) {
+            Sleep(20);  /* give ample time for ']' to arrive */
+            ReadFile(hCom,buffer,1,&size,NULL);
+            if (size==0 || buffer[0]!=']')
+              sync_found=0;
+          } /* if */
         } while (!sync_found && size>0);
       } /* for */
       /* read remaining buffer (if any) */
-      ReadFile(hCom,buffer+1,sizeof buffer - 1,&size,NULL);
-      size++; /* add size of the handshake character */
+      ReadFile(hCom,buffer,sizeof buffer,&size,NULL);
     #else
       write(fdCom,"\xa1",1);
-      for (count=0; count<50 && !sync_found; count++) {
-        usleep(20*1000);
+      usleep(10*1000);
+      for (count=0; count<4 && !sync_found; count++) {
+        usleep(10*1000);
         do {
           size=read(fdCom,buffer,1);
-          sync_found= (size>0 && buffer[0]=='@');
+          sync_found= (size>0 && buffer[0]=='\xbf');
+          if (sync_found) {
+            usleep(20*1000);  /* give ample time for ']' to arrive */
+            size=read(fdCom,buffer,1);
+            if (size<=0 || buffer[0]!=']')
+              sync_found=0;
+          } /* if */
         } while (!sync_found && size>0);
       } /* for */
       /* read remaining buffer (if any) */
-      size=read(fdCom,buffer+1,sizeof buffer - 1);
-      size++; /* add size of the handshake character */
+      size=read(fdCom,buffer,sizeof buffer);
     #endif
-  } while (size==0 || buffer[0]!='@');
-  if (size>1 && size<sizeof remote_pendingbuf) {
-    remote_pendingsize=size-1;
-    memcpy(remote_pendingbuf,buffer+1,remote_pendingsize);
+  } while (!sync_found);
+  if (size>0 && size<sizeof remote_pendingbuf) {
+    remote_pendingsize=size;
+    memcpy(remote_pendingbuf,buffer,remote_pendingsize);
   } /* if */
   /* give a "sync time" command, so that the device has the same time as the computer */
   settimestamp_rs232((unsigned long)time(NULL));
@@ -1010,7 +1072,7 @@ static int remote_rs232(int port,int baud)
   return 1;
 }
 
-static int remote_wait_rs232(AMX *amx)
+static int remote_wait_rs232(AMX *amx, long retries)
 {
   char buffer[50],*ptr;
   unsigned long size;
@@ -1043,23 +1105,30 @@ static int remote_wait_rs232(AMX *amx)
             size=read(fdCom,buffer+offs,sizeof buffer - offs - 1);
           #endif
         } /* if */
-      } while (size==0 && remote_pendingsize==0);
+        if (size==0 && remote_pendingsize==0 && retries>0) {
+          Sleep(50);
+          retries--;
+        }
+      } while (size==0 && remote_pendingsize==0 && retries!=0);
+      if (size==0 && remote_pendingsize==0)
+        return 0;
       assert(size+offs<sizeof buffer);
       buffer[size+offs]='\0';   /* force zero-termination */
       if (state==SCAN) {
-        for (ptr=buffer; (unsigned long)(ptr-buffer)<size && *ptr!='@'; ptr++)
+        for (ptr=buffer; (unsigned long)(ptr-buffer)<size && *ptr!='\xbf'; ptr++)
           /* nothing */;
         if ((unsigned long)(ptr-buffer)>=size) {
           amx_printf("%s",buffer);
         } else {
-          memmove(buffer,ptr,offs);
+          if (ptr!=buffer)
+            memmove(buffer,ptr,(size+offs)-(ptr-buffer));
           state=START;
         } /* if */
       } /* if */
       if (state==START) {
-        for (ptr=buffer; (unsigned long)(ptr-buffer)<(size+offs) && *ptr!='\n'; ptr++)
+        for (ptr=buffer; (unsigned long)(ptr-buffer)<(size+offs) && *ptr!=']'; ptr++)
           /* nothing */;
-        if (*ptr=='\n') {
+        if (*ptr==']') {
           state=FINISH;
           if (strlen(++ptr)>0)
             amx_printf("%s",ptr);
@@ -1067,10 +1136,10 @@ static int remote_wait_rs232(AMX *amx)
       } /* if */
     } /* while */
     amx_fflush();
-    /* we found a line starting with '@' and ending '\n'; now check the validity
-     * of the line
+    /* we found a packet starting with '\xbf' and ending ']'; now check the
+     * validity of the packet
      */
-    if (sscanf(buffer,"@%lx",&cip)==1) {
+    if (sscanf(buffer+1,"%lx",&cip)==1) {
       amx->cip=(cell)cip;
       return 1;
     } else {
@@ -1105,9 +1174,9 @@ static void remote_sync_rs232(AMX *amx)
       write(fdCom,"?R\n",3);
     #endif
 
-    buffer[0]='\0';
-    getresponse_rs232(buffer,sizeof buffer,10);
-    if (sscanf(buffer,"@%lx,%lx,%lx",&frm,&stk,&hea)==3) {
+    if (getresponse_rs232(buffer,sizeof buffer,10)
+        && sscanf(buffer+1,"%lx,%lx,%lx",&frm,&stk,&hea)==3)
+    {
       amx->frm=(cell)frm;
       amx->stk=(cell)stk;
       amx->hea=(cell)hea;
@@ -1126,19 +1195,20 @@ static void remote_read_rs232(AMX *amx,cell vaddr,int number)
 
   while (number>0) {
     sprintf(buffer,"?M%lx,%x\n",(long)vaddr,(number>10) ? 10 : number);
-    len=strlen(buffer);
+    len=(int)strlen(buffer);
     send_rs232(buffer,len);
-    getresponse_rs232(buffer,sizeof buffer,100);
-    ptr=buffer+1;       /* skip '@' */
-    while (number>0 && (ptr-buffer)<sizeof buffer && *ptr!='\0') {
-      val=strtol(ptr,&ptr,16);
-      if ((cptr=VirtAddressToPhys(amx,vaddr))!=NULL)
-        *cptr=val;
-      number--;
-      vaddr+=sizeof(cell);
-      while ((*ptr!='\0' && *ptr<=' ') || *ptr==',')
-        ptr++;          /* skip optional comma (and whitespace) */
-    } /* while */
+    if (getresponse_rs232(buffer,sizeof buffer,100)) {
+      ptr=buffer+1;     /* skip '¿' */
+      while (number>0 && (ptr-buffer)<sizeof buffer && *ptr!=']') {
+        val=strtol(ptr,&ptr,16);
+        if ((cptr=VirtAddressToPhys(amx,vaddr))!=NULL)
+          *cptr=val;
+        number--;
+        vaddr+=sizeof(cell);
+        while ((*ptr!='\0' && *ptr<=' ') || *ptr==',')
+          ptr++;        /* skip optional comma (and whitespace) */
+      } /* while */
+    } /* if */
   } /* while */
 }
 
@@ -1161,10 +1231,9 @@ static void remote_write_rs232(AMX *amx,cell vaddr,int number)
       vaddr+=sizeof(cell);
     } /* while */
     strcat(buffer,"\n");
-    len=strlen(buffer);
+    len=(int)strlen(buffer);
     send_rs232(buffer,len);
-    getresponse_rs232(buffer,sizeof buffer,100);
-    if (strtol(buffer+1,NULL,16)==0)
+    if (getresponse_rs232(buffer,sizeof buffer,100) && strtol(buffer+1,NULL,16)==0)
       return;
   } /* while */
 }
@@ -1176,8 +1245,8 @@ static int remote_transfer_rs232(const char *filename)
   unsigned char *buffer;
   char str[128];
   FILE *fp;
-  size_t bytes,block;
-  unsigned long size,chksum;
+  size_t bytes;
+  unsigned long size,chksum,block;
   int len,err;
 
   #if defined __WIN32__
@@ -1197,10 +1266,9 @@ static int remote_transfer_rs232(const char *filename)
 
   /* set up */
   sprintf(str,"?P %lx,%s\n",size,skippath(filename));
-  len=strlen(str);
+  len=(int)strlen(str);
   send_rs232(str,len);
-  getresponse_rs232(str,sizeof str,100);
-  if (sscanf(str,"@%x",&block)!=1)
+  if (!getresponse_rs232(str,sizeof str,100) || sscanf(str+1,"%lx",&block)!=1)
     block=0;
   /* allocate 1 byte more, for the ACK/NAK prefix */
   if (block==0 || (buffer=(unsigned char*)malloc((block+1)*sizeof(char)))==NULL) {
@@ -1221,7 +1289,7 @@ static int remote_transfer_rs232(const char *filename)
       chksum=(chksum&0xff)+(chksum>>8);
     do {
       /* send block */
-      send_rs232((const char*)buffer,bytes+1); /* also send the ACK/NAK prefix */
+      send_rs232((const char*)buffer,(int)bytes+1); /* also send the ACK/NAK prefix */
       getresponse_rs232(str,sizeof str,100);
       err=(str[0]!='\0') ? strtol(str+1,NULL,16) : 0;
       assert(err>=0 && err<=255);
@@ -1244,7 +1312,7 @@ static int remote_transfer_rs232(const char *filename)
 
   /* reboot the device */
   strcpy(str,"?U*\n");
-  len=strlen(str);
+  len=(int)strlen(str);
   send_rs232(str,len);
 
   return 1;
@@ -1263,11 +1331,12 @@ static void namelist_init(NAMELIST *root)
   } /* while */
 }
 
-static NAMELIST *namelist_find(NAMELIST *root,int number)
+static NAMELIST *namelist_get(NAMELIST *root,int number)
 {
   NAMELIST *name;
 
-  for (name=root->next; name!=NULL && name->number!=number; name=name->next)
+  assert(number>0); /* first valid sequence number is 1 */
+  for (name=root->next; name!=NULL && --number!=0; name=name->next)
     /* nothing */;
   return name;
 }
@@ -1292,7 +1361,7 @@ static int namelist_delete(NAMELIST *root,NAMELIST *item)
   return 1;
 }
 
-static NAMELIST *namelist_add(NAMELIST *root,char *name,int number)
+static NAMELIST *namelist_add(NAMELIST *root,char *name)
 {
   NAMELIST *cur, *pred;
 
@@ -1301,17 +1370,16 @@ static NAMELIST *namelist_add(NAMELIST *root,char *name,int number)
   if (cur==NULL)
     return NULL;
   cur->name=strdup(name);
-  cur->number=number;
+  cur->next=NULL;
   if (cur->name==NULL) {
     free(cur);
     return NULL;
   } /* if */
 
-  /* link it in the list */
+  /* link it to the end of the list */
   assert(root!=NULL);
-  for (pred=root; pred->next!=NULL && pred->next->number<number; pred=pred->next)
+  for (pred=root; pred->next!=NULL; pred=pred->next)
     /* nothing */;
-  cur->next=pred->next;
   pred->next=cur;
 
   return cur;
@@ -1343,9 +1411,9 @@ static int get_symbolvalue(AMX *amx,AMX_DBG_SYMBOL *sym,int index,cell *value)
       remote_read_rs232(amx,(cell)(base+index*sizeof(cell)),1);
   #endif
   vptr=VirtAddressToPhys(amx,(cell)(base+index*sizeof(cell)));
-  assert(vptr!=NULL);
-  *value=*vptr;
-  return 1;
+  if (vptr!=NULL)
+    *value=*vptr;
+  return vptr!=NULL;
 }
 
 static int set_symbolvalue(AMX *amx,const AMX_DBG_SYMBOL *sym,int index,cell value)
@@ -1455,6 +1523,11 @@ static void display_variable(AMX *amx,AMX_DBG *amxdbg,AMX_DBG_SYMBOL *sym,int in
   cell value;
 
   assert(index!=NULL);
+  /* first check whether the variable is visible at all */
+  if ((uint32_t)amx->cip<sym->codestart || (uint32_t)amx->cip>sym->codeend) {
+    amx_printf("(not in scope)");
+    return;
+  }
   /* set default display type for the symbol (if none was set) */
   if ((sym->vclass & ~DISP_MASK)==0) {
     const char *tagname;
@@ -1580,8 +1653,8 @@ static void watch_list(AMX *amx,AMX_DBG *amxdbg)
       indexptr=strchr(indexptr,'[');
     } /* if */
     if (terminal<0)
-      amx_printf("!watch ");
-    amx_printf("%d   %-12s ",num++,watch->name);
+      amx_printf("%swatch ",prefix);
+    amx_printf("%d   %-12s ",++num,watch->name);
     /* find the symbol with the given range with the smallest scope */
     if (dbg_GetVariable(amxdbg,watch->name,amx->cip,&sym)==AMX_ERR_NONE)
       display_variable(amx,amxdbg,(AMX_DBG_SYMBOL *)sym,idx,dim);
@@ -1610,28 +1683,24 @@ static int watch_set(int number, char *name)
 {
   NAMELIST *cur;
 
-  /* find a free number */
-  if (number<0) {
-    int changed;
-    number=0;
-    do {
-      changed=0;
-      for (cur=watches.next; cur!=NULL; cur=cur->next) {
-        if (cur->number==number) {
-          number++;
-          changed=1;
-        } /* if */
-      } /* for */
-    } while (changed);
-  } /* if */
-
-  /* add the watch */
-  return namelist_add(&watches,name,number)!=NULL;
+  /* add (or modify) the watch */
+  if (number>0) {
+    cur=namelist_get(&watches,number);
+    if (cur!=NULL) {
+      char *ptr=strdup(name);
+      if (ptr) {
+        free(cur->name);
+        cur->name=ptr;
+      }
+      return ptr!=NULL;
+    }
+  }
+  return namelist_add(&watches,name)!=NULL;
 }
 
 static int watch_clear(int number)
 {
-  NAMELIST *name=namelist_find(&watches,number);
+  NAMELIST *name=namelist_get(&watches,number);
   if (name!=NULL) {
     namelist_delete(&watches,name);
     return 1;
@@ -1657,24 +1726,27 @@ static void break_init(void)
 
 static int break_clear(int number)
 {
-  BREAKPOINT *cur;
+  BREAKPOINT *cur,*next;
 
+  if (number<=0)
+    return 0; /* never valid */
   /* find the breakpoint */
   cur=&breakpoints;
-  while (cur->next!=NULL && cur->next->number!=number)
+  while (cur->next!=NULL && --number>0)
     cur=cur->next;
   if (cur->next==NULL)
     return 0;                   /* breakpoint not found */
 
-  cur->next=cur->next->next;    /* unlink */
-  free(cur->next);              /* then free */
+  next=cur->next;
+  cur->next=next->next;         /* unlink */
+  free(next);                   /* then free */
   return 1;
 }
 
 static int break_set(AMX_DBG *amxdbg,const char *symaddr,int flags)
 {
   BREAKPOINT *cur,*newbp, bp;
-  int number,changed,err,i,len,offs;
+  int number,err,i,len,offs;
   char filename[_MAX_PATH];
   const char *sep;
 
@@ -1688,7 +1760,7 @@ static int break_set(AMX_DBG *amxdbg,const char *symaddr,int flags)
     len=(int)(sep-symaddr);
     assert(len>=0);
     for (i=0; i<amxdbg->hdr->files; i++) {
-      offs=strlen(amxdbg->filetbl[i]->name)-len;
+      offs=(int)strlen(amxdbg->filetbl[i]->name)-len;
       if (offs>=0 && strncmp(amxdbg->filetbl[i]->name+offs,symaddr,len)==0) {
         /* found the matching file */
         strcpy(filename,amxdbg->filetbl[i]->name);
@@ -1698,71 +1770,58 @@ static int break_set(AMX_DBG *amxdbg,const char *symaddr,int flags)
     symaddr=sep+1;
   } /* if */
 
-  /* find type */
+  /* find type & address */
   memset(&bp,0,sizeof(BREAKPOINT));
+  bp.type=((flags & 1)!=0) ? BP_TEMP : BP_CODE;
   symaddr=(const char*)skipwhitespace(symaddr);
   if (isdigit(*symaddr)) {
-    bp.type=BP_CODE;
-    if ((flags & 1)!=0)
-      bp.number=0;      /* for temporary breakpoint, use number 0 */
     err=dbg_GetLineAddress(amxdbg,strtol(symaddr,NULL,10)-1,filename,&bp.addr);
   } else {
-    bp.type=BP_CODE;
     err=dbg_GetFunctionAddress(amxdbg,symaddr,filename,&bp.addr);
     dbg_LookupFunction(amxdbg, bp.addr, &bp.name);
   } /* if */
   if (err!=AMX_ERR_NONE)
-    return -1;
+    return AMX_ERR_NOTFOUND;
 
   /* walk through the list, see if the breakpoint already exists */
+  number=0;
   for (cur=breakpoints.next; cur!=NULL; cur=cur->next) {
+    number++;
     if (cur->addr==bp.addr) {
       if (flags & 2)
-        break_clear(cur->number); /* toggle the breakpoint */
+        break_clear(number); /* toggle the breakpoint */
       return AMX_ERR_NONE;
     } /* if */
   } /* for */
 
-  /* find an unused breakpoint number */
-  number=1;
-  do {
-    changed=0;
-    for (cur=breakpoints.next; cur!=NULL; cur=cur->next) {
-      if (cur->number==number) {
-        number++;
-        changed=1;
-      } /* if */
-    } /* for */
-  } while (changed);
-
-  /* allocate a new breakpoint, add the entry parsed earlier to the list */
+  /* allocate a new breakpoint, append the entry parsed earlier to the list */
   newbp=(BREAKPOINT*)malloc(sizeof(BREAKPOINT));
-  if (newbp==0)
-    return -1;
+  if (newbp==NULL)
+    return AMX_ERR_MEMORY;
   memcpy(newbp,&bp,sizeof(BREAKPOINT));
-  for (cur=&breakpoints; cur->next!=NULL && cur->next->number<number; cur=cur->next)
+  for (cur=&breakpoints; cur->next!=NULL; cur=cur->next)
     /* nothing */;
   assert(cur!=NULL);
-  newbp->next=cur->next;
   cur->next=newbp;
-  newbp->number=number;
+  assert(newbp->next==NULL);
 
-  return number;
+  return AMX_ERR_NONE;
 }
 
 static void break_list(AMX_DBG *amxdbg)
 {
   BREAKPOINT *cur;
+  int number=0;
 
   for (cur=breakpoints.next; cur!=NULL; cur=cur->next) {
     assert(cur->type!=BP_NONE);
     scroll_cmdwin(1);
-    amx_printf("%2d  ",cur->number);
+    amx_printf("%2d  ",++number);
     if (cur->type==BP_CODE) {
       long line;
       const char *filename;
       dbg_LookupLine(amxdbg,cur->addr,&line);
-      amx_printf("line: %ld",line);
+      amx_printf("line: %ld",line+1);
       if (cur->name!=NULL) {
         amx_printf("\tfunc: %s",cur->name);
       } else {
@@ -1781,6 +1840,7 @@ static int break_find(AMX_DBG *amxdbg,const char *symaddr)
   int i,len,offs;
   char filename[_MAX_PATH];
   const char *sep;
+  int number;
 
   /* check if a filename precedes the breakpoint location */
   symaddr=(const char*)skipwhitespace(symaddr);
@@ -1796,7 +1856,7 @@ static int break_find(AMX_DBG *amxdbg,const char *symaddr)
     len=(int)(sep-symaddr);
     assert(len>=0);
     for (i=0; i<amxdbg->hdr->files; i++) {
-      offs=strlen(amxdbg->filetbl[i]->name)-len;
+      offs=(int)strlen(amxdbg->filetbl[i]->name)-len;
       if (offs>=0 && strncmp(amxdbg->filetbl[i]->name+offs,symaddr,len)==0) {
         /* found the matching file */
         strcpy(filename,amxdbg->filetbl[i]->name);
@@ -1807,18 +1867,20 @@ static int break_find(AMX_DBG *amxdbg,const char *symaddr)
   } /* if */
 
   symaddr=(const char*)skipwhitespace(symaddr);
+  number=0;
   for (cur=breakpoints.next; cur!=NULL; cur=cur->next) {
     assert(cur->type!=BP_NONE);
-    if (cur->type==BP_CODE) {
+    number++;
+    if (cur->type==BP_CODE || cur->type==BP_TEMP) {
       const char *fname;
       dbg_LookupFile(amxdbg,cur->addr,&fname);
       if (fname!=NULL && strcmp(fname,filename)==0) {
         long line;
         if (cur->name!=NULL && strcmp(symaddr,cur->name)==0)
-          return cur->number;
+          return number;
         dbg_LookupLine(amxdbg,cur->addr,&line);
         if (line==strtol(symaddr,NULL,10)-1)
-          return cur->number;
+          return number;
       } /* if */
     } /* if */
   } /* for */
@@ -1830,17 +1892,20 @@ static int break_check(AMX *amx)
 {
   BREAKPOINT *cur;
   ucell cip;
+  int number=0;
 
   /* when the "break" statement comes, the instruction pointer is already
    * incremented; we must adjust for this
    */
   cip=(ucell)amx->cip-sizeof(cell);
   for (cur=breakpoints.next; cur!=NULL; cur=cur->next) {
-    if (cur->type==BP_CODE) {
+    number++;
+    if (cur->type==BP_CODE || cur->type==BP_TEMP) {
       if (cur->addr==cip) {
-        int number=cur->number;
-        if (number==0)
+        if (cur->type==BP_TEMP) {
           break_clear(number);
+          return 0; /* temporary breakpoint has pseudo-number 0 */
+        }
         return number;
       } /* if */
     } /* if */
@@ -1900,7 +1965,7 @@ char *rl_gets(char *str,int length)
     HANDLE stdoutput=GetStdHandle(STD_OUTPUT_HANDLE);
   #endif
 
-  amx_printf("%s",STR_PROMPT);
+  amx_printf("%s%s",prefix,STR_PROMPT);
   amx_fflush();
   #if defined __WIN32__
     if (terminal>0) {
@@ -2011,13 +2076,13 @@ char *rl_gets(char *str,int length)
       csrinfo.bVisible=TRUE;
       SetConsoleCursorInfo(stdoutput,&csrinfo);
       term_statusbar(0);
+      ReadConsole(stdinput,str,length,&num,NULL);
+      if (num<(unsigned long)length)
+        str[num]='\0';
     } else if (terminal<0) {
       amx_gets(str,length);
       return str;
     } /* if */
-    ReadConsole(stdinput,str,length,&num,NULL);
-    if (num<(unsigned long)length)
-      str[num]='\0';
   #else
     amx_gets(str,length);
   #endif
@@ -2033,7 +2098,7 @@ static char *strstrip(char *string)
   while (*string!='\0' && *string<=' ')
     memmove(string,string+1,strlen(string));
   /* strip trailing white space */
-  for (pos=strlen(string); pos>0 && string[pos-1]<=' '; pos--)
+  for (pos=(int)strlen(string); pos>0 && string[pos-1]<=' '; pos--)
     string[pos-1]='\0';
   return string;
 }
@@ -2232,7 +2297,7 @@ static char lastcommand[32] = "";
       } /* if */
       #if !defined NO_REMOTE
         if (remote==REMOTE_RS232)
-          remote_rs232(0,0);
+          remote_rs232(NULL,0);
       #endif
       exit(0);
     } else if (stricmp(command,"g")==0 || stricmp(command,"go")==0) {
@@ -2324,7 +2389,7 @@ static char lastcommand[32] = "";
         break_list(amxdbg);
       } else {
         result=break_set(amxdbg,params,stricmp(command,"tbreak")==0);
-        if (result<0)
+        if (result!=AMX_ERR_NONE)
           amx_printf("Invalid breakpoint\n");
         else if (terminal>0)
           source_list(amxdbg,gettopline(curline,curline-autolist/2),autolist,curline);
@@ -2353,7 +2418,7 @@ static char lastcommand[32] = "";
           {
             scroll_cmdwin(1);
             if (terminal<0)
-              amx_printf("!");
+              amx_printf("%s",prefix);
             amx_printf("%s\t%s\t",(amxdbg->symboltbl[i]->vclass & DISP_MASK)>0 ? "loc" : "glb",amxdbg->symboltbl[i]->name);
             display_variable(amx,amxdbg,amxdbg->symboltbl[i],idx,0);
             amx_printf("\n");
@@ -2379,12 +2444,12 @@ static char lastcommand[32] = "";
           if (behindname!=NULL)
             *behindname='[';
           if (terminal<0)
-            amx_printf("!");
+            amx_printf("%s",prefix);
           amx_printf("%s\t%s\t",(sym->vclass & DISP_MASK)>0 ? "loc" : "glb",params/*sym->name*/);
           display_variable(amx,amxdbg,(AMX_DBG_SYMBOL*)sym,idx,dim);
           amx_printf("\n");
         } else {
-          amx_printf("\tSymbol not found, or not a variable\n");
+          amx_printf("%sinfo Symbol not found, or not a variable\n",prefix);
         } /* if */
       } /* if */
     } else if (stricmp(command,"set")==0) {
@@ -2595,10 +2660,11 @@ int AMXAPI amx_InternalDebugProc(AMX *amx)
 {
 static cell lastfrm;
 static long lastline;
+static int breakcount;  /* breaks since last stop on the same line */
   AMX_DBG *amxdbg;
   const char *filename;
   long line;
-  int breaknr,err;
+  int breaknr,org_runmode,err;
 
   if (amx == NULL) {
     /* special case: re-initialize the abstract machine */
@@ -2618,9 +2684,13 @@ static long lastline;
     } /* if */
     lastfrm=0;
     lastline=-1;
+    breakcount=0;
     runmode=STEPPING;           /* wait at the entry point */
     return AMX_ERR_NONE;
   } /* if */
+
+  breakcount++;
+  org_runmode=runmode;
 
   /* when running until the function exit, check the frame address */
   if (runmode==STEPOUT && amx->frm>lastfrm)
@@ -2659,9 +2729,12 @@ static long lastline;
 
   /* try to avoid halting on the same line twice */
   dbg_LookupLine(amxdbg,amx->cip,&line);
-  if (line==lastline)
+  if (line==lastline && breakcount<5) { /* assume that there are no more than 5 breaks on a single line */
+    runmode=org_runmode;
     return AMX_ERR_NONE;
+  } /* if */
   lastline=line;
+  breakcount=0;
 
   /* check whether we are stepping through a sub-function */
   if (runmode==STEPOVER) {
@@ -2676,9 +2749,9 @@ static long lastline;
   /* check breakpoints */
   term_switch(1);             /* switch to the debugger console */
   if (breaknr==0)
-    amx_printf("STOP at line %ld\n",line+1);
+    amx_printf("%sinfo STOP at line %ld\n",prefix,line+1);
   else if (breaknr>0)         /* print breakpoint number */
-    amx_printf("BREAK %d at line %ld\n",breaknr,line+1);
+    amx_printf("%sinfo BREAK %d at line %ld\n",prefix,breaknr,line+1);
   assert(filename!=NULL);
   if (curfilename!=filename) {
     curfilename=filename;
@@ -2689,7 +2762,7 @@ static long lastline;
       amx_printf("\nCritical error: source file not found (or insufficient memory)\n");
       exit(1);
     } else if (terminal<=0) {
-      amx_printf("!file %s\n",curfilename);
+      amx_printf("%sfile %s\n",prefix,curfilename);
     } /* if */
   } /* if */
   #if !defined VT100
@@ -2825,8 +2898,8 @@ extern AMX_NATIVE_INFO console_Natives[];
   unsigned short flags;
   char *ptr;
 
-  #if !defined AMX_NODYNALOAD && defined ENABLE_BINRELOC && (defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__)
-    /* see www.autopackage.org for the BinReloc module */
+  #if !defined AMX_NODYNALOAD && defined ENABLE_BINRELOC && (defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__ || defined __APPLE__)
+    /* see www.autopackage.org (now Listaller) for the BinReloc module */
     if (br_init(NULL)) {
       char *libroot=br_find_exe_dir("");
       setenv("AMXLIB",libroot,0);
@@ -2834,7 +2907,6 @@ extern AMX_NATIVE_INFO console_Natives[];
     } /* if */
   #endif
 
-  amx_printf("Pawn command line debugger\n\n");
   if (setjmp(restart_buf)) {
     assert(program!=NULL);
     amx_InternalDebugProc(NULL);  /* clean up debug information */
@@ -2848,6 +2920,15 @@ extern AMX_NATIVE_INFO console_Natives[];
   /* get filename */
   if (strlen(amx_filename)==0) {
     if (argc >= 2) {
+      if (strcmp(argv[1],"-?")==0) {
+        fprintf(stderr,"Pawn command line debugger\n\nUsage: pawndbg filename [options]\n\n");
+        fprintf(stderr,"-rs232[=port][,baud]\tRemote debugging, default baud rate is 57600\n");
+        fprintf(stderr,"-transfer\t\tTransfer compiled script to remote host before starting\n");
+        fprintf(stderr,"-quit\t\t\tEnd the debugging sessions (e.g. after transfer)\n");
+        fprintf(stderr,"-term=off\t\tNo terminal support, use basic console output only\n");
+        fprintf(stderr,"-term=cols,rows\t\tSet console size\n");
+        return 0;
+      }
       strcpy(amx_filename,argv[1]);
     } else {
       amx_printf("File: ");
@@ -2880,33 +2961,35 @@ extern AMX_NATIVE_INFO console_Natives[];
   for (i = 2; i < argc; i++) {
     if (strncmp(argv[i],"-rs232",6)==0) {
       #if !defined NO_REMOTE
-        int port,baud;
+        int baud=57600;
         #if defined __WIN32__
-          port=1; /* default = COM1 */
+          char port[30]="COM1";
         #else
-          port=0; /* default = /dev/ttyS0 */
+          char port[30]="/dev/ttyS0";
         #endif
-        baud=57600;
         if ((ptr=strchr(argv[i],'='))!=NULL)
-          sscanf(ptr+1,"%d,%d",&port,&baud);
-        amx_printf("Waiting for connection...");
+          sscanf(ptr+1,"%[^,],%d",port,&baud);
+        amx_printf("Waiting for connection on %s...",port);
         amx_fflush();
         if (!remote_rs232(port,baud)) {
-          amx_printf(" unable to open port %d\n",port);
+          amx_printf(" failed to open port\n");
+          amx_fflush();
           return 1;
         } /* if */
-        printf("\n");
+        amx_printf("\n");
         #if defined __WIN32__
           Sleep(100);
         #else
           usleep(100*1000);
         #endif
-        printf("Host connected\n");
+        amx_printf("Host connected\n");
+        amx_fflush();
       #else
-        printf("Remote debugging is not supported\n");
+        amx_printf("Remote debugging is not supported\n");
+        amx_fflush();
         return 1;
       #endif
-    } else if (strncmp(argv[i],"-transfer",9)==0) {
+    } else if (strcmp(argv[i],"-transfer")==0) {
       #if !defined NO_REMOTE
         if (!remote_transfer_rs232(amx_filename)) {
           amx_printf("\tRemote file transfer failed.\n");
@@ -2918,20 +3001,14 @@ extern AMX_NATIVE_INFO console_Natives[];
       #endif
     } else if (strncmp(argv[i],"-term",5)==0) {
       if ((ptr=strchr(argv[i],'='))!=NULL) {
-        if (strcmp(ptr+1,"off")==0) {
+        if (strncmp(ptr+1,"off",3)==0 && (ptr[4]=='\0' || ptr[4]==',')) {
           terminal=-1;
-        } else if (strcmp(ptr+1,"hide")==0) {
-          #if defined __WIN32__
-            #define CONSOLE_TITLE "Pawn Debugger"
-            HWND hwnd;
-            SetConsoleTitle(CONSOLE_TITLE);
-            hwnd=FindWindow("ConsoleWindowClass",CONSOLE_TITLE);
-            if (hwnd==NULL)
-              hwnd=FindWindow("tty",CONSOLE_TITLE); /* Windows 9x */
-            if (hwnd!=NULL)
-              ShowWindow(hwnd,SW_HIDE);
-          #endif
-          terminal=-1;
+          if (ptr[4]==',' && ptr[5]!='\0' && strlen(ptr+5)<sizeof prefix) {
+            strcpy(prefix,ptr+5);
+            #if defined WIN32_CONSOLE
+              localecho=0;
+            #endif
+          }
         } else {
           sscanf(ptr+1,"%d,%d",&screencolumns,&screenlines);
           screenlines--;
@@ -2955,7 +3032,7 @@ extern AMX_NATIVE_INFO console_Natives[];
   signal(SIGINT,sigabort);
   amx_InternalDebugProc(NULL);  /* initialize debug hook */
 
-  #if defined AMX_TERMINAL && defined DBG_STREAMTERM
+  #if defined AMX_TERMINAL && defined DBG_DUALTERM
     if (!CreateConsoleThread()) {
       amx_printf("Failed to create console thread\n");
       return 1;
@@ -2983,9 +3060,14 @@ extern AMX_NATIVE_INFO console_Natives[];
       } /* while */
     } else {
       #if !defined NO_REMOTE
+        int retries=20; /* only for the first iteration */
         for ( ;; ) {
-          /* wait for input from the host */
-          remote_wait_rs232(&amx);
+          /* wait for input from the host, but use a time-out on the very first
+             call (if the remote host waits for a GO command, we need to issue
+             one; on every next call, there is no timeout) */
+          while (!remote_wait_rs232(&amx,retries))
+            remote_resume_rs232();
+          retries=-1;
           /* call the debug procedure ourselves */
           amx_InternalDebugProc(&amx);
           /* reply, to say that the script may continue to run */
@@ -3000,12 +3082,12 @@ extern AMX_NATIVE_INFO console_Natives[];
     amx_clrscr();
   #if !defined NO_REMOTE
     if (remote==REMOTE_RS232)
-      remote_rs232(0,0);
+      remote_rs232(NULL,0);
   #endif
   if (err != AMX_ERR_NONE)
-    amx_printf("Run time error %d\n", err);
+    amx_printf("\nRun time error %d\n", err);
   else
-    amx_printf("Normal termination, return value %ld\n", (long)ret);
+    amx_printf("\nNormal termination, return value %ld\n", (long)ret);
 
   //??? option for restart
 

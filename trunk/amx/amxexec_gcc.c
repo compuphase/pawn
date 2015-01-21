@@ -4,7 +4,7 @@
  *  compiler to create a fast "indirect threaded" interpreter. The Intel C/C++
  *  compiler supports this too.
  *
- *  Copyright (c) ITB CompuPhase, 1998-2011
+ *  Copyright (c) ITB CompuPhase, 1998-2013
  *
  *  This software is provided "as-is", without any express or implied warranty.
  *  In no event will the authors be held liable for any damages arising from

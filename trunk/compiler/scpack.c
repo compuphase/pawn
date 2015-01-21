@@ -431,7 +431,7 @@ int main(int argc, char **argv)
   if (buffersize > 0) {
     buffersize = compress(buffer, buffersize, pairtable);
     writefile(in, out, buffer, buffersize, pairtable);
-    printf("SCPACK: compression ratio: %ld%% (%d -> %d)\n",
+    printf("SCPACK: compression ratio: %ld%% (%u -> %u)\n",
            100L-(100L*buffersize)/orgbuffersize, orgbuffersize, buffersize);
   } else {
     printf("SCPACK: no SCPACK section found, nothing to do\n");

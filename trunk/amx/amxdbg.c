@@ -16,7 +16,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: amxdbg.c 4523 2011-06-21 15:03:47Z thiadmer $
+ *  Version: $Id: amxdbg.c 5148 2014-11-14 13:14:56Z  $
  */
 #include <assert.h>
 #include <stdio.h>
@@ -63,7 +63,7 @@ int AMXAPI dbg_LoadInfo(AMX_DBG *amxdbg, FILE *fp)
   #if BYTE_ORDER==BIG_ENDIAN
     amx_Align32((uint32_t*)&amxhdr.size);
     amx_Align16(&amxhdr.magic);
-    amx_Align16(&dbghdr.flags);
+    amx_Align16(&amxhdr.flags);
   #endif
   if (amxhdr.magic != AMX_MAGIC)
     return AMX_ERR_FORMAT;

@@ -7,7 +7,7 @@
  *  originally created by Ron Cain, july 1980, and enhanced by James E. Hendrix.
  *  The modifications in Pawn come close to a complete rewrite, though.
  *
- *  Copyright ITB CompuPhase, 1997-2012
+ *  Copyright ITB CompuPhase, 1997-2015
  *  Copyright J.E. Hendrix, 1982, 1983
  *  Copyright R. Cain, 1980
  *
@@ -23,7 +23,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: sc1.c 4769 2012-08-31 12:21:02Z  $
+ *  Version: $Id: sc1.c 5181 2015-01-21 09:44:28Z thiadmer $
  */
 #include <assert.h>
 #include <ctype.h>
@@ -65,7 +65,7 @@
 
 #include "lstring.h"
 #include "sc.h"
-#if defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__
+#if defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__ || defined __APPLE__
   #include <sclinux.h>
   #include <binreloc.h> /* from BinReloc, see www.autopackage.org */
 #endif
@@ -1436,13 +1436,13 @@ static void setconfig(char *root)
   char *ptr,*base;
   size_t len;
 
-  #if defined macintosh || defined __APPLE__
-    /* OS X makes the directory of the binary "current" when it is launched */
+  #if defined macintosh
+    /* on OS X, use argv[0] */
     getcwd(path,sizeof path);
   #elif defined __WIN32__ || defined _WIN32
     GetModuleFileName(NULL,path,_MAX_PATH);
   #elif defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__
-    /* see www.autopackage.org for the BinReloc module */
+    /* see www.autopackage.org (now Listaller) for the BinReloc module */
     br_init_lib(NULL);
     ptr=br_find_exe("/opt/Pawn/bin/pawncc");
     strlcpy(path,ptr,sizeof path);
@@ -1465,7 +1465,7 @@ static void setconfig(char *root)
     if ((ptr=strpbrk(path," \t/"))!=NULL)
       *ptr='\0';
   #endif
-  #if defined macintosh || defined __APPLE__
+  #if defined macintosh
     /* add a final ':' to the path */
     ptr=strchr(path,'\0');
     assert(ptr!=NULL);
@@ -1527,7 +1527,7 @@ static void setconfig(char *root)
 
 static void setcaption(void)
 {
-  pc_printf("Pawn compiler %-25s Copyright (c) 1997-2012, ITB CompuPhase\n\n",VERSION_STR);
+  pc_printf("Pawn compiler %-25s Copyright (c) 1997-2015, ITB CompuPhase\n\n",VERSION_STR);
 }
 
 static void about(void)
@@ -1910,7 +1910,7 @@ static void parse(void)
        * of a state exist function, not the "exit" statement
        */
       if (tok==tEXIT)
-        tok=lexsettoken(tSYMBOL,uEXITFUNC);
+        tok=lexsettoken(tSYMBOL,_EXITFUNC);
       lexpush();
       if (!newfunc(NULL,-1,FALSE,FALSE,FALSE)) {
         error(10);              /* illegal function or declaration */
@@ -2035,7 +2035,7 @@ static void declfuncvar(int fpublic,int fstatic,int fstock,int fconst)
    * of a state exist function, not the "exit" statement
    */
   if (tok==tEXIT)
-    tok=lexsettoken(tSYMBOL,uEXITFUNC);
+    tok=lexsettoken(tSYMBOL,_EXITFUNC);
   if (tok!=tSYMBOL && tok!=tOPERATOR) {
     lexpush();
     needtoken(tSYMBOL);
@@ -2209,7 +2209,15 @@ static void declglb(char *firstname,int firsttag,int fpublic,int fstatic,int fst
     } /* if */
     assert(litidx==0);  /* literal queue should be empty (again) */
     initials(ident,usage,tag,&size,dim,numdim,dimnames);/* stores values in the literal queue */
-    assert(size>=litidx);
+    if (size<litidx) {
+      int oldstatus=sc_status;
+      if (sc_status==statSKIP)
+        sc_status=statWRITE;
+      errorset(sRESET,0); /* this is an important error; it should not be gobbled */
+      error(10);        /* invalid declaration */
+      litidx=0;
+      sc_status=oldstatus;
+    }
     if (numdim==1)
       dim[0]=(int)size;
     /* before dumping the initial values (or zeros) check whether this variable
@@ -2755,7 +2763,8 @@ static cell initarray(int ident,int usage,int tag,int dim[],int numdim,int cur,
     return 0;
   } /* if */
   totalsize=0;
-  needtoken('[');
+  if (!needtoken('['))
+    startlit=0; /* because literal pool is cleared on a mismatch in needtoken() */
   for (idx=0,abortparse=FALSE; !abortparse; idx++) {
     /* We need to store the offset to the newly detected sub-array into the
      * indirection table; i.e. this table needs to be expanded and updated.
@@ -3161,10 +3170,15 @@ static void decl_const(int vclass)
       val=defaultval+1;                 /* set default value and tag for next enumeration field */
       exprtag=tag;
       assert(enumerate!=0 || first);    /* when not enumerating, each constant is the "first" of the list */
-      if (matchtoken('='))
-        constexpr(&val,&exprtag,NULL);  /* get optional value */
-      else if (first)
-        error(91,str);                  /* first constant in a list must be initialized */
+      if (enumerate) {
+        if (matchtoken('='))
+          constexpr(&val,&exprtag,NULL);/* get value (optional, except for the first) */
+        else if (first)
+          error(91,constname);          /* first constant in a list must be initialized */
+      } else {
+        needtoken('=');
+        constexpr(&val,&exprtag,NULL);  /* get value */
+      }
       first=0;
       defaultval=val;
       if (exprtag!=0 && !matchtag(tag,exprtag,FALSE)) {
@@ -3863,6 +3877,7 @@ static int newfunc(char *firstname,int firsttag,int fpublic,int fstatic,int stoc
   if (sym==NULL || (sym->usage & uNATIVE)!=0)
     return TRUE;                /* it was recognized as a function declaration, but not as a valid one */
   sym->lnumber=fline;
+  sym->fnumber=fcurrent;
   /* attach a preceding comment to the function's documentation */
   sc_attachdocumentation(sym,TRUE);
   if ((sym->usage & uPUBLIC)!=0 && !fpublic) {
@@ -3887,23 +3902,24 @@ static int newfunc(char *firstname,int firsttag,int fpublic,int fstatic,int stoc
     sc_reparse=TRUE;      /* must add another pass to "initial scan" phase */
   } /* if */
   /* we want public functions to be explicitly prototyped, as they are called
-   * from the outside (the exception is main(), which is implicitly forward
-   * declared)
+   * from the outside (the exception are main() and @start(), which are implicitly
+   * forward declared)
    */
-  if (fpublic && (sym->usage & uFORWARD)==0 && strcmp(symbolname,uMAINFUNC)!=0)
+  if (fpublic && (sym->usage & uFORWARD)==0
+      && (strcmp(symbolname,_MAINFUNC)!=0 || strcmp(symbolname,_STARTFUNC)!=0))
     error(235,symbolname);
   /* declare all arguments */
   argcnt=declargs(sym,TRUE);
   opererror=!operatoradjust(opertok,sym,symbolname,tag);
-  if (strcmp(symbolname,uMAINFUNC)==0 || strcmp(symbolname,uENTRYFUNC)==0
-      || strcmp(symbolname,uEXITFUNC)==0)
+  if (strcmp(symbolname,_MAINFUNC)==0 || strcmp(symbolname,_STARTFUNC)==0
+      || strcmp(symbolname,_ENTRYFUNC)==0 || strcmp(symbolname,_EXITFUNC)==0)
   {
     if (argcnt>0)
       error(5);         /* main(), entry() and exit() functions may not have any arguments */
     sym->usage|=uREAD;  /* main() is the program's entry point: always used */
   } /* if */
   state_id=getstates(symbolname);
-  if (state_id>0 && (opertok!=0 || strcmp(symbolname,uMAINFUNC)==0))
+  if (state_id>0 && (opertok!=0 || strcmp(symbolname,_MAINFUNC)==0|| strcmp(symbolname,_STARTFUNC)!=0))
     error(82);          /* operators may not have states, main() may neither */
   stlist=attachstatelist(sym,state_id);
   /* "declargs()" found the ")"; if a ";" appears after this, it was a
@@ -3987,7 +4003,7 @@ static int newfunc(char *firstname,int firsttag,int fpublic,int fstatic,int stoc
     declared=0;
   } /* if */
   if ((lastst!=tRETURN) && (lastst!=tGOTO)){
-    int remparams=(strcmp(sym->name,uENTRYFUNC)!=0 && strcmp(sym->name,uEXITFUNC)!=0);
+    int remparams=(strcmp(sym->name,_ENTRYFUNC)!=0 && strcmp(sym->name,_EXITFUNC)!=0);
     ldconst(0,sPRI);
     ffret(remparams);
     if ((sym->usage & uRETVALUE)!=0 && lastst!=tENDLESS) {
@@ -4207,6 +4223,7 @@ static int declargs(symbol *sym,int chkshadow)
             error(103);                 /* insufficient memory */
           memset(&sym->dim.arglist[argcnt+1],0,sizeof(arginfo));  /* keep the list terminated */
           sym->dim.arglist[argcnt].ident=iVARARGS;
+          sym->dim.arglist[argcnt].name[0]='\0';
           sym->dim.arglist[argcnt].hasdefault=FALSE;
           sym->dim.arglist[argcnt].defvalue.val=0;
           sym->dim.arglist[argcnt].defvalue_tag=0;
@@ -4776,7 +4793,7 @@ static void make_report(symbol *root,FILE *log,char *sourcefile)
         } /* if */
       } /* for */
     } /* if */
-    fprintf(log,"\">\n",funcdisplayname(symname,sym->name));
+    fprintf(log,"\">\n");
     if (sym->tag!=0) {
       tagsym=find_tag_byval(sym->tag);
       assert(tagsym!=NULL);
@@ -4840,14 +4857,17 @@ static void make_report(symbol *root,FILE *log,char *sourcefile)
       fprintf(log,"\t\t\t<attribute name=\"native\"/>\n");
     if ((sym->usage & uPUBLIC)!=0)
       fprintf(log,"\t\t\t<attribute name=\"public\"/>\n");
-    if (strcmp(sym->name,uMAINFUNC)==0)
+    if (strcmp(sym->name,_MAINFUNC)==0 || strcmp(sym->name,_STARTFUNC)==0)
       fprintf(log,"\t\t\t<attribute name=\"init\"/>\n");
-    else if (strcmp(sym->name,uENTRYFUNC)==0)
+    else if (strcmp(sym->name,_ENTRYFUNC)==0)
       fprintf(log,"\t\t\t<attribute name=\"entry\"/>\n");
-    else if (strcmp(sym->name,uEXITFUNC)==0)
+    else if (strcmp(sym->name,_EXITFUNC)==0)
       fprintf(log,"\t\t\t<attribute name=\"exit\"/>\n");
     if ((sym->usage & uNATIVE)==0)
       fprintf(log,"\t\t\t<stacksize value=\"%ld\"/>\n",(long)sym->x.stacksize);
+    //??? the report is written before the code is generated; as a result, the code size is not known at this stage
+    //if ((sym->usage & uNATIVE)==0)
+    //  fprintf(log,"\t\t\t<codesize value=\"%ld\"/>\n",(long)sym->codeaddr - sym->addr);
     if (sym->states!=NULL) {
       statelist *stlist=sym->states->next;
       constvalue *fsa;
@@ -4978,7 +4998,7 @@ static void reduce_referrers(symbol *root)
       if (sym->ident==iFUNCTN
           && (sym->usage & uNATIVE)==0
           && (sym->usage & uPUBLIC)==0
-          && strcmp(sym->name,uMAINFUNC)!=0 && strcmp(sym->name,uENTRYFUNC)!=0 && strcmp(sym->name,uEXITFUNC)!=0
+          && strcmp(sym->name,_MAINFUNC)!=0 && strcmp(sym->name,_ENTRYFUNC)!=0 && strcmp(sym->name,_EXITFUNC)!=0
           && count_referrers(sym)==0)
       {
         sym->usage&=~(uREAD | uWRITTEN);  /* erase usage bits if there is no referrer */
@@ -5035,7 +5055,7 @@ static void gen_ovlinfo(symbol *root)
          * is no function stub (for the jump table) -> no overlay index should
          * be assigned for this stub
          */
-        if (strcmp(sym->name,uENTRYFUNC)!=0)
+        if (strcmp(sym->name,_ENTRYFUNC)!=0)
           sym->index=idx++;
         if (sym->states!=NULL) {
           /* for functions with states, allocate an index for every implementation */
@@ -5177,12 +5197,18 @@ static long max_overlaysize(symbol *root,char **funcname)
   assert(root!=NULL);
   assert(pc_overlays>0);
   for (sym=root->next; sym!=NULL; sym=sym->next) {
-    if (sym->ident==iFUNCTN && (sym->usage & uNATIVE)==0 && (sym->usage & uREAD)!=0) {
-      if (max<(sym->codeaddr - sym->addr)) {
-        max=sym->codeaddr - sym->addr;
-        if (funcname!=NULL)
-          *funcname=sym->name;
-      } /* if */
+    if (sym->ident!=iFUNCTN)
+      continue;
+    if ((sym->usage & uNATIVE)!=0)
+      continue;         /* native functions have no code size */
+    if ((sym->usage & (uPUBLIC | uDEFINE))==uPUBLIC)
+      continue;         /* public function that is not implemented in this source code */
+    if ((sym->usage & (uPUBLIC | uREAD))==0)
+      continue;         /* function is not public and not used */
+    if (max<(sym->codeaddr - sym->addr)) {
+      max=sym->codeaddr - sym->addr;
+      if (funcname!=NULL)
+        *funcname=sym->name;
     } /* if */
   } /* if */
   return (long)max;
@@ -5253,7 +5279,7 @@ static int testsymbols(symbol *root,int level,int testlabs,int testconst)
           error(203,symname);       /* symbol isn't used ... (and not public/native/stock) */
         } /* if */
       } /* if */
-      if ((sym->usage & uPUBLIC)!=0 || strcmp(sym->name,uMAINFUNC)==0)
+      if ((sym->usage & uPUBLIC)!=0 || strcmp(sym->name,_MAINFUNC)==0)
         entry=TRUE;                 /* there is an entry point */
       /* also mark the function to the debug information */
       if (((sym->usage & uREAD)!=0 || (sym->usage & uPUBLIC)!=0 && (sym->usage & uDEFINE)!=0)
@@ -5287,7 +5313,7 @@ static int testsymbols(symbol *root,int level,int testlabs,int testconst)
 #endif
       } /* if */
       /* also mark the variable (local or global) to the debug information */
-      if ((sym->usage & (uWRITTEN | uREAD))!=0 && (sym->usage & uNATIVE)==0)
+      if ((sym->usage & (uWRITTEN | uREAD))!=0)
         insert_dbgsymbol(sym);
     } /* if */
     sym=sym->next;
@@ -5662,7 +5688,10 @@ static void statement(int *lastindent,int allow_decl)
     sc_allowproccall=optproccall;
     lexpush();      /* analyze token later */
     doexpr(TRUE,TRUE,TRUE,TRUE,NULL,NULL,FALSE);
-    needtoken(tTERM);
+    if (matchtoken('}'))
+      lexpush();    /* a closing brace terminates the expression, but must be re-analysed */
+    else
+      needtoken(tTERM);
     lastst=tEXPR;
     sc_allowproccall=FALSE;
   } /* switch */
@@ -5742,8 +5771,13 @@ static int doexpr(int comma,int chkeffect,int allowarray,int mark_endexpr,
     ident=expression(&val,tag,symptr,chkfuncresult);
     if (!allowarray && (ident==iARRAY || ident==iREFARRAY))
       error(33,"-unknown-");    /* array must be indexed */
-    if (chkeffect && !pc_sideeffect)
-      error(215);               /* expression has no effect */
+    if (chkeffect && !pc_sideeffect) {
+      /* if the expression follows an "else", maybe the user forgot an "if" */
+      if (lastst==tELSE)
+        error(makelong(215,3),"if");  /* did you mean "else if (expr)?" */
+      else
+        error(215);             /* expression has no effect */
+    }
     sc_allowproccall=FALSE;     /* cannot use "procedure call" syntax anymore */
   } while (comma && matchtoken(',')); /* more? */
   if (mark_endexpr)
@@ -5886,6 +5920,7 @@ static int doif(void)
     flab2=getlabel();
     if ((lastst!=tRETURN) && (lastst!=tGOTO))
       jumplabel(flab2);         /* "true" branch jumps around "else" clause, unless the "true" branch statement already jumped */
+    lastst=tELSE;               /* flag this as an "else" clause, for testing expressions */
     setlabel(flab1);            /* print false label */
     statement(NULL,FALSE);      /* do "else" clause */
     setlabel(flab2);            /* print true label */
@@ -5966,16 +6001,24 @@ static int dofor(void)
   addwhile(wq);
   skiplab=getlabel();
   needtoken('(');
-  if (!matchtoken(';')) {
+  //emptyexpr=matchtoken(')');    /* "for ()" is the same as "for ( ;; )" */
+  if (/*!emptyexpr &&*/ !matchtoken(';')) {
     /* new variable declarations are allowed here */
     if (matchtoken(tNEW)) {
       /* The variable in expr1 of the for loop is at a
        * 'compound statement' level of it own.
        */
       nestlevel++;
-      declloc(FALSE); /* declare local variable */
+      declloc(FALSE);           /* declare local variable */
     } else {
       doexpr(TRUE,TRUE,TRUE,TRUE,NULL,NULL,FALSE);  /* expression 1 */
+      //if (matchtoken(')')) {
+      //  /* the expression is actually the test */
+      //  //??? generate jump to wq[wqEXIT] if PRI is zero
+      //  //??? when using doexpr() for test expressions, ckkeffect and allowarray should be FALSE
+      //  //??? when it is a constant expression, warnings 205 or 206 should be given
+      //  //??? the tag should be checked, because a non-bool: tag may have a user-defined operator
+      //} else
       needtoken(';');
     } /* if */
   } /* if */
@@ -5988,34 +6031,34 @@ static int dofor(void)
   assert(ptr!=NULL);
   ptr[wqBRK]=(int)declared;
   ptr[wqCONT]=(int)declared;
-  jumplabel(skiplab);               /* skip expression 3 1st time */
-  setlabel(wq[wqLOOP]);             /* "continue" goes to this label: expr3 */
+  jumplabel(skiplab);           /* skip expression 3 1st time */
+  setlabel(wq[wqLOOP]);         /* "continue" goes to this label: expr3 */
   setline(TRUE);
   /* Expressions 2 and 3 are reversed in the generated code: expression 3
    * precedes expression 2. When parsing, the code is buffered and marks for
    * the start of each expression are insterted in the buffer.
    */
   assert(!staging);
-  stgset(TRUE);                     /* start staging */
+  stgset(TRUE);                 /* start staging */
   assert(stgidx==0);
   index=stgidx;
   stgmark(sSTARTREORDER);
   stgmark((unsigned char)(sEXPRSTART+0));    /* mark start of 2nd expression in stage */
-  setlabel(skiplab);                /* jump to this point after 1st expression */
-  if (matchtoken(';')) {
+  setlabel(skiplab);                         /* jump to this point after 1st expression */
+  if (/*emptyexpr ||*/ matchtoken(';')) {
     endlessloop=1;
   } else {
     endlessloop=test(wq[wqEXIT],FALSE,FALSE);/* expression 2 (jump to wq[wqEXIT] if false) */
     needtoken(';');
   } /* if */
   stgmark((unsigned char)(sEXPRSTART+1));    /* mark start of 3th expression in stage */
-  if (!matchtoken(')')) {
+  if (/*!emptyexpr &&*/ !matchtoken(')')) {
     doexpr(TRUE,TRUE,TRUE,TRUE,NULL,NULL,FALSE);    /* expression 3 */
     needtoken(')');
   } /* if */
-  stgmark(sENDREORDER);             /* mark end of reversed evaluation */
+  stgmark(sENDREORDER);         /* mark end of reversed evaluation */
   stgout(index);
-  stgset(FALSE);                    /* stop staging */
+  stgset(FALSE);                /* stop staging */
   statement(NULL,FALSE);
   jumplabel(wq[wqLOOP]);
   setlabel(wq[wqEXIT]);
@@ -6423,7 +6466,7 @@ static void doreturn(void)
   modstk((int)declared*pc_cellsize);    /* end of function, remove *all*
                                          * local variables */
   assert(curfunc!=NULL);
-  remparams=(strcmp(curfunc->name,uENTRYFUNC)!=0 && strcmp(curfunc->name,uEXITFUNC)!=0);
+  remparams=(strcmp(curfunc->name,_ENTRYFUNC)!=0 && strcmp(curfunc->name,_EXITFUNC)!=0);
   ffret(remparams);
 }
 
@@ -6550,7 +6593,7 @@ static void dostate(void)
   /* see if the current automaton has exit functions for the states, if so,
    * call it through the function stub
    */
-  if ((sym=findglb(uEXITFUNC,sSTATEVAR))!=NULL) {
+  if ((sym=findglb(_EXITFUNC,sSTATEVAR))!=NULL) {
     /* push 0 for number of arguments in case of overlays (the state exit
      * function has a RET for normal mode, but an IRETN for overlay mode;
      * this IRETN clears the arguments from the stack)
@@ -6568,7 +6611,7 @@ static void dostate(void)
   storereg(automaton->value,sPRI);
 
   /* find the optional entry() function for the state */
-  sym=findglb(uENTRYFUNC,sGLOBAL);
+  sym=findglb(_ENTRYFUNC,sGLOBAL);
   if (sc_status==statWRITE && sym!=NULL && sym->ident==iFUNCTN && sym->states!=NULL) {
     for (stlist=sym->states->next; stlist!=NULL; stlist=stlist->next) {
       assert(stlist->label>0);

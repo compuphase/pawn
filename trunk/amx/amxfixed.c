@@ -4,7 +4,7 @@
  *  library decimal fixed point numbers with an configurable number of
  *  decimals. The current setting is 3 decimals.
  *
- *  Copyright (c) ITB CompuPhase, 1998-2012
+ *  Copyright (c) ITB CompuPhase, 1998-2013
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not
  *  use this file except in compliance with the License. You may obtain a copy
@@ -18,7 +18,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: amxfixed.c 4731 2012-06-21 11:11:18Z  $
+ *  Version: $Id: amxfixed.c 4983 2013-10-21 07:32:57Z  $
  */
 #include <assert.h>
 #include <stdio.h>      /* for NULL */

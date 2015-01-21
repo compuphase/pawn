@@ -105,6 +105,19 @@ native RegPublicFunction(ParameterCount, ...);
         printf "%d (should be %s)\n", d, s
 #endif
 
+#if defined MIX_PACK_FUNC
+    getpack(array[], idx)
+        return array[idx]
+    setpack(array[], idx, value)
+        array[idx] = value
+#endif
+
+#if defined CLOSING_BRACE_NO_PARMS
+    do_abc()
+        {
+        print "abc\n"
+        }
+#endif
 
 main()
     {
@@ -376,5 +389,28 @@ main()
         new q = a - 10
 	printf "p=%d, q=%d (should be p=30, q=30)\n", p, q;
         assert p == 30 && q == 30
+    #endif
+
+    #if defined MIX_PACK_ASSIGN || defined MIX_PACK_FUNC
+        new unpacked[4] = [ 0, ... ]
+        new packed{4} = { 0, ... }
+    #endif
+    #if defined MIX_PACK_ASSIGN
+        packed[0] = unpacked[0]
+        unpacked[0] = packed[0]
+    #endif
+    #if defined MIX_PACK_FUNC
+        unpacked[0] = 0x11223344
+        setpack packed, 0, unpacked[0]
+        unpacked[1] = getpack(packed, 0)
+        printf "packed: %x %x %x %x\n", packed{0}, packed{1}, packed{2}, packed{3}
+        printf "unpacked: %x\n", unpacked[1]
+    #endif
+
+    #if defined CLOSING_BRACE_NO_PARMS
+        new a=1, b=2
+        if (a>b)
+            {
+            do_abc }
     #endif
     }

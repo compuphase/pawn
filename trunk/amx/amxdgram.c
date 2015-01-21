@@ -2,7 +2,7 @@
  *
  *  This module uses the UDP protocol (from the TCP/IP protocol suite).
  *
- *  Copyright (c) ITB CompuPhase, 2005-2012
+ *  Copyright (c) ITB CompuPhase, 2005-2015
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not
  *  use this file except in compliance with the License. You may obtain a copy
@@ -16,14 +16,14 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: amxdgram.c 4733 2012-06-22 08:39:46Z thiadmer $
+ *  Version: $Id: amxdgram.c 5181 2015-01-21 09:44:28Z thiadmer $
  */
 #include <assert.h>
 #include <ctype.h>
 #include <stdio.h>
 #include <string.h>
 #include "osdefs.h"
-#if defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__
+#if defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__ || defined __APPLE__
   #include <arpa/inet.h>
   #include <netinet/in.h>
   #include <sys/ioctl.h>
@@ -38,15 +38,18 @@
 #include "amx.h"
 
 
-#define SRC_BUFSIZE     22
-#define BUFLEN          512
-#define AMX_DGRAMPORT   9930  /* default port */
+#define SRC_BUFSIZE       22
+#define BUFLEN            512
+#define AMX_DGRAMPORT     9930  /* default port */
 
 #if !defined SOCKET_ERROR
-  #define SOCKET_ERROR -1
+  #define SOCKET_ERROR    -1
+#endif
+#if !defined INVALID_SOCKET
+  #define INVALID_SOCKET  -1
 #endif
 
-static int sLocal;
+static SOCKET sLocal;
 
 static unsigned long udp_GetHostAddr(const char *host,int index)
 {
@@ -77,18 +80,18 @@ static int udp_Open(void)
     WSAStartup(wVersionRequested, &wsaData);
   #endif
 
-  if ((sLocal=socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) == -1)
+  if ((sLocal=socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) == INVALID_SOCKET)
     return -1;
 
   if (setsockopt(sLocal, SOL_SOCKET, SO_BROADCAST, (void*)&optval, sizeof optval) == -1)
     return -1;
 
-  return sLocal;
+  return (int)sLocal;
 }
 
 static int udp_Close(void)
 {
-  if (sLocal>=0) {
+  if (sLocal!=INVALID_SOCKET) {
     #if defined __WIN32 || defined _WIN32 || defined WIN32
       closesocket(sLocal);
     #else
@@ -107,7 +110,7 @@ static int udp_Send(const char *host,short port,const char *message,int size)
 {
   struct sockaddr_in sRemote;
 
-  if (sLocal<0)
+  if (sLocal==INVALID_SOCKET)
     return -1;
 
   memset((void *)&sRemote,sizeof sRemote,0);
@@ -128,10 +131,13 @@ static int udp_Send(const char *host,short port,const char *message,int size)
 static int udp_Receive(char *message,size_t maxmsg,char *source)
 {
   struct sockaddr_in sSource;
-  int slen=sizeof(sSource);
+  int slen=(int)sizeof(sSource);
   int size;
 
-  size=recvfrom(sLocal, message, maxmsg - 1, 0, (struct sockaddr *)&sSource, &slen);
+  if (sLocal==INVALID_SOCKET)
+    return -1;
+
+  size=recvfrom(sLocal, message, (int)maxmsg - 1, 0, (struct sockaddr *)&sSource, &slen);
   if (size==-1)
     return -1;
   assert((size_t)size < maxmsg);
@@ -156,7 +162,7 @@ static int udp_IsPacket(void)
   time.tv_usec=1;
   FD_ZERO(&rdset);
   FD_SET(sLocal,&rdset);
-  result=select(sLocal+1,&rdset,NULL,NULL,&time);
+  result=select((int)(sLocal+1),&rdset,NULL,NULL,&time);
   if (result==SOCKET_ERROR)
     return -1;
 
@@ -210,7 +216,7 @@ static cell AMX_NATIVE_CALL n_sendstring(AMX *amx, const cell *params)
     if ((ucell)*cstr<=UNPACKEDMAX) {
       ptr=message+3;
       while (*cstr!=0)
-        amx_UTF8Put(ptr, &ptr, length - (ptr-message), *cstr++);
+        amx_UTF8Put(ptr, &ptr, length - (int)(ptr-message), *cstr++);
       *ptr='\0';
     } else {
       amx_GetString(message+3, cstr, 0, UNLIMITED);
@@ -221,7 +227,7 @@ static cell AMX_NATIVE_CALL n_sendstring(AMX *amx, const cell *params)
       *ptr++='\0';
       port=(short)atoi(ptr);
     } /* if */
-    r= (udp_Send(host,port,message,strlen(message)+1) > 0);
+    r= (udp_Send(host,port,message,(int)strlen(message)+1) > 0);
   } /* if */
 
   return r;

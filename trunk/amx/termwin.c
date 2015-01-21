@@ -1,6 +1,6 @@
 /*  Simple terminal for Microsoft Windows
  *
- *  Copyright (c) ITB CompuPhase, 2004-2012
+ *  Copyright (c) ITB CompuPhase, 2004-2013
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not
  *  use this file except in compliance with the License. You may obtain a copy
@@ -14,7 +14,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: termwin.c 4523 2011-06-21 15:03:47Z thiadmer $
+ *  Version: $Id: termwin.c 4983 2013-10-21 07:32:57Z  $
  */
 
 #if defined _UNICODE || defined __UNICODE__ || defined UNICODE
@@ -390,8 +390,7 @@ static void ScrollScreen(CONSOLE *con,int dx,int dy)
       con->csry=con->lines-1;
   } /* if */
 
-  /* horizontal scrolling */
-  /* ??? to be implemented */
+  /* ??? horizontal scrolling to be implemented */
 
   RefreshScreen(con,0,con->lines);
 }

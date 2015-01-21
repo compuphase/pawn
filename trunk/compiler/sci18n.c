@@ -12,7 +12,7 @@
  *  is allocated statically, so loading SBCS tables cannot fail (if the tables
  *  themselves are valid, of course).
  *
- *  Copyright (c) ITB CompuPhase, 2004-2011
+ *  Copyright (c) ITB CompuPhase, 2004-2013
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not
  *  use this file except in compliance with the License. You may obtain a copy
@@ -26,7 +26,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: sci18n.c 4523 2011-06-21 15:03:47Z thiadmer $
+ *  Version: $Id: sci18n.c 5083 2014-05-23 15:36:38Z  $
  */
 #include <assert.h>
 #include <stdio.h>
@@ -43,9 +43,9 @@
   #define _MAX_PATH     250
 #endif
 #if !defined DIRSEP_CHAR
-  #if defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__
+  #if defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__ || defined __APPLE__
     #define DIRSEP_CHAR '/'
-  #elif defined macintosh || defined __APPLE__
+  #elif defined macintosh
     #define DIRSEP_CHAR ':'
   #else
     #define DIRSEP_CHAR '\\'
@@ -281,14 +281,14 @@ SC_FUNC cell cp_translate(const unsigned char *string,const unsigned char **endp
   /* check whether this is a leader code */
   if ((unsigned)result==LEADBYTE && wordtable!=NULL) {
     /* look up the code via binary search */
-    int low,high,mid;
+    int low,high;
     unsigned short index=(unsigned short)(((*(string-1)) << 8) | *string);
     string++;
     assert(wordtabletop>0);
     low=0;
     high=wordtabletop-1;
     while (low<high) {
-      mid=(low+high)/2;
+      int mid=(low+high)/2;
       assert(low<=mid && mid<high);
       if (index>wordtable[mid].index)
         low=mid+1;
@@ -312,14 +312,13 @@ SC_FUNC cell get_utf8_char(const unsigned char *string,const unsigned char **end
 {
   int follow=0;
   long lowmark=0;
-  unsigned char ch;
   cell result=0;
 
   if (endptr!=NULL)
     *endptr=string;
 
   for ( ;; ) {
-    ch=*string++;
+    unsigned char ch=*string++;
 
     if (follow>0 && (ch & 0xc0)==0x80) {
       /* leader code is active, combine with earlier code */
@@ -337,8 +336,8 @@ SC_FUNC cell get_utf8_char(const unsigned char *string,const unsigned char **end
          */
         if (result>=0xd800 && result<=0xdfff || result==0xfffe || result==0xffff)
           return -1;
+        break;
       } /* if */
-      break;
     } else if (follow==0 && (ch & 0x80)==0x80) {
       /* UTF-8 leader code */
       if ((ch & 0xe0)==0xc0) {

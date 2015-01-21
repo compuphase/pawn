@@ -33,6 +33,10 @@ ENDIF(UNIX)
 IF(WIN32)
   ADD_DEFINITIONS(-D_CRT_SECURE_NO_WARNINGS)
 ENDIF(WIN32)
+IF(APPLE)
+  # OS X defaults to 64-bit build, but 64-bit issues prevent that being a good idea
+  SET(CMAKE_OSX_ARCHITECTURES "i386")
+ENDIF(APPLE)
 
 # The Pawn compiler
 SET(PAWNCC_SRCS sc1.c sc2.c sc3.c sc4.c sc5.c sc6.c sc7.c

@@ -18,7 +18,7 @@
 #define VERSIONDESCRIPTION   "Pawn AMX: process control and foreign function interface\0"
 #define VERSIONCOMPANYNAME   "ITB CompuPhase\0"
 #define VERSIONPRODUCTNAME   "amxProcess\0"
-#define VERSIONCOPYRIGHT     "Copyright \251 2005-2011 ITB CompuPhase\0"
+#define VERSIONCOPYRIGHT     "Copyright \251 2005-2013 ITB CompuPhase\0"
 
 VS_VERSION_INFO VERSIONINFO
 FILEVERSION    VERSION, REVISION, BUILD, 0
