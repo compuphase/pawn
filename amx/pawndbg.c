@@ -2779,7 +2779,7 @@ static int breakcount;  /* breaks since last stop on the same line */
   source_list(amxdbg,gettopline((int)line,(int)line-autolist/2),autolist,(int)line);
   runmode=docommand(amx,amxdbg,(int)line);
   term_switch(0);     /* switch back to the program output */
-  if (runmode==STEPOVER)
+  if (runmode==STEPOVER || runmode==STEPOUT)
     lastfrm=amx->frm; /* step OVER functions (so save the stack frame) */
 
   return AMX_ERR_NONE;
