@@ -422,7 +422,7 @@ int AMXAPI dbg_GetFunctionAddress(AMX_DBG *amxdbg, const char *funcname, const c
       return AMX_ERR_NOTFOUND;
     /* verify that this line falls in the appropriate file */
     err = dbg_LookupFile(amxdbg, amxdbg->symboltbl[index]->address, &tgtfile);
-    if (err == AMX_ERR_NONE || strcmp(filename, tgtfile) == 0)
+    if (err == AMX_ERR_NONE && strcmp(filename, tgtfile) == 0)
       break;
     index++;            /* line is the wrong file, search further */
   } /* for */
