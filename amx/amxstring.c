@@ -325,28 +325,23 @@ static int compare(cell *cstr1,cell *cstr2,int ignorecase,int length,int offs1)
 static cell AMX_NATIVE_CALL n_strcmp(AMX *amx,const cell *params)
 {
   cell *cstr1,*cstr2;
-  int len1,len2,len;
-  cell result;
+  int len1,len2;
 
   (void)(amx);
   cstr1=amx_Address(amx,params[1]);
   cstr2=amx_Address(amx,params[2]);
-
-  /* get the maximum length to compare */
   amx_StrLen(cstr1,&len1);
   amx_StrLen(cstr2,&len2);
-  len=len1;
-  if (len>len2)
-    len=len2;
-  if (len>params[4])
-    len=params[4];
-  if (len==0)
-    return (params[4]==0) ? 0 : len1-len2;
 
-  result=compare(cstr1,cstr2,params[3],len,0);
-  if (result==0 && len!=params[4])
-    result=len1-len2;
-  return result;
+  if (len1>params[4])
+	  len1=params[4];
+  if (len2>params[4])
+	  len2=params[4];
+  if (len1>len2)
+	  return 1;
+  if (len1<len2)
+	  return -1;
+  return (cell)compare(cstr1,cstr2,params[3],len1,0);
 }
 
 /* strfind(const string[], const sub[], bool:ignorecase=false, offset=0)
