@@ -1,6 +1,6 @@
 /*  String functions for the Pawn Abstract Machine
  *
- *  Copyright (c) ITB CompuPhase, 2005-2015
+ *  Copyright (c) ITB CompuPhase, 2005-2016
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not
  *  use this file except in compliance with the License. You may obtain a copy
@@ -14,7 +14,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: amxstring.c 5181 2015-01-21 09:44:28Z thiadmer $
+ *  Version: $Id: amxstring.c 5504 2016-05-15 13:42:30Z  $
  */
 #include <limits.h>
 #include <string.h>
@@ -340,12 +340,16 @@ static cell AMX_NATIVE_CALL n_strcmp(AMX *amx,const cell *params)
     len=len2;
   if (len>params[4])
     len=params[4];
-  if (len==0)
-    return (params[4]==0) ? 0 : len1-len2;
-
-  result=compare(cstr1,cstr2,params[3],len,0);
-  if (result==0 && len!=params[4])
-    result=len1-len2;
+  if (len==0) {
+    if (params[4]==0 || len1==len2)
+      result=0;
+    else
+      result=(len1<len2) ? -1 : 1;
+  } else {
+    result=compare(cstr1,cstr2,params[3],len,0);
+    if (result==0 && len!=params[4])
+      result=(len1<len2) ? -1 : 1;
+  }
   return result;
 }
 

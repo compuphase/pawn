@@ -1,6 +1,6 @@
 /*  Pawn compiler - Recursive descend expresion parser
  *
- *  Copyright (c) ITB CompuPhase, 1997-2015
+ *  Copyright (c) ITB CompuPhase, 1997-2016
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not
  *  use this file except in compliance with the License. You may obtain a copy
@@ -14,7 +14,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: sc3.c 5181 2015-01-21 09:44:28Z thiadmer $
+ *  Version: $Id: sc3.c 5504 2016-05-15 13:42:30Z  $
  */
 #include <assert.h>
 #include <stdio.h>
@@ -473,7 +473,7 @@ static cell checkarrays(value *lval1,value *lval2)
   int exactmatch=TRUE;
   int level;
   int ispacked1,ispacked2;
-  cell ltlength,length;
+  cell ltlength,length,totalsize1;
 
   assert(lval1!=NULL);
   assert(lval2!=NULL);
@@ -487,9 +487,12 @@ static cell checkarrays(value *lval1,value *lval2)
     ltlength=(int)lval1->constval;
     ispacked1=lval1->ispacked;
   } /* if */
+  totalsize1=array_totalsize(lval1->sym);
   if (!IS_ARRAY(*lval2) && !IS_PSEUDO_ARRAY(*lval2))
     error(33,lval1->sym->name);         /* array must be indexed */
   if (lval2->sym!=NULL) {
+    if (totalsize1==0)
+      return error(46,lval1->sym->name);/* unknown array size */
     if (lval2->constval==0) {
       length=lval2->sym->dim.array.length;/* array variable */
       if (lval1->sym->dim.array.names!=NULL && !IS_PSEUDO_ARRAY(*lval1)
@@ -511,15 +514,21 @@ static cell checkarrays(value *lval1,value *lval2)
     ispacked2=lval2->ispacked;
     if (lval1->sym->dim.array.names!=NULL)
       error(47);                        /* array definitions do not match */
-    /* If length is negative, it means that lval2 is a literal string.
-     * The string array size may be smaller than the destination
-     * array, provided that the destination array is not a symbolic
-     * array.
-     */
+    /* the destination array may have unknown size only if the source size is -1
+       (for a literal string with just the terminator, e.g. string="") */
+    if (totalsize1==0) {
+      if (length==-1)
+        ltlength=1;                     /* assume destination can hold 1 cell */
+      else
+        error(46,lval1->sym->name);     /* unknown array size */
+    }
+    /* if length is negative, it means that lval2 is a literal string; the
+       destination size may be smaller than the destination array (provided
+       that the destination array is not a symbolic array, checked above) */
     if (length<0) {
       length=-length;
       exactmatch=FALSE;
-    } /* if */
+    }
   } /* if */
   if (lval1->sym->dim.array.level!=level)
     return error(48);           /* array dimensions must match */
@@ -1050,8 +1059,6 @@ static int hier14(value *lval1)
       return error(23); /* array assignment must be simple assigment */
     if (lval1->sym==NULL)
       return error(22); /* must be an lvalue */
-    if (array_totalsize(lval1->sym)==0)
-      return error(46,lval1->sym->name);        /* unknown array size */
     lvalue=TRUE;
   } /* if */
 
@@ -2225,7 +2232,7 @@ static int nesting=0;
   #endif
   sc_allowproccall=FALSE;       /* parameters may not use procedure call syntax */
 
-  if ((sym->flags & flgDEPRICATED)!=0) {
+  if ((sym->flags & flgDEPRECATED)!=0) {
     char *ptr= (sym->documentation!=NULL) ? sym->documentation : "";
     error(234,sym->name,ptr);   /* deprecated (probably a native function) */
   } /* if */

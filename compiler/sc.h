@@ -7,7 +7,7 @@
  *
  *  This version comes close to a complete rewrite.
  *
- *  Copyright ITB CompuPhase, 1997-2015
+ *  Copyright ITB CompuPhase, 1997-2016
  *  Copyright J.E. Hendrix, 1982, 1983
  *  Copyright R. Cain, 1980
  *
@@ -23,7 +23,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: sc.h 5181 2015-01-21 09:44:28Z thiadmer $
+ *  Version: $Id: sc.h 5504 2016-05-15 13:42:30Z  $
  */
 #ifndef SC_H_INCLUDED
 #define SC_H_INCLUDED
@@ -169,10 +169,11 @@ typedef struct s_symbol {
 } symbol;
 
 
-/*  Possible entries for "ident". These are used in the "symbol", "value"
- *  and arginfo structures. Not every constant is valid for every use.
- *  In an argument list, the list is terminated with a "zero" ident; labels
- *  cannot be passed as function arguments, so the value 0 is overloaded.
+/*  Possible values for "ident"
+ *  These are used in the "symbol", "value" and arginfo structures. Not every
+ *  constant is valid for every use. In an argument list, the list is terminated
+ *  with a "zero" ident; labels cannot be passed as function arguments, so the
+ *  value 0 is overloaded.
  */
 #define iLABEL      0
 #define iVARIABLE   1   /* cell that has an address and that can be fetched directly (lvalue) */
@@ -187,10 +188,9 @@ typedef struct s_symbol {
 #define iREFFUNC    10
 #define iVARARGS    11  /* function specified ... as argument(s) */
 
-/*  Possible entries for "usage"
- *
- *  This byte is used as a serie of bits, the syntax is different for
- *  functions and other symbols:
+/*  Possible values for "usage"
+ *  This byte is used as a serie of bits, the syntax is different for functions
+ *  and other symbols:
  *
  *  VARIABLE
  *  bits: 0     (uDEFINE) the variable is defined in the source file
@@ -239,13 +239,17 @@ typedef struct s_symbol {
  */
 #define uRETNONE  0x10
 
-#define flgDEPRICATED 0x01  /* symbol is deprecated (avoid use) */
+/*  Possible values for "flags"
+ *  This is a bit set
+ */
+#define flgDEPRECATED 0x01  /* symbol is deprecated (avoid use) */
+#define flgENTRYPOINT 0x02  /* symbol is an entry point for a program */
 
 #define uTAGOF    0x40  /* set in the "hasdefault" field of the arginfo struct */
 #define uSIZEOF   0x80  /* set in the "hasdefault" field of the arginfo struct */
 
 #define _MAINFUNC  "main"
-#define _STARTFUNC "@start"	//??? alias for main, not yet fully implemented
+#define _STARTFUNC "@start"	/* alias for main */
 #define _ENTRYFUNC "entry"
 #define _EXITFUNC  "exit"
 
@@ -254,6 +258,8 @@ typedef struct s_symbol {
 #define sSTATIC   2     /* global life, local scope */
 
 #define sSTATEVAR  3    /* criterion to find variables (sSTATEVAR implies a global variable) */
+
+#define FALLBACK  -1    /* state id for the fallback function */
 
 typedef struct s_value {
   symbol *sym;          /* symbol in symbol table, NULL for (constant) expression */
@@ -342,7 +348,7 @@ typedef struct s_arraymerge {
  */
 #define tFIRST      256 /* value of first multi-character operator */
 #define tMIDDLE     280 /* value of last multi-character operator */
-#define tLAST       321 /* value of last multi-character match-able token */
+#define tLAST       323 /* value of last multi-character match-able token */
 /* multi-character operators */
 #define taMULT      256 /* *= */
 #define taDIV       257 /* /= */
@@ -407,25 +413,27 @@ typedef struct s_arraymerge {
 #define tpERROR     314
 #define tpFILE      315
 #define tpIF        316 /* #if */
-#define tINCLUDE    317
-#define tpLINE      318
-#define tpPRAGMA    319
-#define tpTRYINCLUDE 320
-#define tpUNDEF     321
+#define tpIFDEF     317
+#define tpIFNDEF    318
+#define tINCLUDE    319
+#define tpLINE      320
+#define tpPRAGMA    321
+#define tpTRYINCLUDE 322
+#define tpUNDEF     323
 /* semicolon and comma are special cases, because they can be optional */
-#define tTERM       322 /* semicolon or newline */
-#define tSEPARATOR  323 /* comma or newline */
-#define tENDEXPR    324 /* forced end of expression */
+#define tTERM       324 /* semicolon or newline */
+#define tSEPARATOR  325 /* comma or newline */
+#define tENDEXPR    326 /* forced end of expression */
 /* other recognized tokens */
-#define tNUMBER     325 /* integer number */
-#define tRATIONAL   326 /* rational number */
-#define tSYMBOL     327
-#define tLABEL      328
-#define tSYMLABEL   329 /* ".name" syntax for named parameters and symbolic array indices */
-#define tSTRING     330
-#define tPACKSTRING 331
-#define tEXPR       332 /* for assigment to "lastst" only (see SC1.C) */
-#define tENDLESS    333 /* endless loop, for assigment to "lastst" only */
+#define tNUMBER     327 /* integer number */
+#define tRATIONAL   328 /* rational number */
+#define tSYMBOL     329
+#define tLABEL      330
+#define tSYMLABEL   331 /* ".name" syntax for named parameters and symbolic array indices */
+#define tSTRING     332
+#define tPACKSTRING 333
+#define tEXPR       334 /* for assigment to "lastst" only (see SC1.C) */
+#define tENDLESS    335 /* endless loop, for assigment to "lastst" only */
 
 /* (reversed) evaluation of staging buffer */
 #define sSTARTREORDER 0x01
@@ -567,7 +575,7 @@ long pc_lengthbin(void *handle); /* return the length of the file */
 
 /* function prototypes in SC1.C */
 SC_FUNC void set_extension(char *filename,char *extension,int force);
-SC_FUNC symbol *fetchfunc(char *name,int tag);
+SC_FUNC symbol *fetchfunc(const char *name,int tag);
 SC_FUNC char *operator_symname(char *symname,char *opername,int tag1,int tag2,int numtags,int resulttag);
 SC_FUNC char *funcdisplayname(char *dest,const char *funcname);
 SC_FUNC int constexpr(cell *val,int *tag,symbol **symptr);
@@ -778,6 +786,9 @@ SC_FUNC void delete_autolisttable(void);
 SC_FUNC valuepair *push_heaplist(long first, long second);
 SC_FUNC int popfront_heaplist(long *first, long *second);
 SC_FUNC void delete_heaplisttable(void);
+SC_FUNC void litarray_add(cell baseaddr,cell offset,cell size);
+SC_FUNC cell litarray_find(cell offset,cell size);
+SC_FUNC void litarray_deleteall(void);
 SC_FUNC stringlist *insert_dbgfile(const char *filename);
 SC_FUNC stringlist *insert_dbgline(int linenr);
 SC_FUNC stringlist *insert_dbgsymbol(symbol *sym);
@@ -810,7 +821,7 @@ SC_FUNC constvalue *automaton_find(const char *name,char *closestmatch);
 SC_FUNC constvalue *automaton_findid(int id);
 SC_FUNC constvalue *state_add(const char *name,int fsa_id);
 SC_FUNC constvalue *state_find(const char *name,int fsa_id,char *closestmatch);
-SC_FUNC constvalue *state_findid(int id);
+SC_FUNC constvalue *state_findid(int id,int fsa_id);
 SC_FUNC void state_buildlist(int **list,int *listsize,int *count,int stateid);
 SC_FUNC int state_addlist(int *list,int count,int fsa_id);
 SC_FUNC void state_deletetable(void);

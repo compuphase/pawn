@@ -1,6 +1,6 @@
 /*  Core module for the Pawn AMX
  *
- *  Copyright (c) ITB CompuPhase, 1997-2012
+ *  Copyright (c) ITB CompuPhase, 1997-2016
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not
  *  use this file except in compliance with the License. You may obtain a copy
@@ -14,7 +14,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: amxcore.c 4708 2012-05-18 12:52:49Z  $
+ *  Version: $Id: amxcore.c 5504 2016-05-15 13:42:30Z  $
  */
 #if defined _UNICODE || defined __UNICODE__ || defined UNICODE
 # if !defined UNICODE   /* for Windows */
@@ -271,9 +271,9 @@ static cell AMX_NATIVE_CALL swapchars(AMX *amx,const cell *params)
 static cell AMX_NATIVE_CALL core_tolower(AMX *amx,const cell *params)
 {
   (void)amx;
-  #if defined __WIN32__ || defined _WIN32 || defined WIN32
+  #if (defined __WIN32__ || defined _WIN32 || defined WIN32) && !defined _WIN64
     return (cell)CharLower((LPTSTR)params[1]);
-  #elif defined _Windows
+  #elif defined _Windows && !defined _WIN64
     return (cell)AnsiLower((LPSTR)params[1]);
   #else
     if ((unsigned)(params[1]-'A')<26u)
@@ -285,9 +285,9 @@ static cell AMX_NATIVE_CALL core_tolower(AMX *amx,const cell *params)
 static cell AMX_NATIVE_CALL core_toupper(AMX *amx,const cell *params)
 {
   (void)amx;
-  #if defined __WIN32__ || defined _WIN32 || defined WIN32
+  #if (defined __WIN32__ || defined _WIN32 || defined WIN32) && !defined _WIN64
     return (cell)CharUpper((LPTSTR)params[1]);
-  #elif defined _Windows
+  #elif defined _Windows && !defined _WIN64
     return (cell)AnsiUpper((LPSTR)params[1]);
   #else
     if ((unsigned)(params[1]-'a')<26u)

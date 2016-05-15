@@ -6,7 +6,7 @@
  *  o  Documentation tags and automatic listings
  *  o  Debug strings
  *
- *  Copyright (c) ITB CompuPhase, 2001-2015
+ *  Copyright (c) ITB CompuPhase, 2001-2016
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not
  *  use this file except in compliance with the License. You may obtain a copy
@@ -20,7 +20,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: sclist.c 5181 2015-01-21 09:44:28Z thiadmer $
+ *  Version: $Id: sclist.c 5504 2016-05-15 13:42:30Z  $
  */
 #include <assert.h>
 #include <limits.h>
@@ -391,16 +391,21 @@ SC_FUNC void delete_docstringtable(void)
 /* ----- autolisting --------------------------------------------- */
 static stringlist autolist = {NULL, NULL};
 
+/** insert_autolist() inserts a string from a documentation comment. */
 SC_FUNC stringlist *insert_autolist(char *string)
 {
   return insert_string(&autolist,string,1);
 }
 
+/** get_autolist() retrieves a string from the collected documentation
+ *  comments. */
 SC_FUNC char *get_autolist(int index)
 {
   return get_string(&autolist,index);
 }
 
+/** delete_autolisttable() clears the list in which documentation strings for
+ *  the current function are collected. */
 SC_FUNC void delete_autolisttable(void)
 {
   delete_stringtable(&autolist);
@@ -450,6 +455,57 @@ SC_FUNC void delete_heaplisttable(void)
     cur=heaplist.next;
     heaplist.next=cur->next;
     free(cur);
+  } /* while */
+}
+
+
+/* ----- literal string/array list, for merging duplicate strings ----- */
+static arraymerge litarray_list = { NULL, 0, 0, NULL };
+
+SC_FUNC void litarray_add(cell baseaddr,cell offset,cell size)
+{
+  arraymerge *item=(arraymerge*)malloc(sizeof(arraymerge));
+  if (item!=NULL) {
+    assert(size>0);
+    item->data=(cell*)malloc(size*sizeof(cell));
+    if (item->data!=NULL) {
+      cell idx;
+      for (idx=0; idx<size; idx++)
+        item->data[idx]=litq[offset+idx];
+      item->addr=baseaddr+offset;
+      item->size=size;
+      item->next=litarray_list.next;
+      litarray_list.next=item;
+    } else {
+      free(item);
+    }
+  }
+}
+
+SC_FUNC cell litarray_find(cell offset,cell size)
+{
+  arraymerge *item;
+  for (item=litarray_list.next; item!=NULL; item=item->next) {
+    if (item->size==size) {
+      cell idx;
+      for (idx=0; idx<size && item->data[idx]==litq[offset+idx]; idx++)
+        /* nothing */;
+      if (idx==size)
+        return item->addr;
+    }
+  }
+  return -1;
+}
+
+SC_FUNC void litarray_deleteall(void)
+{
+  arraymerge *item;
+  while (litarray_list.next!=NULL) {
+    item=litarray_list.next;
+    litarray_list.next=item->next;
+    assert(item->data!=NULL);
+    free(item->data);
+    free(item);
   } /* while */
 }
 

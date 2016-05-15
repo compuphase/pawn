@@ -413,4 +413,15 @@ main()
             {
             do_abc }
     #endif
+
+    #if defined VARIABLE_3D_ARRAY
+        new StringArray[][]{} = [ ["short1","short2"] ,
+                                  ["long message 1","long message 2"] ]
+        for(new a = 0; a < 2; a++)
+            for(new b = 0; b < 2; b++)
+            {
+                print StringArray[a][b];
+                print "\n";
+            }
+    #endif
     }

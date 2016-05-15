@@ -153,14 +153,6 @@ increment(a)
         }
 #endif
 
-#if defined CLEAR_STRING
-    clear(name{}, size=sizeof name)
-        {
-        name = ""
-        return size
-        }
-#endif
-
 #if 0
 #error This error message should never pop up
 #endif
@@ -564,20 +556,6 @@ main()
     #if defined INVALID_STATIC_2D_PACKED
         static monthnames[2]{4} = { "Jan", "Feb" }
         static confirmtext[2]{4} = { "Yes", "No " }
-    #endif
-
-    #if defined CLEAR_STRING
-        new name{} = "monkey"
-        clear name
-    #endif
-
-    #if defined PSEUDO_PACKED_ARRAY_PACKED
-        new arr[.a, .b, .c{8}]
-        arr.c{0} = 0
-    #endif
-    #if defined PSEUDO_PACKED_ARRAY_UNPACKED
-        new arr[.a, .b, .c{8}]
-        arr.c[0] = 0
     #endif
     }
 

@@ -1,6 +1,6 @@
 /*  Pawn compiler - Binary code generation (the "assembler")
  *
- *  Copyright (c) ITB CompuPhase, 1997-2015
+ *  Copyright (c) ITB CompuPhase, 1997-2016
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not
  *  use this file except in compliance with the License. You may obtain a copy
@@ -14,7 +14,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: sc6.c 5181 2015-01-21 09:44:28Z thiadmer $
+ *  Version: $Id: sc6.c 5504 2016-05-15 13:42:30Z  $
  */
 #include <assert.h>
 #include <stdio.h>
@@ -717,7 +717,7 @@ SC_FUNC int assemble(FILE *fout,FILE *fin)
             ++numoverlays;
         } /* if */
       } /* if */
-      if (strcmp(sym->name,_MAINFUNC)==0) {
+      if ((sym->flags & flgENTRYPOINT)!=0) {
         assert(sym->vclass==sGLOBAL);
         mainaddr=(pc_overlays>0) ? sym->index : sym->addr;
       } /* if */

@@ -2,7 +2,7 @@
  *
  *  This module uses the UDP protocol (from the TCP/IP protocol suite).
  *
- *  Copyright (c) ITB CompuPhase, 2005-2015
+ *  Copyright (c) ITB CompuPhase, 2005-2016
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not
  *  use this file except in compliance with the License. You may obtain a copy
@@ -16,7 +16,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: amxdgram.c 5181 2015-01-21 09:44:28Z thiadmer $
+ *  Version: $Id: amxdgram.c 5504 2016-05-15 13:42:30Z  $
  */
 #include <assert.h>
 #include <ctype.h>
@@ -47,6 +47,9 @@
 #endif
 #if !defined INVALID_SOCKET
   #define INVALID_SOCKET  -1
+#endif
+#if !defined SOCKET && _MSC_VER < 1800
+  #define SOCKET          int
 #endif
 
 static SOCKET sLocal;

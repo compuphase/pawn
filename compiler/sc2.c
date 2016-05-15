@@ -1,6 +1,6 @@
 /*  Pawn compiler - File input, preprocessing and lexical analysis functions
  *
- *  Copyright (c) ITB CompuPhase, 1997-2015
+ *  Copyright (c) ITB CompuPhase, 1997-2016
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not
  *  use this file except in compliance with the License. You may obtain a copy
@@ -14,7 +14,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: sc2.c 5181 2015-01-21 09:44:28Z thiadmer $
+ *  Version: $Id: sc2.c 5504 2016-05-15 13:42:30Z  $
  */
 #include <assert.h>
 #include <stdio.h>
@@ -120,7 +120,7 @@ SC_FUNC void clearstk(void)
 
 SC_FUNC int plungequalifiedfile(char *name)
 {
-static char *extensions[] = { ".inc", ".p", ".pawn" };
+static char *extensions[] = { ".i", ".inc", ".p", ".pawn" };
   FILE *fp;
   char *ext;
   int ext_idx;
@@ -963,6 +963,8 @@ static int command(void)
   ret=SKIPPING ? CMD_CONDFALSE : CMD_DIRECTIVE;  /* preset 'ret' to CMD_DIRECTIVE (most common case) */
   switch (tok) {
   case tpIF:                    /* conditional compilation */
+  case tpIFDEF:
+  case tpIFNDEF:
     ret=CMD_IF;
     assert(iflevel>=0);
     if (iflevel>=sCOMP_STACK)
@@ -971,8 +973,23 @@ static int command(void)
     if (SKIPPING)
       break;                    /* break out of switch */
     skiplevel=iflevel;
-    preproc_expr(&val,NULL);    /* get value (or 0 on error) */
-    ifstack[iflevel-1]=(char)(val ? PARSEMODE : SKIPMODE);
+    if (tok==tpIF) {
+      preproc_expr(&val,NULL);  /* get value (or 0 on error) */
+      ifstack[iflevel-1]=(char)(val ? PARSEMODE : SKIPMODE);
+    } else {
+      int symtok=lex(&val,&str);
+      val=0;
+      if (symtok==tSYMBOL) {
+        symbol *sym=findloc(str);
+        if (sym==NULL)
+          sym=findglb(str,sGLOBAL);
+        if (sym!=NULL && sym->ident!=iFUNCTN && sym->ident!=iREFFUNC && (sym->usage & uDEFINE)==0)
+          sym=NULL;                 /* symbol is not a function, it is in the table, but not "defined" */
+        if (sym!=NULL || find_subst(str,(int)strlen(str))!=NULL)
+          val=1;
+      }
+      ifstack[iflevel-1]=(char)((tok==tpIFDEF) ? val : !val);
+    }
     check_empty(lptr);
     break;
   case tpELSE:
@@ -2012,8 +2029,8 @@ char *sc_tokens[] = {
          "operator", "public", "return", "sizeof", "sleep", "state", "static",
          "stock", "switch", "tagof", "while",
          "#assert", "#define", "#else", "#elseif", "#endif", "#endinput",
-         "#error", "#file", "#if", "#include", "#line", "#pragma",
-         "#tryinclude", "#undef",
+         "#error", "#file", "#if", "#ifdef", "#ifndef", "#include", "#line",
+         "#pragma", "#tryinclude", "#undef",
          ";", ",", ";", "[integer value]", "[rational value]", "[identifier]",
          "[label]", "[field/parameter reference]", "[string]", "[string]"
        };
@@ -2418,7 +2435,7 @@ SC_FUNC int needtoken(int token)
     else if (_lextok<256)
       sprintf(s2,"%c",(char)_lextok);
     else if (_lextok==tNUMBER)
-      sprintf(s2,"%d",_lexval);
+      sprintf(s2,"%d",(int)_lexval);
     else if (_lextok==tSYMBOL)
       strcpy(s2,_lexstr);
     else

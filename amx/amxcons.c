@@ -4,7 +4,7 @@
  *  cannot always be implemented with portable C functions. In other words,
  *  these routines must be ported to other environments.
  *
- *  Copyright (c) ITB CompuPhase, 1997-2015
+ *  Copyright (c) ITB CompuPhase, 1997-2016
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not
  *  use this file except in compliance with the License. You may obtain a copy
@@ -18,7 +18,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: amxcons.c 5181 2015-01-21 09:44:28Z thiadmer $
+ *  Version: $Id: amxcons.c 5504 2016-05-15 13:42:30Z  $
  */
 
 #if defined _UNICODE || defined __UNICODE__ || defined UNICODE
@@ -969,11 +969,10 @@ int amx_printstring(AMX *amx,cell *cstr,AMX_FMTINFO *info)
 
     if ((ucell)*cstr>UNPACKEDMAX) {
       int j=sizeof(cell)-sizeof(char);
-      char c;
       /* the string is packed */
       i=0;
       for ( ; ; ) {
-        c=(char)((ucell)cstr[i] >> 8*j);
+        char c=(char)((ucell)cstr[i] >> 8*j);
         if (c==0)
           break;
         if (skip>0) {
@@ -1017,11 +1016,10 @@ int amx_printstring(AMX *amx,cell *cstr,AMX_FMTINFO *info)
     /* check whether this is a packed string */
     if ((ucell)*cstr>UNPACKEDMAX) {
       int j=sizeof(cell)-sizeof(char);
-      char c;
       /* the string is packed */
       i=0;
       for ( ; ; ) {
-        c=(char)((ucell)cstr[i] >> 8*j);
+        char c=(char)((ucell)cstr[i] >> 8*j);
         if (c==0)
           break;
         switch (formatstate(c,&fmtstate,&sign,&decpoint,&width,&digits,&filler)) {
@@ -1365,8 +1363,7 @@ static cell AMX_NATIVE_CALL n_consctrl(AMX *amx,const cell *params)
 {
   (void)amx;
   CreateConsole();
-  (void)amx_termctl((int)params[1],(int)params[2]);
-  return 0;
+  return amx_termctl((int)params[1],(int)params[2]);
 }
 
 static cell AMX_NATIVE_CALL n_console(AMX *amx,const cell *params)

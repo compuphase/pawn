@@ -1737,7 +1737,7 @@ test138:
 test139:
   say '139. The following test should issue warning 229 TWICE.'
   say ''
-  say '     mismatching index operators on packed and unpacked arrays.'
+  say '     Mismatching index operators on packed and unpacked arrays.'
   say '-----'
   pawncc ' MIX_PACK_ASSIGN= test2'
   return
@@ -1748,20 +1748,23 @@ test140:
   say '         packed: 11 22 33 44'
   say '         unpacked: 11223344'
   say ''
-  say '     using functions to access a full cell of a packed array.'
+  say '     Using functions to access a full cell of a packed array.'
   say '-----'
   pawncc ' MIX_PACK_FUNC= test2'
   pawnrun ' test2.amx'
   return
 
 test141:
-  say '141. The following test should compile successfully.'
+  say '141. The following TWO test should compile successfully.'
   say ''
   say '     Clearing a string by assigning it an empty literal string.'
+  say '     Assigning an empty literal string to a simple array must always succeed,'
+  say '     because an array must always have at least one element.'
   say ''
   say 'Symptoms of detected bug: error 046 (unknown array size).'
   say '-----'
-  pawncc ' CLEAR_STRING= test1'
+  pawncc ' CLEAR_STRING1= test11'
+  pawncc ' CLEAR_STRING2= test11'
   return
 
 test142:
@@ -1782,18 +1785,35 @@ test143:
   say ''
   say 'Symptoms of detected bug: warning 229 (mixing packed & unpacked).'
   say '-----'
-  pawncc ' PSEUDO_PACKED_ARRAY_PACKED= test1'
+  pawncc ' PSEUDO_PACKED_ARRAY_PACKED= test11'
   return
 
 test144:
   say '144. The compilation should issue error 229.'
   say ''
   say '    Accessing an element in a symbolic pseudo-array declared as packed, but'
-  say '    accessed as unpacked'
+  say '    accessed as unpacked.'
   say ''
   say 'Symptoms of detected bug: no warning, because the pseudo-array inherits the'
   say 'packed/unpacked flag of the main array.'
   say '-----'
-  pawncc ' PSEUDO_PACKED_ARRAY_UNPACKED= test1'
+  pawncc ' PSEUDO_PACKED_ARRAY_UNPACKED= test11'
   return
+
+test145:
+  say '145. The following test should compile successfully; when run, it should print:'
+  say ''
+  say '         short1'
+  say '         short2'
+  say '         long message 1'
+  say '         long message 2'
+  say ''
+  say 'Symptoms of detected bug: the last line printed the wrong text, because the'
+  say 'vector tables for the 3-dimensional array (with all variable dimensions) were'
+  say 'optimized incorrectly.'
+  say '-----'
+  pawncc ' VARIABLE_3D_ARRAY= test2'
+  pawnrun ' test2.amx'
+  return
+
 

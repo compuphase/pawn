@@ -25,7 +25,7 @@
  *  function. This happens in SC4.C.
  *
  *
- *  Copyright (c) ITB CompuPhase, 2005-2015
+ *  Copyright (c) ITB CompuPhase, 2005-2016
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not
  *  use this file except in compliance with the License. You may obtain a copy
@@ -39,7 +39,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: scstate.c 5181 2015-01-21 09:44:28Z thiadmer $
+ *  Version: $Id: scstate.c 5504 2016-05-15 13:42:30Z  $
  */
 #include <assert.h>
 #include <limits.h>
@@ -151,16 +151,16 @@ static constvalue *find_state(const char *name,int fsa,int *last,char *closestma
   return NULL;
 }
 
-SC_FUNC constvalue *state_add(const char *name,int fsa)
+SC_FUNC constvalue *state_add(const char *name,int fsa_id)
 {
   constvalue *ptr;
   int last;
 
   assert(strlen(name)<sizeof(ptr->name));
-  ptr=find_state(name,fsa,&last,NULL);
+  ptr=find_state(name,fsa_id,&last,NULL);
   if (ptr==NULL) {
-    assert(fsa <= SHRT_MAX);
-    ptr=append_constval(&sc_state_tab,name,(cell)(last+1),(short)fsa);
+    assert(fsa_id<=SHRT_MAX);
+    ptr=append_constval(&sc_state_tab,name,(cell)(last+1),(short)fsa_id);
   } /* if */
   return ptr;
 }
@@ -171,10 +171,10 @@ SC_FUNC constvalue *state_find(const char *name,int fsa_id,char *closestmatch)
   return find_state(name,fsa_id,&last,closestmatch);
 }
 
-SC_FUNC constvalue *state_findid(int id)
+SC_FUNC constvalue *state_findid(int state_id,int fsa_id)
 {
   constvalue *ptr;
-  for (ptr=sc_state_tab.next; ptr!=NULL && ptr->value!=id; ptr=ptr->next)
+  for (ptr=sc_state_tab.next; ptr!=NULL && (ptr->value!=state_id || ptr->index!=fsa_id); ptr=ptr->next)
     /* nothing */;
   return ptr;
 }

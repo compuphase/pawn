@@ -1,7 +1,7 @@
 /*  Simple allocation from a memory pool, with automatic release of
  *  least-recently used blocks (LRU blocks).
  *
- *  Copyright (c) ITB CompuPhase, 2007-2013
+ *  Copyright (c) ITB CompuPhase, 2007-2016
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not
  *  use this file except in compliance with the License. You may obtain a copy
@@ -15,7 +15,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id$
+ *  Version: $Id: amxpool.h 5504 2016-05-15 13:42:30Z  $
  */
 #ifndef AMXPOOL_H_INCLUDED
 #define AMXPOOL_H_INCLUDED

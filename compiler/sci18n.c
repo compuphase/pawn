@@ -12,7 +12,7 @@
  *  is allocated statically, so loading SBCS tables cannot fail (if the tables
  *  themselves are valid, of course).
  *
- *  Copyright (c) ITB CompuPhase, 2004-2013
+ *  Copyright (c) ITB CompuPhase, 2004-2016
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not
  *  use this file except in compliance with the License. You may obtain a copy
@@ -26,7 +26,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: sci18n.c 5083 2014-05-23 15:36:38Z  $
+ *  Version: $Id: sci18n.c 5504 2016-05-15 13:42:30Z  $
  */
 #include <assert.h>
 #include <stdio.h>

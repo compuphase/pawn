@@ -27,7 +27,7 @@
  * across function parameter boundaries.
  *
  *
- *  Copyright (c) ITB CompuPhase, 1997-2013
+ *  Copyright (c) ITB CompuPhase, 1997-2016
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not
  *  use this file except in compliance with the License. You may obtain a copy
@@ -41,7 +41,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: sc7.c 4983 2013-10-21 07:32:57Z  $
+ *  Version: $Id: sc7.c 5504 2016-05-15 13:42:30Z  $
  */
 #include <assert.h>
 #include <stdio.h>

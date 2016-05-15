@@ -1,6 +1,6 @@
-@   amxexec_arm7_gas.s  Abstract Machine for the "Pawn" language
+@   amxexec_thumb2_gas.s  Abstract Machine for the "Pawn" language
 @
-@   This file assembles with GUN's AS (GAS). It uses ARM Architecture v4T
+@   This file assembles with GUN's AS (GAS). It uses ARM Thumb-2
 @   instructions. It can be assembled for Big Endian environments, by
 @   defining the symbol BIG_ENDIAN; the default configuration is
 @   Little Endian.
@@ -15,7 +15,7 @@
 @   machine.
 @
 @
-@   Copyright (c) ITB CompuPhase, 2006-2013
+@   Copyright (c) ITB CompuPhase, 2006-2016
 @
 @   Licensed under the Apache License, Version 2.0 (the "License"); you may not
 @   use this file except in compliance with the License. You may obtain a copy
@@ -29,10 +29,11 @@
 @   License for the specific language governing permissions and limitations
 @   under the License.
 @
-@   Version: $Id: $
+@   Version: $Id: amxexec_thumb2_gas.s 5441 2016-02-17 11:04:05Z  $
 
-    .file   "amxexec_arm7_gas.s"
+    .file   "amxexec_thumb2_gas.s"
     .syntax unified
+    .thumb
 
 .ifndef AMX_NO_PACKED_OPC
   .ifndef AMX_TOKENTHREADING
@@ -358,12 +359,7 @@ amx_opcodelist:
 .endm
 
 .macro CALL rx
-    .ifdef THUMB2
       blx \rx
-    .else
-      mov lr, pc                @ simulate BLX with MOV and BX
-      bx \rx
-    .endif
 .endm
 
 @ ================================================================
@@ -380,10 +376,7 @@ amx_opcodelist_addr:
 
     .align  2
     .global amx_exec_list
-    .ifdef THUMB2
-      .code 16
-      .thumb_func
-    .endif
+    .thumb_func
     .type   amx_exec_list, %function
 amx_exec_list:
     ldr r0, amx_opcodelist_addr     @ r0 = opcode table address
@@ -392,7 +385,7 @@ amx_exec_list:
     mov r0, r0, LSR #2              @ number of opcodes, not bytes
     str r0, [r2]                    @ store in parameter 'numopcodes'
     mov r0, #0                      @ no specific return value)
-    mov pc, lr
+    bx  lr
     .size   amx_exec_list, .-amx_exec_list
 
 
@@ -403,10 +396,7 @@ amx_exec_list:
 
     .align 2
     .global amx_exec_run
-    .ifdef THUMB2
-      .code 16
-      .thumb_func
-    .endif
+    .thumb_func
     .type   amx_exec_run, %function
 amx_exec_run:
     @ save non-scratch registers
@@ -765,13 +755,9 @@ amx_exec_run:
     it mi
     rsbmi r1, r1, #0            @ if r3 < 0, r1 = #0 - r1
     @ do the division
-  .ifdef THUMB2
     udiv r11, r1, r0            @ r11 = r1 / r0
     mls r1, r0, r11, r1         @ r1 = r1 - (r0 * r11) = r1 % r0
     mov r0, r11                 @ r0 = r1 / r0
-  .else
-    bl  amx_div                 @ r0 = r1 / r0, r1 = r1 % r0
-  .endif
     @ patch signs
     cmp r2, #0                  @ check sign of original value of divisor
     it mi
@@ -1223,12 +1209,8 @@ amx_exec_run:
 
 .OP_LIDX_B:
     GETPARAM r11
-  .ifdef THUMB2
     mov r12, r0, LSL r11        @ r12 = PRI << param
     add r12, r12, r1            @ r12 = ALT + (PRI << param)
-  .else
-    add r12, r1, r0, LSL r11    @ r12 = ALT + (PRI << param)
-  .endif
     add r12, r12, r5            @ relocate to absolute address
     VERIFYADDRESS r12
     ldr r0, [r12]
@@ -1240,12 +1222,8 @@ amx_exec_run:
 
 .OP_IDXADDR_B:
     GETPARAM r11
-  .ifdef THUMB2
     mov r0, r0, LSL r11         @ r0 = PRI << param
     add r0, r0, r1              @ PRI = ALT + (PRI << param)
-  .else
-    add r0, r1, r0, LSL r11     @ PRI = ALT + (PRI << param)
-  .endif
     NEXT
 
 .OP_PUSH_C:                     @ tested
@@ -1542,58 +1520,34 @@ amx_exec_run:
 .ifndef AMX_NO_PACKED_OPC
 
 .OP_LOAD_P_PRI:
-  .ifdef THUMB2
     GETPARAM_P r11
     ldr r0, [r5, r11]
-  .else
-    ldr r0, [r5, r12, ASR #16]
-  .endif
     NEXT
 
 .OP_LOAD_P_ALT:
-  .ifdef THUMB2
     GETPARAM_P r11
     ldr r1, [r5, r11]
-  .else
-    ldr r1, [r5, r12, ASR #16]
-  .endif
     NEXT
 
 .OP_LOAD_P_S_PRI:
-  .ifdef THUMB2
     GETPARAM_P r11
     ldr r0, [r7, r11]
-  .else
-    ldr r0, [r7, r12, ASR #16]
-  .endif
     NEXT
 
 .OP_LOAD_P_S_ALT:
-  .ifdef THUMB2
     GETPARAM_P r11
     ldr r1, [r7, r11]
-  .else
-    ldr r1, [r7, r12, ASR #16]
-  .endif
     NEXT
 
 .OP_LREF_P_S_PRI:
-  .ifdef THUMB2
     GETPARAM_P r11
     ldr r11, [r7, r11]
-  .else
-    ldr r11, [r7, r12, ASR #16]
-  .endif
     ldr r0, [r5, r11]
     NEXT
 
 .OP_LREF_P_S_ALT:
-  .ifdef THUMB2
     GETPARAM_P r11
     ldr r11, [r7, r11]
-  .else
-    ldr r11, [r7, r12, ASR #16]
-  .endif
     ldr r1, [r5, r11]
     NEXT
 
@@ -1633,30 +1587,18 @@ amx_exec_run:
     NEXT
 
 .OP_STOR_P:
-  .ifdef THUMB2
     GETPARAM_P r11
     str r0, [r5, r11]
-  .else
-    str r0, [r5, r12, ASR #16]
-  .endif
     NEXT
 
 .OP_STOR_P_S:
-  .ifdef THUMB2
     GETPARAM_P r11
     str r0, [r7, r11]
-  .else
-    str r0, [r7, r12, ASR #16]
-  .endif
     NEXT
 
 .OP_SREF_P_S:
-  .ifdef THUMB2
     GETPARAM_P r11
     ldr r11, [r7, r11]
-  .else
-    ldr r11, [r7, r12, ASR #16]
-  .endif
     str r0, [r5, r11]
     NEXT
 
@@ -1677,12 +1619,8 @@ amx_exec_run:
 
 .OP_LIDX_P_B:
     GETPARAM_P r11
-  .ifdef THUMB2
     mov r12, r0, LSL r11        @ r12 = PRI << param
     add r12, r12, r1            @ r12 = ALT + (PRI << param)
-  .else
-    add r12, r1, r0, LSL r11    @ r12 = ALT + (PRI << param)
-  .endif
     add r12, r12, r5            @ relocate to absolute address
     VERIFYADDRESS r12
     ldr r0, [r12]
@@ -1690,12 +1628,8 @@ amx_exec_run:
 
 .OP_IDXADDR_P_B:
     GETPARAM_P r11
-  .ifdef THUMB2
     mov r0, r0, LSL r11         @ r0 = PRI << param
     add r0, r0, r1              @ PRI = ALT + (PRI << param)
-  .else
-    add r0, r1, r0, LSL r11     @ PRI = ALT + (PRI << param)
-  .endif
     NEXT
 
 .OP_ALIGN_P_PRI:
@@ -1713,22 +1647,14 @@ amx_exec_run:
     NEXT
 
 .OP_PUSH_P:
-  .ifdef THUMB2
     GETPARAM_P r11
     ldr r11, [r5, r11]
-  .else
-    ldr r11, [r5, r12, ASR #16]
-  .endif
     mPUSH r11
     NEXT
 
 .OP_PUSH_P_S:
-  .ifdef THUMB2
     GETPARAM_P r11
     ldr r11, [r7, r11]
-  .else
-    ldr r11, [r7, r12, ASR #16]
-  .endif
     mPUSH r11
     NEXT
 
@@ -1975,40 +1901,5 @@ amx_exec_run:
 
     .size   amx_exec_run, .-amx_exec_run
 
-
-.ifndef THUMB2
-    .align  2
-    .global amx_div
-    .type   amx_div, %function
-amx_div:
-    @ expects divident in r1, divisor in r0
-    @ on exit quotient is in r0, remainder in r1
-    @ r11 and r12 are scratch; r12 is temporary result
-    @ unsigned division only; when r1 (divisor) is zero, the function returns
-    @ with all registers unchanged
-    teq r0, #0                  @ verify r0
-    moveq pc, lr                @ just for security
-    @ drop-through (divisor is not zero)
-    mov r11, #1
-.amx_div1:
-    cmp r0, #0x80000000         @ shift divisor left until top bit set
-    cmpcc r0, r1                @ ...or divisor>divident
-    movcc r0, r0, LSL #1        @ shift divisor left if required
-    movcc r11, r11, LSL #1      @ shift r11 left if required
-    bcc .amx_div1               @ repeat whilst more shifting required
-    mov r12, #0                 @ used to store result (temporary)
-.amx_div2:
-    cmp r1, r0                  @ test for possible subtraction
-    subcs r1, r1, r0            @ subtract if divident>divisor
-    addcs r12, r12, r11         @ put relevant bit into result
-    movs  r11, r11, LSR #1      @ shift control bit
-    movne r0, r0, LSR #1        @ halve unless finished
-    bne .amx_div2               @ loop if there is more to do
-    @ remainder r1, result in r12
-    mov r0, r12                 @ quotient now in r0
-    mov pc, lr
-
-    .size   amx_div, .-amx_div
-.endif @ THUMB2
 
     .end

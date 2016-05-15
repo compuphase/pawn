@@ -7,7 +7,7 @@
  *  originally created by Ron Cain, july 1980, and enhanced by James E. Hendrix.
  *  The modifications in Pawn come close to a complete rewrite, though.
  *
- *  Copyright ITB CompuPhase, 1997-2015
+ *  Copyright ITB CompuPhase, 1997-2016
  *  Copyright J.E. Hendrix, 1982, 1983
  *  Copyright R. Cain, 1980
  *
@@ -23,7 +23,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: sc1.c 5181 2015-01-21 09:44:28Z thiadmer $
+ *  Version: $Id: sc1.c 5504 2016-05-15 13:42:30Z  $
  */
 #include <assert.h>
 #include <ctype.h>
@@ -616,7 +616,7 @@ int pc_compile(int argc, char *argv[])
    */
   undefined_vars=checkundefined(&glbtab);
 
-  /* second (or third) pass */
+  /* second pass (or third if there were multiple discovery passes) */
   sc_status=statWRITE;          /* set, to enable warnings */
   state_conflict(&glbtab);
 
@@ -644,6 +644,7 @@ int pc_compile(int argc, char *argv[])
     delete_substtable();
   #endif
   delete_inputfiletable();
+  litarray_deleteall();         /* this list should already be empty */
   resetglobals();
   sc_ctrlchar=sc_ctrlchar_org;
   sc_needsemicolon=lcl_needsemicolon;
@@ -804,6 +805,7 @@ cleanup:
   delete_sourcefiletable();
   delete_inputfiletable();
   delete_dbgstringtable();
+  litarray_deleteall();
   #if !defined NO_DEFINE
     delete_substtable();
   #endif
@@ -1527,7 +1529,7 @@ static void setconfig(char *root)
 
 static void setcaption(void)
 {
-  pc_printf("Pawn compiler %-25s Copyright (c) 1997-2015, ITB CompuPhase\n\n",VERSION_STR);
+  pc_printf("Pawn compiler %-25s Copyright (c) 1997-2016, ITB CompuPhase\n\n",VERSION_STR);
 }
 
 static void about(void)
@@ -1714,8 +1716,11 @@ void sc_attachdocumentation(symbol *sym,int onlylastblock)
     if (doc!=NULL) {
       /* initialize string or concatenate */
       if (sym!=NULL && sym->documentation!=NULL) {
+        size_t len;
         strcpy(doc,sym->documentation);
-        strcat(doc,"<p/>");
+        len=strlen(doc);
+        if (len>0 && doc[len-1]!='>' || ((str=get_docstring(0))!=NULL && *str!=sDOCSEP && *str!='<'))
+          strcat(doc,"<p/>");
         free(sym->documentation);
         sym->documentation=NULL;
       } else {
@@ -1723,7 +1728,7 @@ void sc_attachdocumentation(symbol *sym,int onlylastblock)
       } /* if */
       /* collect all documentation */
       while ((str=get_docstring(0))!=NULL && *str!=sDOCSEP) {
-        if (doc[0]!='\0')
+        if (doc[0]!='\0' && str[0]!='<')
           strcat(doc," ");
         strcat(doc,str);
         delete_docstring(0);
@@ -2720,17 +2725,19 @@ static void initials(int ident,int usage,int tag,cell *size,int dim[],int numdim
          * the same value; if so, we can store this
          */
         constvalue *ld=lastdim.next;
-        int d,match;
-        for (d=0; d<dim[numdim-2]; d++) {
-          assert(ld!=NULL);
-          assert(strtol(ld->name,NULL,16)==d);
-          if (d==0)
+        int count=0,match,total,d;
+        for (ld=lastdim.next; ld!=NULL; ld=ld->next) {
+          assert(strtol(ld->name,NULL,16)==count % dim[numdim-2]);  /* index is stored in the name, it should match the sequence */
+          if (count==0)
             match=(int)ld->value;
           else if (match!=ld->value)
             break;
-          ld=ld->next;
-        } /* for */
-        if (d>0 && d==dim[numdim-2])
+          count++;
+        }
+        total=dim[numdim-2];
+        for (d=numdim-3; d>=0; d--)
+          total*=dim[d];
+        if (count>0 && count==total)
           dim[numdim-1]=match;
       } /* if */
       /* after all arrays have been initalized, we know the (major) dimensions
@@ -3216,7 +3223,7 @@ static int getstates(const char *funcname)
   if (!matchtoken('<'))
     return 0;
   if (matchtoken('>'))
-    return -1;          /* special construct: all other states (fall-back) */
+    return FALLBACK;    /* special construct: all other states (fall-back) */
 
   count=0;
   listsize=0;
@@ -3302,11 +3309,11 @@ static statelist *attachstatelist(symbol *sym,int state_id)
     /* also check for another conflicting situation: a fallback function
      * without any states
      */
-    if (state_id==-1 && sc_status!=statFIRST) {
+    if (state_id==FALLBACK && sc_status!=statFIRST) {
       /* in the second round, all states should have been accumulated */
       statelist *stlist;
       assert(sym->states!=NULL);
-      for (stlist=sym->states->next; stlist!=NULL && stlist->id==-1; stlist=stlist->next)
+      for (stlist=sym->states->next; stlist!=NULL && stlist->id==FALLBACK; stlist=stlist->next)
         /* nothing */;
       if (stlist==NULL)
         error(85,sym->name);    /* no states are defined for this function */
@@ -3321,11 +3328,12 @@ static statelist *attachstatelist(symbol *sym,int state_id)
  *  Finds a function in the global symbol table or creates a new entry.
  *  It does some basic processing and error checking.
  */
-SC_FUNC symbol *fetchfunc(char *name,int tag)
+SC_FUNC symbol *fetchfunc(const char *name,int tag)
 {
   symbol *sym;
 
-  if ((sym=findglb(name,sGLOBAL))!=0) {   /* already in symbol table? */
+  assert(name!=NULL);
+  if ((sym=findglb(name,sGLOBAL))!=NULL) {/* already in symbol table? */
     if (sym->ident!=iFUNCTN) {
       error(21,name);                     /* yes, but not as a function */
       return NULL;                        /* make sure the old symbol is not damaged */
@@ -3353,9 +3361,9 @@ SC_FUNC symbol *fetchfunc(char *name,int tag)
     /* set the required stack size to zero (only for non-native functions) */
     sym->x.stacksize=1;         /* 1 for PROC opcode */
   } /* if */
+  assert(sym!=NULL);
   if (pc_deprecate!=NULL) {
-    assert(sym!=NULL);
-    sym->flags|=flgDEPRICATED;
+    sym->flags|=flgDEPRECATED;
     if (sc_status==statWRITE) {
       if (sym->documentation!=NULL) {
         free(sym->documentation);
@@ -3367,6 +3375,8 @@ SC_FUNC symbol *fetchfunc(char *name,int tag)
     } /* if */
     pc_deprecate=NULL;
   } /* if */
+  if (strcmp(name,_MAINFUNC)==0 || strcmp(name,_STARTFUNC)==0)
+    sym->flags|=flgENTRYPOINT;
 
   return sym;
 }
@@ -3723,6 +3733,8 @@ static void funcstub(int fnative)
   sym=fetchfunc(symbolname,tag);/* get a pointer to the function entry */
   if (sym==NULL)
     return;
+  if ((sym->flags & flgENTRYPOINT)!=0)
+    fpublic=FALSE;
   if (fnative) {
     sym->usage=(char)(uNATIVE | uRETVALUE | uDEFINE | (sym->usage & uPROTOTYPED));
     sym->x.lib=curlibrary;
@@ -3884,7 +3896,7 @@ static int newfunc(char *firstname,int firsttag,int fpublic,int fstatic,int stoc
     fpublic=TRUE;               /* earlier (forward) declaration said this is a public function */
     error(25);                  /* function definition does not match prototype */
   } /* if */
-  if (fpublic)
+  if (fpublic && (sym->flags & flgENTRYPOINT)==0)
     sym->usage|=uPUBLIC;
   if (fstatic)
     sym->fvisible=filenum;
@@ -3901,25 +3913,36 @@ static int newfunc(char *firstname,int firsttag,int fpublic,int fstatic,int stoc
     sc_status=curstatus;
     sc_reparse=TRUE;      /* must add another pass to "initial scan" phase */
   } /* if */
-  /* we want public functions to be explicitly prototyped, as they are called
-   * from the outside (the exception are main() and @start(), which are implicitly
-   * forward declared)
-   */
-  if (fpublic && (sym->usage & uFORWARD)==0
-      && (strcmp(symbolname,_MAINFUNC)!=0 || strcmp(symbolname,_STARTFUNC)!=0))
-    error(235,symbolname);
+  if ((sym->flags & flgENTRYPOINT)!=0) {
+    /* verify that there are not two functions with an entry point flag */
+    int count=0;
+    symbol *symloop;
+    for (symloop=glbtab.next; symloop!=NULL; symloop=symloop->next)
+      if (symloop->parent==NULL && symloop->ident==iFUNCTN && (symloop->flags & flgENTRYPOINT)!=0)
+        count+=1;
+    assert(count>=1);
+    if (count>1)
+      error(95);
+  } else {
+    /* we want public functions to be explicitly prototyped, as they are called
+     * from the outside (the exception are main() and @start(), which are
+     * implicitly forward declared)
+     */
+    if (fpublic && (sym->usage & uFORWARD)==0)
+      error(235,symbolname);
+  }
   /* declare all arguments */
   argcnt=declargs(sym,TRUE);
   opererror=!operatoradjust(opertok,sym,symbolname,tag);
-  if (strcmp(symbolname,_MAINFUNC)==0 || strcmp(symbolname,_STARTFUNC)==0
+  if ((sym->flags & flgENTRYPOINT)!=0
       || strcmp(symbolname,_ENTRYFUNC)==0 || strcmp(symbolname,_EXITFUNC)==0)
   {
     if (argcnt>0)
-      error(5);         /* main(), entry() and exit() functions may not have any arguments */
-    sym->usage|=uREAD;  /* main() is the program's entry point: always used */
+      error(5);         /* main(), @start(), entry() and exit() functions may not have any arguments */
+    sym->usage|=uREAD;  /* these entry & exit points for programs or states are implicitly "used" */
   } /* if */
   state_id=getstates(symbolname);
-  if (state_id>0 && (opertok!=0 || strcmp(symbolname,_MAINFUNC)==0|| strcmp(symbolname,_STARTFUNC)!=0))
+  if (state_id!=0 && (opertok!=0 || (sym->flags & flgENTRYPOINT)!=0))
     error(82);          /* operators may not have states, main() may neither */
   stlist=attachstatelist(sym,state_id);
   /* "declargs()" found the ")"; if a ";" appears after this, it was a
@@ -3939,7 +3962,7 @@ static int newfunc(char *firstname,int firsttag,int fpublic,int fstatic,int stoc
     cidx=code_idx;
     glbdecl=glb_declared;
   } /* if */
-  if ((sym->flags & flgDEPRICATED)!=0) {
+  if ((sym->flags & flgDEPRECATED)!=0) {
     char *ptr= (sym->documentation!=NULL) ? sym->documentation : "";
     error(234,symbolname,ptr);  /* deprecated (probably a public function) */
   } /* if */
@@ -4021,6 +4044,36 @@ static int newfunc(char *firstname,int firsttag,int fpublic,int fstatic,int stoc
     sym->codeaddr=code_idx;
   else
     stlist->endaddr=code_idx;
+  #if !defined PAWN_LIGHT
+    if (sc_status==statFIRST && stlist!=NULL && stlist->id!=FALLBACK) {
+      /* run through the documentation strings, to check for transitions (but
+         ignore it if this function is marked as the fallback; there is no
+         purpose in documenting a fallback that causes no state switch) */
+      int idx,count;
+      size_t len;
+      for (idx=count=0; (str=get_docstring(idx))!=NULL && *str!=sDOCSEP; idx++)
+        if (strstr(str,"<transition ")!=NULL)
+          count++;
+      if (count==0) {
+        /* there are no transitions, so the event is handled internally;
+           document this with pseudo-transitions */
+        char *doc;
+        count=state_count(stlist->id);
+        for (idx=0; idx<count; idx++) {
+          int state_id=state_listitem(stlist->id,idx);
+          int fsa=state_getfsa(stlist->id);
+          constvalue *state=state_findid(state_id,fsa);
+          assert(state!=NULL);
+          len=strlen(state->name)+50; /* +50 for the fixed part of "<transition ..." */
+          if ((doc=(char*)malloc(len*sizeof(char)))!=NULL) {
+            sprintf(doc,"<transition internal source=\"%s\"/>",state->name);
+            insert_docstring(doc,0);  /* prefix the state information */
+            free(doc);
+          }
+        }
+      }
+    }
+  #endif
   sc_attachdocumentation(sym,FALSE);  /* attach collected documentation to the function */
   if (litidx) {                 /* if there are literals defined */
     glb_declared+=litidx;
@@ -4857,7 +4910,7 @@ static void make_report(symbol *root,FILE *log,char *sourcefile)
       fprintf(log,"\t\t\t<attribute name=\"native\"/>\n");
     if ((sym->usage & uPUBLIC)!=0)
       fprintf(log,"\t\t\t<attribute name=\"public\"/>\n");
-    if (strcmp(sym->name,_MAINFUNC)==0 || strcmp(sym->name,_STARTFUNC)==0)
+    if ((sym->flags & flgENTRYPOINT)!=0)
       fprintf(log,"\t\t\t<attribute name=\"init\"/>\n");
     else if (strcmp(sym->name,_ENTRYFUNC)==0)
       fprintf(log,"\t\t\t<attribute name=\"entry\"/>\n");
@@ -4872,7 +4925,7 @@ static void make_report(symbol *root,FILE *log,char *sourcefile)
       statelist *stlist=sym->states->next;
       constvalue *fsa;
       assert(stlist!=NULL);     /* there should be at least one state item */
-      while (stlist!=NULL && stlist->id==-1)
+      while (stlist!=NULL && stlist->id==FALLBACK)
         stlist=stlist->next;
       assert(stlist!=NULL);     /* state id should be found */
       i=state_getfsa(stlist->id);
@@ -4880,7 +4933,6 @@ static void make_report(symbol *root,FILE *log,char *sourcefile)
       fsa=automaton_findid(i);
       assert(fsa!=NULL);        /* automaton should be found */
       fprintf(log,"\t\t\t<automaton name=\"%s\"/>\n", strlen(fsa->name)>0 ? fsa->name : "(anonymous)");
-      //??? dump state decision table
     } /* if */
     fprintf(log,"\t\t\t<location file=\"%s\" line=\"%ld\"/>\n",get_inputfile(sym->fnumber),(long)sym->lnumber);
     assert(sym->refer!=NULL);
@@ -4998,7 +5050,8 @@ static void reduce_referrers(symbol *root)
       if (sym->ident==iFUNCTN
           && (sym->usage & uNATIVE)==0
           && (sym->usage & uPUBLIC)==0
-          && strcmp(sym->name,_MAINFUNC)!=0 && strcmp(sym->name,_ENTRYFUNC)!=0 && strcmp(sym->name,_EXITFUNC)!=0
+          && (sym->flags & flgENTRYPOINT)==0
+          && strcmp(sym->name,_ENTRYFUNC)!=0 && strcmp(sym->name,_EXITFUNC)!=0
           && count_referrers(sym)==0)
       {
         sym->usage&=~(uREAD | uWRITTEN);  /* erase usage bits if there is no referrer */
@@ -5279,7 +5332,7 @@ static int testsymbols(symbol *root,int level,int testlabs,int testconst)
           error(203,symname);       /* symbol isn't used ... (and not public/native/stock) */
         } /* if */
       } /* if */
-      if ((sym->usage & uPUBLIC)!=0 || strcmp(sym->name,_MAINFUNC)==0)
+      if ((sym->usage & uPUBLIC)!=0 || (sym->flags & flgENTRYPOINT)!=0)
         entry=TRUE;                 /* there is an entry point */
       /* also mark the function to the debug information */
       if (((sym->usage & uREAD)!=0 || (sym->usage & uPUBLIC)!=0 && (sym->usage & uDEFINE)!=0)
@@ -6552,6 +6605,7 @@ static void dostate(void)
   constvalue *state;
   statelist *stlist;
   int flabel,result;
+  int curautomaton;
   symbol *sym;
   constvalue dummyautomaton,dummystate;
   #if !defined PAWN_LIGHT
@@ -6574,11 +6628,17 @@ static void dostate(void)
   result=sc_getstateid(&automaton,&state,name);
   needtoken(tTERM);
   if (!result) {
-    /* create a dummy state, so that the transition table can be built in the
-     * report
+    /* the state is unknown, it may be used before definition;
+     * since the report is built in after the first state, create a dummy state,
+     * so that the transitions can be documented
      */
     if (sc_status==statFIRST) {
       memset(&dummyautomaton,0,sizeof dummyautomaton);
+      if (automaton!=NULL) {
+        if (automaton->name!=NULL)
+          strcpy(dummyautomaton.name,automaton->name);
+        dummyautomaton.index=automaton->index;
+      }
       automaton=&dummyautomaton;
       memset(&dummystate,0,sizeof dummystate);
       assert(strlen(name)<=sNAMEMAX);
@@ -6639,7 +6699,8 @@ static void dostate(void)
     /* mark for documentation */
     if (sc_status==statFIRST) {
       char *str;
-      /* get the last list id attached to the function, this contains the source states */
+      /* get the last list-id attached to the function, this contains the source
+         states for the active function */
       assert(curfunc!=NULL);
       if (curfunc->states!=NULL) {
         stlist=curfunc->states->next;
@@ -6650,20 +6711,29 @@ static void dostate(void)
       } else {
         listid=-1;
       } /* if */
+      /* get the automaton id. for the current function, to check whether to
+         include the automaton name */
+      curautomaton=(listid>0) ? state_getfsa(listid) : -1;
       assert(state!=NULL && state->name!=NULL && strlen(state->name)>0 && strlen(state->name)<=sNAMEMAX);
+      assert(automaton!=NULL && automaton->name!=NULL);
       strcpy(name,state->name);
-      length=strlen(name)+70; /* +70 for the fixed part "<transition ... />\n" */
+      length=strlen(name)+strlen(automaton->name)+70; /* +70 for the fixed part "<transition ... />\n" */
       /* see if there are any condition strings to attach */
       for (index=0; (str=get_autolist(index))!=NULL; index++)
         length+=strlen(str);
       listindex=0;
       if ((doc=(char*)malloc(length*sizeof(char)))!=NULL) {
         do {
-          sprintf(doc,"<transition target=\"%s\"",name);
+          /* this may be a transition for the current automaton, or a transition
+             for a different one */
+          if (state->index==curautomaton)
+            sprintf(doc,"<transition target=\"%s\"",name);
+          else
+            sprintf(doc,"<transition target=\"%s:%s\"",automaton->name,name);
           if (listid>=0) {
             /* get the source state */
             stateindex=state_listitem(listid,listindex);
-            state=state_findid(stateindex);
+            state=state_findid(stateindex,curautomaton);
             assert(state!=NULL);
             sprintf(doc+strlen(doc)," source=\"%s\"",state->name);
           } /* if */
@@ -6677,7 +6747,7 @@ static void dostate(void)
             } /* for */
             strcat(doc,"\"");
           } /* if */
-          strcat(doc,"/>\n");
+          strcat(doc,"/>");
           insert_docstring(doc,0);  /* prefix the state information */
         } while (listid>=0 && ++listindex<state_count(listid));
         free(doc);

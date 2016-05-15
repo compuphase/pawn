@@ -1,6 +1,6 @@
 /*  Pawn Abstract Machine (for the Pawn language)
  *
- *  Copyright (c) ITB CompuPhase, 1997-2015
+ *  Copyright (c) ITB CompuPhase, 1997-2016
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not
  *  use this file except in compliance with the License. You may obtain a copy
@@ -14,7 +14,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: amx.c 5181 2015-01-21 09:44:28Z thiadmer $
+ *  Version: $Id: amx.c 5504 2016-05-15 13:42:30Z  $
  */
 
 #define WIN32_LEAN_AND_MEAN
@@ -615,7 +615,7 @@ int AMXAPI amx_Callback(AMX *amx, cell index, cell *result, const cell *params)
 static int VerifyPcode(AMX *amx)
 {
   AMX_HEADER *hdr;
-  cell op,cip,tgt,opmask;
+  cell cip,tgt,opmask;
   int sysreq_flg,max_opcode;
   int datasize,stacksize;
   const cell *opcode_list;
@@ -684,7 +684,7 @@ static int VerifyPcode(AMX *amx)
   /* start browsing code */
   assert(amx->code!=NULL);  /* should already have been set in amx_Init() */
   for (cip=0; cip<amx->codesize; ) {
-    op=*(cell *)(amx->code+(int)cip);
+    cell op=*(cell *)(amx->code+(int)cip);
     if ((op & opmask)>=max_opcode) {
       amx->flags &= ~AMX_FLAG_VERIFY;
       return AMX_ERR_INVINSTR;
@@ -1380,6 +1380,10 @@ int AMXAPI amx_InitJIT(AMX *amx, void *reloc_table, void *native_code)
 
   if ((amx->flags & AMX_FLAG_JITC)==0)
     return AMX_ERR_INIT_JIT;    /* flag not set, this AMX is not prepared for JIT */
+
+  /* copy the prefix */
+  memcpy(native_code, amx->base, ((AMX_HEADER *)(amx->base))->cod);
+  hdr = native_code;
   if (hdr->file_version>MAX_FILE_VER_JIT)
     return AMX_ERR_VERSION;     /* JIT may not support the newest file version(s) */
   /* the JIT does not support overlays, but this is already checked in VerifyPcode()
@@ -1396,10 +1400,6 @@ int AMXAPI amx_InitJIT(AMX *amx, void *reloc_table, void *native_code)
 
   if (mprotect(ALIGN(amx_jit_compile), CODESIZE_JIT, PROT_READ | PROT_WRITE | PROT_EXEC) != 0)
     return AMX_ERR_INIT_JIT;
-
-  /* copy the prefix */
-  memcpy(native_code, amx->base, ((AMX_HEADER *)(amx->base))->cod);
-  hdr = native_code;
 
   /* MP: added check for correct compilation */
   if ((res = amx_jit_compile(amx->base, reloc_table, native_code)) == 0) {
@@ -1645,7 +1645,7 @@ int AMXAPI amx_GetPublic(AMX *amx, int index, char *name, ucell *address)
 
 int AMXAPI amx_FindPublic(AMX *amx, const char *name, int *index)
 {
-  int first,last,mid,result;
+  int first,last,result;
   char pname[sNAMEMAX+1];
 
   amx_NumPublics(amx, &last);
@@ -1653,7 +1653,7 @@ int AMXAPI amx_FindPublic(AMX *amx, const char *name, int *index)
   first=0;
   /* binary search */
   while (first<=last) {
-    mid=(first+last)/2;
+    int mid=(first+last)/2;
     amx_GetPublic(amx,mid,pname,NULL);
     result=strcmp(pname,name);
     if (result>0) {
@@ -1711,7 +1711,7 @@ int AMXAPI amx_GetPubVar(AMX *amx, int index, char *name, cell **address)
 
 int AMXAPI amx_FindPubVar(AMX *amx, const char *name, cell **address)
 {
-  int first,last,mid,result;
+  int first,last,result;
   char pname[sNAMEMAX+1];
 
   amx_NumPubVars(amx,&last);
@@ -1719,7 +1719,7 @@ int AMXAPI amx_FindPubVar(AMX *amx, const char *name, cell **address)
   first=0;
   /* binary search */
   while (first<=last) {
-    mid=(first+last)/2;
+    int mid=(first+last)/2;
     amx_GetPubVar(amx,mid,pname,address);
     result=strcmp(pname,name);
     if (result>0)
@@ -1789,7 +1789,7 @@ int AMXAPI amx_GetTag(AMX *amx, int index, char *tagname, cell *tag_id)
 
 int AMXAPI amx_FindTagId(AMX *amx, cell tag_id, char *tagname)
 {
-  int first,last,mid;
+  int first,last;
   cell mid_id;
 
   #if !defined NDEBUG
@@ -1811,7 +1811,7 @@ int AMXAPI amx_FindTagId(AMX *amx, cell tag_id, char *tagname)
   first=0;
   /* binary search */
   while (first<=last) {
-    mid=(first+last)/2;
+    int mid=(first+last)/2;
     amx_GetTag(amx,mid,tagname,&mid_id);
     if (mid_id>tag_id)
       last=mid-1;
@@ -3526,11 +3526,11 @@ int AMXAPI amx_SetString(cell *dest,const char *source,int pack,int use_wchar,si
     if (size<UNLIMITED && (size_t)len>=size)
       len=size-1;
     #if defined AMX_ANSIONLY
-      for (i=0; i<len; i++)
+      for (i=0; i<(int)len; i++)
         dest[i]=(cell)source[i];
     #else
       if (use_wchar) {
-        for (i=0; i<len; i++)
+        for (i=0; i<(int)len; i++)
           dest[i]=(cell)(((wchar_t*)source)[i]);
       } else {
         for (i=0; i<len; i++)

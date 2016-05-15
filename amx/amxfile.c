@@ -1,6 +1,6 @@
 /* Text file I/O module for the Pawn Abstract Machine
  *
- *  Copyright (c) ITB CompuPhase, 2003-2015
+ *  Copyright (c) ITB CompuPhase, 2003-2016
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not
  *  use this file except in compliance with the License. You may obtain a copy
@@ -14,7 +14,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: amxfile.c 5181 2015-01-21 09:44:28Z thiadmer $
+ *  Version: $Id: amxfile.c 5504 2016-05-15 13:42:30Z  $
  */
 #if defined _UNICODE || defined __UNICODE__ || defined UNICODE
 # if !defined UNICODE   /* for Windows */
@@ -31,6 +31,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <sys/types.h>
 #include <sys/stat.h>
 #include "osdefs.h"
 #if defined __BORLANDC__
@@ -98,11 +99,20 @@
     #define _tmkdir     _mkdir
     #define _trmdir     _rmdir
     #define _tstat      _stat
+    #define _tstat64    _stat64
     #define _tutime     _utime
   #endif
-#endif
-#if !(defined __WIN32__ || defined _WIN32 || defined WIN32)
-  #define _stat(n,b)  stat(n,b)
+  #if defined __APPLE__
+    #define t_stat      stat
+  #elif defined __WIN32__
+    #if defined __WATCOMC__
+      #define t_stat    _stat
+    #else
+      #define t_stat    __stat
+    #endif
+  #else
+    #define t_stat      stat
+  #endif
 #endif
 #if !defined S_ISDIR
   #define S_ISDIR(mode) (((mode) & _S_IFDIR) != 0)
@@ -573,6 +583,7 @@ static cell AMX_NATIVE_CALL n_fputchar(AMX *amx, const cell *params)
     result=fputs_cell((FILE*)params[1],str,1);
   } else {
     fputc((int)params[2],(FILE*)params[1]);
+	result=1;
   } /* if */
   assert(result==0 || result==1);
   return (cell)result;
@@ -689,8 +700,13 @@ static cell AMX_NATIVE_CALL n_fremove(AMX *amx, const cell *params)
   amx_StrParam(amx,params[1],name);
   if (name!=NULL && completename(fullname,name,sizearray(fullname))!=NULL) {
     /* if this is a directory, try _trmdir() */
-    struct _stat stbuf;
-    _tstat(fullname, &stbuf);
+    #if defined _WIN64
+      struct __stat64 stbuf;
+      _tstat64(fullname, &stbuf);
+    #else
+      struct t_stat stbuf;
+      _tstat(fullname, &stbuf);
+    #endif
     if (S_ISDIR(stbuf.st_mode))
       r=_trmdir(fullname);
     else
@@ -859,10 +875,17 @@ static cell AMX_NATIVE_CALL n_fstat(AMX *amx, const cell *params)
   (void)amx;
   amx_StrParam(amx,params[1],name);
   if (name!=NULL && completename(fullname,name,sizearray(fullname))!=NULL) {
-    struct _stat stbuf;
-    if (_tstat(name, &stbuf) == 0) {
+    int err;
+    #if defined _WIN64
+      struct __stat64 stbuf;
+      err = _tstat64(fullname, &stbuf);
+    #else
+      struct t_stat stbuf;
+      err = _tstat(fullname, &stbuf);
+    #endif
+    if (err == 0) {
       cptr=amx_Address(amx,params[2]);
-      *cptr=stbuf.st_size;
+      *cptr=(cell)stbuf.st_size;
       cptr=amx_Address(amx,params[3]);
       *cptr=(cell)stbuf.st_mtime;
       cptr=amx_Address(amx,params[4]);
@@ -1134,10 +1157,10 @@ static cell AMX_NATIVE_CALL n_deletecfg(AMX *amx, const cell *params)
     name=(TCHAR*)default_ini_name;
   if (name!=NULL && completename(fullname,name,sizearray(fullname))!=NULL) {
     amx_StrParam(amx,params[2],section);
-    if (*section=='\0')
+    if (section!=NULL && *section=='\0')
       section=NULL;
     amx_StrParam(amx,params[3],key);
-    if (*key=='\0')
+    if (key!=NULL && *key=='\0')
       key=NULL;
     result=ini_puts(section,key,NULL,fullname);
   } /* if */

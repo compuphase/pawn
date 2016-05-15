@@ -1,7 +1,7 @@
 /*  Simple "run-time" for the Pawn Abstract Machine, with optional support
  *  for debugging information and overlays.
  *
- *  Copyright (c) ITB CompuPhase, 1997-2014
+ *  Copyright (c) ITB CompuPhase, 1997-2016
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not
  *  use this file except in compliance with the License. You may obtain a copy
@@ -15,7 +15,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: pawnrun.c 5148 2014-11-14 13:14:56Z  $
+ *  Version: $Id: pawnrun.c 5504 2016-05-15 13:42:30Z  $
  */
 #include <assert.h>
 #include <stdio.h>
@@ -157,6 +157,7 @@ int AMXAPI aux_LoadProgram(AMX *amx, char *filename)
     #if defined AMXOVL
       size = (hdr.stp - hdr.dat) + hdr.cod + OVLPOOLSIZE;
     #else
+	  fclose(fp);
       return AMX_ERR_OVERLAY;
     #endif
   } else {

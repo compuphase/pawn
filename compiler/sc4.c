@@ -1,6 +1,6 @@
 /*  Pawn compiler - code generation (unoptimized "assembler" code)
  *
- *  Copyright (c) ITB CompuPhase, 1997-2015
+ *  Copyright (c) ITB CompuPhase, 1997-2016
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not
  *  use this file except in compliance with the License. You may obtain a copy
@@ -14,7 +14,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: sc4.c 5181 2015-01-21 09:44:28Z thiadmer $
+ *  Version: $Id: sc4.c 5504 2016-05-15 13:42:30Z  $
  */
 #include <assert.h>
 #include <ctype.h>
@@ -200,13 +200,13 @@ SC_FUNC void writestatetables(symbol *root,int lbl_nostate,int lbl_ignorestate)
       stlist=sym->states->next;
       assert(stlist!=NULL);     /* there should be at least one state item */
       listid=stlist->id;
-      assert(listid==-1 || listid>0);
-      if (listid==-1 && stlist->next!=NULL) {
+      assert(listid==FALLBACK || listid>0);
+      if (listid==FALLBACK && stlist->next!=NULL) {
         /* first index is the "fallback", take the next one (if available) */
         stlist=stlist->next;
         listid=stlist->id;
       } /* if */
-      if (listid==-1) {
+      if (listid==FALLBACK) {
         /* first index is the fallback, there is no second... */
         stlist->label=0;        /* insert dummy label number */
         /* this is an error, but we postpone adding the error message until the
@@ -244,11 +244,10 @@ SC_FUNC void writestatetables(symbol *root,int lbl_nostate,int lbl_ignorestate)
         lbl_default=lbl_defnostate;
       } /* if */
       for (stlist=sym->states->next; stlist!=NULL; stlist=stlist->next) {
-        if (stlist->id==-1) {
+        if (stlist->id==FALLBACK)
           lbl_default=stlist->label;
-        } else {
+        else
           statecount+=state_count(stlist->id);
-        } /* if */
       } /* for */
       /* generate a stub entry for the functions */
       stgwrite("\tload.pri ");
@@ -271,7 +270,7 @@ SC_FUNC void writestatetables(symbol *root,int lbl_nostate,int lbl_ignorestate)
         if (state->index==fsa_id) {
           /* find the label for this list id */
           for (stlist=sym->states->next; stlist!=NULL; stlist=stlist->next) {
-            if (stlist->id!=-1 && state_inlist(stlist->id,(int)state->value)) {
+            if (stlist->id!=FALLBACK && state_inlist(stlist->id,(int)state->value)) {
               /* when overlays are used, the jump-label for the case statement
                * are overlay indices instead of code labels
                */

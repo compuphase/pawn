@@ -43,6 +43,20 @@ fliprect(rect[Rect])
     }
 #endif
 
+#if defined CLEAR_STRING1
+    clear(name{}, size=sizeof name)
+        {
+        name = ""
+        return size
+        }
+#endif
+#if defined CLEAR_STRING2
+    clear(name[])
+        {
+        name = ``''
+        }
+#endif
+
 main()
     {
     #if defined ARRAY_INDEX_TAG_ASSIGN
@@ -65,5 +79,19 @@ main()
     #if defined ARRAY_INDEX_TAG_DECL
         new v[Vector]
         fliprect v      // just to avoid a spureous warning
+    #endif
+
+    #if defined PSEUDO_PACKED_ARRAY_PACKED
+        new arr[.a, .b, .c{8}]
+        arr.c{0} = 0
+    #endif
+    #if defined PSEUDO_PACKED_ARRAY_UNPACKED
+        new arr[.a, .b, .c{8}]
+        arr.c[0] = 0
+    #endif
+
+    #if defined CLEAR_STRING1 || defined CLEAR_STRING2
+        new name{} = "monkey"
+        clear name
     #endif
     }

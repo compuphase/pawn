@@ -14,7 +14,7 @@
  *  - ability to do remote debugging over an RS232 connection
  *
  *
- *  Copyright (c) ITB CompuPhase, 1998-2015
+ *  Copyright (c) ITB CompuPhase, 1998-2016
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not
  *  use this file except in compliance with the License. You may obtain a copy
@@ -28,7 +28,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: pawndbg.c 5181 2015-01-21 09:44:28Z thiadmer $
+ *  Version: $Id: pawndbg.c 5504 2016-05-15 13:42:30Z  $
  *
  *
  *  Command line options:
@@ -848,8 +848,10 @@ static int send_rs232(const char *buffer, int len)
 
   #if defined __WIN32__
     WriteFile(hCom,buffer,len,&size,NULL);
+    FlushFileBuffers(hCom);
   #else
     size=write(fdCom,buffer,len);
+    fflush(fileno(fcCom));
   #endif
   assert((unsigned long)len==size);
   return size;
@@ -919,7 +921,9 @@ static int remote_rs232(const char *port,int baud)
   #if defined __WIN32__
     DCB    dcb;
     COMMTIMEOUTS commtimeouts;
-	DWORD size;
+    DWORD size;
+  #else
+    size_t size;
   #endif
   char buffer[40];
   int sync_found,count;
@@ -984,9 +988,9 @@ static int remote_rs232(const char *port,int baud)
     if (fdCom<0)
       return 0;
   	/* clear input & output buffers, then switch to "blocking mode" */
-	  tcflush(fdCom,TCOFLUSH);
-	  tcflush(fdCom,TCIFLUSH);
-	  fcntl(fdCom,F_SETFL,fcntl(fdCom,F_GETFL) & ~O_NONBLOCK);
+    tcflush(fdCom,TCOFLUSH);
+    tcflush(fdCom,TCIFLUSH);
+    fcntl(fdCom,F_SETFL,fcntl(fdCom,F_GETFL) & ~O_NONBLOCK);
 
     tcgetattr(fdCom,&oldtio); /* save current port settings */
     bzero(&newtio,sizeof newtio);
@@ -1106,7 +1110,11 @@ static int remote_wait_rs232(AMX *amx, long retries)
           #endif
         } /* if */
         if (size==0 && remote_pendingsize==0 && retries>0) {
-          Sleep(50);
+          #if defined __WIN32__
+            Sleep(50);
+          #else
+            usleep(50*1000);
+          #endif
           retries--;
         }
       } while (size==0 && remote_pendingsize==0 && retries!=0);

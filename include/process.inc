@@ -7,7 +7,7 @@
 #pragma library Process
 
 native libcall(const libname[], const funcname[], const typestring[], ...);
-native bool: libfree(const libname[]="");
+native bool: libfree(const libname[]=``'');
 
 native PID:  procexec(const progname[]);
 native       procwait(PID:pid);

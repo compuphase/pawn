@@ -1,6 +1,6 @@
-;   amxexec_arm7.s      Abstract Machine for the "Pawn" language
+;   amxexec_thumb2.s      Abstract Machine for the "Pawn" language
 ;
-;   This file uses the ARM assembler syntax. It uses ARM Architecture v4T
+;   This file uses the ARM assembler syntax. It uses ARM Thumb-2
 ;   instructions. It can be assembled for Big Endian environments, by
 ;   defining the symbol BIG_ENDIAN; the default configuration is
 ;   Little Endian.
@@ -15,7 +15,7 @@
 ;   machine.
 ;
 ;
-;   Copyright (c) ITB CompuPhase, 2006-2013
+;   Copyright (c) ITB CompuPhase, 2006-2016
 ;
 ;   Licensed under the Apache License, Version 2.0 (the "License"); you may not
 ;   use this file except in compliance with the License. You may obtain a copy
@@ -29,7 +29,7 @@
 ;   License for the specific language governing permissions and limitations
 ;   under the License.
 ;
-;   Version: $Id: amxexec_arm7.s 4125 2009-06-15 16:51:06Z thiadmer $
+;   Version: $Id: amxexec_thumb2.s 5441 2016-02-17 11:04:05Z  $
 
 
     AREA    amxexec_data, DATA, READONLY
@@ -305,7 +305,7 @@ opcodelist_size EQU .-amx_opcodelist
     MEND
 
     MACRO
-    JUMPREL $rtmp               ; $rtmp = temp register to use, $cc = condition code
+    JUMPREL $rtmp               ; $rtmp = temp register to use
       ldr $rtmp, [r4], #-4      ; $rtmp = [CIP], CIP -= 4 (restore CIP to start of instruction)
       add r4, r4, $rtmp         ; CIP = CIP + [CIP] - 4
     MEND
@@ -380,11 +380,7 @@ opcodelist_size EQU .-amx_opcodelist
 ; ================================================================
 
     AREA    amxexec_code, CODE, READONLY
-    IF :DEF:THUMB2
-      THUMB
-    ELSE
-      CODE32
-    ENDIF
+    THUMB
     ALIGN   2
 
 amx_opcodelist_addr
@@ -397,7 +393,7 @@ amx_opcodelist_addr
 ; ----------------------------------------------------------------
 
     EXPORT  amx_exec_list
-amx_exec_list
+amx_exec_list FUNCTION
     ldr r0, amx_opcodelist_addr     ; r0 = opcode table address
     str r0, [r1]                    ; store in parameter 'opcodelist'
     mov r0, #opcodelist_size
@@ -405,6 +401,7 @@ amx_exec_list
     str r0, [r2]                    ; store in parameter 'numopcodes'
     mov r0, #0                      ; no specific return value)
     bx  lr
+    ENDFUNC
 
 
 ; ----------------------------------------------------------------
@@ -413,7 +410,7 @@ amx_exec_list
 ; ----------------------------------------------------------------
 
     EXPORT  amx_exec_run
-amx_exec_run
+amx_exec_run FUNCTION
     ; save non-scratch registers
     stmfd sp!, {r4 - r12, lr}
 
@@ -431,11 +428,11 @@ amx_exec_run
     ; r5  = data section (passed in r2)
     ; r6  = STK, relocated (absolute address)
     ; r7  = FRM, relocated (absolute address)
-    ; r8  = code
+    ; r8  = code address
     ; r9  = code_size
     ; r10 = amx base (passed in r0)
     ; r14 = opcode list address (for token threading)
-    ; r11 and r12 are scratch; r11 is used in the macro to fetch the next opcode
+    ; r11 and r12 are scratch; r11 is used in the macro to fetch the next opcode and in stack/heap checking macros
     ; and r12 is also used there in the case that packed opcodes are supported
 
     mov r10, r0                 ; r10 = AMX
@@ -456,7 +453,7 @@ amx_exec_run
     add r7, r7, r5              ; relocate FRM
     add r4, r4, r8              ; relocate CIP
 
-    ldr r14, amx_opcodelist_addr
+    ldr r14, amx_opcodelist_addr ; N.B. r14 is an alias for lr
 
     ; start running
     NEXT
@@ -694,7 +691,7 @@ OP_RETN                         ; tested
     ; verify return address (avoid stack/buffer overflow)
     cmp r4, r9                  ; return addres < code_end ?
     bhs err_memaccess           ; no, error
-    ; test passed
+    ; all tests passed
     add r4, r4, r8              ; relocate
     ldr r11, [r6], #4           ; read value at the stack (#args passed to func), add 4 to STK
     add r6, r6, r11             ; STK += #args (+ 4, added in the LDR instruction)
@@ -717,12 +714,12 @@ OP_JUMP                         ; tested
 
 OP_JZER                         ; tested
     cmp r0, #0
-    JUMPRELCC r11, eq, ne         ; if PRI == 0, jump
+    JUMPRELCC r11, eq, ne       ; if PRI == 0, jump; otherwise skip param
     NEXT
 
 OP_JNZ                          ; tested
     cmp r0, #0
-    JUMPRELCC r11, ne, eq       ; if PRI != 0, jump
+    JUMPRELCC r11, ne, eq       ; if PRI != 0, jump; otherwise skip param
     NEXT
 
 OP_SHL                          ; tested
@@ -770,13 +767,9 @@ OP_SDIV                         ; tested
     it mi
     rsbmi r1, r1, #0            ; if r3 < 0, r1 = #0 - r1
     ; do the division
-  IF :DEF:THUMB2
     udiv r11, r1, r0            ; r11 = r1 / r0
     mls r1, r0, r11, r1         ; r1 = r1 - (r0 * r11) = r1 % r0
     mov r0, r11                 ; r0 = r1 / r0
-  ELSE
-    bl  amx_div                 ; r0 = r1 / r0, r1 = r1 % r0
-  ENDIF
     ; patch signs
     cmp r2, #0                  ; check sign of original value of divisor
     it mi
@@ -1228,12 +1221,8 @@ OP_LIDX                         ; tested
 
 OP_LIDX_B
     GETPARAM r11
-  IF :DEF:THUMB2
     mov r12, r0, LSL r11        ; r12 = PRI << param
     add r12, r12, r1            ; r12 = ALT + (PRI << param)
-  ELSE
-    add r12, r1, r0, LSL r11    ; r12 = ALT + (PRI << param)
-  ENDIF
     add r12, r12, r5            ; relocate to absolute address
     VERIFYADDRESS r12
     ldr r0, [r12]
@@ -1245,12 +1234,8 @@ OP_IDXADDR                      ; tested
 
 OP_IDXADDR_B
     GETPARAM r11
-  IF :DEF:THUMB2
     mov r0, r0, LSL r11         ; r0 = PRI << param
     add r0, r0, r1              ; PRI = ALT + (PRI << param)
-  ELSE
-    add r0, r1, r0, LSL r11     ; PRI = ALT + (PRI << param)
-  ENDIF
     NEXT
 
 OP_PUSH_C                       ; tested
@@ -1298,35 +1283,35 @@ OP_PUSHR_ADR
 
 OP_JEQ                          ; tested
     cmp r0, r1
-    JUMPRELCC r11, eq, ne       ; if PRI == ALT, jump
+    JUMPRELCC r11, eq, ne       ; if PRI == ALT, jump; otherwise skip param
     NEXT
 
 OP_JNEQ                         ; tested
     cmp r0, r1
-    JUMPRELCC r11, ne, eq       ; if PRI != ALT, jump
+    JUMPRELCC r11, ne, eq       ; if PRI != ALT, jump; otherwise skip param
     NEXT
 
 OP_JSLESS                       ; tested
     cmp r0, r1
-    JUMPRELCC r11, lt, ge       ; if PRI < ALT (signed), jump
+    JUMPRELCC r11, lt, ge       ; if PRI < ALT (signed), jump; otherwise skip param
     NEXT
 
 OP_JSLEQ                        ; tested
     cmp r0, r1
-    JUMPRELCC r11, le, gt       ; if PRI <= ALT (signed), jump
+    JUMPRELCC r11, le, gt       ; if PRI <= ALT (signed), jump; otherwise skip param
     NEXT
 
 OP_JSGRTR                       ; tested
     cmp r0, r1
-    JUMPRELCC r11, gt, le       ; if PRI > ALT (signed), jump
+    JUMPRELCC r11, gt, le       ; if PRI > ALT (signed), jump; otherwise skip param
     NEXT
 
 OP_JSGEQ                        ; tested
     cmp r0, r1
-    JUMPRELCC r11, ge, lt       ; if PRI >= ALT (signed), jump
+    JUMPRELCC r11, ge, lt       ; if PRI >= ALT (signed), jump; otherwise skip param
     NEXT
 
-OP_SDIV_INV
+OP_SDIV_INV                     ; tested
     ; swap r0 and r1, then branch to the normal (signed) division case
     mov r11, r0
     mov r0, r1
@@ -1547,58 +1532,34 @@ OP_CONST_S                      ; tested
  IF :LNOT::DEF:AMX_NO_PACKED_OPC
 
 OP_LOAD_P_PRI
-  IF :DEF:THUMB2
     GETPARAM_P r11
     ldr r0, [r5, r11]
-  ELSE
-    ldr r0, [r5, r12, ASR #16]
-  ENDIF
     NEXT
 
 OP_LOAD_P_ALT
-  IF :DEF:THUMB2
     GETPARAM_P r11
     ldr r1, [r5, r11]
-  ELSE
-    ldr r1, [r5, r12, ASR #16]
-  ENDIF
     NEXT
 
 OP_LOAD_P_S_PRI
-  IF :DEF:THUMB2
     GETPARAM_P r11
     ldr r0, [r7, r11]
-  ELSE
-    ldr r0, [r7, r12, ASR #16]
-  ENDIF
     NEXT
 
 OP_LOAD_P_S_ALT
-  IF :DEF:THUMB2
     GETPARAM_P r11
     ldr r1, [r7, r11]
-  ELSE
-    ldr r1, [r7, r12, ASR #16]
-  ENDIF
     NEXT
 
 OP_LREF_P_S_PRI
-  IF :DEF:THUMB2
     GETPARAM_P r11
     ldr r11, [r7, r11]
-  ELSE
-    ldr r11, [r7, r12, ASR #16]
-  ENDIF
     ldr r0, [r5, r11]
     NEXT
 
 OP_LREF_P_S_ALT
-  IF :DEF:THUMB2
     GETPARAM_P r11
     ldr r11, [r7, r11]
-  ELSE
-    ldr r11, [r7, r12, ASR #16]
-  ENDIF
     ldr r1, [r5, r11]
     NEXT
 
@@ -1638,30 +1599,18 @@ OP_ADDR_P_ALT
     NEXT
 
 OP_STOR_P
-  IF :DEF:THUMB2
     GETPARAM_P r11
     str r0, [r5, r11]
-  ELSE
-    str r0, [r5, r12, ASR #16]
-  ENDIF
     NEXT
 
 OP_STOR_P_S
-  IF :DEF:THUMB2
     GETPARAM_P r11
     str r0, [r7, r11]
-  ELSE
-    str r0, [r7, r12, ASR #16]
-  ENDIF
     NEXT
 
 OP_SREF_P_S
-  IF :DEF:THUMB2
     GETPARAM_P r11
     ldr r11, [r7, r11]
-  ELSE
-    ldr r11, [r7, r12, ASR #16]
-  ENDIF
     str r0, [r5, r11]
     NEXT
 
@@ -1682,12 +1631,8 @@ OP_STRB_P_I
 
 OP_LIDX_P_B
     GETPARAM_P r11
-  IF :DEF:THUMB2
     mov r12, r0, LSL r11        ; r12 = PRI << param
     add r12, r12, r1            ; r12 = ALT + (PRI << param)
-  ELSE
-    add r12, r1, r0, LSL r11    ; r12 = ALT + (PRI << param)
-  ENDIF
     add r12, r12, r5            ; relocate to absolute address
     VERIFYADDRESS r12
     ldr r0, [r12]
@@ -1695,12 +1640,8 @@ OP_LIDX_P_B
 
 OP_IDXADDR_P_B
     GETPARAM_P r11
-  IF :DEF:THUMB2
     mov r0, r0, LSL r11        ; r0 = PRI << param
     add r0, r0, r1             ; PRI = ALT + (PRI << param)
-  ELSE
-    add r0, r1, r0, LSL r11     ; PRI = ALT + (PRI << param)
-  ENDIF
     NEXT
 
 OP_ALIGN_P_PRI
@@ -1718,22 +1659,14 @@ OP_PUSH_P_C
     NEXT
 
 OP_PUSH_P
-  IF :DEF:THUMB2
     GETPARAM_P r11
     ldr r11, [r5, r11]
-  ELSE
-    ldr r11, [r5, r12, ASR #16]
-  ENDIF
     mPUSH r11
     NEXT
 
 OP_PUSH_P_S
-  IF :DEF:THUMB2
     GETPARAM_P r11
     ldr r11, [r7, r11]
-  ELSE
-    ldr r11, [r7, r12, ASR #16]
-  ENDIF
     mPUSH r11
     NEXT
 
@@ -1977,39 +1910,8 @@ amx_exit                        ; assume r11 already set (to exit code)
     add sp, sp, #8              ; drop register for the return value
     ldmfd sp!, {r4 - r12, lr}
     bx  lr
-; amx_exec_run
+    
+    ENDFUNC ; amx_exec_run
 
- IF :LNOT::DEF:THUMB2
-    ALIGN   2
-    EXPORT  amx_div
-amx_div
-    ; expects divident in r1, divisor in r0
-    ; on exit quotient is in r0, remainder in r1
-    ; r11 and r12 are scratch; r12 is temporary result
-    ; unsigned division only; when r0 (divisor) is zero, the function returns
-    ; with all registers unchanged
-    teq r0, #0                  ; verify r0
-    moveq pc, lr                ; just for security
-    ; drop-through (divisor is not zero)
-    mov r11, #1
-amx_div1
-    cmp r0, #0x80000000         ; shift divisor left until top bit set
-    cmpcc r0, r1                ; ...or divisor>divident
-    movcc r0, r0, LSL #1        ; shift divisor left if required
-    movcc r11, r11, LSL #1      ; shift r11 left if required
-    bcc amx_div1                ; repeat whilst more shifting required
-    mov r12, #0                 ; used to store result (temporary)
-amx_div2
-    cmp r1, r0                  ; test for possible subtraction
-    subcs r1, r1, r0            ; subtract if divident>divisor
-    addcs r12, r12, r11         ; put relevant bit into result
-    movs  r11, r11, LSR #1      ; shift control bit
-    movne r0, r0, LSR #1        ; halve unless finished
-    bne amx_div2                ; loop if there is more to do
-    ; remainder r1, result in r12
-    mov r0, r12                 ; quotient now in r0
-    mov pc, lr
-; amx_div
 
- ENDIF ; THUMB2
     END
