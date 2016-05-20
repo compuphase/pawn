@@ -57,7 +57,7 @@
 * Copyright (c) 2005-2015, ITB CompuPhase, all rights reserved.
 * www.compuphase.com
 *
-* Version: $Id: fpattern.c 5181 2015-01-21 09:44:28Z thiadmer $
+* Version: $Id: fpattern.c 5514 2016-05-20 14:26:51Z  $
 */
 
 
@@ -176,7 +176,7 @@ int fpattern_isvalid(const char *pat)
                         if (!ishexdigit(pat[len]))
                             return (FPAT_INVALID);
                         pch2 = pat[len];
-                        pch = (hexdigit(pch) << 4) | hexdigit(pch2);
+                        pch = (char)((hexdigit(pch) << 4) | hexdigit(pch2));
                     } else if (strchr(specialchars,pat[len])==NULL) {
                         return (FPAT_INVALID); /* escaped char should be special char */
                     } /* if */

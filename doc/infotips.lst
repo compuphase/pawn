@@ -21,6 +21,9 @@ gotoxy(x=1, y=1)                                        Set cursor position; (1,
 wherexy(&x, &y)                                         Get the current cursor position
 setattr(contrast)                                       Set the display contrast (LCD's)
 consctrl(code, value)                                   Set various display attributes
+getchar(echo=true)										Read one character from the keyboard
+getstring(string[], maxlength=sizeof string, bool:pack=true) Read a string from the keyboard
+getvalue(base=10, term=0x0d, ...)                       Read a number from the keyboard
 
 # fixed
 Fixed:fixed(value)                                      Convert a whole number to a fixed-point value
@@ -112,3 +115,4 @@ PID:  procexec(const progname[])                        Run an external program
       procwait(PID:pid)                                 Wait for a launched program to finish
 bool: procwrite(const line[], bool:appendlf=false)      Send "input" to a launched program
 bool: procread(line[], size=sizeof line, bool:striplf=false, bool:packed=false) Read "output" from a launched program
+

@@ -23,7 +23,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: sc1.c 5504 2016-05-15 13:42:30Z  $
+ *  Version: $Id: sc1.c 5514 2016-05-20 14:26:51Z  $
  */
 #include <assert.h>
 #include <ctype.h>
@@ -110,13 +110,14 @@ static int newfunc(char *firstname,int firsttag,int fpublic,int fstatic,int stoc
 static int declargs(symbol *sym,int chkshadow);
 static void doarg(char *name,int ident,int offset,int tags[],int numtags,
                   int fpublic,int fconst,int chkshadow,arginfo *arg);
-static void make_report(symbol *root,FILE *log,char *sourcefile);
+static void make_report(symbol *root,FILE *log,const char *sourcefile);
 static void reduce_referrers(symbol *root);
 static void gen_ovlinfo(symbol *root);
 static long max_stacksize(symbol *root,int *recursion);
 static long max_overlaysize(symbol *root,char **funcname);
 static int checkundefined(symbol *root);
 static int testsymbols(symbol *root,int level,int testlabs,int testconst);
+static int test_skippedundef(void);
 static void destructsymbols(symbol *root,int level);
 static constvalue *find_constval_byval(constvalue *table,cell val);
 static constvalue *clone_consttable(const constvalue *table);
@@ -208,7 +209,7 @@ int pc_printf(const char *message,...)
  *    If the function returns 0, the parser attempts to continue compilation.
  *    On a non-zero return value, the parser aborts.
  */
-int pc_error(int number,char *message,char *filename,int firstline,int lastline,va_list argptr)
+int pc_error(int number,const char *message,const char *filename,int firstline,int lastline,va_list argptr)
 {
 static char *prefix[3]={ "error", "fatal error", "warning" };
 
@@ -238,7 +239,7 @@ static char *prefix[3]={ "error", "fatal error", "warning" };
  *    Several "source files" may be open at the same time. Specifically, one
  *    file can be open for reading and another for writing.
  */
-void *pc_opensrc(char *filename)
+void *pc_opensrc(const char *filename)
 {
   return fopen(filename,"r");
 }
@@ -255,7 +256,7 @@ void *pc_opensrc(char *filename)
  *    Several "source files" may be open at the same time. Specifically, one
  *    file can be open for reading and another for writing.
  */
-void *pc_createsrc(char *filename)
+void *pc_createsrc(const char *filename)
 {
   return fopen(filename,"w");
 }
@@ -508,7 +509,7 @@ int pc_compile(int argc, char *argv[])
   assert(get_sourcefile(0)!=NULL);  /* there must be at least one source file */
   if (get_sourcefile(1)!=NULL) {
     /* there are at least two or more source files */
-    char *sname;
+    const char *sname;
     FILE *ftmp,*fsrc;
     int fidx;
     #if defined __WIN32__ || defined _WIN32
@@ -564,9 +565,9 @@ int pc_compile(int argc, char *argv[])
   setconstants();               /* set predefined constants and tagnames */
   for (i=0; i<skipinput; i++)   /* skip lines in the input file */
     if (pc_readsrc(inpf_org,srcline,sLINEMAX)!=NULL)
-      fline++;                  /* keep line number up to date */
-  skipinput=fline;
-  sc_status=statFIRST;
+      pc_curline++;             /* keep line number up to date */
+  skipinput=pc_curline;
+  sc_status=statBROWSE;
   /* write starting options (from the command line or the configuration file) */
   if (sc_listing) {
     char string[150];
@@ -591,6 +592,7 @@ int pc_compile(int argc, char *argv[])
       delete_substtable();
     #endif
     delete_inputfiletable();
+    delete_undefsymboltable();
     resetglobals();
     sc_ctrlchar=sc_ctrlchar_org;
     sc_needsemicolon=lcl_needsemicolon;
@@ -600,15 +602,17 @@ int pc_compile(int argc, char *argv[])
     inpf=inpf_org;
     freading=TRUE;
     pc_resetsrc(inpf,inpfmark); /* reset file position */
-    fline=skipinput;            /* reset line number */
+    pc_curline=skipinput;       /* reset line number */
     sc_reparse=FALSE;           /* assume no extra passes */
-    sc_status=statFIRST;        /* resetglobals() resets it to IDLE */
+    sc_status=statBROWSE;       /* resetglobals() resets it to IDLE */
 
     insert_inputfile(inpfname); /* save for the error system and the report mechanism */
     plungeprefix(incfname);     /* jump into "default.inc" or alternative prefix file */
     preprocess();               /* fetch first line */
     parse();                    /* process all input */
     sc_parsenum++;
+    if (test_skippedundef()>0)
+      sc_reparse=TRUE;          /* conditional compiled code sections may have changed */
   } while (sc_reparse);
 
   /* after the "discovery" passes, test the global symbol table for undefined
@@ -644,6 +648,7 @@ int pc_compile(int argc, char *argv[])
     delete_substtable();
   #endif
   delete_inputfiletable();
+  delete_undefsymboltable();
   litarray_deleteall();         /* this list should already be empty */
   resetglobals();
   sc_ctrlchar=sc_ctrlchar_org;
@@ -654,7 +659,7 @@ int pc_compile(int argc, char *argv[])
   inpf=inpf_org;
   freading=TRUE;
   pc_resetsrc(inpf,inpfmark);   /* reset file position */
-  fline=skipinput;              /* reset line number */
+  pc_curline=skipinput;         /* reset line number */
   if (!lexinit(FALSE))          /* clear internal flags of lex() */
     error(103);                 /* insufficient memory */
   sc_status=statWRITE;          /* allow to write --this variable was reset by resetglobals() */
@@ -804,6 +809,7 @@ cleanup:
   delete_pathtable();
   delete_sourcefiletable();
   delete_inputfiletable();
+  delete_undefsymboltable();
   delete_dbgstringtable();
   litarray_deleteall();
   #if !defined NO_DEFINE
@@ -903,7 +909,7 @@ static void resetglobals(void)
   ntv_funcid=0;         /* incremental number of native function */
   curseg=0;             /* 1 if currently parsing CODE, 2 if parsing DATA */
   freading=FALSE;       /* no input file ready yet */
-  fline=0;              /* the line number in the current file */
+  pc_curline=0;         /* the line number in the current file */
   fnumber=0;            /* the file number in the file table (debugging) */
   fcurrent=0;           /* current file being processed (debugging) */
   sc_intest=FALSE;      /* true if inside a test */
@@ -1293,7 +1299,7 @@ static void parseoptions(int argc,char **argv,char *oname,char *ename,char *pnam
       /* not output filename is set, use the name of the first source file,
        * without the path
        */
-      char *name;
+      const char *name;
       if ((name=get_sourcefile(0))!=NULL) {
         assert(strlen(name)<_MAX_PATH);
         if ((ptr=strrchr(name,DIRSEP_CHAR))!=NULL)
@@ -1633,8 +1639,9 @@ void sc_attachdocumentation(symbol *sym,int onlylastblock)
   int line,wrap;
   size_t length;
   char *str,*doc,*end;
+  const char *txt;
 
-  if (!sc_makereport || sc_status!=statFIRST || sc_parsenum>0) {
+  if (!sc_makereport || sc_status!=statBROWSE || sc_parsenum>0) {
     /* just clear the entire table */
     delete_docstringtable();
     return;
@@ -1702,10 +1709,10 @@ void sc_attachdocumentation(symbol *sym,int onlylastblock)
 
   /* first check the size */
   length=0;
-  for (line=0; (str=get_docstring(line))!=NULL && *str!=sDOCSEP; line++) {
+  for (line=0; (txt=get_docstring(line))!=NULL && *txt!=sDOCSEP; line++) {
     if (length>0)
       length++;   /* count 1 extra for a separating space */
-    length+=strlen(str);
+    length+=strlen(txt);
   } /* for */
 
   if (length>0) {
@@ -1719,7 +1726,7 @@ void sc_attachdocumentation(symbol *sym,int onlylastblock)
         size_t len;
         strcpy(doc,sym->documentation);
         len=strlen(doc);
-        if (len>0 && doc[len-1]!='>' || ((str=get_docstring(0))!=NULL && *str!=sDOCSEP && *str!='<'))
+        if (len>0 && doc[len-1]!='>' || ((txt=get_docstring(0))!=NULL && *txt!=sDOCSEP && *txt!='<'))
           strcat(doc,"<p/>");
         free(sym->documentation);
         sym->documentation=NULL;
@@ -1727,15 +1734,15 @@ void sc_attachdocumentation(symbol *sym,int onlylastblock)
         doc[0]='\0';
       } /* if */
       /* collect all documentation */
-      while ((str=get_docstring(0))!=NULL && *str!=sDOCSEP) {
-        if (doc[0]!='\0' && str[0]!='<')
+      while ((txt=get_docstring(0))!=NULL && *txt!=sDOCSEP) {
+        if (doc[0]!='\0' && txt[0]!='<')
           strcat(doc," ");
-        strcat(doc,str);
+        strcat(doc,txt);
         delete_docstring(0);
       } /* while */
-      if (str!=NULL) {
+      if (txt!=NULL) {
         /* also delete the separator */
-        assert(*str==sDOCSEP);
+        assert(*txt==sDOCSEP);
         delete_docstring(0);
       } /* if */
       if (sym!=NULL) {
@@ -1748,7 +1755,7 @@ void sc_attachdocumentation(symbol *sym,int onlylastblock)
     } /* if */
   } else {
     /* delete an empty separator, if present */
-    if ((str=get_docstring(0))!=NULL && *str==sDOCSEP)
+    if ((txt=get_docstring(0))!=NULL && *txt==sDOCSEP)
       delete_docstring(0);
   } /* if */
 }
@@ -3172,7 +3179,7 @@ static void decl_const(int vclass)
         tag=defaulttag;
       if (lex(&val,&str)!=tSYMBOL)      /* read in (new) token */
         error(20,str);                  /* invalid symbol name */
-      symbolline=fline;                 /* save line where symbol was found */
+      symbolline=pc_curline;            /* save line where symbol was found */
       strcpy(constname,str);            /* save symbol name */
       val=defaultval+1;                 /* set default value and tag for next enumeration field */
       exprtag=tag;
@@ -3189,11 +3196,8 @@ static void decl_const(int vclass)
       first=0;
       defaultval=val;
       if (exprtag!=0 && !matchtag(tag,exprtag,FALSE)) {
-        /* temporarily reset the line number to where the symbol was defined */
-        int orgfline=fline;
-        fline=symbolline;
+        errorset(sSETLINE,symbolline);  /* temporarily reset the line number to where the symbol was defined */
         error(213);                     /* tagname mismatch */
-        fline=orgfline;
       } /* if */
       /* add_constant() checks for duplicate definitions */
       sym=add_constant(constname,val,vclass,tag);
@@ -3309,7 +3313,7 @@ static statelist *attachstatelist(symbol *sym,int state_id)
     /* also check for another conflicting situation: a fallback function
      * without any states
      */
-    if (state_id==FALLBACK && sc_status!=statFIRST) {
+    if (state_id==FALLBACK && sc_status!=statBROWSE) {
       /* in the second round, all states should have been accumulated */
       statelist *stlist;
       assert(sym->states!=NULL);
@@ -3879,7 +3883,7 @@ static int newfunc(char *firstname,int firsttag,int fpublic,int fstatic,int stoc
   if (!matchtoken('('))
     return FALSE;
   /* so it is a function, proceed */
-  funcline=fline;               /* save line at which the function is defined */
+  funcline=pc_curline;          /* save line at which the function is defined */
   if (symbolname[0]==PUBLIC_CHAR) {
     fpublic=TRUE;               /* implicitly public function */
     if (stock)
@@ -3888,7 +3892,7 @@ static int newfunc(char *firstname,int firsttag,int fpublic,int fstatic,int stoc
   sym=fetchfunc(symbolname,tag);/* get a pointer to the function entry */
   if (sym==NULL || (sym->usage & uNATIVE)!=0)
     return TRUE;                /* it was recognized as a function declaration, but not as a valid one */
-  sym->lnumber=fline;
+  sym->lnumber=pc_curline;
   sym->fnumber=fcurrent;
   /* attach a preceding comment to the function's documentation */
   sc_attachdocumentation(sym,TRUE);
@@ -3901,7 +3905,7 @@ static int newfunc(char *firstname,int firsttag,int fpublic,int fstatic,int stoc
   if (fstatic)
     sym->fvisible=filenum;
   /* if the function was used before being declared, and it has a tag for the
-   * result, add a third pass (as second "skimming" parse) because the function
+   * result, add a third pass (as second "browse" parse) because the function
    * result may have been used with user-defined operators, which have now
    * been incorrectly flagged (as the return tag was unknown at the time of
    * the call)
@@ -3909,7 +3913,7 @@ static int newfunc(char *firstname,int firsttag,int fpublic,int fstatic,int stoc
   if ((sym->usage & (uPROTOTYPED | uREAD))==uREAD && sym->tag!=0) {
     int curstatus=sc_status;
     sc_status=statWRITE;  /* temporarily set status to WRITE, so the warning isn't blocked */
-    error(208);
+    error(208,symbolname);
     sc_status=curstatus;
     sc_reparse=TRUE;      /* must add another pass to "initial scan" phase */
   } /* if */
@@ -4045,13 +4049,13 @@ static int newfunc(char *firstname,int firsttag,int fpublic,int fstatic,int stoc
   else
     stlist->endaddr=code_idx;
   #if !defined PAWN_LIGHT
-    if (sc_status==statFIRST && stlist!=NULL && stlist->id!=FALLBACK) {
+    if (sc_status==statBROWSE && stlist!=NULL && stlist->id!=FALLBACK) {
       /* run through the documentation strings, to check for transitions (but
          ignore it if this function is marked as the fallback; there is no
          purpose in documenting a fallback that causes no state switch) */
       int idx,count;
       size_t len;
-      for (idx=count=0; (str=get_docstring(idx))!=NULL && *str!=sDOCSEP; idx++)
+      for (idx=count=0; (str=(char*)get_docstring(idx))!=NULL && *str!=sDOCSEP; idx++)
         if (strstr(str,"<transition ")!=NULL)
           count++;
       if (count==0) {
@@ -4690,7 +4694,7 @@ static void write_docstring(FILE *log,const char *string)
     fprintf(log,"\t\t\t%s\n",string);
 }
 
-static void make_report(symbol *root,FILE *log,char *sourcefile)
+static void make_report(symbol *root,FILE *log,const char *sourcefile)
 {
   char symname[_MAX_PATH];
   int i,arg,dim,count,tag;
@@ -4715,7 +4719,7 @@ static void make_report(symbol *root,FILE *log,char *sourcefile)
   if (ptr!=NULL)
     ptr++;
   else
-    ptr=sourcefile;
+    ptr=(char*)sourcefile;
   fprintf(log,"\t<assembly>\n\t\t<name>%s</name>\n\t</assembly>\n",ptr);
 
   /* attach the global documentation, if any */
@@ -5377,6 +5381,44 @@ static int testsymbols(symbol *root,int level,int testlabs,int testconst)
   return entry;
 }
 
+/* test_skippedundef() counts how many "undefined" symbols in fact... exist.
+ * If in a preprocessor expression (like #if) there is a test whether a symbol
+ * exists and that symbol is not defined, it is added to a list. If that symbol
+ * turns out to exist after all at the end of a parse, then:
+ * a) that symbol was "late defined"
+ * b) the next parse will choose a different through the compiled sections
+ *    (because the symbol is now defined)
+ * That "next parse" should be another iteration of a "browse" parse, because
+ * the single code generation parse must run through the same code as what the
+ * browse phase has seen.
+ */
+static int test_skippedundef(void)
+{
+  int count=0;
+  int idx,linenr;
+  const char *symname;
+
+  for (idx=0; (symname=get_undefsymbol(idx,&linenr))!=NULL; idx++) {
+    /* test only global symbols; the local symbol table has already been erased
+       and the text substution macros must be defined before use) */
+    const symbol *sym=findglb(symname,sGLOBAL);
+    if (sym!=NULL && ((sym->usage & uDEFINE)!=0 || sym->ident==iFUNCTN && (sym->usage & uPROTOTYPED)!=0)) {
+      /* normally, errors & warnings only show during "write" status, but this
+         test only occurs during "browse" phase (and the warning will go away
+         in write phase, because an extra pass has then been made) -> temporarily
+         switch to "write" state just for the warning */
+      assert(sc_status==statBROWSE);
+      sc_status=statWRITE;
+      errorset(sSETLINE,linenr);
+      error(208,symname);
+      sc_status=statBROWSE;
+      count++;  /* symbol that was undefined when tested, became defined */
+    }
+  }
+
+  return count;
+}
+
 static cell calc_array_datasize(symbol *sym, cell *offset)
 {
   cell length;
@@ -5637,7 +5679,7 @@ static void statement(int *lastindent,int allow_decl)
 
   tok=lex(&val,&st);
   if (tok!='{') {
-    insert_dbgline(fline);
+    insert_dbgline(pc_curline);
     setline(TRUE);
   } /* if */
   /* lex() has set pc_stmtindent */
@@ -5670,9 +5712,9 @@ static void statement(int *lastindent,int allow_decl)
     } /* if */
     break;
   case '{':
-    save=fline;
+    save=pc_curline;
     if (!matchtoken('}'))       /* {} is the empty statement */
-      compound(save==fline);
+      compound(save==pc_curline);
     /* lastst (for "last statement") does not change */
     break;
   case ';':
@@ -5755,7 +5797,7 @@ static void compound(int stmt_sameline)
   int indent=-1;
   cell save_decl=declared;
   int count_stmt=0;
-  int block_start=fline;  /* save line where the compound block started */
+  int block_start=pc_curline; /* save line where the compound block started */
 
   /* if there is more text on this line, we should adjust the statement indent */
   if (stmt_sameline) {
@@ -6297,7 +6339,7 @@ static void doassert(void)
   if ((sc_debug & sCHKBOUNDS)!=0) {
     flab1=getlabel();           /* get label number for "OK" branch */
     test(flab1,FALSE,TRUE);/* get expression and branch to flab1 if true */
-    insert_dbgline(fline);      /* make sure we can find the correct line number */
+    insert_dbgline(pc_curline); /* make sure we can find the correct line number */
     ffabort(xASSERTION);
     setlabel(flab1);
   } else {
@@ -6632,7 +6674,7 @@ static void dostate(void)
      * since the report is built in after the first state, create a dummy state,
      * so that the transitions can be documented
      */
-    if (sc_status==statFIRST) {
+    if (sc_status==statBROWSE) {
       memset(&dummyautomaton,0,sizeof dummyautomaton);
       if (automaton!=NULL) {
         if (automaton->name!=NULL)
@@ -6697,8 +6739,8 @@ static void dostate(void)
 
   #if !defined PAWN_LIGHT
     /* mark for documentation */
-    if (sc_status==statFIRST) {
-      char *str;
+    if (sc_status==statBROWSE) {
+      const char *str;
       /* get the last list-id attached to the function, this contains the source
          states for the active function */
       assert(curfunc!=NULL);

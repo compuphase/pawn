@@ -15,7 +15,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: pawnrun.c 5504 2016-05-15 13:42:30Z  $
+ *  Version: $Id: pawnrun.c 5514 2016-05-20 14:26:51Z  $
  */
 #include <assert.h>
 #include <stdio.h>
@@ -459,6 +459,9 @@ int main(int argc,char *argv[])
       while (amx_termctl(4,0))
         /* nothing */;
     }
+  #endif
+  #if defined CURSES
+    endwin();
   #endif
 
   return 0;

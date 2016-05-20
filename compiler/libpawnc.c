@@ -16,7 +16,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: libpawnc.c 5504 2016-05-15 13:42:30Z  $
+ *  Version: $Id: libpawnc.c 5514 2016-05-20 14:26:51Z  $
  */
 #include <assert.h>
 #include <stdio.h>
@@ -122,7 +122,7 @@ int pc_printf(const char *message,...)
  *    If the function returns 0, the parser attempts to continue compilation.
  *    On a non-zero return value, the parser aborts.
  */
-int pc_error(int number,char *message,char *filename,int firstline,int lastline,va_list argptr)
+int pc_error(int number,const char *message,const char *filename,int firstline,int lastline,va_list argptr)
 {
 static char *prefix[3]={ "error", "fatal error", "warning" };
 
@@ -152,7 +152,7 @@ static char *prefix[3]={ "error", "fatal error", "warning" };
  *    Several "source files" may be open at the same time. Specifically, one
  *    file can be open for reading and another for writing.
  */
-void *pc_opensrc(char *filename)
+void *pc_opensrc(const char *filename)
 {
   return fopen(filename,"rt");
 }
@@ -169,7 +169,7 @@ void *pc_opensrc(char *filename)
  *    Several "source files" may be open at the same time. Specifically, one
  *    file can be open for reading and another for writing.
  */
-void *pc_createsrc(char *filename)
+void *pc_createsrc(const char *filename)
 {
   return fopen(filename,"wt");
 }

@@ -16,7 +16,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: sc5.c 5504 2016-05-15 13:42:30Z  $
+ *  Version: $Id: sc5.c 5514 2016-05-20 14:26:51Z  $
  */
 #include <assert.h>
 #if defined	__WIN32__ || defined _WIN32 || defined __MSDOS__
@@ -66,7 +66,7 @@ static int errline;     /* forced line number for the error message */
  *  (lex() resets "errflag" in that case).
  *
  *  Global references: inpfname   (reffered to only)
- *                     fline      (reffered to only)
+ *                     pc_curline (reffered to only)
  *                     fcurrent   (reffered to only)
  *                     errflag    (altered)
  */
@@ -75,7 +75,8 @@ SC_FUNC int error(long number,...)
 static char *prefix[3]={ "error", "fatal error", "warning" };
 static int lastline,errorcount;
 static short lastfile;
-  char *msg,*pre,*filename;
+  char *msg,*pre;
+  const char *filename;
   va_list argptr;
   char string[256];
   int notice;
@@ -137,7 +138,7 @@ static short lastfile;
   if (errline>0)
     errstart=errline;           /* forced error position, set single line destination */
   else
-    errline=fline;              /* normal error, errstart may (or may not) have been marked, endpoint is current line */
+    errline=pc_curline;         /* normal error, errstart may (or may not) have been marked, endpoint is current line */
   if (errstart>errline)
     errstart=errline;           /* special case: error found at end of included file */
   if (errfile>=0) {
@@ -190,9 +191,9 @@ static short lastfile;
   errline=-1;
   errfile=-1;
   /* check whether we are seeing many errors on the same line */
-  if ((errstart<0 && lastline!=fline) || lastline<errstart || lastline>fline || fcurrent!=lastfile)
+  if ((errstart<0 && lastline!=pc_curline) || lastline<errstart || lastline>pc_curline || fcurrent!=lastfile)
     errorcount=0;
-  lastline=fline;
+  lastline=pc_curline;
   lastfile=fcurrent;
   if (number<200)
     errorcount++;
@@ -247,7 +248,7 @@ SC_FUNC void errorset(int code,int line)
     errflag=TRUE;       /* stop reporting errors, line=ignored */
     break;
   case sEXPRMARK:
-    errstart=fline;     /* save start line number */
+    errstart=pc_curline;/* save start line number */
     break;
   case sEXPRRELEASE:
     errstart=-1;        /* forget start line number */
@@ -385,7 +386,7 @@ SC_FUNC symbol *find_closestsymbol(const char *name,int symboltype)
   symbol *symloc,*symglb;
   int distloc,distglb;
 
-  if (sc_status==statFIRST)
+  if (sc_status==statBROWSE)
     return NULL;
   assert(name!=NULL);
   if (strlen(name)==0)

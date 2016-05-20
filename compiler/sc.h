@@ -23,7 +23,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: sc.h 5504 2016-05-15 13:42:30Z  $
+ *  Version: $Id: sc.h 5514 2016-05-20 14:26:51Z  $
  */
 #ifndef SC_H_INCLUDED
 #define SC_H_INCLUDED
@@ -257,7 +257,7 @@ typedef struct s_symbol {
 #define sLOCAL    1     /* local variable/constant */
 #define sSTATIC   2     /* global life, local scope */
 
-#define sSTATEVAR  3    /* criterion to find variables (sSTATEVAR implies a global variable) */
+#define sSTATEVAR 3     /* criterion to find variables (sSTATEVAR implies a global variable) */
 
 #define FALLBACK  -1    /* state id for the fallback function */
 
@@ -286,7 +286,7 @@ enum {
 
 enum {
   statIDLE,     /* not compiling yet */
-  statFIRST,    /* first pass */
+  statBROWSE,   /* browse symbols & code blocks (there may be multiple iterations of this pass) */
   statWRITE,    /* writing output */
   statSKIP,     /* skipping output */
 };
@@ -303,7 +303,7 @@ enum {
    strings (explicit and parsed information) & debug strings */
 typedef struct s_stringlist {
   struct s_stringlist *next;
-  char *line;
+  char *text;
 } stringlist;
 
 /* general purpose list for #define macros and aliases for native functions */
@@ -528,11 +528,11 @@ DLLEXPORT int pc_enablewarning(int number,int enable);
 int pc_printf(const char *message,...);
 
 /* error report function */
-int pc_error(int number,char *message,char *filename,int firstline,int lastline,va_list argptr);
+int pc_error(int number,const char *message,const char *filename,int firstline,int lastline,va_list argptr);
 
 /* input from source file */
-void *pc_opensrc(char *filename); /* reading only */
-void *pc_createsrc(char *filename);
+void *pc_opensrc(const char *filename); /* reading only */
+void *pc_createsrc(const char *filename);
 void pc_closesrc(void *handle);   /* never delete */
 char *pc_readsrc(void *handle,unsigned char *target,int maxchars);
 int pc_writesrc(void *handle,const unsigned char *source);
@@ -758,30 +758,31 @@ SC_FUNC int phopt_cleanup(void);
 
 /* function prototypes in SCLIST.C */
 SC_FUNC char* duplicatestring(const char* sourcestring);
-SC_FUNC stringpair *insert_alias(char *name,char *alias);
-SC_FUNC stringpair *find_alias(char *name);
-SC_FUNC int lookup_alias(char *target,char *name);
+SC_FUNC stringpair *insert_alias(const char *name,const char *alias);
+SC_FUNC int lookup_alias(char *target,const char *name);
 SC_FUNC void delete_aliastable(void);
-SC_FUNC stringlist *insert_path(char *path);
-SC_FUNC char *get_path(int index);
+SC_FUNC stringlist *insert_path(const char *path);
+SC_FUNC const char *get_path(int index);
 SC_FUNC void delete_pathtable(void);
-SC_FUNC stringpair *insert_subst(char *pattern,char *substitution,int prefixlen);
-SC_FUNC int get_subst(int index,char **pattern,char **substitution);
-SC_FUNC stringpair *find_subst(char *name,int length);
-SC_FUNC int delete_subst(char *name,int length);
+SC_FUNC stringpair *insert_subst(const char *pattern,const char *substitution,int prefixlen);
+SC_FUNC const stringpair *find_subst(const char *name,int length);
+SC_FUNC int delete_subst(const char *name,int length);
 SC_FUNC void delete_substtable(void);
-SC_FUNC stringlist *insert_sourcefile(char *string);
-SC_FUNC char *get_sourcefile(int index);
+SC_FUNC stringlist *insert_sourcefile(const char *string);
+SC_FUNC const char *get_sourcefile(int index);
 SC_FUNC void delete_sourcefiletable(void);
-SC_FUNC stringlist *insert_inputfile(char *string);
-SC_FUNC char *get_inputfile(int index);
+SC_FUNC stringlist *insert_inputfile(const char *string);
+SC_FUNC const char *get_inputfile(int index);
 SC_FUNC void delete_inputfiletable(void);
-SC_FUNC stringlist *insert_docstring(char *string,int append);
-SC_FUNC char *get_docstring(int index);
+SC_FUNC stringlist *insert_undefsymbol(const char *string,int linenr);
+SC_FUNC const char *get_undefsymbol(int index,int *linenr);
+SC_FUNC void delete_undefsymboltable(void);
+SC_FUNC stringlist *insert_docstring(const char *string,int append);
+SC_FUNC const char *get_docstring(int index);
 SC_FUNC void delete_docstring(int index);
 SC_FUNC void delete_docstringtable(void);
-SC_FUNC stringlist *insert_autolist(char *string);
-SC_FUNC char *get_autolist(int index);
+SC_FUNC stringlist *insert_autolist(const char *string);
+SC_FUNC const char *get_autolist(int index);
 SC_FUNC void delete_autolisttable(void);
 SC_FUNC valuepair *push_heaplist(long first, long second);
 SC_FUNC int popfront_heaplist(long *first, long *second);
@@ -791,8 +792,8 @@ SC_FUNC cell litarray_find(cell offset,cell size);
 SC_FUNC void litarray_deleteall(void);
 SC_FUNC stringlist *insert_dbgfile(const char *filename);
 SC_FUNC stringlist *insert_dbgline(int linenr);
-SC_FUNC stringlist *insert_dbgsymbol(symbol *sym);
-SC_FUNC char *get_dbgstring(int index);
+SC_FUNC stringlist *insert_dbgsymbol(const symbol *sym);
+SC_FUNC const char *get_dbgstring(int index);
 SC_FUNC void delete_dbgstringtable(void);
 
 /* function prototypes in SCMEMFILE.C */
@@ -876,7 +877,7 @@ SC_VDECL cell pc_stksize;     /* stack size */
 SC_VDECL cell pc_amxlimit;    /* abstract machine size limit (code + data, or only code) */
 SC_VDECL cell pc_amxram;      /* abstract machine data size limit */
 SC_VDECL int freading;        /* is there an input file ready for reading? */
-SC_VDECL int fline;           /* the line number in the current file */
+SC_VDECL int pc_curline;      /* the line number in the current file */
 SC_VDECL short fnumber;       /* number of files in the input file table */
 SC_VDECL short fcurrent;      /* current file being processed */
 SC_VDECL short sc_intest;     /* true if inside a test */

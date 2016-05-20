@@ -1,6 +1,9 @@
 #include <core>
 #include <console>
 
+#if defined STRINS_MAXLENGTH
+    #include <string>
+#endif
 
 
 #if defined ASSERT_LINENO
@@ -423,5 +426,21 @@ main()
                 print StringArray[a][b];
                 print "\n";
             }
+    #endif
+
+    #if defined STRINS_MAXLENGTH
+        new str{} = "test"
+        strins str, "1", 0
+        printf "%s\n", str
+        strins str, "2", 0
+        printf "%s\n", str
+        strins str, "3", 0
+        printf "%s\n", str
+        strins str, "4", 0
+        printf "%s\n", str
+        strins str, "5", 0
+        printf "%s\n", str
+        strins str, "6", 0
+        printf "%s\n", str
     #endif
     }

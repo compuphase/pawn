@@ -16,7 +16,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: scvars.c 5504 2016-05-15 13:42:30Z  $
+ *  Version: $Id: scvars.c 5514 2016-05-20 14:26:51Z  $
  */
 #include <stdio.h>
 #include <stdlib.h>     /* for _MAX_PATH */
@@ -68,7 +68,7 @@ SC_VDEFINE cell pc_stksize=sDEF_AMXSTACK;/* default stack size */
 SC_VDEFINE cell pc_amxlimit=0;     /* default abstract machine size limit = none */
 SC_VDEFINE cell pc_amxram=0;       /* default abstract machine data size limit = none */
 SC_VDEFINE int freading  = FALSE;  /* Is there an input file ready for reading? */
-SC_VDEFINE int fline     = 0;      /* the line number in the current file */
+SC_VDEFINE int pc_curline= 0;      /* the line number in the current file */
 SC_VDEFINE short fnumber = 0;      /* the file number in the file table (debugging) */
 SC_VDEFINE short fcurrent= 0;      /* current file being processed (debugging) */
 SC_VDEFINE short sc_intest=FALSE;  /* true if inside a test */

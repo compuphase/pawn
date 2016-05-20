@@ -14,7 +14,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: amx.c 5504 2016-05-15 13:42:30Z  $
+ *  Version: $Id: amx.c 5509 2016-05-17 07:49:04Z  $
  */
 
 #define WIN32_LEAN_AND_MEAN
@@ -3507,7 +3507,7 @@ int AMXAPI amx_SetString(cell *dest,const char *source,int pack,int use_wchar,si
       memcpy(dest,source,len);
     #else
       if (use_wchar) {
-        for (i=0; i<len; i++)
+        for (i=0; i<(int)len; i++)
           ((char*)dest)[i]=(char)(((wchar_t*)source)[i]);
       } else {
         memcpy(dest,source,len);
@@ -3533,7 +3533,7 @@ int AMXAPI amx_SetString(cell *dest,const char *source,int pack,int use_wchar,si
         for (i=0; i<(int)len; i++)
           dest[i]=(cell)(((wchar_t*)source)[i]);
       } else {
-        for (i=0; i<len; i++)
+        for (i=0; i<(int)len; i++)
           dest[i]=(cell)source[i];
       } /* if */
     #endif

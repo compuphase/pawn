@@ -14,7 +14,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: amxstring.c 5504 2016-05-15 13:42:30Z  $
+ *  Version: $Id: amxstring.c 5514 2016-05-20 14:26:51Z  $
  */
 #include <limits.h>
 #include <string.h>
@@ -54,7 +54,7 @@
 
 /* dest     the destination buffer; the buffer must point to the start of a cell
  * source   the source buffer, this must be aligned to a cell edge
- * len      the number of characters (bytes) to copy
+ * len      the number of characters (bytes) to copy, excluding the zero terminator
  * offs     the offset in dest, in characters (bytes)
  */
 static int amx_StrPack(cell *dest,cell *source,int len,int offs)
@@ -125,6 +125,10 @@ static int amx_StrPack(cell *dest,cell *source,int len,int offs)
   return AMX_ERR_NONE;
 }
 
+/* dest     the destination buffer, this must be aligned to a cell edge
+ * source   the source buffer, it must point to the start of a cell
+ * len      the number of cells to copy, excluding the zero terminator
+ */
 static int amx_StrUnpack(cell *dest,cell *source,int len)
 {
   /* len excludes the terminating '\0' byte */
@@ -347,7 +351,7 @@ static cell AMX_NATIVE_CALL n_strcmp(AMX *amx,const cell *params)
       result=(len1<len2) ? -1 : 1;
   } else {
     result=compare(cstr1,cstr2,params[3],len,0);
-    if (result==0 && len!=params[4])
+    if (result==0 && len!=params[4] && len1!=len2)
       result=(len1<len2) ? -1 : 1;
   }
   return result;
@@ -495,7 +499,7 @@ static cell AMX_NATIVE_CALL n_strdel(AMX *amx,const cell *params)
 static cell AMX_NATIVE_CALL n_strins(AMX *amx,const cell *params)
 {
   cell *cstr,*csub;
-  int index,lenstr,lensub,count;
+  int index,lenstr,lensub,maxlen,count;
   unsigned char *ptr;
   cell c;
 
@@ -505,12 +509,18 @@ static cell AMX_NATIVE_CALL n_strins(AMX *amx,const cell *params)
   amx_StrLen(cstr,&lenstr);
   amx_StrLen(csub,&lensub);
   index=(int)params[3];
-  if (index>lenstr)
+  maxlen=(int)params[4];
+  if ((ucell)*cstr>UNPACKEDMAX)
+    maxlen*=sizeof(cell);
+  maxlen-=1;
+  if (index>lenstr || index>maxlen)
     return amx_RaiseError(amx,AMX_ERR_NATIVE);
 
-  if (*cstr==0) {
+  if (lenstr==0) {
     /* current string is empty (and the insertion point is zero), just make a copy */
     assert(index==0);
+    if (lensub>maxlen)
+      lensub=maxlen;
     if ((ucell)*csub>UNPACKEDMAX)
       amx_StrPack(cstr,csub,lensub,0);
     else
@@ -518,9 +528,12 @@ static cell AMX_NATIVE_CALL n_strins(AMX *amx,const cell *params)
     return 1;
   } /* if */
 
-  if (((ucell)*cstr>UNPACKEDMAX)) {
+  lenstr+=lensub; /* length after insertion */
+  if (lenstr>=maxlen)
+    lenstr=maxlen-1;
+  if ((ucell)*cstr>UNPACKEDMAX) {
     /* make room for the new characters */
-    for (count=lenstr+lensub; count>index; count--) {
+    for (count=lenstr; count>index; count--) {
       ptr=packedptr(cstr,count-lensub);
       c=*ptr;
       ptr=packedptr(cstr,count);
@@ -534,7 +547,7 @@ static cell AMX_NATIVE_CALL n_strins(AMX *amx,const cell *params)
     } /* for */
   } else {
     /* make room for the new characters */
-    for (count=lenstr+lensub; count>index; count--)
+    for (count=lenstr; count>index; count--)
       cstr[count]=cstr[count-lensub];
     /* copy in the new characters */
     for (count=0; count<lensub; count++) {

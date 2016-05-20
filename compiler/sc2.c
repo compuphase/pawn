@@ -14,7 +14,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: sc2.c 5504 2016-05-15 13:42:30Z  $
+ *  Version: $Id: sc2.c 5514 2016-05-20 14:26:51Z  $
  */
 #include <assert.h>
 #include <stdio.h>
@@ -151,18 +151,18 @@ static char *extensions[] = { ".i", ".inc", ".p", ".pawn" };
   PUSHSTK_I(sc_is_utf8);
   PUSHSTK_I(icomment);
   PUSHSTK_I(fcurrent);
-  PUSHSTK_I(fline);
+  PUSHSTK_I(pc_curline);
   inpfname=duplicatestring(name);/* set name of include file */
   if (inpfname==NULL)
     error(103);                 /* insufficient memory */
   inpf=fp;                      /* set input file pointer to include file */
   fnumber++;
-  fline=0;                      /* set current line number to 0 */
+  pc_curline=0;                 /* set current line number to 0 */
   fcurrent=fnumber;
   icomment=0;                   /* not in a comment */
   insert_dbgfile(inpfname);     /* attach to debug information */
   insert_inputfile(inpfname);   /* save for the error system */
-  assert(sc_status==statFIRST || strcmp(get_inputfile(fcurrent),inpfname)==0);
+  assert(sc_status==statBROWSE || strcmp(get_inputfile(fcurrent),inpfname)==0);
   setfiledirect(inpfname);      /* (optionally) set in the list file */
   listline=-1;                  /* force a #line directive when changing the file */
   sc_is_utf8=(short)scan_utf8(inpf,name);
@@ -197,7 +197,7 @@ SC_FUNC int plungefile(char *name,int try_currentpath,int try_includepaths)
 
   if (try_includepaths && name[0]!=DIRSEP_CHAR) {
     int i;
-    char *ptr;
+    const char *ptr;
     for (i=0; !result && (ptr=get_path(i))!=NULL; i++) {
       char path[_MAX_PATH];
       strlcpy(path,ptr,sizearray(path));
@@ -305,7 +305,7 @@ static void doinclude(int silent)
  *  can be read from the file, readline() attempts to pop off the previous file
  *  from the stack. If that fails too, it sets "freading" to 0.
  *
- *  Global references: inpf,fline,inpfname,freading,icomment (altered)
+ *  Global references: inpf,pc_curline,inpfname,freading,icomment (altered)
  */
 static void readline(unsigned char *line,int append)
 {
@@ -345,7 +345,7 @@ static void readline(unsigned char *line,int append)
           error(1,"*/","-end of file-");
         return;
       } /* if */
-      fline=i;
+      pc_curline=i;
       fcurrent=(short)POPSTK_I();
       icomment=(short)POPSTK_I();
       sc_is_utf8=(short)POPSTK_I();
@@ -360,7 +360,7 @@ static void readline(unsigned char *line,int append)
         error(1,"}","-end of file-"); /* function not finished at EOF */
       insert_dbgfile(inpfname);
       setfiledirect(inpfname);
-      assert(sc_status==statFIRST || strcmp(get_inputfile(fcurrent),inpfname)==0);
+      assert(sc_status==statBROWSE || strcmp(get_inputfile(fcurrent),inpfname)==0);
       listline=-1;              /* force a #line directive when changing the file */
     } /* if */
 
@@ -399,10 +399,10 @@ static void readline(unsigned char *line,int append)
       num-=strlen((char*)line);
       line+=strlen((char*)line);
     } /* if */
-    fline+=1;
+    pc_curline+=1;
     sym=findconst("__line");
     assert(sym!=NULL);
-    sym->addr=fline;
+    sym->addr=pc_curline;
   } while (num>0 && cont);
 }
 
@@ -983,12 +983,19 @@ static int command(void)
         symbol *sym=findloc(str);
         if (sym==NULL)
           sym=findglb(str,sGLOBAL);
-        if (sym!=NULL && sym->ident!=iFUNCTN && sym->ident!=iREFFUNC && (sym->usage & uDEFINE)==0)
-          sym=NULL;                 /* symbol is not a function, it is in the table, but not "defined" */
+        if (sym!=NULL && (sym->usage & uDEFINE)==0
+            && ((sym->ident==iFUNCTN || sym->ident==iREFFUNC) && (sym->usage & uPROTOTYPED)==0))
+          sym=NULL;                 /* symbol is in the table, but not as "defined" or "prototyped" */
         if (sym!=NULL || find_subst(str,(int)strlen(str))!=NULL)
           val=1;
+        if (!val)
+          insert_undefsymbol(str,pc_curline); /* if the symbol is not defined, add it to the "undefined symbols" list */
+        if (tok==tpIFNDEF)
+          val=!val;
+      } else {
+        error(76);  /* syntax error */
       }
-      ifstack[iflevel-1]=(char)((tok==tpIFDEF) ? val : !val);
+      ifstack[iflevel-1]=(char)(val ? PARSEMODE : SKIPMODE);
     }
     check_empty(lptr);
     break;
@@ -1081,7 +1088,7 @@ static int command(void)
     if (!SKIPPING) {
       if (lex(&val,&str)!=tNUMBER)
         error(8);               /* invalid/non-constant expression */
-      fline=(int)val;
+      pc_curline=(int)val;
     } /* if */
     check_empty(lptr);
     break;
@@ -1268,7 +1275,7 @@ static int command(void)
       char *pattern,*substitution;
       const unsigned char *start,*end;
       int count,prefixlen,matchbracket,nest;
-      stringpair *def;
+      const stringpair *def;
       /* find the pattern to match */
       while (*lptr<=' ' && *lptr!='\0')
         lptr++;
@@ -1680,7 +1687,7 @@ static void substallpatterns(unsigned char *line,int buffersize)
 {
   unsigned char *start, *end;
   int prefixlen;
-  stringpair *subst;
+  const stringpair *subst;
 
   start=line;
   while (*start!='\0') {
@@ -1820,13 +1827,13 @@ SC_FUNC void preprocess(void)
         lptr=srcline;   /* reset "line pointer" to start of the parsing buffer */
       } /* if */
     #endif
-    if (sc_status==statFIRST && sc_listing && freading
+    if (sc_status==statBROWSE && sc_listing && freading
         && (iscommand==CMD_NONE || iscommand==CMD_EMPTYLINE || iscommand==CMD_DIRECTIVE))
     {
       listline++;
-      if (fline!=listline) {
-        listline=fline;
-        setlinedirect(fline);
+      if (pc_curline!=listline) {
+        listline=pc_curline;
+        setlinedirect(pc_curline);
       } /* if */
       if (iscommand==CMD_EMPTYLINE)
         pc_writeasm(outf,"\n");
@@ -1896,7 +1903,7 @@ SC_FUNC int lex_adjusttabsize(int matchindent)
   int indent, tabsize,i;
   unsigned long mask;
 
-  if (sc_status!=statFIRST || pc_stmtindent==matchindent || pc_matchedtabsize!=1
+  if (sc_status!=statBROWSE || pc_stmtindent==matchindent || pc_matchedtabsize!=1
       || pc_indentbits>32)
     return 0; /* no adjustment, because indent already matches, TAB size was
                * already matched, the indent is too complex, or this is not the
@@ -2154,7 +2161,7 @@ SC_FUNC int lex(cell *lexvalue,char **lexsym)
          * exists), but tags are not allowed right now, so it is probably an
          * error
          */
-        error(220);
+        error(81);
       } /* if */
     } /* if */
   } else if (*lptr=='\"'                              /* packed string literal */
@@ -2957,7 +2964,7 @@ SC_FUNC void markusage(symbol *sym,int usage)
   assert(sym!=NULL);
   sym->usage |= (char)usage;
   if ((usage & uWRITTEN)!=0)
-    sym->lnumber=fline;
+    sym->lnumber=pc_curline;
   /* check if (global) reference must be added to the symbol */
   if ((usage & (uREAD | uWRITTEN))!=0) {
     /* only do this for global symbols */
@@ -3068,7 +3075,7 @@ SC_FUNC symbol *addsym(const char *name,cell addr,int ident,int vclass,int tag,i
   entry.usage=(char)usage;
   entry.fvisible=-1;    /* assume global visibility (ignored for local symbols) */
   entry.fnumber=fcurrent;
-  entry.lnumber=fline;
+  entry.lnumber=pc_curline;
   entry.numrefers=1;
   entry.refer=refer;
 

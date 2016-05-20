@@ -14,7 +14,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: sc4.c 5504 2016-05-15 13:42:30Z  $
+ *  Version: $Id: sc4.c 5514 2016-05-20 14:26:51Z  $
  */
 #include <assert.h>
 #include <ctype.h>
@@ -338,7 +338,7 @@ SC_FUNC void setline(int chkbounds)
 {
   if (sc_asmfile) {
     stgwrite("\t; line ");
-    outval(fline,TRUE,TRUE);
+    outval(pc_curline,TRUE,TRUE);
   } /* if */
   if ((sc_debug & sSYMBOLIC)!=0 || chkbounds && (sc_debug & sCHKBOUNDS)!=0) {
     /* generate a "break" (start statement) opcode rather than a "line" opcode
@@ -353,7 +353,7 @@ SC_FUNC void setline(int chkbounds)
 
 SC_FUNC void setfiledirect(char *name)
 {
-  if (sc_status==statFIRST && sc_listing) {
+  if (sc_status==statBROWSE && sc_listing) {
     assert(name!=NULL);
     pc_writeasm(outf,"#file ");
     pc_writeasm(outf,name);
@@ -363,7 +363,7 @@ SC_FUNC void setfiledirect(char *name)
 
 SC_FUNC void setlinedirect(int line)
 {
-  if (sc_status==statFIRST && sc_listing) {
+  if (sc_status==statBROWSE && sc_listing) {
     char string[40];
     sprintf(string,"#line %d\n",line);
     pc_writeasm(outf,string);

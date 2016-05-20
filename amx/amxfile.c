@@ -14,7 +14,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: amxfile.c 5504 2016-05-15 13:42:30Z  $
+ *  Version: $Id: amxfile.c 5514 2016-05-20 14:26:51Z  $
  */
 #if defined _UNICODE || defined __UNICODE__ || defined UNICODE
 # if !defined UNICODE   /* for Windows */
@@ -110,6 +110,13 @@
     #else
       #define t_stat    __stat
     #endif
+  #else
+    #define t_stat      stat
+  #endif
+#endif
+#if !defined t_stat
+  #if defined _tstat
+    #define t_stat      _tstat
   #else
     #define t_stat      stat
   #endif
@@ -559,7 +566,7 @@ static cell AMX_NATIVE_CALL n_fread(AMX *amx, const cell *params)
   if (params[4]) {
     /* store as packed string, read an ASCII/ANSI string */
     chars=fgets_char((FILE*)params[1],str,max);
-    assert(chars<max);
+    assert((int)chars<max);
     amx_SetString(cptr,str,1,0,max);
   } else {
     /* store and unpacked string, interpret UTF-8 */
@@ -901,7 +908,7 @@ static cell AMX_NATIVE_CALL n_fstat(AMX *amx, const cell *params)
 /* bool: fattrib(const name[], timestamp=0, attrib=0x0f) */
 static cell AMX_NATIVE_CALL n_fattrib(AMX *amx, const cell *params)
 {
-  #if !(defined __WIN32__ || defined _WIN32 || defined WIN32)
+  #if !(defined __WIN32__ || defined _WIN32 || defined WIN32) || defined __BORLANDC__
     #define _utime(n,t)  utime(n,t)
     #define _utimbuf     utimbuf
   #endif

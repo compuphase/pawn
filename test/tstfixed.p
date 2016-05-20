@@ -16,14 +16,14 @@ main()
     printf(''%q / %q = %q (should be 2.000 / 3.000 = 0.667)\n'', a, b, a/b)
 
     /* mixing cells with fixed point */
-    printf(''2.0 / %q = %q\n'', b, 2.0/b)
-    printf(''2 / %q = %q\n'', b, 2/b)
-    printf(''%q / 3 = %q\n'', a, a/3)
+    printf(''2.0 / %q = %q (should be 2.0 / 3.000 = 0.667)\n'', b, 2.0/b)
+    printf(''2 / %q = %q (should be 2 / 3.000 = 0.667)\n'', b, 2/b)
+    printf(''%q / 3 = %q (should be 2.000 / 3 = 0.667)\n'', a, a/3)
 
     /* rounding in multiplication */
     a = 3.297
     b = 2.426
-    printf(''%q * %q = %q (should be 3.297 / 2.426 = 7.999)\n'', a, b, a*b)
+    printf(''%q * %q = %q (should be 3.297 * 2.426 = 7.999)\n'', a, b, a*b)
 
     /* raising to the power */
     printf(''%q ^ 2 = %q (should be 3.142 ^ 2 = 9.872)\n'', value, fpower(value, 2))

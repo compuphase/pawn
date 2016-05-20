@@ -1,6 +1,6 @@
 @   amxexec_arm7_gas.s  Abstract Machine for the "Pawn" language
 @
-@   This file assembles with GUN's AS (GAS). It uses ARM Architecture v4T
+@   This file assembles with GNU's AS (GAS). It uses ARM Architecture v4T
 @   instructions. It can be assembled for Big Endian environments, by
 @   defining the symbol BIG_ENDIAN; the default configuration is
 @   Little Endian.
@@ -29,7 +29,7 @@
 @   License for the specific language governing permissions and limitations
 @   under the License.
 @
-@   Version: $Id: amxexec_arm7_gas.s 5504 2016-05-15 13:42:30Z  $
+@   Version: $Id: amxexec_arm7_gas.s 5509 2016-05-17 07:49:04Z  $
 
     .file   "amxexec_arm7_gas.s"
     .syntax unified

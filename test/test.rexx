@@ -1,12 +1,12 @@
 /* Regression test suite for the Pawn compiler and abstract machine */
 
 /* Create the DLLs with:
- *   bcc32 -w -tWD -eamxFixed -DAMXEXPORT="__stdcall _export" -DAMX_NATIVE_CALL=__stdcall fixed.c amx.c
- *   bcc32 -w -tWD -eamxFloat -DAMXEXPORT="__stdcall _export" -DAMX_NATIVE_CALL=__stdcall float.c amx.c
- *   bcc32 -w -w-amb -tWD -DAMXEXPORT="__stdcall _export" -DAMX_NATIVE_CALL=__stdcall amxfile.c amx.c
- *   bcc32 -w -w-amb -tWD -DAMXEXPORT="__stdcall _export" -DAMX_NATIVE_CALL=__stdcall -DAMX_NOSTRFMT amxstring.c amx.c
+ *   bcc32 -w -w-prc -tWD -DAMXEXPORT="__stdcall _export" -DAMX_NATIVE_CALL=__stdcall amxFixed.c amx.c
+ *   bcc32 -w -w-prc -tWD -DAMXEXPORT="__stdcall _export" -DAMX_NATIVE_CALL=__stdcall amxFloat.c amx.c
+ *   bcc32 -w -w-prc -w-amb -tWD -DAMXEXPORT="__stdcall _export" -DAMX_NATIVE_CALL=__stdcall amxFile.c amx.c
+ *   bcc32 -w -w-prc -w-amb -tWD -DAMXEXPORT="__stdcall _export" -DAMX_NATIVE_CALL=__stdcall -DAMX_NOSTRFMT amxString.c amx.c
  * Create PAWNRUN with:
- *   bcc32 -w -DFLOATPOINT;FIXEDPOINT -DPAWN_DLL -DAMXDBG pawnrun.c amx.c amxcore.c amxcons.c amxdbg.c
+ *   bcc32 -w -w-prc -DFLOATPOINT;FIXEDPOINT -DPAWN_DLL -DAMXDBG pawnrun.c amx.c amxcore.c amxcons.c amxdbg.c
  *
  * Move all DLLs and executables to the "bin" directory.
  */
@@ -939,7 +939,7 @@ test69:
   return
 
 test70:
-  say '70. The following test should issue warning 220 (followed by errors).'
+  say '70. The following test should issue error 81 (followed by more errors).'
   say ''
   say '    Using sub-expressions with tag overrides inside a conditional operator.'
   say ''
@@ -1151,7 +1151,7 @@ test89:
   say '89. The following test should compile successfully. When running, it must.'
   say '    print:'
   say ''
-  say '	        hello'
+  say '        hello'
   say ''
   say 'Symptoms of detected bug: No or incorrect text printed.'
   say '-----'
@@ -1789,7 +1789,7 @@ test143:
   return
 
 test144:
-  say '144. The compilation should issue error 229.'
+  say '144. The compilation should issue warning 229.'
   say ''
   say '    Accessing an element in a symbolic pseudo-array declared as packed, but'
   say '    accessed as unpacked.'
@@ -1814,6 +1814,34 @@ test145:
   say '-----'
   pawncc ' VARIABLE_3D_ARRAY= test2'
   pawnrun ' test2.amx'
+  return
+
+test146:
+  say '146. The following test should compile successfully; when run, it should print:'
+  say ''
+  say '         1test'
+  say '         21test'
+  say '         321test'
+  say '         4321tes'
+  say '         54321te'
+  say '         654321t'
+  say ''
+  say 'Symptoms of detected bug: native strins() ignored the maxlength parameter.'
+  say '-----'
+  pawncc ' STRINS_MAXLENGTH= test2'
+  pawnrun ' test2.amx'
+  return
+
+test147:
+  say '147. The compilation should issue warning 208 (forward declaration recommended)'
+  say ''
+  say '    Conditional-compile for a section based on whether a symbol is defined,'
+  say '    where that symbol is defined later in the code, forcing an extra pass.'
+  say ''
+  say 'Symptoms of detected bug: no warning, no extra pass, but bad code being'
+  say 'generated.'
+  say '-----'
+  pawncc ' test15'
   return
 
 

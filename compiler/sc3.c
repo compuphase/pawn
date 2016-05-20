@@ -14,7 +14,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: sc3.c 5504 2016-05-15 13:42:30Z  $
+ *  Version: $Id: sc3.c 5514 2016-05-20 14:26:51Z  $
  */
 #include <assert.h>
 #include <stdio.h>
@@ -875,6 +875,13 @@ SC_FUNC int expression(cell *val,int *tag,symbol **symptr,int chkfuncresult)
   return lval.ident;
 }
 
+/* returns whether we are currently parsing a preprocessor expression */
+static int inside_preproc(void)
+{
+  /* a preprocessor expression has a special symbol at the end of the string */
+  return (strchr((char *)lptr,PREPROC_TERM)!=NULL);
+}
+
 SC_FUNC int sc_getstateid(constvalue **automaton,constvalue **state,char *statename)
 {
   char name[sNAMEMAX+1],closestmatch[sNAMEMAX+1];
@@ -1198,8 +1205,8 @@ static int hier13(value *lval)
       checkfunction(lval);      /* if the test is a function, that function
                                  * should return a value */
     } /* if */
-	heap1=heap2=0;				/* just to avoid a compiler warning */
-    if (sc_status!=statFIRST) {
+    heap1=heap2=0;				/* just to avoid a compiler warning */
+    if (sc_status!=statBROWSE) {
       #if !defined NDEBUG
         int result=
       #endif
@@ -1275,7 +1282,7 @@ static int hier13(value *lval)
     if (!matchtag(lval->tag,lval2.tag,FALSE))
       error(213);               /* tagname mismatch ('true' and 'false' expressions) */
     setlabel(flab2);
-    if (sc_status==statFIRST) {
+    if (sc_status==statBROWSE) {
       /* Calculate the max. heap space used by either branch and save values of
        * max - heap1 and max - heap2. On the second pass, we use these values
        * to equilibrate the heap space used by either branch. This is needed
@@ -1477,11 +1484,14 @@ static int hier2(value *lval)
     sym=findloc(st);
     if (sym==NULL)
       sym=findglb(st,sSTATEVAR);
-    if (sym!=NULL && sym->ident!=iFUNCTN && sym->ident!=iREFFUNC && (sym->usage & uDEFINE)==0)
-      sym=NULL;                 /* symbol is not a function, it is in the table, but not "defined" */
+    if (sym!=NULL && (sym->usage & uDEFINE)==0
+        && ((sym->ident==iFUNCTN || sym->ident==iREFFUNC) && (sym->usage & uPROTOTYPED)==0))
+      sym=NULL;                 /* symbol is in the table, but not as "defined" or "prototyped" */
     val= (sym!=NULL);
     if (!val && find_subst(st,(int)strlen(st))!=NULL)
       val=1;
+    if (!val)
+      insert_undefsymbol(st,pc_curline); /* if the symbol is not defined, add it to the "undefined symbols" list */
     clear_value(lval);
     lval->ident=iCONSTEXPR;
     lval->constval= val;
@@ -1544,7 +1554,7 @@ static int hier2(value *lval)
       } else {
         lval->constval=array_levelsize(sym,level);
       } /* if */
-      if (lval->constval==0 && strchr((char *)lptr,PREPROC_TERM)==NULL)
+      if (lval->constval==0 && !inside_preproc())
         error(224,st);          /* indeterminate array size in "sizeof" expression */
     } /* if */
     ldconst(lval->constval,sPRI);
@@ -1922,7 +1932,7 @@ restart:
       if (sym==NULL
           || (sym->ident!=iFUNCTN && sym->ident!=iREFFUNC))
       {
-        if (sym==NULL && sc_status==statFIRST) {
+        if (sym==NULL && sc_status==statBROWSE) {
           /* could be a "use before declaration"; in that case, create a stub
            * function so that the usage can be marked.
            */
@@ -2052,7 +2062,7 @@ static int primary(value *lval,int *symtok)
       char symbolname[sNAMEMAX+1];
       assert(strlen(st)<sizearray(symbolname));
       strcpy(symbolname,st);  /* copy symbol name, because lexclr() removes it */
-      if (!sc_allowproccall || isbinaryop(lexpeek()) || sc_status!=statFIRST) {
+      if (!sc_allowproccall || isbinaryop(lexpeek()) || sc_status!=statBROWSE) {
         lexclr(FALSE);
         return error_suggest(17,symbolname,iVARIABLE);  /* undefined symbol */
       } /* if */
@@ -2313,7 +2323,7 @@ static int nesting=0;
       } else {
         arglist[argpos]=ARG_DONE; /* flag argument as "present" */
         lvalue=hier14(&lval);
-        assert(sc_status==statFIRST || arg[argidx].ident== 0 || arg[argidx].tags!=NULL);
+        assert(sc_status==statBROWSE || arg[argidx].ident== 0 || arg[argidx].tags!=NULL);
         reloc=FALSE;
         switch (arg[argidx].ident) {
         case 0:

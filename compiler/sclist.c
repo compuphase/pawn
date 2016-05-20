@@ -20,7 +20,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: sclist.c 5504 2016-05-15 13:42:30Z  $
+ *  Version: $Id: sclist.c 5514 2016-05-20 14:26:51Z  $
  */
 #include <assert.h>
 #include <limits.h>
@@ -44,7 +44,7 @@ SC_FUNC char* duplicatestring(const char* sourcestring)
 }
 
 
-static stringpair *insert_stringpair(stringpair *root,char *first,char *second,int matchlength)
+static stringpair *insert_stringpair(stringpair *root,const char *first,const char *second,int matchlength)
 {
   stringpair *cur,*pred;
 
@@ -91,7 +91,7 @@ static void delete_stringpairtable(stringpair *root)
   memset(root,0,sizeof(stringpair));
 }
 
-static stringpair *find_stringpair(stringpair *cur,char *first,int matchlength)
+static const stringpair *find_stringpair(const stringpair *cur,const char *first,int matchlength)
 {
   int result=0;
 
@@ -131,14 +131,14 @@ static int delete_stringpair(stringpair *root,stringpair *item)
 }
 
 /* ----- string list functions ----------------------------------- */
-static stringlist *insert_string(stringlist *root,char *string,int append)
+static stringlist *insert_string(stringlist *root,const char *string,int append)
 {
   stringlist *cur;
 
   assert(string!=NULL);
   if ((cur=(stringlist*)malloc(sizeof(stringlist)))==NULL)
     error(103);       /* insufficient memory (fatal error) */
-  if ((cur->line=duplicatestring(string))==NULL)
+  if ((cur->text=duplicatestring(string))==NULL)
     error(103);       /* insufficient memory (fatal error) */
   if (append) {
     /* insert as "last" (append mode) */
@@ -161,8 +161,8 @@ static char *get_string(stringlist *root,int index)
   while (cur!=NULL && index-->0)
     cur=cur->next;
   if (cur!=NULL) {
-    assert(cur->line!=NULL);
-    return cur->line;
+    assert(cur->text!=NULL);
+    return cur->text;
   } /* if */
   return NULL;
 }
@@ -177,8 +177,8 @@ static int delete_string(stringlist *root,int index)
   if (cur->next!=NULL) {
     item=cur->next;
     cur->next=item->next;       /* unlink from list */
-    assert(item->line!=NULL);
-    free(item->line);
+    assert(item->text!=NULL);
+    free(item->text);
     free(item);
     return TRUE;
   } /* if */
@@ -193,8 +193,8 @@ SC_FUNC void delete_stringtable(stringlist *root)
   cur=root->next;
   while (cur!=NULL) {
     next=cur->next;
-    assert(cur->line!=NULL);
-    free(cur->line);
+    assert(cur->text!=NULL);
+    free(cur->text);
     free(cur);
     cur=next;
   } /* while */
@@ -205,7 +205,7 @@ SC_FUNC void delete_stringtable(stringlist *root)
 /* ----- alias table --------------------------------------------- */
 static stringpair alias_tab = {NULL, NULL, NULL};   /* alias table */
 
-SC_FUNC stringpair *insert_alias(char *name,char *alias)
+SC_FUNC stringpair *insert_alias(const char *name,const char *alias)
 {
   stringpair *cur;
 
@@ -218,9 +218,9 @@ SC_FUNC stringpair *insert_alias(char *name,char *alias)
   return cur;
 }
 
-SC_FUNC int lookup_alias(char *target,char *name)
+SC_FUNC int lookup_alias(char *target,const char *name)
 {
-  stringpair *cur=find_stringpair(alias_tab.next,name,(int)strlen(name));
+  const stringpair *cur=find_stringpair(alias_tab.next,name,(int)strlen(name));
   if (cur!=NULL) {
     assert(strlen(cur->second)<=sNAMEMAX);
     strcpy(target,cur->second);
@@ -236,12 +236,12 @@ SC_FUNC void delete_aliastable(void)
 /* ----- include paths list -------------------------------------- */
 static stringlist includepaths = {NULL, NULL};  /* directory list for include files */
 
-SC_FUNC stringlist *insert_path(char *path)
+SC_FUNC stringlist *insert_path(const char *path)
 {
   return insert_string(&includepaths,path,1);
 }
 
-SC_FUNC char *get_path(int index)
+SC_FUNC const char *get_path(int index)
 {
   return get_string(&includepaths,index);
 }
@@ -270,7 +270,7 @@ static void adjustindex(char c)
   substindex[(int)c-PUBLIC_CHAR]=cur;
 }
 
-SC_FUNC stringpair *insert_subst(char *pattern,char *substitution,int prefixlen)
+SC_FUNC stringpair *insert_subst(const char *pattern,const char *substitution,int prefixlen)
 {
   stringpair *cur;
 
@@ -282,7 +282,7 @@ SC_FUNC stringpair *insert_subst(char *pattern,char *substitution,int prefixlen)
   return cur;
 }
 
-SC_FUNC stringpair *find_subst(char *name,int length)
+SC_FUNC const stringpair *find_subst(const char *name,int length)
 {
   stringpair *item;
   assert(name!=NULL);
@@ -290,11 +290,11 @@ SC_FUNC stringpair *find_subst(char *name,int length)
   assert(*name>='A' && *name<='Z' || *name>='a' && *name<='z' || *name=='_' || *name==PUBLIC_CHAR);
   item=substindex[(int)*name-PUBLIC_CHAR];
   if (item!=NULL)
-    item=find_stringpair(item,name,length);
+    item=(stringpair*)find_stringpair(item,name,length);
   return item;
 }
 
-SC_FUNC int delete_subst(char *name,int length)
+SC_FUNC int delete_subst(const char *name,int length)
 {
   stringpair *item;
   assert(name!=NULL);
@@ -302,7 +302,7 @@ SC_FUNC int delete_subst(char *name,int length)
   assert(*name>='A' && *name<='Z' || *name>='a' && *name<='z' || *name=='_' || *name==PUBLIC_CHAR);
   item=substindex[(int)*name-PUBLIC_CHAR];
   if (item!=NULL)
-    item=find_stringpair(item,name,length);
+    item=(stringpair*)find_stringpair(item,name,length);
   if (item==NULL)
     return FALSE;
   delete_stringpair(&substpair,item);
@@ -324,12 +324,12 @@ SC_FUNC void delete_substtable(void)
 /* ----- input file list (explicit files) ------------------------ */
 static stringlist sourcefiles = {NULL, NULL};
 
-SC_FUNC stringlist *insert_sourcefile(char *string)
+SC_FUNC stringlist *insert_sourcefile(const char *string)
 {
   return insert_string(&sourcefiles,string,1);
 }
 
-SC_FUNC char *get_sourcefile(int index)
+SC_FUNC const char *get_sourcefile(int index)
 {
   return get_string(&sourcefiles,index);
 }
@@ -344,12 +344,12 @@ SC_FUNC void delete_sourcefiletable(void)
 /* ----- parsed file list (explicit + included files) ------------ */
 static stringlist inputfiles = {NULL, NULL};
 
-SC_FUNC stringlist *insert_inputfile(char *string)
+SC_FUNC stringlist *insert_inputfile(const char *string)
 {
   return insert_string(&inputfiles,string,1);
 }
 
-SC_FUNC char *get_inputfile(int index)
+SC_FUNC const char *get_inputfile(int index)
 {
   return get_string(&inputfiles,index);
 }
@@ -361,16 +361,46 @@ SC_FUNC void delete_inputfiletable(void)
 }
 
 
+/* ----- symbols that are undefined in #if expressions ----------- */
+static stringlist undefsymbols = {NULL, NULL};
+
+SC_FUNC stringlist *insert_undefsymbol(const char *symbolname,int linenr)
+{
+  char symname[sNAMEMAX+16];
+  sprintf(symname,"%x %s",linenr,symbolname);
+  return insert_string(&undefsymbols,symname,0);
+}
+
+SC_FUNC const char *get_undefsymbol(int index,int *linenr)
+{
+  const char *ptr=get_string(&undefsymbols,index);
+  if (ptr!=NULL) {
+    if (linenr!=NULL)
+      *linenr=(int)strtol(ptr,NULL,16);
+    ptr=strchr(ptr,' ');
+    assert(ptr!=NULL);
+    ptr++;  /* skip space */
+  }
+  return ptr;
+}
+
+SC_FUNC void delete_undefsymboltable(void)
+{
+  delete_stringtable(&undefsymbols);
+  assert(undefsymbols.next==NULL);
+}
+
+
 /* ----- documentation tags -------------------------------------- */
 #if !defined PAWN_LIGHT
 static stringlist docstrings = {NULL, NULL};
 
-SC_FUNC stringlist *insert_docstring(char *string,int append)
+SC_FUNC stringlist *insert_docstring(const char *string,int append)
 {
   return insert_string(&docstrings,string,append);
 }
 
-SC_FUNC char *get_docstring(int index)
+SC_FUNC const char *get_docstring(int index)
 {
   return get_string(&docstrings,index);
 }
@@ -392,14 +422,14 @@ SC_FUNC void delete_docstringtable(void)
 static stringlist autolist = {NULL, NULL};
 
 /** insert_autolist() inserts a string from a documentation comment. */
-SC_FUNC stringlist *insert_autolist(char *string)
+SC_FUNC stringlist *insert_autolist(const char *string)
 {
   return insert_string(&autolist,string,1);
 }
 
 /** get_autolist() retrieves a string from the collected documentation
  *  comments. */
-SC_FUNC char *get_autolist(int index)
+SC_FUNC const char *get_autolist(int index)
 {
   return get_string(&autolist,index);
 }
@@ -544,7 +574,7 @@ static stringlist dbgstrings = {NULL, NULL};
 SC_FUNC stringlist *insert_dbgfile(const char *filename)
 {
 
-  if (sc_status!=statFIRST && (sc_debug & sSYMBOLIC)!=0) {
+  if (sc_status!=statBROWSE && (sc_debug & sSYMBOLIC)!=0) {
     char string[_MAX_PATH+40];
     assert(filename!=NULL);
     assert(strlen(filename)+40<sizeof string);
@@ -566,7 +596,7 @@ SC_FUNC stringlist *insert_dbgline(int linenr)
   return NULL;
 }
 
-SC_FUNC stringlist *insert_dbgsymbol(symbol *sym)
+SC_FUNC stringlist *insert_dbgsymbol(const symbol *sym)
 {
   if (sc_status==statWRITE && (sc_debug & sSYMBOLIC)!=0) {
     char string[2*sNAMEMAX+128];
@@ -587,7 +617,7 @@ SC_FUNC stringlist *insert_dbgsymbol(symbol *sym)
       #if !defined NDEBUG
         int count=sym->dim.array.level;
       #endif
-      symbol *sub;
+      const symbol *sub;
       strcat(string," [ ");
       for (sub=sym; sub!=NULL; sub=finddepend(sub)) {
         #if !defined NDEBUG
@@ -606,7 +636,7 @@ SC_FUNC stringlist *insert_dbgsymbol(symbol *sym)
   return NULL;
 }
 
-SC_FUNC char *get_dbgstring(int index)
+SC_FUNC const char *get_dbgstring(int index)
 {
   return get_string(&dbgstrings,index);
 }
