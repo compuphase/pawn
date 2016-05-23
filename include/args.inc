@@ -7,5 +7,5 @@
 
 native argcount();
 native bool: argindex(index, value[], maxlength = sizeof value, bool: pack = true);
-native bool: argstr(index = 0, const option[] = "", value[] = "", maxlength = sizeof value, bool: pack = true);
-native bool: argvalue(index = 0, const option[] = "", &value = cellmin);
+native bool: argstr(index = 0, const option[] = ``'', value[] = ``'', maxlength = sizeof value, bool: pack = true);
+native bool: argvalue(index = 0, const option[] = ``'', &value = cellmin);
