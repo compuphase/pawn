@@ -15,7 +15,7 @@ const
     magenta,
     cyan,
     white,
-    }
+    };
 
 native getchar(echo=true);
 native getstring(string[], maxlength=sizeof string, bool:pack=true);

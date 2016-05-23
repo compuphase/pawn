@@ -11,14 +11,14 @@ const filemode:
     io_write,           /* creates a new file */
     io_readwrite,       /* opens an existing file, or creates a new file */
     io_append,          /* appends to file (write-only) */
-    }
+    };
 
 const seek_whence:
     {
     seek_start = 0,
     seek_current,
     seek_end,
-    }
+    };
 
 const EOF = -1;
 

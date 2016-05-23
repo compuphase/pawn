@@ -16,12 +16,12 @@ const floatround_method: {
   floatround_ceil,
   floatround_tozero,
   floatround_unbiased
-}
+};
 const anglemode: {
   radian = 0,
   degrees,
   grades
-}
+};
 
 /**************************************************/
 /* Convert an integer into a floating point value */
