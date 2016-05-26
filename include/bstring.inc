@@ -6,7 +6,7 @@
 #pragma library BString
 
 /* native functions */
-native String: bstring(const source[] = "");
+native String: bstring(const source[] = ``'');
 native String: bstrdup(String: source);
 native String: bstrcat(String: target, String: source);
 native         bstrlen(String: source);

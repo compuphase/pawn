@@ -11,7 +11,7 @@ const fround_method: {
   fround_ceil,
   fround_tozero,
   fround_unbiased
-}
+};
 
 native Fixed:fixed(value);
 native Fixed:strfixed(const string[]);
