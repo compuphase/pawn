@@ -603,15 +603,15 @@ SC_FUNC stringlist *insert_dbgsymbol(const symbol *sym)
     char symname[2*sNAMEMAX+16];
 
     funcdisplayname(symname,sym->name);
-    /* address tag:name codestart codeend ident vclass [tag:dim ...] */
+    /* address tag:name codestart codeend ident scope [tag:dim ...] */
     if (sym->ident==iFUNCTN) {
       sprintf(string,"S:%" PRIxC " %x:%s %" PRIxC " %" PRIxC " %x %x",
               CELLCAST(sym->addr),sym->tag,symname,CELLCAST(sym->addr),
-              CELLCAST(sym->codeaddr),sym->ident,sym->vclass);
+              CELLCAST(sym->codeaddr),sym->ident,sym->scope);
     } else {
       sprintf(string,"S:%" PRIxC " %x:%s %" PRIxC " %" PRIxC " %x %x",
               CELLCAST(sym->addr),sym->tag,symname,CELLCAST(sym->codeaddr),
-              CELLCAST(code_idx),sym->ident,sym->vclass);
+              CELLCAST(code_idx),sym->ident,sym->scope);
     } /* if */
     if (sym->ident==iARRAY || sym->ident==iREFARRAY) {
       #if !defined NDEBUG

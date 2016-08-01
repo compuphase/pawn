@@ -89,7 +89,7 @@ typedef struct tagAMX_DBG_SYMBOL {
   uint32_t codestart;       /* address in the code segment from which this symbol is valid (in scope) */
   uint32_t codeend;         /* address in the code segment until which this symbol is valid (in scope) */
   char     ident;           /* kind of symbol (function/variable) */
-  char     vclass;          /* class of symbol (global/local) */
+  char     scope;           /* class of symbol (global/local) */
   int16_t  dim;             /* number of dimensions */
   char     name[1];         /* ASCII string, zero-terminated */
 } PACKED AMX_DBG_SYMBOL;

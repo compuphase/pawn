@@ -23,7 +23,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: sc.h 5514 2016-05-20 14:26:51Z  $
+ *  Version: $Id: sc.h 5567 2016-08-01 14:52:15Z  $
  */
 #ifndef SC_H_INCLUDED
 #define SC_H_INCLUDED
@@ -134,7 +134,7 @@ typedef struct s_symbol {
                          * end is in "codeaddr") */
   int index;            /* overlay index number or index for native function */
 
-  char vclass;          /* sLOCAL if "addr" refers to a local symbol */
+  char scope;           /* sLOCAL, sGLOBAL or sSTATIC */
   char ident;           /* see below for possible values */
   short usage;          /* see below for possible values */
   char flags;           /* see below for possible values */
@@ -146,6 +146,7 @@ typedef struct s_symbol {
     constvalue *lib;    /* native function: library it is part of */
     long stacksize;     /* normal/public function: stack requirements */
     int enumlist;       /* enumerated constants: unique sequence number */
+    int lnumber_write;  /* variable/array: line number of last assigment */
   } x;                  /* 'x' for 'extra' */
 
   union {
@@ -192,7 +193,7 @@ typedef struct s_symbol {
  *  This byte is used as a serie of bits, the syntax is different for functions
  *  and other symbols:
  *
- *  VARIABLE
+ *  VARIABLE / ARRAY
  *  bits: 0     (uDEFINE) the variable is defined in the source file
  *        1     (uREAD) the variable is "read" (accessed) in the source file
  *        2     (uWRITTEN) the variable is altered (assigned a value)
@@ -583,7 +584,7 @@ SC_FUNC constvalue *append_constval(constvalue *table,const char *name,cell val,
 SC_FUNC constvalue *find_constval(constvalue *table,char *name,int index);
 SC_FUNC void delete_consttable(constvalue *table);
 SC_FUNC int compare_consttable(constvalue *table1, constvalue *table2);
-SC_FUNC symbol *add_constant(const char *name,cell val,int vclass,int tag);
+SC_FUNC symbol *add_constant(const char *name,cell val,int scope,int tag);
 SC_FUNC void exporttag(int tag);
 SC_FUNC void sc_attachdocumentation(symbol *sym,int onlylastblock);
 
@@ -613,6 +614,7 @@ SC_FUNC int tokeninfo(cell *val,char **str);
 SC_FUNC int needtoken(int token);
 SC_FUNC void litadd(cell value);
 SC_FUNC void litinsert(cell value,int pos);
+SC_FUNC void litremove(int pos);
 SC_FUNC int alphanum(unsigned char c);
 SC_FUNC int ishex(char c);
 SC_FUNC void delete_symbol(symbol *root,symbol *sym);
@@ -624,9 +626,9 @@ SC_FUNC symbol *findglb(const char *name,int filter);
 SC_FUNC symbol *findloc(const char *name);
 SC_FUNC symbol *findconst(const char *name);
 SC_FUNC symbol *finddepend(const symbol *parent);
-SC_FUNC symbol *addsym(const char *name,cell addr,int ident,int vclass,int tag,
+SC_FUNC symbol *addsym(const char *name,cell addr,int ident,int scope,int tag,
                        int usage);
-SC_FUNC symbol *addvariable(const char *name,cell addr,int ident,int vclass,int tag,
+SC_FUNC symbol *addvariable(const char *name,cell addr,int ident,int scope,int tag,
                             int dim[],constvalue *dimnames[],int numdim,int ispacked);
 SC_FUNC int getlabel(void);
 SC_FUNC char *itoh(ucell val);

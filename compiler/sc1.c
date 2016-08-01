@@ -23,7 +23,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: sc1.c 5514 2016-05-20 14:26:51Z  $
+ *  Version: $Id: sc1.c 5567 2016-08-01 14:52:15Z  $
  */
 #include <assert.h>
 #include <ctype.h>
@@ -2808,10 +2808,13 @@ static cell initarray(int ident,int usage,int tag,int dim[],int numdim,int cur,
      * parse one more initialization vector, but initvector() (and a recursive
      * call to initarray()) quits with a size of zero while not setting
      * "errorfound". Then, we must exit this loop without incrementing the
-     * dimension count.
+     * dimension count, and also undo the insertion of the last entry in the
+     * indirection table.
      */
-    if (dsize==0 && !*errorfound)
+    if (dsize==0 && !*errorfound) {
+      litremove(startlit);
       break;
+    }
     if (dim[cur]!=0 && idx>=dim[cur]) {
       assert(dsize>0 || *errorfound);
       error(18);            /* initialization data exceeds array size */
@@ -3151,7 +3154,7 @@ static void verify_array_namelist(constvalue *namelist[], int numdim)
 /*  decl_const  - declare a single constant, or a list of enumerated
  *  constants
  */
-static void decl_const(int vclass)
+static void decl_const(int scope)
 {
   char constname[sNAMEMAX+1];
   cell val,defaultval;
@@ -3200,7 +3203,7 @@ static void decl_const(int vclass)
         error(213);                     /* tagname mismatch */
       } /* if */
       /* add_constant() checks for duplicate definitions */
-      sym=add_constant(constname,val,vclass,tag);
+      sym=add_constant(constname,val,scope,tag);
       if (sym!=NULL) {
         sc_attachdocumentation(sym,TRUE); /* attach any documenation to the constant */
         sym->x.enumlist=enumerate;
@@ -3344,7 +3347,7 @@ SC_FUNC symbol *fetchfunc(const char *name,int tag)
     } else if ((sym->usage & uNATIVE)!=0) {
       error(21,name);                     /* yes, and it is a native */
     } /* if */
-    assert(sym->vclass==sGLOBAL);
+    assert(sym->scope==sGLOBAL);
     if ((sym->usage & uPROTOTYPED)!=0 && sym->tag!=tag)
       error(25);                          /* mismatch from earlier prototype */
     if ((sym->usage & uDEFINE)==0) {
@@ -3397,7 +3400,7 @@ static void define_args(void)
   sym=loctab.next;
   while (sym!=NULL) {
     assert(sym->ident!=iLABEL);
-    assert(sym->vclass==sLOCAL);
+    assert(sym->scope==sLOCAL);
     markexpr(sLDECL,sym->name,sym->addr); /* mark for better optimization */
     sym=sym->next;
   } /* while */
@@ -5358,9 +5361,9 @@ static int testsymbols(symbol *root,int level,int testlabs,int testconst)
         errorset(sSETFILE,sym->fnumber);
         errorset(sSETLINE,sym->lnumber);
         error(203,sym->name,sym->lnumber);  /* symbol isn't used (and not stock) */
-      } else if ((sym->usage & (uREAD | uSTOCK | uPUBLIC))==0) {
+      } else if ((sym->usage & (uREAD | uSTOCK | uPUBLIC))==0 && (sym->ident==iVARIABLE || sym->ident==iARRAY)) {
         errorset(sSETFILE,sym->fnumber);
-        errorset(sSETLINE,sym->lnumber);
+        errorset(sSETLINE,sym->x.lnumber_write);
         error(204,sym->name);       /* value assigned to symbol is never used */
 #if 0 // ??? not sure whether it is a good idea to force people use "const"
       } else if ((sym->usage & (uWRITTEN | uPUBLIC | uCONST))==0 && sym->ident==iREFARRAY) {
@@ -5399,10 +5402,11 @@ static int test_skippedundef(void)
   const char *symname;
 
   for (idx=0; (symname=get_undefsymbol(idx,&linenr))!=NULL; idx++) {
-    /* test only global symbols; the local symbol table has already been erased
-       and the text substution macros must be defined before use) */
+    /* test only functions; the local symbol table has already been erased
+       and constants & variables (and the text substution macros) must be
+       defined before use) */
     const symbol *sym=findglb(symname,sGLOBAL);
-    if (sym!=NULL && ((sym->usage & uDEFINE)!=0 || sym->ident==iFUNCTN && (sym->usage & uPROTOTYPED)!=0)) {
+    if (sym!=NULL && sym->ident==iFUNCTN && (sym->usage & uPROTOTYPED)!=0) {
       /* normally, errors & warnings only show during "write" status, but this
          test only occurs during "browse" phase (and the warning will go away
          in write phase, because an extra pass has then been made) -> temporarily
@@ -5627,7 +5631,7 @@ SC_FUNC int compare_consttable(constvalue *table1,constvalue *table2)
  *
  *  Adds a symbol to the symbol table. Returns NULL on failure.
  */
-SC_FUNC symbol *add_constant(const char *name,cell val,int vclass,int tag)
+SC_FUNC symbol *add_constant(const char *name,cell val,int scope,int tag)
 {
   symbol *sym;
 
@@ -5653,7 +5657,7 @@ SC_FUNC symbol *add_constant(const char *name,cell val,int vclass,int tag)
   } /* if */
 
   /* constant doesn't exist yet */
-  sym=addsym(name,val,iCONSTEXPR,vclass,tag,uDEFINE);
+  sym=addsym(name,val,iCONSTEXPR,scope,tag,uDEFINE);
   assert(sym!=NULL);            /* fatal error 103 must be given on error */
   if (sc_status == statIDLE)
     sym->usage |= uPREDEF;

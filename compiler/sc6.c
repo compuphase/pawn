@@ -358,7 +358,7 @@ static cell do_call(FILE *fbin,const char *params,cell opcode,cell cip)
     sym=findglb(name,sGLOBAL);
     assert(sym!=NULL);
     assert(sym->ident==iFUNCTN || sym->ident==iREFFUNC);
-    assert(sym->vclass==sGLOBAL);
+    assert(sym->scope==sGLOBAL);
     p=sym->addr-cip;            /* make relative address */
   } /* if */
 
@@ -718,7 +718,7 @@ SC_FUNC int assemble(FILE *fout,FILE *fin)
         } /* if */
       } /* if */
       if ((sym->flags & flgENTRYPOINT)!=0) {
-        assert(sym->vclass==sGLOBAL);
+        assert(sym->scope==sGLOBAL);
         mainaddr=(pc_overlays>0) ? sym->index : sym->addr;
       } /* if */
     } else if (sym->ident==iVARIABLE) {
@@ -822,7 +822,7 @@ SC_FUNC int assemble(FILE *fout,FILE *fin)
     if (sym->ident==iFUNCTN
         && (sym->usage & uPUBLIC)!=0 && (sym->usage & uDEFINE)!=0)
     {
-      assert(sym->vclass==sGLOBAL);
+      assert(sym->scope==sGLOBAL);
       /* in the case of overlays, write the overlay index rather than the address */
       func.address=(uint32_t)((pc_overlays>0) ? sym->index : sym->addr);
       func.nameofs=nameofs;
@@ -872,7 +872,7 @@ SC_FUNC int assemble(FILE *fout,FILE *fin)
         assert(strlen(sym->name)<=sNAMEMAX);
         strcpy(alias,sym->name);
       } /* if */
-      assert(sym->vclass==sGLOBAL);
+      assert(sym->scope==sGLOBAL);
       func.address=0;
       func.nameofs=nameofs;
       #if BYTE_ORDER==BIG_ENDIAN
@@ -916,7 +916,7 @@ SC_FUNC int assemble(FILE *fout,FILE *fin)
   for (sym=glbtab.next; sym!=NULL; sym=sym->next) {
     if (sym->ident==iVARIABLE && (sym->usage & uPUBLIC)!=0 && (sym->usage & (uREAD | uWRITTEN))!=0) {
       assert((sym->usage & uDEFINE)!=0);
-      assert(sym->vclass==sGLOBAL);
+      assert(sym->scope==sGLOBAL);
       func.address=(uint32_t)sym->addr;
       func.nameofs=nameofs;
       #if BYTE_ORDER==BIG_ENDIAN
@@ -989,7 +989,7 @@ SC_FUNC int assemble(FILE *fout,FILE *fin)
           && (sym->usage & uNATIVE)==0 && (sym->usage & (uREAD | uPUBLIC))!=0
           && (sym->usage & uDEFINE)!=0)
       {
-        assert(sym->vclass==sGLOBAL);
+        assert(sym->scope==sGLOBAL);
         assert(strcmp(sym->name,_ENTRYFUNC)==0 || sym->index==count++);/* overlay indices must be in sequential order */
         assert(strcmp(sym->name,_ENTRYFUNC)==0 || sym->addr<sym->codeaddr);
         /* write the overlay for the stub function first */
@@ -1312,7 +1312,7 @@ static void append_dbginfo(FILE *fout)
       dbgsym.codestart=(uint32_t)hex2ucell(str,&str);
       dbgsym.codeend=(uint32_t)hex2ucell(str,&str);
       dbgsym.ident=(char)hex2ucell(str,&str);
-      dbgsym.vclass=(char)hex2ucell(str,&str);
+      dbgsym.scope=(char)hex2ucell(str,&str);
       dbgsym.dim=0;
       str=skipwhitespace(str);
       if (*str=='[') {
@@ -1334,7 +1334,7 @@ static void append_dbginfo(FILE *fout)
       writeerror |= !pc_writebin(fout,&dbgsym.codestart,sizeof dbgsym.codeend);
       writeerror |= !pc_writebin(fout,&dbgsym.codeend,sizeof dbgsym.codeend);
       writeerror |= !pc_writebin(fout,&dbgsym.ident,sizeof dbgsym.ident);
-      writeerror |= !pc_writebin(fout,&dbgsym.vclass,sizeof dbgsym.vclass);
+      writeerror |= !pc_writebin(fout,&dbgsym.scope,sizeof dbgsym.scope);
       writeerror |= !pc_writebin(fout,&dbgsym.dim,sizeof dbgsym.dim);
       writeerror |= !pc_writebin(fout,symname,(int)strlen(symname)+1);
       for (dim=0; dim<dbgsymdim; dim++) {

@@ -14,7 +14,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: sc5.sch 5509 2016-05-17 07:49:04Z  $
+ *  Version: $Id: sc5.sch 5514 2016-05-20 14:26:51Z  $
  */
 
 SC_FUNC int strexpand(char *dest, unsigned char *source, int maxlen, unsigned char pairtable[128][2]);

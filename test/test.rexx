@@ -1844,4 +1844,17 @@ test147:
   pawncc ' test15'
   return
 
+test148:
+  say '148. The following test should compile successfully; when run, it should print:'
+  say ''
+  say '         1 2 3'
+  say '         4 5 6'
+  say '         7 8 9'
+  say ''
+  say 'Symptoms of detected bug: The list runs from 0 to 8 (instead of 1 to 9).'
+  say '-----'
+  pawncc ' INIT_ARRAY_TRAILING_COMMA= test2'
+  pawnrun ' test2.amx'
+  return
+
 

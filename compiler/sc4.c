@@ -495,8 +495,8 @@ SC_FUNC void rvalue(value *lval)
   } else if (lval->ident==iREFERENCE) {
     /* indirect fetch, but address not yet in PRI */
     assert(sym!=NULL);
-    assert(sym->vclass==sLOCAL);/* global references don't exist in Pawn */
-    if (sym->vclass==sLOCAL)
+    assert(sym->scope==sLOCAL);/* global references don't exist in Pawn */
+    if (sym->scope==sLOCAL)
       stgwrite("\tlref.s.pri ");
     else
       stgwrite("\tlref.pri ");
@@ -506,7 +506,7 @@ SC_FUNC void rvalue(value *lval)
   } else {
     /* direct or stack relative fetch */
     assert(sym!=NULL);
-    if (sym->vclass==sLOCAL)
+    if (sym->scope==sLOCAL)
       stgwrite("\tload.s.pri ");
     else
       stgwrite("\tload.pri ");
@@ -540,13 +540,13 @@ SC_FUNC void address(symbol *sym,regid reg)
     /* a local array or local variable */
     switch (reg) {
     case sPRI:
-      if (sym->vclass==sLOCAL)
+      if (sym->scope==sLOCAL)
         stgwrite("\taddr.pri ");
       else
         stgwrite("\tconst.pri ");
       break;
     case sALT:
-      if (sym->vclass==sLOCAL)
+      if (sym->scope==sLOCAL)
         stgwrite("\taddr.alt ");
       else
         stgwrite("\tconst.alt ");
@@ -579,14 +579,14 @@ SC_FUNC void store(value *lval)
     code_idx+=opcodes(1)+opargs(1);
   } else if (lval->ident==iREFERENCE) {
     assert(sym!=NULL);
-    assert(sym->vclass==sLOCAL);
+    assert(sym->scope==sLOCAL);
     stgwrite("\tsref.s ");
     outval(sym->addr,TRUE,TRUE);
     code_idx+=opcodes(1)+opargs(1);
   } else {
     assert(sym!=NULL);
     markusage(sym,uWRITTEN);
-    if (sym->vclass==sLOCAL)
+    if (sym->scope==sLOCAL)
       stgwrite("\tstor.s ");
     else
       stgwrite("\tstor ");
@@ -713,11 +713,11 @@ SC_FUNC void fillarray(symbol *sym,cell size,cell value)
    */
   if (sym->ident==iREFARRAY) {
     /* reference to an array; currently this is always a local variable */
-    assert(sym->vclass==sLOCAL);        /* symbol must be stack relative */
+    assert(sym->scope==sLOCAL);        /* symbol must be stack relative */
     stgwrite("\tload.s.alt ");
   } else {
     /* a local or global array */
-    if (sym->vclass==sLOCAL)
+    if (sym->scope==sLOCAL)
       stgwrite("\taddr.alt ");
     else
       stgwrite("\tconst.alt ");
@@ -1450,7 +1450,7 @@ SC_FUNC void inc(value *lval)
     /* indirect increment, but address not yet in PRI */
     assert(sym!=NULL);
     stgwrite("\tpush.pri\n");
-    assert(sym->vclass==sLOCAL);  /* global references don't exist in Pawn */
+    assert(sym->scope==sLOCAL);  /* global references don't exist in Pawn */
     stgwrite("\tload.s.pri ");
     outval(sym->addr,TRUE,TRUE);
     stgwrite("\tinc.i\n");
@@ -1460,7 +1460,7 @@ SC_FUNC void inc(value *lval)
     /* local or global variable */
     assert(sym!=NULL);
     stgwrite("\tpush.pri\n");
-    if (sym->vclass==sLOCAL)
+    if (sym->scope==sLOCAL)
       stgwrite("\taddr.pri ");
     else
       stgwrite("\tconst.pri ");
@@ -1499,7 +1499,7 @@ SC_FUNC void dec(value *lval)
   } else if (lval->ident==iREFERENCE) {
     assert(sym!=NULL);
     stgwrite("\tpush.pri\n");
-    assert(sym->vclass==sLOCAL);    /* global references don't exist in Pawn */
+    assert(sym->scope==sLOCAL);    /* global references don't exist in Pawn */
     stgwrite("\tload.s.pri ");
     outval(sym->addr,TRUE,TRUE);
     stgwrite("\tdec.i\n");
@@ -1509,7 +1509,7 @@ SC_FUNC void dec(value *lval)
     /* local or global variable */
     assert(sym!=NULL);
     stgwrite("\tpush.pri\n");
-    if (sym->vclass==sLOCAL)
+    if (sym->scope==sLOCAL)
       stgwrite("\taddr.pri ");
     else
       stgwrite("\tconst.pri ");

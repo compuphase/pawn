@@ -428,6 +428,22 @@ main()
             }
     #endif
 
+    #if defined INIT_ARRAY_TRAILING_COMMA
+        static const my_array[3][3] =
+        [
+            [1, 2, 3],
+            [4, 5, 6],
+            [7, 8, 9],
+        ];
+        for (new i = 0; i < sizeof(my_array); ++i)
+            {
+            printf("\t");
+            for (new j = 0; j < sizeof(my_array[]); ++j)
+                printf(" %d", my_array[i][j]);
+            printf("\n");
+            }
+    #endif
+
     #if defined STRINS_MAXLENGTH
         new str{} = "test"
         strins str, "1", 0

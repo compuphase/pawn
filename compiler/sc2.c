@@ -14,7 +14,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: sc2.c 5514 2016-05-20 14:26:51Z  $
+ *  Version: $Id: sc2.c 5567 2016-08-01 14:52:15Z  $
  */
 #include <assert.h>
 #include <stdio.h>
@@ -983,8 +983,9 @@ static int command(void)
         symbol *sym=findloc(str);
         if (sym==NULL)
           sym=findglb(str,sGLOBAL);
-        if (sym!=NULL && (sym->usage & uDEFINE)==0
-            && ((sym->ident==iFUNCTN || sym->ident==iREFFUNC) && (sym->usage & uPROTOTYPED)==0))
+        if (sym!=NULL
+            && ((sym->usage & uDEFINE)==0
+                || ((sym->ident==iFUNCTN || sym->ident==iREFFUNC) && (sym->usage & uPROTOTYPED)==0)))
           sym=NULL;                 /* symbol is in the table, but not as "defined" or "prototyped" */
         if (sym!=NULL || find_subst(str,(int)strlen(str))!=NULL)
           val=1;
@@ -2531,6 +2532,18 @@ SC_FUNC void litinsert(cell value,int pos)
   litq[pos]=value;
 }
 
+/*  litremove
+ *
+ *  Removes an entry in the literal queue (to undo an earlier addition.
+ */
+SC_FUNC void litremove(int pos)
+{
+  assert(litidx>0 && litidx<litmax);
+  assert(pos>=0 && pos<litidx);
+  memmove(litq+pos,litq+(pos+1),(litidx-pos-1)*sizeof(cell));
+  litidx--;
+}
+
 /*  litchar
  *
  *  Return current literal character and increase the pointer to point
@@ -2963,12 +2976,12 @@ SC_FUNC void markusage(symbol *sym,int usage)
 {
   assert(sym!=NULL);
   sym->usage |= (char)usage;
-  if ((usage & uWRITTEN)!=0)
-    sym->lnumber=pc_curline;
+  if ((usage & uWRITTEN)!=0 && (sym->ident==iVARIABLE || sym->ident==iARRAY))
+    sym->x.lnumber_write=pc_curline;
   /* check if (global) reference must be added to the symbol */
   if ((usage & (uREAD | uWRITTEN))!=0) {
     /* only do this for global symbols */
-    if (sym->vclass==sGLOBAL) {
+    if (sym->scope==sGLOBAL) {
       /* "curfunc" should always be valid, since statements may not occur
        * outside functions; in the case of syntax errors, however, the
        * compiler may arrive here this function with a NULL "curfunc"
@@ -3048,7 +3061,7 @@ SC_FUNC symbol *finddepend(const symbol *parent)
  *  Adds a symbol to the symbol table (either global or local variables,
  *  or global and local constants).
  */
-SC_FUNC symbol *addsym(const char *name,cell addr,int ident,int vclass,int tag,int usage)
+SC_FUNC symbol *addsym(const char *name,cell addr,int ident,int scope,int tag,int usage)
 {
   symbol entry;
   symbol **refer;
@@ -3069,7 +3082,7 @@ SC_FUNC symbol *addsym(const char *name,cell addr,int ident,int vclass,int tag,i
   entry.hash=namehash(name);
   entry.addr=addr;
   entry.codeaddr=code_idx;
-  entry.vclass=(char)vclass;
+  entry.scope=(char)scope;
   entry.ident=(char)ident;
   entry.tag=tag;
   entry.usage=(char)usage;
@@ -3080,13 +3093,13 @@ SC_FUNC symbol *addsym(const char *name,cell addr,int ident,int vclass,int tag,i
   entry.refer=refer;
 
   /* then insert it in the list */
-  if (vclass==sGLOBAL)
+  if (scope==sGLOBAL)
     return add_symbol(&glbtab,&entry,TRUE);
   else
     return add_symbol(&loctab,&entry,FALSE);
 }
 
-SC_FUNC symbol *addvariable(const char *name,cell addr,int ident,int vclass,int tag,
+SC_FUNC symbol *addvariable(const char *name,cell addr,int ident,int scope,int tag,
                             int dim[],constvalue *dimnames[],int numdim,int usage)
 {
   symbol *sym;
@@ -3098,7 +3111,7 @@ SC_FUNC symbol *addvariable(const char *name,cell addr,int ident,int vclass,int 
    * "redeclared" if they are local to an automaton (and findglb() will find
    * the symbol without states if no symbol with states exists).
    */
-  assert(vclass!=sGLOBAL || (sym=findglb(name,sGLOBAL))==NULL || (sym->usage & uDEFINE)==0
+  assert(scope!=sGLOBAL || (sym=findglb(name,sGLOBAL))==NULL || (sym->usage & uDEFINE)==0
          || sym->ident==iFUNCTN && (sym==curfunc || (sym->usage & uNATIVE)!=0)
          || sym->states==NULL && sc_curstates>0);
 
@@ -3107,7 +3120,7 @@ SC_FUNC symbol *addvariable(const char *name,cell addr,int ident,int vclass,int 
     int level;
     sym=NULL;                   /* to avoid a compiler warning */
     for (level=0; level<numdim; level++) {
-      top=addsym(name,addr,ident,vclass,tag,uDEFINE);
+      top=addsym(name,addr,ident,scope,tag,uDEFINE);
       top->dim.array.length=dim[level];
       top->dim.array.level=(short)(numdim-level-1);
       top->dim.array.names=dimnames[level];
@@ -3119,7 +3132,7 @@ SC_FUNC symbol *addvariable(const char *name,cell addr,int ident,int vclass,int 
         sym=top;
     } /* for */
   } else {
-    sym=addsym(name,addr,ident,vclass,tag,uDEFINE);
+    sym=addsym(name,addr,ident,scope,tag,uDEFINE);
   } /* if */
   return sym;
 }

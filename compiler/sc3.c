@@ -14,7 +14,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: sc3.c 5514 2016-05-20 14:26:51Z  $
+ *  Version: $Id: sc3.c 5567 2016-08-01 14:52:15Z  $
  */
 #include <assert.h>
 #include <stdio.h>
@@ -1382,6 +1382,7 @@ static int hier2(value *lval)
   char *st;
   symbol *sym;
   int saveresult;
+  short save_allowtags;
 
   tok=lex(&val,&st);
   switch (tok) {
@@ -1484,8 +1485,9 @@ static int hier2(value *lval)
     sym=findloc(st);
     if (sym==NULL)
       sym=findglb(st,sSTATEVAR);
-    if (sym!=NULL && (sym->usage & uDEFINE)==0
-        && ((sym->ident==iFUNCTN || sym->ident==iREFFUNC) && (sym->usage & uPROTOTYPED)==0))
+    if (sym!=NULL
+        && ((sym->usage & uDEFINE)==0
+            || ((sym->ident==iFUNCTN || sym->ident==iREFFUNC) && (sym->usage & uPROTOTYPED)==0)))
       sym=NULL;                 /* symbol is in the table, but not as "defined" or "prototyped" */
     val= (sym!=NULL);
     if (!val && find_subst(st,(int)strlen(st))!=NULL)
@@ -1562,9 +1564,12 @@ static int hier2(value *lval)
       needtoken(')');
     return FALSE;
   case tTAGOF:
+    save_allowtags=sc_allowtags;
     paranthese=0;
-    while (matchtoken('('))
+    while (matchtoken('(')) {
       paranthese++;
+      sc_allowtags=TRUE;        /* allow tagnames to be used in parenthesized expressions */
+    }
     tok=lex(&val,&st);
     if (tok!=tSYMBOL && tok!=tLABEL)
       return error_suggest(20,st,iVARIABLE);  /* illegal symbol name */
@@ -1614,13 +1619,15 @@ static int hier2(value *lval)
           tag=item->index;
       } /* if */
     } /* if */
-    exporttag(tag);
+    if (tag!=0)
+      exporttag(tag);
     clear_value(lval);
     lval->ident=iCONSTEXPR;
-    lval->constval=tag | PUBLICTAG;
+    lval->constval= (tag==0) ? tag : tag | PUBLICTAG;
     ldconst(lval->constval,sPRI);
     while (paranthese--)
       needtoken(')');
+    save_allowtags=sc_allowtags;
     return FALSE;
   case tSTATE: {
     constvalue *automaton;
@@ -1755,7 +1762,7 @@ restart:
         break;
       default:
         assert(0);
-		close=0;
+        close=0;
       } /* switch */
       if (sym==NULL) {
         /* sym==NULL if lval is a constant or a literal, or an unknown variable */
