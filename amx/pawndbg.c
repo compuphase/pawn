@@ -1407,7 +1407,7 @@ static int get_symbolvalue(AMX *amx,AMX_DBG_SYMBOL *sym,int index,cell *value)
 {
   cell *vptr;
   cell base=sym->address;
-  if (sym->vclass & DISP_MASK)
+  if (sym->scope & DISP_MASK)
     base+=amx->frm;     /* addresses of local vars are relative to the frame */
   if (sym->ident==iREFERENCE || sym->ident==iREFARRAY) {   /* a reference */
     vptr=VirtAddressToPhys(amx,base);
@@ -1428,7 +1428,7 @@ static int set_symbolvalue(AMX *amx,const AMX_DBG_SYMBOL *sym,int index,cell val
 {
   cell *vptr;
   cell base=sym->address;
-  if (sym->vclass & DISP_MASK)
+  if (sym->scope & DISP_MASK)
     base+=amx->frm;     /* addresses of local vars are relative to the frame */
   if (sym->ident==iREFERENCE || sym->ident==iREFARRAY) {   /* a reference */
     vptr=VirtAddressToPhys(amx,base);
@@ -1460,7 +1460,7 @@ static char string[MAXLINELENGTH];
 
   /* get the starting address and the length of the string */
   base=sym->address;
-  if (sym->vclass)
+  if (sym->scope)
     base+=amx->frm;     /* addresses of local vars are relative to the frame */
   if (sym->ident==iREFARRAY) {   /* a reference */
     addr=VirtAddressToPhys(amx,base);
@@ -1537,17 +1537,17 @@ static void display_variable(AMX *amx,AMX_DBG *amxdbg,AMX_DBG_SYMBOL *sym,int in
     return;
   }
   /* set default display type for the symbol (if none was set) */
-  if ((sym->vclass & ~DISP_MASK)==0) {
+  if ((sym->scope & ~DISP_MASK)==0) {
     const char *tagname;
     if (dbg_GetTagName(amxdbg,sym->tag,&tagname)==AMX_ERR_NONE) {
       if (stricmp(tagname,"bool")==0)
-        sym->vclass |= DISP_BOOL;
+        sym->scope |= DISP_BOOL;
       else if (stricmp(tagname,"fixed")==0)
-        sym->vclass |= DISP_FIXED;
+        sym->scope |= DISP_FIXED;
       else if (stricmp(tagname,"float")==0)
-        sym->vclass |= DISP_FLOAT;
+        sym->scope |= DISP_FLOAT;
     } /* if */
-    if ((sym->vclass & ~DISP_MASK)==0 && (sym->ident==iARRAY || sym->ident==iREFARRAY) && sym->dim==1) {
+    if ((sym->scope & ~DISP_MASK)==0 && (sym->ident==iARRAY || sym->ident==iREFARRAY) && sym->dim==1) {
       /* untagged array with a single dimension, walk through all elements
        * and check whether this could be a string
        */
@@ -1561,7 +1561,7 @@ static void display_variable(AMX *amx,AMX_DBG *amxdbg,AMX_DBG_SYMBOL *sym,int in
           break;  /* want a letter at the start */
       } /* for */
       if (i>0 && i<MAXLINELENGTH-1 && ptr[i]=='\0')
-        sym->vclass |= DISP_STRING;
+        sym->scope |= DISP_STRING;
     } /* if */
   } /* if */
 
@@ -1580,7 +1580,7 @@ static void display_variable(AMX *amx,AMX_DBG *amxdbg,AMX_DBG_SYMBOL *sym,int in
   } /* if */
 
   if ((sym->ident==iARRAY || sym->ident==iREFARRAY) && idxlevel==0) {
-    if ((sym->vclass & ~DISP_MASK)==DISP_STRING) {
+    if ((sym->scope & ~DISP_MASK)==DISP_STRING) {
       amx_printf("\"%s\"", get_string(amx,sym,40));
     } else if (sym->dim==1) {
       ucell len,i;
@@ -1595,7 +1595,7 @@ static void display_variable(AMX *amx,AMX_DBG *amxdbg,AMX_DBG_SYMBOL *sym,int in
         if (i>0)
           amx_printf(",");
         if (get_symbolvalue(amx,sym,(int)i,&value))
-          printvalue(value,(sym->vclass & ~DISP_MASK));
+          printvalue(value,(sym->scope & ~DISP_MASK));
         else
           amx_printf("?");
       } /* for */
@@ -1620,7 +1620,7 @@ static void display_variable(AMX *amx,AMX_DBG *amxdbg,AMX_DBG_SYMBOL *sym,int in
       base+=value/sizeof(cell);
     } /* while */
     if (get_symbolvalue(amx,sym,base+index[dim],&value) && sym->dim==idxlevel)
-      printvalue(value,(sym->vclass & ~DISP_MASK));
+      printvalue(value,(sym->scope & ~DISP_MASK));
     else if (sym->dim!=idxlevel)
       amx_printf("(invalid number of dimensions)");
     else
@@ -2427,7 +2427,7 @@ static char lastcommand[32] = "";
             scroll_cmdwin(1);
             if (terminal<0)
               amx_printf("%s",prefix);
-            amx_printf("%s\t%s\t",(amxdbg->symboltbl[i]->vclass & DISP_MASK)>0 ? "loc" : "glb",amxdbg->symboltbl[i]->name);
+            amx_printf("%s\t%s\t",(amxdbg->symboltbl[i]->scope & DISP_MASK)>0 ? "loc" : "glb",amxdbg->symboltbl[i]->name);
             display_variable(amx,amxdbg,amxdbg->symboltbl[i],idx,0);
             amx_printf("\n");
           } /* if */
@@ -2453,7 +2453,7 @@ static char lastcommand[32] = "";
             *behindname='[';
           if (terminal<0)
             amx_printf("%s",prefix);
-          amx_printf("%s\t%s\t",(sym->vclass & DISP_MASK)>0 ? "loc" : "glb",params/*sym->name*/);
+          amx_printf("%s\t%s\t",(sym->scope & DISP_MASK)>0 ? "loc" : "glb",params/*sym->name*/);
           display_variable(amx,amxdbg,(AMX_DBG_SYMBOL*)sym,idx,dim);
           amx_printf("\n");
         } else {
@@ -2564,21 +2564,21 @@ static char lastcommand[32] = "";
         if (dbg_GetVariable(amxdbg,symname,amx->cip,(const AMX_DBG_SYMBOL**)&sym)==AMX_ERR_NONE) {
           assert(sym!=NULL);
           if (stricmp(params,"std")==0) {
-            sym->vclass = (char)((sym->vclass & DISP_MASK) | DISP_DEFAULT);
+            sym->scope = (char)((sym->scope & DISP_MASK) | DISP_DEFAULT);
           } else if (stricmp(params,"string")==0) {
             /* check array with single dimension */
             if (!(sym->ident==iARRAY || sym->ident==iREFARRAY) || sym->dim!=1)
               amx_printf("\t\"string\" display type is only valid for arrays with one dimension\n");
             else
-              sym->vclass = (char)((sym->vclass & DISP_MASK) | DISP_STRING);
+              sym->scope = (char)((sym->scope & DISP_MASK) | DISP_STRING);
           } else if (stricmp(params,"bin")==0) {
-            sym->vclass = (char)((sym->vclass & DISP_MASK) | DISP_BIN);
+            sym->scope = (char)((sym->scope & DISP_MASK) | DISP_BIN);
           } else if (stricmp(params,"hex")==0) {
-            sym->vclass = (char)((sym->vclass & DISP_MASK) | DISP_HEX);
+            sym->scope = (char)((sym->scope & DISP_MASK) | DISP_HEX);
           } else if (stricmp(params,"fixed")==0) {
-            sym->vclass = (char)((sym->vclass & DISP_MASK) | DISP_FIXED);
+            sym->scope = (char)((sym->scope & DISP_MASK) | DISP_FIXED);
           } else if (stricmp(params,"float")==0) {
-            sym->vclass = (char)((sym->vclass & DISP_MASK) | DISP_FLOAT);
+            sym->scope = (char)((sym->scope & DISP_MASK) | DISP_FLOAT);
           } else {
             amx_printf("\tUnknown (or missing) display type\n");
           } /* if */
