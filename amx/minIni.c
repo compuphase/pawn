@@ -79,6 +79,7 @@
   #endif
 #endif
 #if !defined _totupper
+  #include <ctype.h>
   #define _totupper toupper
 #endif
 

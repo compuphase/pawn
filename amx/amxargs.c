@@ -31,6 +31,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
+#include <unistd.h>
 #include "osdefs.h"
 #if defined __WIN32__ || defined __MSDOS__
   #include <malloc.h>

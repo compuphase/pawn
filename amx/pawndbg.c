@@ -140,6 +140,8 @@ extern int chdir(const char *path); /* position of this function in header files
   #define amx_setattr(c,b,h) (_False)
   #define amx_termctl(c,v)  (_False)
   #define amx_console(c,l,f) (void)(0)
+  int getnstr(char *str, int n);
+  int printw(const char *fmt, ...);
   #define STR_PROMPT        "dbg> "
   #define CHR_HLINE         '-'
   #define CHR_VLINE         '|'
@@ -851,7 +853,7 @@ static int send_rs232(const char *buffer, int len)
     FlushFileBuffers(hCom);
   #else
     size=write(fdCom,buffer,len);
-    fflush(fileno(fcCom));
+    fflush((FILE*)(intptr_t)fileno((FILE*)&fdCom));
   #endif
   assert((unsigned long)len==size);
   return size;

@@ -99,7 +99,7 @@
 #define hexdigit(c)     ( ((c)>='0' && (c)<='9') ? (c) - '0' : 10 + \
                         ( ((c)>='a' && (c)<='f') ? (c) - 'a' : (c) - 'A' ) )
 #if !defined tolower
-# define tolower(c)     ( (c)>='A' && (c)<='Z' ? (c) - 'A' + 'a' : (c) )
+  #include <ctype.h>
 #endif
 
 #define BITSET(set,idx) ( (set)[(idx)/8] |= (unsigned char)(1 << ((idx) & 7)) )
