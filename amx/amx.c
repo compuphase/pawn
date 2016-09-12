@@ -980,6 +980,10 @@ static int VerifyPcode(AMX *amx)
         amx->flags &= ~AMX_FLAG_VERIFY;
         return AMX_ERR_BOUNDS;
       } /* if */
+      if ((tgt&(sizeof(cell)-1))!=0) {
+        amx->flags &= ~AMX_FLAG_VERIFY;
+        return AMX_ERR_MEMACCESS;
+      } /* if */
       #if defined AMX_JIT
         reloc_count++;
         RELOC_ABS(amx->code, cip);  /* change to absolute physical address */
@@ -1040,6 +1044,10 @@ static int VerifyPcode(AMX *amx)
         if (tgt<0 || tgt>amx->codesize) {
           amx->flags &= ~AMX_FLAG_VERIFY;
           return AMX_ERR_BOUNDS;
+        } /* if */
+        if ((tgt&(sizeof(cell)-1))!=0) {
+          amx->flags &= ~AMX_FLAG_VERIFY;
+          return AMX_ERR_MEMACCESS;
         } /* if */
         #if defined AMX_JIT
           RELOC_ABS(amx->code, cip+2*i*sizeof(cell));
@@ -2262,11 +2270,17 @@ int AMXAPI amx_Exec(AMX *amx, cell *retval, int index)
     case OP_LREF_S_PRI:
       GETPARAM(offs);
       offs=_R(data,frm+offs);
+      /* verify address */
+      if (offs>=hea && offs<stk || (ucell)offs>=(ucell)amx->stp)
+        ABORT(amx,AMX_ERR_MEMACCESS);
       pri=_R(data,offs);
       break;
     case OP_LREF_S_ALT:
       GETPARAM(offs);
       offs=_R(data,frm+offs);
+      /* verify address */
+      if (offs>=hea && offs<stk || (ucell)offs>=(ucell)amx->stp)
+        ABORT(amx,AMX_ERR_MEMACCESS);
       alt=_R(data,offs);
       break;
     case OP_LOAD_I:
@@ -2318,6 +2332,9 @@ int AMXAPI amx_Exec(AMX *amx, cell *retval, int index)
     case OP_SREF_S:
       GETPARAM(offs);
       offs=_R(data,frm+offs);
+      /* verify address */
+      if (offs>=hea && offs<stk || (ucell)offs>=(ucell)amx->stp)
+        ABORT(amx,AMX_ERR_MEMACCESS);
       _W(data,offs,pri);
       break;
     case OP_STOR_I:
@@ -2387,14 +2404,25 @@ int AMXAPI amx_Exec(AMX *amx, cell *retval, int index)
         break;
       case 2:
         hea=pri;
+        CHKMARGIN();
+        CHKHEAP();
         break;
       case 4:
         stk=pri;
+        CHKMARGIN();
+        CHKSTACK();
         break;
       case 5:
         frm=pri;
+        if (frm<hea+STKMARGIN || (ucell)frm>=(ucell)amx->stp)
+          ABORT(amx,AMX_ERR_STACKERR);
         break;
       case 6:
+        /* verify address */
+        if (pri<0 || (long)pri>=amx->codesize)
+          ABORT(amx,AMX_ERR_BOUNDS);
+        if ((pri&(sizeof(cell)-1))!=0)
+          ABORT(amx,AMX_ERR_MEMACCESS);
         cip=(cell *)(amx->code + (int)pri);
         break;
       } /* switch */
@@ -2446,7 +2474,7 @@ int AMXAPI amx_Exec(AMX *amx, cell *retval, int index)
       POP(frm);
       POP(offs);
       /* verify the return address */
-      if ((long)offs>=amx->codesize)
+      if (offs<0 || (long)offs>=amx->codesize || (offs&(sizeof(cell)-1))!=0)
         ABORT(amx,AMX_ERR_MEMACCESS);
       cip=(cell *)(amx->code+(int)offs);
       break;
@@ -2454,7 +2482,7 @@ int AMXAPI amx_Exec(AMX *amx, cell *retval, int index)
       POP(frm);
       POP(offs);
       /* verify the return address */
-      if ((long)offs>=amx->codesize)
+      if (offs<0 || (long)offs>=amx->codesize || (offs&(sizeof(cell)-1))!=0)
         ABORT(amx,AMX_ERR_MEMACCESS);
       cip=(cell *)(amx->code+(int)offs);
       stk+=_R(data,stk)+sizeof(cell);   /* remove parameters from the stack */
@@ -3122,11 +3150,17 @@ int AMXAPI amx_Exec(AMX *amx, cell *retval, int index)
     case OP_LREF_P_S_PRI:
       GETPARAM_P(offs,op);
       offs=_R(data,frm+offs);
+      /* verify address */
+      if (offs>=hea && offs<stk || (ucell)offs>=(ucell)amx->stp)
+        ABORT(amx,AMX_ERR_MEMACCESS);
       pri=_R(data,offs);
       break;
     case OP_LREF_P_S_ALT:
       GETPARAM_P(offs,op);
       offs=_R(data,frm+offs);
+      /* verify address */
+      if (offs>=hea && offs<stk || (ucell)offs>=(ucell)amx->stp)
+        ABORT(amx,AMX_ERR_MEMACCESS);
       alt=_R(data,offs);
       break;
     case OP_LODB_P_I:
@@ -3157,6 +3191,9 @@ int AMXAPI amx_Exec(AMX *amx, cell *retval, int index)
     case OP_SREF_P_S:
       GETPARAM_P(offs,op);
       offs=_R(data,frm+offs);
+      /* verify address */
+      if (offs>=hea && offs<stk || (ucell)offs>=(ucell)amx->stp)
+        ABORT(amx,AMX_ERR_MEMACCESS);
       _W(data,offs,pri);
       break;
     case OP_STRB_P_I:

@@ -228,11 +228,17 @@ static const void * const amx_opcodelist[] = {
   op_lref_s_pri:
     GETPARAM(offs);
     offs=_R(data,frm+offs);
+    /* verify address */
+    if (offs>=hea && offs<stk || (ucell)offs>=(ucell)amx->stp)
+      ABORT(amx,AMX_ERR_MEMACCESS);
     pri=_R(data,offs);
     NEXT(cip,op);
   op_lref_s_alt:
     GETPARAM(offs);
     offs=_R(data,frm+offs);
+    /* verify address */
+    if (offs>=hea && offs<stk || (ucell)offs>=(ucell)amx->stp)
+      ABORT(amx,AMX_ERR_MEMACCESS);
     alt=_R(data,offs);
     NEXT(cip,op);
   op_load_i:
@@ -284,6 +290,9 @@ static const void * const amx_opcodelist[] = {
   op_sref_s:
     GETPARAM(offs);
     offs=_R(data,frm+offs);
+    /* verify address */
+    if (offs>=hea && offs<stk || (ucell)offs>=(ucell)amx->stp)
+      ABORT(amx,AMX_ERR_MEMACCESS);
     _W(data,offs,pri);
     NEXT(cip,op);
   op_stor_i:
@@ -353,14 +362,25 @@ static const void * const amx_opcodelist[] = {
       break;
     case 2:
       hea=pri;
+      CHKMARGIN();
+      CHKHEAP();
       break;
     case 4:
       stk=pri;
+      CHKMARGIN();
+      CHKSTACK();
       break;
     case 5:
       frm=pri;
+      if (frm<hea+STKMARGIN || (ucell)frm>=(ucell)amx->stp)
+        ABORT(amx,AMX_ERR_STACKERR);
       break;
     case 6:
+      /* verify address */
+      if (pri<0 || (long)pri>=amx->codesize)
+        ABORT(amx,AMX_ERR_BOUNDS);
+      if ((pri&(sizeof(cell)-1))!=0)
+        ABORT(amx,AMX_ERR_MEMACCESS);
       cip=(cell *)(amx->code + (int)pri);
       break;
     } /* switch */
@@ -412,7 +432,7 @@ static const void * const amx_opcodelist[] = {
     POP(frm);
     POP(offs);
     /* verify the return address */
-    if ((long)offs>=amx->codesize)
+    if (offs<0 || (long)offs>=amx->codesize || (offs&(sizeof(cell)-1))!=0)
       ABORT(amx,AMX_ERR_MEMACCESS);
     cip=(cell *)(amx->code+(int)offs);
     NEXT(cip,op);
@@ -420,7 +440,7 @@ static const void * const amx_opcodelist[] = {
     POP(frm);
     POP(offs);
     /* verify the return address */
-    if ((long)offs>=amx->codesize)
+    if (offs<0 || (long)offs>=amx->codesize || (offs&(sizeof(cell)-1))!=0)
       ABORT(amx,AMX_ERR_MEMACCESS);
     cip=(cell *)(amx->code+(int)offs);
     stk+= _R(data,stk) + sizeof(cell);  /* remove parameters from the stack */
@@ -1101,11 +1121,17 @@ static const void * const amx_opcodelist[] = {
   op_lref_p_s_pri:
     GETPARAM_P(offs,op);
     offs=_R(data,frm+offs);
+    /* verify address */
+    if (offs>=hea && offs<stk || (ucell)offs>=(ucell)amx->stp)
+      ABORT(amx,AMX_ERR_MEMACCESS);
     pri=_R(data,offs);
     NEXT(cip,op);
   op_lref_p_s_alt:
     GETPARAM_P(offs,op);
     offs=_R(data,frm+offs);
+    /* verify address */
+    if (offs>=hea && offs<stk || (ucell)offs>=(ucell)amx->stp)
+      ABORT(amx,AMX_ERR_MEMACCESS);
     alt=_R(data,offs);
     NEXT(cip,op);
   op_lodb_p_i:
@@ -1136,6 +1162,9 @@ static const void * const amx_opcodelist[] = {
   op_sref_p_s:
     GETPARAM_P(offs,op);
     offs=_R(data,frm+offs);
+    /* verify address */
+    if (offs>=hea && offs<stk || (ucell)offs>=(ucell)amx->stp)
+      ABORT(amx,AMX_ERR_MEMACCESS);
     _W(data,offs,pri);
     NEXT(cip,op);
   op_strb_p_i:
