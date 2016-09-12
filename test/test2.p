@@ -459,4 +459,13 @@ main()
         strins str, "6", 0
         printf "%s\n", str
     #endif
+
+    #if defined DUPLICATE_LABEL
+        goto test_label;
+    test_label:
+        print("test_label 1\n");
+        return;
+    test_label:
+        print("test_label 2\n");
+    #endif
     }

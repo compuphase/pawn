@@ -23,7 +23,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: sc.h 5567 2016-08-01 14:52:15Z  $
+ *  Version: $Id: sc.h 5579 2016-09-12 07:58:43Z  $
  */
 #ifndef SC_H_INCLUDED
 #define SC_H_INCLUDED
@@ -349,7 +349,7 @@ typedef struct s_arraymerge {
  */
 #define tFIRST      256 /* value of first multi-character operator */
 #define tMIDDLE     280 /* value of last multi-character operator */
-#define tLAST       323 /* value of last multi-character match-able token */
+#define tLAST       324 /* value of last multi-character match-able token */
 /* multi-character operators */
 #define taMULT      256 /* *= */
 #define taDIV       257 /* /= */
@@ -416,25 +416,26 @@ typedef struct s_arraymerge {
 #define tpIF        316 /* #if */
 #define tpIFDEF     317
 #define tpIFNDEF    318
-#define tINCLUDE    319
+#define tpINCLUDE   319
 #define tpLINE      320
 #define tpPRAGMA    321
 #define tpTRYINCLUDE 322
 #define tpUNDEF     323
+#define tpWARNING   324
 /* semicolon and comma are special cases, because they can be optional */
-#define tTERM       324 /* semicolon or newline */
-#define tSEPARATOR  325 /* comma or newline */
-#define tENDEXPR    326 /* forced end of expression */
+#define tTERM       325 /* semicolon or newline */
+#define tSEPARATOR  326 /* comma or newline */
+#define tENDEXPR    327 /* forced end of expression */
 /* other recognized tokens */
-#define tNUMBER     327 /* integer number */
-#define tRATIONAL   328 /* rational number */
-#define tSYMBOL     329
-#define tLABEL      330
-#define tSYMLABEL   331 /* ".name" syntax for named parameters and symbolic array indices */
-#define tSTRING     332
-#define tPACKSTRING 333
-#define tEXPR       334 /* for assigment to "lastst" only (see SC1.C) */
-#define tENDLESS    335 /* endless loop, for assigment to "lastst" only */
+#define tNUMBER     328 /* integer number */
+#define tRATIONAL   329 /* rational number */
+#define tSYMBOL     330
+#define tLABEL      331
+#define tSYMLABEL   332 /* ".name" syntax for named parameters and symbolic array indices */
+#define tSTRING     333
+#define tPACKSTRING 334
+#define tEXPR       335 /* for assigment to "lastst" only (see SC1.C) */
+#define tENDLESS    336 /* endless loop, for assigment to "lastst" only */
 
 /* (reversed) evaluation of staging buffer */
 #define sSTARTREORDER 0x01
@@ -736,6 +737,9 @@ SC_FUNC int error(long number,...);
 SC_FUNC int error_suggest(int error,const char *name,int ident);
 SC_FUNC int error_suggest_list(int number,const char *name,constvalue *list);
 SC_FUNC void errorset(int code,int line);
+SC_FUNC void pushwarnings(void);
+SC_FUNC void popwarnings(void);
+SC_FUNC void clear_warningstack(void);
 #define MAX_EDIT_DIST 2 /* allow two mis-typed characters; when there are more,
                          * the names are too different, and no match is returned */
 SC_FUNC int levenshtein_distance(const char *s,const char*t);

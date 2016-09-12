@@ -23,7 +23,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: sc1.c 5567 2016-08-01 14:52:15Z  $
+ *  Version: $Id: sc1.c 5579 2016-09-12 07:58:43Z  $
  */
 #include <assert.h>
 #include <ctype.h>
@@ -824,6 +824,7 @@ cleanup:
   #endif
   delete_autolisttable();
   delete_heaplisttable();
+  clear_warningstack();
   if (errnum!=0) {
     if (strlen(errfname)==0)
       pc_printf("\n%d Error%s.\n",errnum,(errnum>1) ? "s" : "");
@@ -6399,6 +6400,9 @@ static void dolabel(void)
   if (find_constval(&tagname_tab,st,-1)!=NULL)
     error(221,st);      /* label name shadows tagname */
   sym=fetchlab(st);
+  assert(sym!=NULL);
+  if ((sym->usage & uDEFINE)!=0)
+    error(21,st);       /* symbol already defined */
   setlabel((int)sym->addr);
   /* since one can jump around variable declarations or out of compound
    * blocks, the stack must be manually adjusted
@@ -6423,7 +6427,6 @@ static symbol *fetchlab(char *name)
   if (sym) {
     if (sym->ident!=iLABEL)
       error_suggest(19,sym->name,iLABEL);  /* not a label: ... */
-    //??? if this is a label definition, update sym->nestlevel and sym->x.declared
   } else {
     sym=addsym(name,getlabel(),iLABEL,sLOCAL,0,0);
     assert(sym!=NULL);          /* fatal error 103 must be given on error */

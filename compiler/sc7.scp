@@ -35,13 +35,13 @@
  *              this token is valid only in the replacement string
  */
 
-SC_FUNC int strexpand(char *dest, unsigned char *source, int maxlen, unsigned char pairtable[128][2]);
+SC_FUNC int strexpand(char *dest, const unsigned char *source, int maxlen, const unsigned char pairtable[128][2]);
 
 #define SCPACK_TERMINATOR ,     /* end each section with a comma */
 
 #define SCPACK_TABLE sequences_table
 /*-*SCPACK start of pair table, do not change or remove this line */
-unsigned char sequences_table[][2] = {
+const unsigned char sequences_table[][2] = {
   {105,32}, {114,128}, {112,129}, {46,130}, {49,33}, {37,132}, {32,37}, {97,100}, {115,104}, {117,136}, {112,137}, {46,115}, {32,133}, {108,111}, {59,36}, {141,135},
   {50,33}, {97,108}, {145,116}, {46,146}, {46,112}, {105,33}, {131,133}, {114,33}, {131,37}, {97,151}, {112,153}, {142,154}, {115,116}, {143,139}, {46,99}, {114,149},
   {148,159}, {48,33}, {152,144}, {135,100}, {110,156}, {111,164}, {99,165}, {147,33}, {134,144}, {112,111}, {169,112}, {138,114}, {112,33}, {134,161}, {120,172}, {101,174},

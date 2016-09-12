@@ -1857,4 +1857,20 @@ test148:
   pawnrun ' test2.amx'
   return
 
+test149:
+  say '149. The compilation should issue warning 021 (symbol already defined)'
+  say ''
+  say '    A duplicate definition of a "goto" label.'
+  say ''
+  say 'Symptoms of detected bug: no warning, first declaration being dropped.'
+  say '-----'
+  pawncc 'DUPLICATE_LABEL= test2'
+  return
+
+test150:
+  say '150. The compilation should issue warning 226 (variable assigned to itself),'
+  say '     but ONLY ONCE and only for variable "b"'
+  say '-----'
+  pawncc 'PRAGMA_WARNING= test1'
+  return
 

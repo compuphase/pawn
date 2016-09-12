@@ -14,7 +14,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: sc2.c 5567 2016-08-01 14:52:15Z  $
+ *  Version: $Id: sc2.c 5579 2016-09-12 07:58:43Z  $
  */
 #include <assert.h>
 #include <stdio.h>
@@ -1066,7 +1066,7 @@ static int command(void)
     } /* if */
     check_empty(lptr);
     break;
-  case tINCLUDE:                /* #include directive */
+  case tpINCLUDE:               /* #include directive */
   case tpTRYINCLUDE:
     ret=CMD_INCLUDE;
     if (!SKIPPING)
@@ -1105,7 +1105,8 @@ static int command(void)
     break;
   case tpPRAGMA:
     if (!SKIPPING) {
-      if (lex(&val,&str)==tSYMBOL) {
+      int ok= (lex(&val,&str)==tSYMBOL);
+      if (ok) {
         if (strcmp(str,"amxlimit")==0) {
           preproc_expr(&pc_amxlimit,NULL);
         } else if (strcmp(str,"amxram")==0) {
@@ -1251,12 +1252,29 @@ static int command(void)
             if (comma)
               lptr++;
           } while (comma);
+        } else if (strcmp(str,"warning")==0) {
+          ok= (lex(&val,&str)==tSYMBOL);
+          if (ok) {
+            if (strcmp(str,"push")==0) {
+              pushwarnings();
+            } else if (strcmp(str,"pop")==0) {
+              popwarnings();
+            } else if (strcmp(str,"enable")==0) {
+              preproc_expr(&val,NULL);  /* get value (or 0 on error) */
+              pc_enablewarning((int)val,1);
+            } else if (strcmp(str,"disable")==0) {
+              preproc_expr(&val,NULL);  /* get value (or 0 on error) */
+              pc_enablewarning((int)val,0);
+            } else {
+              ok=FALSE;
+            }
+          }
         } else {
-          error(207);           /* unknown #pragma */
+          ok=FALSE;
         } /* if */
-      } else {
-        error(207);             /* unknown #pragma */
       } /* if */
+      if (!ok)
+        error(207);             /* unknown #pragma */
       check_empty(lptr);
     } /* if */
     break;
@@ -1410,10 +1428,13 @@ static int command(void)
     break;
 #endif
   case tpERROR:
+  case tpWARNING:
     while (*lptr<=' ' && *lptr!='\0')
       lptr++;
-    if (!SKIPPING)
-      error(111,lptr);  /* user error */
+    if (!SKIPPING) {
+      int errcode=(tok==tpERROR) ? 111 : 220;
+      error(errcode,lptr);  /* user error or user warning */
+    } /* if */
     break;
   default:
     error(31);          /* unknown compiler directive */
@@ -2038,7 +2059,7 @@ char *sc_tokens[] = {
          "stock", "switch", "tagof", "while",
          "#assert", "#define", "#else", "#elseif", "#endif", "#endinput",
          "#error", "#file", "#if", "#ifdef", "#ifndef", "#include", "#line",
-         "#pragma", "#tryinclude", "#undef",
+         "#pragma", "#tryinclude", "#undef", "#warning",
          ";", ",", ";", "[integer value]", "[rational value]", "[identifier]",
          "[label]", "[field/parameter reference]", "[string]", "[string]"
        };
