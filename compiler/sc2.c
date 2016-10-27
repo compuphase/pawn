@@ -14,7 +14,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: sc2.c 5579 2016-09-12 07:58:43Z  $
+ *  Version: $Id: sc2.c 5588 2016-10-25 11:13:28Z  $
  */
 #include <assert.h>
 #include <stdio.h>
@@ -984,7 +984,7 @@ static int command(void)
         if (sym==NULL)
           sym=findglb(str,sGLOBAL);
         if (sym!=NULL
-            && ((sym->usage & uDEFINE)==0
+            && (((sym->usage & uDEFINE)==0 && sym->ident!=iFUNCTN)
                 || ((sym->ident==iFUNCTN || sym->ident==iREFFUNC) && (sym->usage & uPROTOTYPED)==0)))
           sym=NULL;                 /* symbol is in the table, but not as "defined" or "prototyped" */
         if (sym!=NULL || find_subst(str,(int)strlen(str))!=NULL)
@@ -3086,6 +3086,8 @@ SC_FUNC symbol *addsym(const char *name,cell addr,int ident,int scope,int tag,in
 {
   symbol entry;
   symbol **refer;
+
+  assert(name!=NULL);
 
   /* labels may only be defined once */
   assert(ident!=iLABEL || findloc(name)==NULL);

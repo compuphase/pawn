@@ -23,11 +23,12 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: sc1.c 5579 2016-09-12 07:58:43Z  $
+ *  Version: $Id: sc1.c 5588 2016-10-25 11:13:28Z  $
  */
 #include <assert.h>
 #include <ctype.h>
 #include <limits.h>
+#include <process.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -36,6 +37,9 @@
 #if defined __WIN32__ || defined _WIN32 || defined __MSDOS__
   #include <conio.h>
   #include <io.h>
+#endif
+#if defined __GNUC__ || defined __clang__
+  #include <unistd.h>
 #endif
 
 #if defined FORTIFY
@@ -110,7 +114,7 @@ static int newfunc(char *firstname,int firsttag,int fpublic,int fstatic,int stoc
 static int declargs(symbol *sym,int chkshadow);
 static void doarg(char *name,int ident,int offset,int tags[],int numtags,
                   int fpublic,int fconst,int chkshadow,arginfo *arg);
-static void make_report(symbol *root,FILE *log,const char *sourcefile);
+static void make_report(symbol *root,FILE *log,const char *sourcefile,int *makestategraph);
 static void reduce_referrers(symbol *root);
 static void gen_ovlinfo(symbol *root);
 static long max_stacksize(symbol *root,int *recursion);
@@ -628,11 +632,21 @@ int pc_compile(int argc, char *argv[])
   #if !defined PAWN_LIGHT
     if (sc_makereport) {
       if (strlen(reportname)>0) {
+        int makestategraph=0;
         FILE *frep=fopen(reportname,"wb");  /* avoid translation of \n to \r\n in DOS/Windows */
         if (frep!=NULL) {
-          make_report(&glbtab,frep,get_sourcefile(0));
+          make_report(&glbtab,frep,get_sourcefile(0),&makestategraph);
           fclose(frep);
         } /* if */
+        if (makestategraph) {
+          /* run stategraph to create a dot file */
+          char dotname[_MAX_PATH];
+          char pgmname[_MAX_PATH];
+          strcpy(dotname,reportname);
+          set_extension(dotname,".dot",TRUE);
+          sprintf(pgmname,"%s%cstategraph.exe",sc_binpath,DIRSEP_CHAR);
+          spawnl(P_WAIT,pgmname,pgmname,reportname,dotname,NULL);
+        }
       } /* if */
       if (pc_globaldoc!=NULL) {
         free(pc_globaldoc);
@@ -1613,7 +1627,7 @@ static void setconstants(void)
   add_constant("cellmin",(cell)((ucell)-1<<(8*pc_cellsize-1)),sGLOBAL,0);
   add_constant("charbits",sCHARBITS,sGLOBAL,0);
   add_constant("charmin",0,sGLOBAL,0);
-  add_constant("charmax",~(-1 << sCHARBITS),sGLOBAL,0);
+  add_constant("charmax",~(~0 << sCHARBITS),sGLOBAL,0);
   add_constant("ucharmax",((cell)1 << (pc_cellsize-1)*8)-1,sGLOBAL,0);
 
   add_constant("__Pawn",VERSION_INT,sGLOBAL,0);
@@ -4698,7 +4712,7 @@ static void write_docstring(FILE *log,const char *string)
     fprintf(log,"\t\t\t%s\n",string);
 }
 
-static void make_report(symbol *root,FILE *log,const char *sourcefile)
+static void make_report(symbol *root,FILE *log,const char *sourcefile,int *makestategraph)
 {
   char symname[_MAX_PATH];
   int i,arg,dim,count,tag;
@@ -4941,6 +4955,8 @@ static void make_report(symbol *root,FILE *log,const char *sourcefile)
       fsa=automaton_findid(i);
       assert(fsa!=NULL);        /* automaton should be found */
       fprintf(log,"\t\t\t<automaton name=\"%s\"/>\n", strlen(fsa->name)>0 ? fsa->name : "(anonymous)");
+      if (makestategraph)
+        *makestategraph=1;
     } /* if */
     fprintf(log,"\t\t\t<location file=\"%s\" line=\"%ld\"/>\n",get_inputfile(sym->fnumber),(long)sym->lnumber);
     assert(sym->refer!=NULL);
@@ -5962,7 +5978,7 @@ static int test(int label,int parens,int invert)
   if (parens)
     needtoken(')');
   if (ident==iARRAY || ident==iREFARRAY) {
-    char *ptr=(sym->name!=NULL) ? sym->name : "-unknown-";
+    char *ptr=(strlen(sym->name)>0) ? sym->name : "-unknown-";
     error(33,ptr);              /* array must be indexed */
   } /* if */
   if (ident==iCONSTEXPR) {      /* constant expression */
@@ -6684,7 +6700,7 @@ static void dostate(void)
     if (sc_status==statBROWSE) {
       memset(&dummyautomaton,0,sizeof dummyautomaton);
       if (automaton!=NULL) {
-        if (automaton->name!=NULL)
+        if (strlen(automaton->name)>0)
           strcpy(dummyautomaton.name,automaton->name);
         dummyautomaton.index=automaton->index;
       }

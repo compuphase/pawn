@@ -16,7 +16,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: amxdgram.c 5504 2016-05-15 13:42:30Z  $
+ *  Version: $Id: amxdgram.c 5588 2016-10-25 11:13:28Z  $
  */
 #include <assert.h>
 #include <ctype.h>
@@ -134,7 +134,7 @@ static int udp_Send(const char *host,short port,const char *message,int size)
 static int udp_Receive(char *message,size_t maxmsg,char *source)
 {
   struct sockaddr_in sSource;
-  int slen=(int)sizeof(sSource);
+  unsigned slen=sizeof(sSource);
   int size;
 
   if (sLocal==INVALID_SOCKET)

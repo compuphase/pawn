@@ -20,7 +20,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: sclist.c 5514 2016-05-20 14:26:51Z  $
+ *  Version: $Id: sclist.c 5587 2016-10-25 09:59:46Z  $
  */
 #include <assert.h>
 #include <limits.h>
@@ -164,6 +164,19 @@ static char *get_string(stringlist *root,int index)
     assert(cur->text!=NULL);
     return cur->text;
   } /* if */
+  return NULL;
+}
+
+static stringlist *find_string(stringlist *root,const char *string)
+{
+  stringlist *cur;
+
+  assert(root!=NULL);
+  assert(string!=NULL);
+  for (cur=root->next; cur!=NULL; cur=cur->next) {
+    if (strcmp(cur->text,string)==0)
+      return cur;
+  } /* for */
   return NULL;
 }
 
@@ -366,9 +379,13 @@ static stringlist undefsymbols = {NULL, NULL};
 
 SC_FUNC stringlist *insert_undefsymbol(const char *symbolname,int linenr)
 {
+  stringlist *item;
   char symname[sNAMEMAX+16];
   sprintf(symname,"%x %s",linenr,symbolname);
-  return insert_string(&undefsymbols,symname,0);
+  item=find_string(&undefsymbols,symname);
+  if (item==NULL)
+    insert_string(&undefsymbols,symname,0);
+  return item;
 }
 
 SC_FUNC const char *get_undefsymbol(int index,int *linenr)

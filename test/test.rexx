@@ -227,7 +227,7 @@ test14:
   return
 
 test15:
-  say '15. The following test should compile successfully.'
+  say '15. The following test should compile successfully (and show verbose output).'
   say ''
   say '    For systems that support long filenames (and filenames with embedded space'
   say '    characters), the code generator cannot use the space character as a name'
@@ -563,7 +563,7 @@ test41:
 test42:
   say '42. The following test should compile successfully. When it runs, it should'
   say '    print the value:'
-  say '           F=3.750'
+  say '           F=3.75000'
   say ''
   say '    You must have a version of PAWNRUN that includes floating point support.'
   say ''
@@ -692,7 +692,7 @@ test50:
   return
 
 test51:
-  say '51. The following test should issue error 021 (followed by more errors).'
+  say '51. The following test should issue error 021 (followed by error 10).'
   say ''
   say '    Declaring a function with the same name as an existing global variable.'
   say ''
@@ -727,7 +727,7 @@ test53:
   return
 
 test54:
-  say '54. The following TWO tests should both issue error 003.'
+  say '54. The following TWO tests should both issue error 003 (followed by others).'
   say ''
   say '    A declaration of a local variable as the only statement of a function or a'
   say '    if/for/while/do statement is useless. Due to implementation difficulties,'
@@ -1148,7 +1148,7 @@ test88:
   return
 
 test89:
-  say '89. The following test should compile successfully. When running, it must.'
+  say '89. The following test should compile successfully. When running, it must'
   say '    print:'
   say ''
   say '        hello'
@@ -1160,8 +1160,8 @@ test89:
   return
 
 test90:
-  say '90. The following test should compile successfully. When running, it must'
-  say '    print the lines:'
+  say '90. The following test should compile successfully. When running, it must print'
+  say '    the lines:'
   say '         7: 1abcdef'
   say '         7: 12abcde'
   say '         7: 123abcd'
@@ -1197,7 +1197,7 @@ test92:
   return
 
 test93:
-  say '93. The following test should issue error 089.'
+  say '93. The following test should issue error 089 (followed by others).'
   say ''
   say '    An attempt to declare a state variable with an initialler.'
   say '-----'
@@ -1712,7 +1712,7 @@ test136:
   return
 
 test137:
-  say '137. The following test should issue error 010.'
+  say '137. The following test should issue error 010 (followed by others).'
   say ''
   say '     A global variable initialized by a function call.'
   say ''

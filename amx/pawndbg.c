@@ -28,7 +28,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: pawndbg.c 5504 2016-05-15 13:42:30Z  $
+ *  Version: $Id: pawndbg.c 5588 2016-10-25 11:13:28Z  $
  *
  *
  *  Command line options:
@@ -91,7 +91,6 @@ extern int chdir(const char *path); /* position of this function in header files
 #define MAXSTACKTRACE   128
 #define MAXLINELENGTH   128
 #define MAX_DIMS        3       /* number of array dimensions */
-#define TABSIZE         8
 #define EATLINE         5       /* the number of characters for the line number */
 #define STD_COLUMNS     80      /* number of characters that fit on a line */
 #if defined amx_Init
@@ -127,6 +126,7 @@ extern int chdir(const char *path); /* position of this function in header files
   #define CHR_VLINE     '|'
 #elif defined USE_CURSES || defined HAVE_CURSES_H
   /* Use the "curses" library to implement the console */
+  #include <curses.h>
   const int _False = 0;     /* to avoid compiler warnings */
   #define amx_printf        printw
   #define amx_putchar(c)    addch(c)
@@ -851,7 +851,6 @@ static int send_rs232(const char *buffer, int len)
     FlushFileBuffers(hCom);
   #else
     size=write(fdCom,buffer,len);
-    fflush(fileno(fcCom));
   #endif
   assert((unsigned long)len==size);
   return size;
@@ -2864,7 +2863,7 @@ static void *loadprogram(AMX *amx,const char *filename)
 
       memset(amx, 0, sizeof *amx);
       if ((hdr.flags & AMX_FLAG_OVERLAY) != 0) {
-        amx->data = (char*)program + hdr.cod;
+        amx->data = (unsigned char*)program + hdr.cod;
         amx->overlay = prun_Overlay;
       } /* if */
       if (amx_Init(amx,program) == AMX_ERR_NONE)

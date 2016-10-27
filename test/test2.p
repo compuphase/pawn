@@ -464,7 +464,7 @@ main()
         goto test_label;
     test_label:
         print("test_label 1\n");
-        return;
+        goto test_label;
     test_label:
         print("test_label 2\n");
     #endif

@@ -329,7 +329,7 @@ static cell AMX_NATIVE_CALL n_floatabs(AMX *amx,const cell *params)
 
 /******************************************************************/
 /* return the integer part of a real value, truncated
-/* Return integer part of float, truncated (same as floatround
+ * Return integer part of float, truncated (same as floatround
  * with mode 3)
  */
 static cell AMX_NATIVE_CALL n_floatint(AMX *amx,const cell *params)
