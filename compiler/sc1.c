@@ -639,17 +639,17 @@ int pc_compile(int argc, char *argv[])
           make_report(&glbtab,frep,get_sourcefile(0),&makestategraph);
           fclose(frep);
         } /* if */
-        if (makestategraph) {
-          /* run stategraph to create a dot file */
-          char dotname[_MAX_PATH];
-          strcpy(dotname,reportname);
-          set_extension(dotname,".dot",TRUE);
-          #if defined __WIN32__ || defined _WIN32 || defined __MSDOS__
+        #if defined __WIN32__ || defined _WIN32 || defined __MSDOS__
+          if (makestategraph) {
+            /* run stategraph to create a dot file */
+            char dotname[_MAX_PATH];
             char pgmname[_MAX_PATH];
+            strcpy(dotname,reportname);
+            set_extension(dotname,".dot",TRUE);
             sprintf(pgmname,"%s%cstategraph.exe",sc_binpath,DIRSEP_CHAR);
             spawnl(P_WAIT,pgmname,pgmname,reportname,dotname,NULL);
-          #endif
-        }
+          }
+        #endif
       } /* if */
       if (pc_globaldoc!=NULL) {
         free(pc_globaldoc);
