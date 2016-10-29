@@ -50,7 +50,6 @@
 #endif
 #if defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__ || defined MACOS || defined __APPLE__
   #include <dirent.h>
-  #include <unistd.h>
 #else
   #include <io.h>
 #endif

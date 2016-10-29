@@ -140,7 +140,6 @@ extern int chdir(const char *path); /* position of this function in header files
   #define amx_setattr(c,b,h) (_False)
   #define amx_termctl(c,v)  (_False)
   #define amx_console(c,l,f) (void)(0)
-  int printw(const char *fmt, ...);
   #define STR_PROMPT        "dbg> "
   #define CHR_HLINE         '-'
   #define CHR_VLINE         '|'

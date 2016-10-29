@@ -79,8 +79,10 @@
   #endif
 #endif
 #if !defined _totupper
-  #include <ctype.h>
   #define _totupper toupper
+#endif
+#if !defined toupper
+  #define toupper(c)     ( (c)>='A' && (c)<='Z' ? (c) + 'A' - 'a' : (c) )
 #endif
 
 #if !defined INI_LINETERM
