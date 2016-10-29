@@ -14,7 +14,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: amxfile.c 5514 2016-05-20 14:26:51Z  $
+ *  Version: $Id: amxfile.c 5588 2016-10-25 11:13:28Z  $
  */
 #if defined _UNICODE || defined __UNICODE__ || defined UNICODE
 # if !defined UNICODE   /* for Windows */
@@ -53,6 +53,9 @@
   #include <unistd.h>
 #else
   #include <io.h>
+#endif
+#if defined __GNUC__ || defined __clang__
+  #include <unistd.h>
 #endif
 #include "amx.h"
 #if defined __WIN32__ || defined _Windows

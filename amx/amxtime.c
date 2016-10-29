@@ -14,7 +14,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: amxtime.c 5504 2016-05-15 13:42:30Z  $
+ *  Version: $Id: amxtime.c 5588 2016-10-25 11:13:28Z  $
  */
 #include <time.h>
 #include <assert.h>
@@ -25,7 +25,15 @@
 #elif defined __linux || defined __linux__ || defined __LINUX__ || defined __APPLE__
   #include <sys/time.h>
 #endif
+#if defined __GNUC__ || defined __clang__
+  #include <sys/time.h>
+#endif
 
+#if defined __clang__
+  /* ignore this warning, because fixing the macro would make it depend on
+     two's-complement arithmetic */
+  #pragma GCC diagnostic ignored "-Wshift-negative-value"
+#endif
 #define CELLMIN   (-1 << (8*sizeof(cell) - 1))
 
 #define SECONDS_PER_MINUTE	60

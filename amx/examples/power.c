@@ -24,7 +24,7 @@ static cell n_sqroot(AMX *amx, const cell *params)
    */
   cell div = params[1];
   cell result = 1;
-  while (div > result) {        /* end when div == result, or just below */
+  while (div > result) {        /* end when div <= result */
     div = (div + result) / 2;   /* take mean value as new divisor */
     result = params[1] / div;
   } /* while */

@@ -18,7 +18,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: amxcons.c 5567 2016-08-01 14:52:15Z  $
+ *  Version: $Id: amxcons.c 5587 2016-10-25 09:59:46Z  $
  */
 
 #if defined _UNICODE || defined __UNICODE__ || defined UNICODE
@@ -611,9 +611,9 @@ static TCHAR *amx_strval(TCHAR buffer[], long value, int format, int width)
 			buffer[0] = __T('-');
 			start = stop = 1;
       do {
-        temp = (value % 10);
+        temp = (TCHAR)(value % 10);
         if (temp > 0)
-          temp -= 10;
+          temp = (TCHAR)(temp - 10);
         buffer[stop++] = (TCHAR)(__T('0') - temp);
         value /= 10;
       } while (value != 0);

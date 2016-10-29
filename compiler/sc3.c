@@ -14,7 +14,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: sc3.c 5567 2016-08-01 14:52:15Z  $
+ *  Version: $Id: sc3.c 5588 2016-10-25 11:13:28Z  $
  */
 #include <assert.h>
 #include <stdio.h>
@@ -145,7 +145,7 @@ static int isbinaryop(int tok)
 
 static const char *check_symbolname(value *lval)
 {
-  if (lval->sym!=NULL && lval->sym->name!=NULL)
+  if (lval->sym!=NULL && strlen(lval->sym->name)>0)
     return lval->sym->name;
   return "-unknown-";
 }
@@ -1486,7 +1486,7 @@ static int hier2(value *lval)
     if (sym==NULL)
       sym=findglb(st,sSTATEVAR);
     if (sym!=NULL
-        && ((sym->usage & uDEFINE)==0
+        && (((sym->usage & uDEFINE)==0 && sym->ident!=iFUNCTN)
             || ((sym->ident==iFUNCTN || sym->ident==iREFFUNC) && (sym->usage & uPROTOTYPED)==0)))
       sym=NULL;                 /* symbol is in the table, but not as "defined" or "prototyped" */
     val= (sym!=NULL);

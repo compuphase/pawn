@@ -557,6 +557,16 @@ main()
         static monthnames[2]{4} = { "Jan", "Feb" }
         static confirmtext[2]{4} = { "Yes", "No " }
     #endif
+
+
+    #if defined PRAGMA_WARNING
+        new a , b;
+        #pragma warning push
+        #pragma warning disable 226
+        a = a;
+        #pragma warning pop
+        b = b;
+    #endif
     }
 
 #if defined LOCAL_SHADOWS
