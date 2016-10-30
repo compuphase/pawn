@@ -81,6 +81,9 @@
 #if !defined _totupper
   #define _totupper toupper
 #endif
+#if !defined toupper
+  #define toupper(c)     ( (c)>='A' && (c)<='Z' ? (c) + 'A' - 'a' : (c) )
+#endif
 
 #if !defined INI_LINETERM
   #if defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__ || defined __APPLE__
