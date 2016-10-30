@@ -219,10 +219,13 @@ typedef int (AMXAPI *AMX_IDLE)(struct tagAMX *amx, int AMXAPI Exec(struct tagAMX
   #pragma warning(disable:4103)  /* disable warning message 4103 that complains about pragma pack in a header file */
   #pragma warning(disable:4127)  /* "conditional expression is constant" (needed for static_assert) */
   #pragma warning(disable:4996)  /* POSIX name is deprecated */
-#elif defined __GNUC__
 #elif defined __clang__
-  #pragma GCC diagnostic ignored "-Wlogical-op-parentheses"
-  #pragma GCC diagnostic ignored "-Wbitwise-op-parentheses"
+  #pragma clang diagnostic ignored "-Wlogical-op-parentheses"
+  #pragma clang diagnostic ignored "-Wbitwise-op-parentheses"
+  #pragma clang diagnostic ignored "-Wint-to-pointer-cast"
+#elif defined __GNUC__
+  #pragma GCC diagnostic ignored "-Wint-to-pointer-cast"
+  #pragma GCC diagnostic ignored "-Wpointer-to-int-cast"
 #endif
 
 /* Some compilers do not support the #pragma align, which should be fine. Some

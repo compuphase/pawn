@@ -532,7 +532,7 @@ static cell AMX_NATIVE_CALL n_libcall(AMX *amx, const cell *params)
         dcArgPointer(dcVM,ps[idx].v.ptr);
       } /* if */
     } /* for */
-    result=*(cell*)dcCallPointer(dcVM,(void*)LibFunc);
+    result=(cell)dcCallPointer(dcVM,(void*)LibFunc);
   #else /* HAVE_DYNCALL_H */
     /* push the parameters to the stack (left-to-right in 16-bit; right-to-left
      * in 32-bit)
