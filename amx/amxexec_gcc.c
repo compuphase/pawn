@@ -371,9 +371,9 @@ static const void * const amx_opcodelist[] = {
       CHKSTACK();
       break;
     case 5:
-      frm=pri;
-      if (frm<hea+STKMARGIN || (ucell)frm>=(ucell)amx->stp)
+      if (pri<hea+STKMARGIN || (ucell)pri>=(ucell)amx->stp)
         ABORT(amx,AMX_ERR_STACKERR);
+      frm=pri;
       break;
     case 6:
       /* verify address */
@@ -799,7 +799,7 @@ static const void * const amx_opcodelist[] = {
     /* verify the index */
     stk+=_R(data,stk)+sizeof(cell);   /* remove parameters from the stack */
     num=amx->overlay(amx,amx->ovl_index); /* reload overlay */
-    if (num!=AMX_ERR_NONE || (long)offs>=amx->codesize)
+    if (num!=AMX_ERR_NONE || (long)offs>=amx->codesize || (offs&(sizeof(cell)-1))!=0)
       ABORT(amx,AMX_ERR_MEMACCESS);
     cip=(cell *)(amx->code+(int)offs);
     NEXT(cip,op);

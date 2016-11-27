@@ -1000,6 +1000,10 @@ static int VerifyPcode(AMX *amx)
         amx->flags &= ~AMX_FLAG_VERIFY;
         return AMX_ERR_BOUNDS;
       } /* if */
+      if ((tgt&(sizeof(cell)-1))!=0) {
+        amx->flags &= ~AMX_FLAG_VERIFY;
+        return AMX_ERR_MEMACCESS;
+      } /* if */
       /* drop through */
     case OP_CALL_OVL:
       cip+=sizeof(cell);
@@ -2413,9 +2417,9 @@ int AMXAPI amx_Exec(AMX *amx, cell *retval, int index)
         CHKSTACK();
         break;
       case 5:
-        frm=pri;
-        if (frm<hea+STKMARGIN || (ucell)frm>=(ucell)amx->stp)
+        if (pri<hea+STKMARGIN || (ucell)pri>=(ucell)amx->stp)
           ABORT(amx,AMX_ERR_STACKERR);
+        frm=pri;
         break;
       case 6:
         /* verify address */
@@ -2835,7 +2839,7 @@ int AMXAPI amx_Exec(AMX *amx, cell *retval, int index)
       /* verify the index */
       stk+=_R(data,stk)+sizeof(cell);   /* remove parameters from the stack */
       i=amx->overlay(amx,amx->ovl_index); /* reload overlay */
-      if (i!=AMX_ERR_NONE || (long)offs>=amx->codesize)
+      if (i!=AMX_ERR_NONE || (long)offs>=amx->codesize || (offs&(sizeof(cell)-1))!=0)
         ABORT(amx,AMX_ERR_MEMACCESS);
       cip=(cell *)(amx->code+(int)offs);
       break;
