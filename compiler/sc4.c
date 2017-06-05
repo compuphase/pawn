@@ -1,6 +1,6 @@
 /*  Pawn compiler - code generation (unoptimized "assembler" code)
  *
- *  Copyright (c) ITB CompuPhase, 1997-2016
+ *  Copyright (c) ITB CompuPhase, 1997-2017
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not
  *  use this file except in compliance with the License. You may obtain a copy
@@ -14,7 +14,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: sc4.c 5514 2016-05-20 14:26:51Z  $
+ *  Version: $Id: sc4.c 5689 2017-06-05 14:05:58Z thiadmer $
  */
 #include <assert.h>
 #include <ctype.h>
@@ -765,7 +765,7 @@ SC_FUNC void ldconst(cell val,regid reg)
 SC_FUNC void swapregs(void)
 {
   stgwrite("\txchg\n");
-  code_idx+=opcodes(1)+opargs(0);
+  code_idx+=opcodes(1);
 }
 
 /* Push primary or the alternate register onto the stack
@@ -897,9 +897,8 @@ SC_FUNC void ffcall(symbol *sym,const char *label,int numargs)
       stgwrite(symname);
     } /* if */
     stgwrite("\n"); /* write on a separate line, to mark a sequence point for the peephole optimizer */
-    stgwrite("\tstack ");
-    outval((numargs+1)*pc_cellsize,TRUE,TRUE);
-    code_idx+=opcodes(2)+opargs(2);
+    code_idx+=opcodes(1)+opargs(1);
+    modstk((numargs+1)*pc_cellsize);
   } else {
     /* normal function */
     if (pc_overlays>0)

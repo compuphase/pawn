@@ -1,6 +1,6 @@
 /*  Pawn compiler - Recursive descend expresion parser
  *
- *  Copyright (c) ITB CompuPhase, 1997-2016
+ *  Copyright (c) ITB CompuPhase, 1997-2017
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not
  *  use this file except in compliance with the License. You may obtain a copy
@@ -14,7 +14,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: sc3.c 5588 2016-10-25 11:13:28Z  $
+ *  Version: $Id: sc3.c 5689 2017-06-05 14:05:58Z thiadmer $
  */
 #include <assert.h>
 #include <stdio.h>
@@ -153,13 +153,13 @@ static const char *check_symbolname(value *lval)
 SC_FUNC int check_userop(void (*oper)(void),int tag1,int tag2,int numparam,
                          value *lval,int *resulttag)
 {
-static char *binoperstr[] = { "*", "/", "%", "+", "-", "", "", "",
-                              "", "", "", "<=", ">=", "<", ">", "==", "!=" };
-static int binoper_savepri[] = { FALSE, FALSE, FALSE, FALSE, FALSE, FALSE,
-                                 FALSE, FALSE, FALSE, FALSE, FALSE,
-                                 TRUE, TRUE, TRUE, TRUE, FALSE, FALSE };
-static char *unoperstr[] = { "!", "-", "++", "--" };
-static void (*unopers[])(void) = { lneg, neg, user_inc, user_dec };
+static const char *binoperstr[] = { "*", "/", "%", "+", "-", "", "", "",
+                                    "", "", "", "<=", ">=", "<", ">", "==", "!=" };
+static const int binoper_savepri[] = { FALSE, FALSE, FALSE, FALSE, FALSE, FALSE,
+                                       FALSE, FALSE, FALSE, FALSE, FALSE,
+                                       TRUE, TRUE, TRUE, TRUE, FALSE, FALSE };
+static const char *unoperstr[] = { "!", "-", "++", "--" };
+static const void (*unopers[])(void) = { lneg, neg, user_inc, user_dec };
   char opername[4] = "";
   char symbolname[sNAMEMAX+1];
   int i,swapparams,savepri,savealt;
@@ -694,7 +694,6 @@ static void plnge2(void (*oper)(void),void (*arrayoper)(cell),
 {
   int index;
   cell cidx;
-  cell arraylength=0;
 
   stgget(&index,&cidx);             /* mark position in code generator */
   if (lval1->ident==iCONSTEXPR) {   /* constant on left side; it is not yet loaded */
@@ -736,6 +735,7 @@ static void plnge2(void (*oper)(void),void (*arrayoper)(cell),
     } /* if */
   } /* if */
   if (oper) {
+    cell arraylength=0;
     /* If used in an expression, a function should return a value.
      * If the function has been defined, we can check this. If the
      * function was not defined, we can set this requirement (so that
@@ -1381,7 +1381,6 @@ static int hier2(value *lval)
   cell val;
   char *st;
   symbol *sym;
-  int saveresult;
   short save_allowtags;
 
   tok=lex(&val,&st);
@@ -1627,7 +1626,7 @@ static int hier2(value *lval)
     ldconst(lval->constval,sPRI);
     while (paranthese--)
       needtoken(')');
-    save_allowtags=sc_allowtags;
+    sc_allowtags=save_allowtags;
     return FALSE;
   case tSTATE: {
     constvalue *automaton;
@@ -1661,6 +1660,7 @@ static int hier2(value *lval)
        */
       return lvalue;
     } else {
+      int saveresult;
       tok=lex(&val,&st);
       switch (tok) {
       case tINC:                /* lval++ */
@@ -1789,7 +1789,9 @@ restart:
         if (sym->dim.array.names!=NULL)
           cval=find_constval(sym->dim.array.names,symlabel,-1);
         if (cval==NULL) {
-          error(94,sym->name);  /* invalid subscript (no named indices defined) */
+          char msg[2*sNAMEMAX+2];
+          sprintf(msg,"%s.%s",sym->name,symlabel);
+          error(94,msg);        /* invalid subscript (named index isn't found, or no named indices defined) */
         } else if (close=='}') {
           error(51);            /* invalid subscript ([] is required for named indices) */
         } else {
@@ -1988,7 +1990,6 @@ restart:
 static int primary(value *lval,int *symtok)
 {
   char *st;
-  int lvalue;
   cell val;
   symbol *sym;
 
@@ -1998,6 +1999,7 @@ static int primary(value *lval,int *symtok)
   if (matchtoken('(')){         /* sub-expression - (expression,...) */
     short save_intest=sc_intest;
     short save_allowtags=sc_allowtags;
+    int lvalue;
 
     sc_intest=FALSE;            /* no longer in "test" expression */
     sc_allowtags=TRUE;          /* allow tagnames to be used in parenthesized expressions */
@@ -2234,6 +2236,14 @@ static int nesting=0;
     assert(retsize>0);
     modheap(retsize*pc_cellsize); /* address is in ALT */
     pushreg(sALT);                /* pass ALT as the last (hidden) parameter */
+    if ((sym->usage & uNATIVE)!=0) {
+      /* for a native function that returns an array, the address passed to the
+         native function must be passed as relocated, but for an assignment after
+         returning from the function, the non-relocated value is needed -> push
+         both (and drop one extra item from the stack before returning) */
+      swapregs();
+      pushreloc();
+    }
     decl_heap+=retsize;
     /* also mark the ident of the result as "array" */
     lval_result->ident=iREFARRAY;
@@ -2545,7 +2555,6 @@ static int nesting=0;
     if (arg[argidx].hasdefault) {
       reloc=FALSE;
       if (arg[argidx].ident==iREFARRAY) {
-        short level;
         if ((sym->usage & uNATIVE)!=0)
           reloc=TRUE;
         setdefarray(arg[argidx].defvalue.array.data,
@@ -2562,6 +2571,7 @@ static int nesting=0;
         if (arg[argidx].numdim==1) {
           append_constval(&arrayszlst,arg[argidx].name,arg[argidx].defvalue.array.arraysize,0);
         } else {
+          short level;
           for (level=0; level<arg[argidx].numdim; level++) {
             assert(level<sDIMEN_MAX);
             append_constval(&arrayszlst,arg[argidx].name,arg[argidx].dim[level],level);
@@ -2648,8 +2658,11 @@ static int nesting=0;
   if ((sym->usage & uNATIVE)!=0 &&sym->x.lib!=NULL)
     sym->x.lib->value += 1;     /* increment "usage count" of the library */
   modheap(-heapalloc*pc_cellsize);
-  if (symret!=NULL)
+  if (symret!=NULL) {
+    if ((sym->usage & uNATIVE)!=0)
+      modstk(1*pc_cellsize);    /* remove relocated hidden parameter */
     popreg(sPRI);               /* pop hidden parameter as function result */
+  }
   pc_sideeffect=TRUE;           /* assume functions carry out a side-effect */
   delete_consttable(&arrayszlst);     /* clear list of array sizes */
   delete_consttable(&taglst);   /* clear list of parameter tags */
@@ -2695,12 +2708,10 @@ static int nesting=0;
  */
 static int skiptotoken(int token)
 {
-  cell val;
-  char *str;
-  int tok;
-
   while (freading) {
-    tok=lex(&val,&str);
+    cell val;
+    char *str;
+    int tok=lex(&val,&str);
     if (tok==token)
       break;
   } /* while */

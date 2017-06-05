@@ -23,7 +23,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: sc1.c 5588 2016-10-25 11:13:28Z  $
+ *  Version: $Id: sc1.c 5596 2016-11-02 17:18:02Z  $
  */
 #include <assert.h>
 #include <ctype.h>
@@ -262,6 +262,7 @@ void *pc_opensrc(const char *filename)
  */
 void *pc_createsrc(const char *filename)
 {
+  assert(filename!=NULL);
   return fopen(filename,"w");
 }
 
@@ -514,7 +515,7 @@ int pc_compile(int argc, char *argv[])
   if (get_sourcefile(1)!=NULL) {
     /* there are at least two or more source files */
     const char *sname;
-    FILE *ftmp,*fsrc;
+    FILE *ftmp;
     int fidx;
     #if defined __WIN32__ || defined _WIN32
       tmpname=_tempnam(NULL,"pawn");
@@ -531,7 +532,7 @@ int pc_compile(int argc, char *argv[])
     ftmp=(FILE*)pc_createsrc(tmpname);
     for (fidx=0; (sname=get_sourcefile(fidx))!=NULL; fidx++) {
       unsigned char tstring[128];
-      fsrc=(FILE*)pc_opensrc(sname);
+      FILE *fsrc=(FILE*)pc_opensrc(sname);
       if (fsrc==NULL) {
         pc_closesrc(ftmp);
         remove(tmpname);
@@ -644,7 +645,11 @@ int pc_compile(int argc, char *argv[])
           char pgmname[_MAX_PATH];
           strcpy(dotname,reportname);
           set_extension(dotname,".dot",TRUE);
-          sprintf(pgmname,"%s%cstategraph.exe",sc_binpath,DIRSEP_CHAR);
+          #if defined __MSDOS__ || defined __WIN32__ || defined _Windows
+            sprintf(pgmname,"%s%cstategraph.exe",sc_binpath,DIRSEP_CHAR);
+          #else
+            sprintf(pgmname,"%s%cstategraph",sc_binpath,DIRSEP_CHAR);
+          #endif
           spawnl(P_WAIT,pgmname,pgmname,reportname,dotname,NULL);
         }
       } /* if */
@@ -1141,7 +1146,25 @@ static void parseoptions(int argc,char **argv,char *oname,char *ename,char *pnam
         strlcpy(ename,option_value(ptr),_MAX_PATH); /* set name of error file */
         break;
       case 'i':
-        strlcpy(str,option_value(ptr),sizeof str);  /* set name of include directory */
+        /* set name of include directory */
+        ptr=option_value(ptr);
+        if (*ptr=='~') {
+          /* this path is relative to the standard include path */
+          strlcpy(str,get_path(0),sizeof str);
+          i=(int)strlen(str);
+          if (i>0 && str[i-1]!=DIRSEP_CHAR) {
+            str[i]=DIRSEP_CHAR;
+            str[i+1]='\0';
+          } /* if */
+          /* skip '~' and an optional directory separator following the '~' */
+          ptr++;
+          if (*ptr=='/' || *ptr==DIRSEP_CHAR)
+            ptr++;
+          strlcat(str,ptr,sizeof str);
+        } else {
+          /* absolute path (or relative to current directory) */
+          strlcpy(str,ptr,sizeof str);
+        }
         i=(int)strlen(str);
         if (i>0) {
           if (str[i-1]!=DIRSEP_CHAR) {
@@ -1412,11 +1435,11 @@ static void setopt(int argc,char **argv,char *oname,char *ename,char *pname,
       /* copy the default config file name, but keep a pointer to the location
        * of the base name
        */
-      assert(strlen(sc_binpath)<sizeof cfgfile);
-      strcpy(cfgfile,sc_binpath);
+      assert((strlen(sc_rootpath)+8)<sizeof cfgfile); /* +7 for "/target/" */
+      sprintf(cfgfile,"%s%ctarget%c",sc_rootpath,DIRSEP_CHAR,DIRSEP_CHAR);
       base=strchr(cfgfile,'\0');
       assert(base!=NULL);
-      strcpy(base,"pawn.cfg");
+      strcpy(base,"default.cfg");
       /* run through the argument list to see whether a -T option is present */
       found=0;
       for (i=1; i<argc; i++) {
@@ -1540,7 +1563,7 @@ static void setconfig(char *root)
       if (!cp_path(path,"codepage"))
         error(109,path);        /* codepage path */
     #endif
-    /* also copy the root path (for the XML documentation) */
+    /* also copy the root path (for the XML documentation and target host files) */
     #if !defined PAWN_LIGHT
       *ptr='\0';
       strlcpy(sc_rootpath,path,sizeof sc_rootpath);
@@ -1651,7 +1674,7 @@ static void setconstants(void)
  */
 void sc_attachdocumentation(symbol *sym,int onlylastblock)
 {
-  int line,wrap;
+  int line;
   size_t length;
   char *str,*doc,*end;
   const char *txt;
@@ -1672,8 +1695,8 @@ void sc_attachdocumentation(symbol *sym,int onlylastblock)
     /* either copy the most recent comment block to the current symbol, or
      * append it to the global documentation
      */
+    int wrap=0;
     length=strlen(pc_recentdoc);
-    wrap=0;
     if (onlylastblock) {
       assert(sym!=NULL);
       str=sym->documentation;
@@ -1881,13 +1904,13 @@ static int getclassspec(int initialtok,int *fpublic,int *fstatic,int *fstock,int
  */
 static void parse(void)
 {
-  int tok,fconst,fstock,fstatic,fpublic;
+  int fconst,fstock,fstatic,fpublic;
   cell val;
   char *str;
 
   while (freading){
     /* first try whether a declaration possibly is native or public */
-    tok=lex(&val,&str);  /* read in (new) token */
+    int tok=lex(&val,&str);  /* read in (new) token */
     switch (tok) {
     case 0:
       /* ignore zero's */
@@ -2042,11 +2065,9 @@ static void aligndata(int numbytes)
 
 static void declfuncvar(int fpublic,int fstatic,int fstock,int fconst)
 {
-  char name[sNAMEMAX+11];
   int tok,tag;
   char *str;
   cell val;
-  int invalidfunc;
 
   tag=pc_addtag(NULL);
   tok=lex(&val,&str);
@@ -2079,6 +2100,8 @@ static void declfuncvar(int fpublic,int fstatic,int fstock,int fconst)
     } /* if */
   } else {
     /* so tok is tSYMBOL */
+    char name[sNAMEMAX+11];
+    int invalidfunc;
     assert(strlen(str)<=sNAMEMAX);
     strcpy(name,str);
     /* only variables can be "const" or both "public" and "stock" */
@@ -3648,6 +3671,7 @@ SC_FUNC char *funcdisplayname(char *dest,const char *funcname)
   constvalue *tagsym[2];
   int unary;
 
+  assert(funcname!=NULL);
   if (isalpha(*funcname) || *funcname=='_' || *funcname==PUBLIC_CHAR || *funcname=='\0') {
     if (dest!=funcname)
       strcpy(dest,funcname);
@@ -5471,10 +5495,10 @@ static void destructsymbols(symbol *root,int level)
     if (sym->ident==iVARIABLE || sym->ident==iARRAY) {
       char symbolname[16];
       symbol *opsym;
-      cell elements;
       /* check that the '~' operator is defined for this tag */
       operator_symname(symbolname,"~",sym->tag,0,1,0);
       if ((opsym=findglb(symbolname,sGLOBAL))!=NULL) {
+        cell elements;
         /* save PRI, in case of a return statment */
         if (!savepri) {
           pushreg(sPRI);        /* right-hand operand is in PRI */
@@ -6019,7 +6043,6 @@ static int doif(void)
 {
   int flab1,flab2;
   int ifindent;
-  int lastst_true;
 
   ifindent=pc_stmtindent;       /* save the indent of the "if" instruction */
   flab1=getlabel();             /* get label number for false branch */
@@ -6028,7 +6051,7 @@ static int doif(void)
   if (!matchtoken(tELSE)) {     /* if...else ? */
     setlabel(flab1);            /* no, simple if..., print false label */
   } else {
-    lastst_true=lastst;         /* save last statement of the "true" branch */
+    int lastst_true=lastst;     /* save last statement of the "true" branch */
     /* to avoid the "dangling else" error, we want a warning if the "else"
      * has a lower indent than the matching "if" */
     if (pc_stmtindent<ifindent)
@@ -6354,16 +6377,15 @@ static void doswitch(void)
 
 static void doassert(void)
 {
-  int flab1,index;
-  cell cidx;
-
   if ((sc_debug & sCHKBOUNDS)!=0) {
-    flab1=getlabel();           /* get label number for "OK" branch */
+    int flab1=getlabel();       /* get label number for "OK" branch */
     test(flab1,FALSE,TRUE);/* get expression and branch to flab1 if true */
     insert_dbgline(pc_curline); /* make sure we can find the correct line number */
     ffabort(xASSERTION);
     setlabel(flab1);
   } else {
+    int index;
+    cell cidx;
     stgset(TRUE);               /* start staging */
     stgget(&index,&cidx);       /* mark position in code generator */
     do {
@@ -6379,13 +6401,12 @@ static void dogoto(void)
 {
   char *st;
   cell val;
-  symbol *sym;
 
   /* if we were inside an endless loop, assume that we jump out of it */
   endlessloop=0;
 
   if (lex(&val,&st)==tSYMBOL) {
-    sym=fetchlab(st);
+    symbol *sym=fetchlab(st);
     jumplabel((int)sym->addr);
     sym->usage|=uREAD;          /* set "uREAD" bit */
     /* for a backward goto, destruct the symbols; for a forward goto, the
@@ -6675,7 +6696,7 @@ static void dostate(void)
   constvalue dummyautomaton,dummystate;
   #if !defined PAWN_LIGHT
     size_t length;
-	int index,listid,listindex,stateindex;
+    int index,listid,listindex,stateindex;
     char *doc;
   #endif
 

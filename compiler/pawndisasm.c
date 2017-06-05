@@ -14,7 +14,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: pawndisasm.c 5504 2016-05-15 13:42:30Z  $
+ *  Version: $Id: pawndisasm.c 5596 2016-11-02 17:18:02Z  $
  */
 #include <assert.h>
 #include <stdio.h>
@@ -25,6 +25,10 @@
 #endif
 #include "../amx/osdefs.h"
 #include "../amx/amx.h"
+
+#if !defined sizearray
+  #define sizearray(a)  (sizeof(a) / sizeof((a)[0]))
+#endif
 
 static FILE *fpamx;
 static AMX_HEADER amxhdr;
@@ -403,7 +407,7 @@ static cell do_proc(FILE *ftxt,const cell *params,cell opcode,cell cip)
 
   (void)params;
   if (ftxt!=NULL) {
-    int numpublics,nameoffset;
+    int nameoffset;
     char name[sNAMEMAX+1];
 
     fprintf(ftxt,"\n");
@@ -417,7 +421,7 @@ static cell do_proc(FILE *ftxt,const cell *params,cell opcode,cell cip)
     } else {
       /* find the address in the public function table */
       int idx;
-      numpublics=(amxhdr.natives-amxhdr.publics)/sizeof(AMX_FUNCSTUB);
+      int numpublics=(amxhdr.natives-amxhdr.publics)/sizeof(AMX_FUNCSTUB);
       fseek(fpamx,amxhdr.publics,SEEK_SET);
       for (idx=0; idx<numpublics && nameoffset<0; idx++) {
         fread(&func,sizeof func,1,fpamx);
@@ -533,12 +537,12 @@ int main(int argc,char *argv[])
   } /* if */
   if (argc==2) {
     char *ptr;
-    strcpy(name,argv[1]);
+    strlcpy(name,argv[1],sizearray(name));
     if ((ptr=strrchr(name,'.'))!=NULL && strpbrk(ptr,"\\/:")==NULL)
       *ptr='\0';          /* erase existing extension */
     strcat(name,".lst");  /* append new extension */
   } else {
-    strcpy(name,argv[2]);
+    strlcpy(name,argv[2],sizearray(name));
   } /* if */
   if ((fpamx=fopen(argv[1],"rb"))==NULL) {
     printf("Unable to open input file \"%s\"\n",argv[1]);

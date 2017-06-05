@@ -152,9 +152,8 @@ static void check_if(char *str,int linenr)
 
 static int check_tablename(char *str)
 {
-  int i;
-
   if (strmatch(str,NAME_TOKEN,NULL)) {
+    int i;
     str += strlen(NAME_TOKEN);
     while (*str==' ' || *str=='\t')
       str++;

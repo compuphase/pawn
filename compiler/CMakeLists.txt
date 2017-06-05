@@ -52,6 +52,12 @@ ENDIF(UNIX)
 ADD_EXECUTABLE(pawncc ${PAWNCC_SRCS})
 
 
+# Utility to create GraphViz "dot" files from the XML report (if the report contains states)
+ADD_DEFINITIONS(-DEZXML_NOMMAP)
+SET(STATEGRAPH_SRCS stategraph.c ezxml.c)
+ADD_EXECUTABLE(stategraph ${STATEGRAPH_SRCS})
+
+
 # Simple Pawn disassembler
 SET(PAWNDISASM_SRCS pawndisasm.c)
 ADD_EXECUTABLE(pawndisasm ${PAWNDISASM_SRCS})

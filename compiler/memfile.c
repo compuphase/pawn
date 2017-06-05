@@ -2,7 +2,7 @@
  *  memory.
  *
  *  Copyright (c) faluco / http://www.amxmodx.org/, 2006
- *  Version: $Id: memfile.c 4983 2013-10-21 07:32:57Z  $
+ *  Version: $Id: memfile.c 5596 2016-11-02 17:18:02Z  $
  */
 
 #include <assert.h>
@@ -22,22 +22,21 @@
 
 memfile_t *memfile_creat(const char *name, size_t init)
 {
-	memfile_t mf;
 	memfile_t *pmf;
 
-	mf.size = init;
-	mf.base = (char *)malloc(init);
-	mf.usedoffs = 0;
-	if (!mf.base)
+	pmf = (memfile_t *)malloc(sizeof(memfile_t));
+	if (!pmf)
+		return NULL;
+
+	pmf->size = init;
+	pmf->base = (char *)malloc(init);
+	if (!pmf->base)
 	{
+		free(pmf);
 		return NULL;
 	}
-
-	mf.offs = 0;
-
-	pmf = (memfile_t *)malloc(sizeof(memfile_t));
-	memcpy(pmf, &mf, sizeof(memfile_t));
-
+	pmf->usedoffs = 0;
+	pmf->offs = 0;
 	pmf->name = duplicatestring(name);
 
 	return pmf;

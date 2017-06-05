@@ -14,7 +14,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: sc6.c 5504 2016-05-15 13:42:30Z  $
+ *  Version: $Id: sc6.c 5596 2016-11-02 17:18:02Z  $
  */
 #include <assert.h>
 #include <stdio.h>
@@ -74,7 +74,7 @@ SC_FUNC ucell hex2ucell(const char *s,const char **n)
     s++;
   } /* if */
 
-  assert((*s>='0' && *s<='9') || (*s>='a' && *s<='f') || (*s>='a' && *s<='f'));
+  assert((*s>='0' && *s<='9') || (*s>='a' && *s<='f') || (*s>='A' && *s<='F'));
   for ( ;; ) {
     if (*s>='0' && *s<='9')
       digit=*s-'0';
@@ -313,13 +313,12 @@ static cell parmx_p(FILE *fbin,const char *params,cell opcode,cell cip)
 
 static cell do_dump(FILE *fbin,const char *params,cell opcode,cell cip)
 {
-  ucell p;
   int num = 0;
 
   (void)opcode;
   (void)cip;
   while (*params!='\0') {
-    p=getparamvalue(params,&params);
+    ucell p=getparamvalue(params,&params);
     if (fbin!=NULL)
       write_cell(fbin,p);
     num++;
@@ -371,13 +370,11 @@ static cell do_call(FILE *fbin,const char *params,cell opcode,cell cip)
 
 static cell do_jump(FILE *fbin,const char *params,cell opcode,cell cip)
 {
-  int i;
-  ucell p;
-
-  i=(int)hex2ucell(params,NULL);
+  int i=(int)hex2ucell(params,NULL);
   assert(i>=0 && i<sc_labnum);
 
   if (fbin!=NULL) {
+    ucell p;
     assert(lbltab!=NULL);
     p=lbltab[i]-cip;            /* make relative address */
     write_cell(fbin,opcode);
@@ -388,13 +385,11 @@ static cell do_jump(FILE *fbin,const char *params,cell opcode,cell cip)
 
 static cell do_switch(FILE *fbin,const char *params,cell opcode,cell cip)
 {
-  int i;
-  ucell p;
-
-  i=(int)hex2ucell(params,NULL);
+  int i=(int)hex2ucell(params,NULL);
   assert(i>=0 && i<sc_labnum);
 
   if (fbin!=NULL) {
+    ucell p;
     assert(lbltab!=NULL);
     p=lbltab[i]-cip;
     write_cell(fbin,opcode);

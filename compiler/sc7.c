@@ -41,7 +41,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: sc7.c 5504 2016-05-15 13:42:30Z  $
+ *  Version: $Id: sc7.c 5596 2016-11-02 17:18:02Z  $
  */
 #include <assert.h>
 #include <stdio.h>
@@ -196,8 +196,6 @@ static int filewrite(char *str)
  */
 SC_FUNC void stgwrite(const char *st)
 {
-  int len;
-
   if (staging) {
     assert(stgidx==0 || stgbuf!=NULL);  /* staging buffer must be valid if there is (apparently) something in it */
     if (stgidx>=2 && stgbuf[stgidx-1]=='\0' && stgbuf[stgidx-2]!='\n')
@@ -209,7 +207,7 @@ SC_FUNC void stgwrite(const char *st)
     CHECK_STGBUFFER(stgidx);
     stgbuf[stgidx++]='\0';
   } else {
-    len=(stgbuf!=NULL) ? (int)strlen(stgbuf) : 0;
+    int len=(stgbuf!=NULL) ? (int)strlen(stgbuf) : 0;
     CHECK_STGBUFFER(len+(int)strlen(st)+1);
     strcat(stgbuf,st);
     len=(int)strlen(stgbuf);
@@ -233,7 +231,6 @@ SC_FUNC void stgwrite(const char *st)
 SC_FUNC void stgout(int index)
 {
   int reordered=0;
-  int idx;
 
   if (!staging)
     return;
@@ -252,6 +249,7 @@ SC_FUNC void stgout(int index)
       /* there is no sense in re-optimizing if the order of the sub-expressions
        * did not change; so output directly
        */
+      int idx;
       for (idx=0; idx<pipeidx; idx+=(int)strlen(stgpipe+idx)+1)
         filewrite(stgpipe+idx);
     } /* if */
@@ -406,7 +404,7 @@ static SEQUENCE *sequences;
 
 SC_FUNC int phopt_init(void)
 {
-  int number, i, len;
+  int number, i;
   char str[160];
 
   /* count number of sequences */
@@ -427,7 +425,7 @@ SC_FUNC int phopt_init(void)
 
   /* expand all strings */
   for (i=0; i<number-1; i++) {
-    len = strexpand(str,(unsigned char*)sequences_cmp[i].find,sizeof str,SCPACK_TABLE);
+    int len = strexpand(str,(unsigned char*)sequences_cmp[i].find,sizeof str,SCPACK_TABLE);
     assert(len<=sizeof str);
     assert(len==(int)strlen(str)+1);
     sequences[i].find=(char*)malloc(len);

@@ -14,7 +14,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: sc2.c 5588 2016-10-25 11:13:28Z  $
+ *  Version: $Id: sc2.c 5596 2016-11-02 17:18:02Z  $
  */
 #include <assert.h>
 #include <stdio.h>
@@ -3134,9 +3134,12 @@ SC_FUNC symbol *addvariable(const char *name,cell addr,int ident,int scope,int t
    * "redeclared" if they are local to an automaton (and findglb() will find
    * the symbol without states if no symbol with states exists).
    */
-  assert(scope!=sGLOBAL || (sym=findglb(name,sGLOBAL))==NULL || (sym->usage & uDEFINE)==0
-         || sym->ident==iFUNCTN && (sym==curfunc || (sym->usage & uNATIVE)!=0)
-         || sym->states==NULL && sc_curstates>0);
+  #if !defined NDEBUG
+    sym=findglb(name,sGLOBAL);
+    assert(scope!=sGLOBAL || sym==NULL || (sym->usage & uDEFINE)==0
+           || sym->ident==iFUNCTN && (sym==curfunc || (sym->usage & uNATIVE)!=0)
+           || sym->states==NULL && sc_curstates>0);
+  #endif
 
   if (ident==iARRAY || ident==iREFARRAY) {
     symbol *parent=NULL,*top;

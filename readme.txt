@@ -9,7 +9,7 @@ machine.
 Through the evolution of the Pawn toolkit, this README had steadily been
 growing, as more and more components were added and the project was ported
 to diverse environments. Detailed instructions how to port, build and/or
-embed Pawn can be found in a separate document entitled "The Pawn booklet: 
+embed Pawn can be found in a separate document entitled "The Pawn booklet:
 Implementer's Guide". To get the Pawn toolkit working on your system, please
 (also) consult that document. To learn about the Pawn language, read the
 document "The Pawn booklet: The Language". If you installed Pawn via the
@@ -114,9 +114,7 @@ the archive into.
 
 Using CMake
 -----------
-1. Under Microsoft Windows, launch CMakeSetup. Under Linux, run cmake-gui (if
-   you don't have cmake-gui, either update your CMake system first, or see
-   below for running CMake from the command-line).
+1. Run cmake-gui.
 
 2. Select for the source code directory, the "source" subdirectory in the
    directory tree for the toolkit.
@@ -143,30 +141,6 @@ Using CMake
 7. Build the program in the usual way. For Microsoft Visual C/C++, CMake has
    created a Visual Studio project and "Workspace" file; for other compilers
    CMake builds a makefile.
-
-
-Using CMake from the command line
----------------------------------
-In case there is no GUI program for your operating system, you may alternatively
-use the command line programs.
-
-1. Change to the "bin" subdirectory where the archive was extracted into. For
-   example, if you unpacked the toolkit in /opt/Pawn, go to /opt/Pawn/bin.
-
-   If you installed Pawn as root, then you must also be root when you recompile
-   Pawn.
-
-2. Launch "ccmake ../source" if you installed the Linux autopackage. If you got
-   the "tarball", you may need to use "ccmake .." instead. The parameter of
-   ccmake must be the relative path to where the CMakeLists.txt file is found.
-
-3. Press the "c" key for "configure". After an initial configuration, you may
-   have items in the list that have a "*" in front of their value. By this,
-   CMake indicates that these items may need adjustment, but in the case of
-   Pawn, this is rarely needed. Type "c" once more for the final configuration.
-
-4. Press the "g" button for "generate and quit". Then build the program by
-   typing "make". The programs will be built in the subdirectory "bin".
 
 
 Using the AMX DLL
