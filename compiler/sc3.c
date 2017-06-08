@@ -14,7 +14,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: sc3.c 5689 2017-06-05 14:05:58Z thiadmer $
+ *  Version: $Id: sc3.c 5690 2017-06-08 14:04:08Z thiadmer $
  */
 #include <assert.h>
 #include <stdio.h>
@@ -159,7 +159,7 @@ static const int binoper_savepri[] = { FALSE, FALSE, FALSE, FALSE, FALSE, FALSE,
                                        FALSE, FALSE, FALSE, FALSE, FALSE,
                                        TRUE, TRUE, TRUE, TRUE, FALSE, FALSE };
 static const char *unoperstr[] = { "!", "-", "++", "--" };
-static const void (*unopers[])(void) = { lneg, neg, user_inc, user_dec };
+static void (* const unopers[])(void) = { lneg, neg, user_inc, user_dec };
   char opername[4] = "";
   char symbolname[sNAMEMAX+1];
   int i,swapparams,savepri,savealt;

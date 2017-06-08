@@ -45,6 +45,10 @@
 ;
 ;History (list of changes)
 ;-------------------------
+;  5 June 2017 by Thiadmer Riemersma
+;       The STACK and STACK.P opcodes have been modified to set the *new* value
+;       of the STK register in ALT (so that it can immediately be used with
+;       STOR.I, for example).
 ;  1 March 2010  by Thiadmer Riemersma
 ;       The instruction set has been reorganized: a minimal "core" instruction
 ;       set was picked and three supplemental instruction sets: overlay
@@ -511,8 +515,8 @@ OP_PICK:
 
 
 OP_STACK:
-        mov     edx,ecx
         add     ecx,[esi+4]
+        mov     edx,ecx
         _CHKMARGIN
         _CHKSTACK
         add     esi,8
@@ -1970,8 +1974,8 @@ OP_PUSHRM_P_ADR:
 OP_STACK_P:
         GETPARAM_P ebp
         add     esi,4
-        mov     edx,ecx
         add     ecx,ebp
+        mov     edx,ecx
         _CHKMARGIN
         _CHKSTACK
         NEXT

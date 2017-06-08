@@ -15,7 +15,7 @@
 @   machine.
 @
 @
-@   Copyright (c) ITB CompuPhase, 2006-2016
+@   Copyright (c) ITB CompuPhase, 2006-2017
 @
 @   Licensed under the Apache License, Version 2.0 (the "License"); you may not
 @   use this file except in compliance with the License. You may obtain a copy
@@ -606,8 +606,8 @@ amx_exec_run:
 
 .OP_STACK:                      @ tested
     GETPARAM r11
-    sub r1, r6, r5              @ ALT = STK, reverse-relocated
     add r6, r6, r11             @ STK += param
+    sub r1, r6, r5              @ ALT = STK, reverse-relocated
     CHKMARGIN r12
     CHKSTACK
     NEXT
@@ -1691,8 +1691,8 @@ amx_exec_run:
 
 .OP_STACK_P:
     GETPARAM_P r11
-    sub r1, r6, r5              @ ALT = STK, reverse-relocated
     add r6, r6, r11             @ STK += param
+    sub r1, r6, r5              @ ALT = STK, reverse-relocated
     CHKMARGIN r12
     CHKSTACK
     NEXT

@@ -1,6 +1,6 @@
 /*  Pawn Abstract Machine (for the Pawn language)
  *
- *  Copyright (c) ITB CompuPhase, 1997-2016
+ *  Copyright (c) ITB CompuPhase, 1997-2017
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not
  *  use this file except in compliance with the License. You may obtain a copy
@@ -2425,8 +2425,8 @@ int AMXAPI amx_Exec(AMX *amx, cell *retval, int index)
       break;
     case OP_STACK:
       GETPARAM(offs);
-      alt=stk;
       stk+=offs;
+      alt=stk;
       CHKMARGIN();
       CHKSTACK();
       break;
@@ -3260,8 +3260,8 @@ int AMXAPI amx_Exec(AMX *amx, cell *retval, int index)
       break;
     case OP_STACK_P:
       GETPARAM_P(offs,op);
-      alt=stk;
       stk+=offs;
+      alt=stk;
       CHKMARGIN();
       CHKSTACK();
       break;

@@ -391,8 +391,8 @@ static const void * const amx_opcodelist[] = {
     NEXT(cip,op);
   op_stack:
     GETPARAM(offs);
-    alt=stk;
     stk+=offs;
+    alt=stk;
     CHKMARGIN();
     CHKSTACK();
     NEXT(cip,op);
@@ -1239,8 +1239,8 @@ static const void * const amx_opcodelist[] = {
     NEXT(cip,op);
   op_stack_p:
     GETPARAM_P(offs,op);
-    alt=stk;
     stk+=offs;
+    alt=stk;
     CHKMARGIN();
     CHKSTACK();
     NEXT(cip,op);

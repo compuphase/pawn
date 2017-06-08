@@ -2,7 +2,7 @@
  * file can be used by the GraphViz programs for further progessing (and to
  * create an image).
  *
- *  Copyright (c) ITB CompuPhase, 2016
+ *  Copyright (c) ITB CompuPhase, 2016-2017
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not
  *  use this file except in compliance with the License. You may obtain a copy
@@ -146,7 +146,7 @@ static void node_deleteall(void)
   }
 }
 
-#if defined _MSC_VER
+#if defined _MSC_VER || defined __GNUC__ || defined __clang__
 /* Copy src to string dst of size siz.
  * At most siz-1 characters * will be copied. Always NUL terminates (unless siz == 0).
  * Returns strlen(src); if retval >= siz, truncation occurred                        .

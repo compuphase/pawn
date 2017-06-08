@@ -643,8 +643,8 @@ amx_exec_run:
 
 .OP_STACK:                      @ tested
     GETPARAM r11
-    sub r1, r6, r5              @ ALT = STK, reverse-relocated
     add r6, r6, r11             @ STK += param
+    sub r1, r6, r5              @ ALT = STK, reverse-relocated
     CHKMARGIN r12
     CHKSTACK
     NEXT
@@ -1757,8 +1757,8 @@ amx_exec_run:
 
 .OP_STACK_P:
     GETPARAM_P r11
-    sub r1, r6, r5              @ ALT = STK, reverse-relocated
     add r6, r6, r11             @ STK += param
+    sub r1, r6, r5              @ ALT = STK, reverse-relocated
     CHKMARGIN r12
     CHKSTACK
     NEXT

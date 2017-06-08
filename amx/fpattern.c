@@ -57,7 +57,7 @@
 * Copyright (c) 2005-2015, ITB CompuPhase, all rights reserved.
 * www.compuphase.com
 *
-* Version: $Id: fpattern.c 5514 2016-05-20 14:26:51Z  $
+* Version: $Id: fpattern.c 5690 2017-06-08 14:04:08Z thiadmer $
 */
 
 
@@ -68,6 +68,7 @@
 #elif !defined assert
 	#define assert(e)
 #endif
+#include <ctype.h>
 #include <string.h>
 
 #include "fpattern.h"

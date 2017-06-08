@@ -115,6 +115,10 @@
 
 ; Revision History
 ; ----------------
+;  5 June 2017 by Thiadmer Riemersma
+;       The STACK and STACK.P opcodes have been modified to set the *new* value
+;       of the STK register in ALT (so that it can immediately be used with
+;       STOR.I, for example).
 ;  1 March 2010  by Thiadmer Riemersma
 ;       The instruction set has been reorganized: a minimal "core" instruction
 ;       set was picked and three supplemental instruction sets: overlay
@@ -681,11 +685,11 @@ OP_POP_ALT:
         _POP    edx
 
 OP_STACK:
-        putval  j_stack+4
+        putval  j_stack+2
         GO_ON   j_stack, OP_HEAP, 8
     j_stack:
-        mov     edx,esp
         add     esp,12345678h
+        mov     edx,esp
         sub     edx,edi
 IF DORUNTIMECHECKS NE 0
         call    DWORD ptr [chk_marginstack]

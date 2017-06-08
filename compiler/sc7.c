@@ -508,10 +508,14 @@ static int matchsequence(char *start,char *end,const char *pattern,
         /* match only if the parameter is numeric and in the range of a half cell */
         const char *ptr;
         /* getparamvalue() resolves leading '-' on values and adds multiple
-         * values (the peephole optimizer may create such variants)
-         */
+           values (the peephole optimizer may create such variants) */
         ucell v=getparamvalue(str,&ptr);
-        if (*ptr>' ' || v>=((ucell)1<<((pc_cellsize*4)-1)) && v<=~((ucell)1<<((pc_cellsize*4)-1)))
+        /* sign-extend the value to check whether the value is in the range for
+           packed parameters */
+        ucell v2=v;
+        if ((v2 & ((ucell)1<<pc_cellsize*8-1))!=0)
+          v2|=~(ucell)0<<pc_cellsize*8;
+        if (*ptr>' ' || v2>=((ucell)1<<((pc_cellsize*4)-1)) && v2<=~((ucell)1<<((pc_cellsize*4)-1)))
           return FALSE;
         /* reconvert the value to a string (without signs or expressions) */
         ptr=itoh(v);
@@ -638,7 +642,9 @@ static char *replacesequence(const char *pattern,char symbols[MAX_OPT_VARS+1][MA
       break;
     case '#':
       lptr++;           /* skip '#' */
-      assert(alphanum(*lptr));
+      assert(alphanum(*lptr) || *lptr=='-');
+      if (*lptr=='-')
+        lptr++;
       while (alphanum(lptr[1]))
         lptr++;
       *repl_length+=pc_cellsize*2;
@@ -692,7 +698,9 @@ static char *replacesequence(const char *pattern,char symbols[MAX_OPT_VARS+1][MA
       char *ptr=itoh(v);
       strcpy(lptr,ptr);
       lptr+=strlen(ptr);
-      assert(alphanum(pattern[1]));
+      assert(alphanum(pattern[1]) || pattern[1]=='-');
+      if (pattern[1]=='-')
+        pattern++;
       while (alphanum(pattern[1]))
         pattern++;
       break;

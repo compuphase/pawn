@@ -3,7 +3,7 @@
  *  These routines are in part based on the article "Multiplatform .INI Files"
  *  by Joseph J. Graf in the March 1994 issue of Dr. Dobb's Journal.
  *
- *  Copyright (c) CompuPhase, 2008-2015
+ *  Copyright (c) CompuPhase, 2008-2017
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not
  *  use this file except in compliance with the License. You may obtain a copy
@@ -17,7 +17,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: minIni.c 5181 2015-01-21 09:44:28Z thiadmer $
+ *  Version: $Id: minIni.c 5690 2017-06-08 14:04:08Z thiadmer $
  */
 
 #if (defined _UNICODE || defined __UNICODE__ || defined UNICODE) && !defined INI_ANSIONLY
@@ -79,6 +79,7 @@
   #endif
 #endif
 #if !defined _totupper
+  #include <ctype.h>
   #define _totupper toupper
 #endif
 
@@ -106,9 +107,8 @@ enum quote_option {
 #if defined PORTABLE_STRNICMP
 int strnicmp(const TCHAR *s1, const TCHAR *s2, size_t n)
 {
-  register int c1, c2;
-
   while (n-- != 0 && (*s1 || *s2)) {
+    register int c1, c2;
     c1 = *s1++;
     if ('a' <= c1 && c1 <= 'z')
       c1 += ('A' - 'a');
@@ -241,12 +241,13 @@ static int getkeystring(INI_FILETYPE *fp, const TCHAR *Section, const TCHAR *Key
    */
   len = (Section != NULL) ? (int)_tcslen(Section) : 0;
   if (len > 0 || idxSection >= 0) {
+    assert(Section != NULL);
     idx = -1;
     do {
       if (!ini_read(LocalBuffer, INI_BUFFERSIZE, fp))
         return 0;
       sp = skipleading(LocalBuffer);
-      ep = _tcschr(sp, ']');
+      ep = _tcsrchr(sp, ']');
     } while (*sp != '[' || ep == NULL || (((int)(ep-sp-1) != len || _tcsnicmp(sp+1,Section,len) != 0) && ++idx != idxSection));
     if (idxSection >= 0) {
       if (idx == idxSection) {
@@ -364,8 +365,6 @@ INI_REAL ini_getf(const TCHAR *Section, const TCHAR *Key, INI_REAL DefValue, con
  * \param Key         the name of the entry to find the value of
  * \param DefValue    default value in the event of a failed read; it should
  *                    zero (0) or one (1).
- * \param Buffer      a pointer to the buffer to copy into
- * \param BufferSize  the maximum number of characters to copy
  * \param Filename    the name and full path of the .ini file to read from
  *
  * A true boolean is found if one of the following is matched:
@@ -486,7 +485,7 @@ int  ini_browse(INI_CALLBACK Callback, const void *UserData, const TCHAR *Filena
     if (*sp == '\0' || *sp == ';' || *sp == '#')
       continue;
     /* see whether we reached a new section */
-    ep = _tcschr(sp, ']');
+    ep = _tcsrchr(sp, ']');
     if (*sp == '[' && ep != NULL) {
       *ep = '\0';
       save_strncpy(LocalBuffer, sp + 1, INI_BUFFERSIZE, QUOTE_NONE);
@@ -702,7 +701,7 @@ int ini_puts(const TCHAR *Section, const TCHAR *Key, const TCHAR *Value, const T
     (void)ini_close(&rfp);
     return 0;
   } /* if */
-  ini_tell(&rfp, &mark);
+  (void)ini_tell(&rfp, &mark);
   cachelen = 0;
 
   /* Move through the file one line at a time until a section is
@@ -726,7 +725,7 @@ int ini_puts(const TCHAR *Section, const TCHAR *Key, const TCHAR *Value, const T
        * we are looking for and this section must be removed
        */
       sp = skipleading(LocalBuffer);
-      ep = _tcschr(sp, ']');
+      ep = _tcsrchr(sp, ']');
       match = (*sp == '[' && ep != NULL && (int)(ep-sp-1) == len && _tcsnicmp(sp + 1,Section,len) == 0);
       if (!match || Key != NULL) {
         if (!cache_accum(LocalBuffer, &cachelen, INI_BUFFERSIZE)) {
@@ -745,7 +744,7 @@ int ini_puts(const TCHAR *Section, const TCHAR *Key, const TCHAR *Value, const T
    */
   if (Key == NULL) {
     (void)ini_read(LocalBuffer, INI_BUFFERSIZE, &rfp);
-    ini_tell(&rfp, &mark);
+    (void)ini_tell(&rfp, &mark);
   } /* if */
 
   /* Now that the section has been found, find the entry. Stop searching
@@ -773,7 +772,7 @@ int ini_puts(const TCHAR *Section, const TCHAR *Key, const TCHAR *Value, const T
       break;  /* found the key, or found a new section */
     /* copy other keys in the section */
     if (Key == NULL) {
-      ini_tell(&rfp, &mark);  /* we are deleting the entire section, so update the read position */
+      (void)ini_tell(&rfp, &mark);  /* we are deleting the entire section, so update the read position */
     } else {
       if (!cache_accum(LocalBuffer, &cachelen, INI_BUFFERSIZE)) {
         cache_flush(LocalBuffer, &cachelen, &rfp, &wfp, &mark);
@@ -801,7 +800,7 @@ int ini_puts(const TCHAR *Section, const TCHAR *Key, const TCHAR *Value, const T
     cache_accum(LocalBuffer, &cachelen, INI_BUFFERSIZE);
   } else {
     /* forget the old key line */
-    ini_tell(&rfp, &mark);
+    (void)ini_tell(&rfp, &mark);
   } /* if */
   /* Copy the rest of the INI file */
   while (ini_read(LocalBuffer, INI_BUFFERSIZE, &rfp)) {
@@ -832,11 +831,10 @@ static void long2str(long value, TCHAR *str)
 {
   int i = 0;
   long sign = value;
-  int n;
 
   /* generate digits in reverse order */
   do {
-    n = (int)(value % 10);              /* get next lowest digit */
+    int n = (int)(value % 10);          /* get next lowest digit */
     str[i++] = (TCHAR)(ABS(n) + '0');   /* handle case of negative digit */
   } while (value /= 10);                /* delete the lowest digit */
   if (sign < 0)

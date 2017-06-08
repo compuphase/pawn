@@ -7,7 +7,7 @@
  *  originally created by Ron Cain, july 1980, and enhanced by James E. Hendrix.
  *  The modifications in Pawn come close to a complete rewrite, though.
  *
- *  Copyright ITB CompuPhase, 1997-2016
+ *  Copyright ITB CompuPhase, 1997-2017
  *  Copyright J.E. Hendrix, 1982, 1983
  *  Copyright R. Cain, 1980
  *
@@ -23,12 +23,11 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: sc1.c 5596 2016-11-02 17:18:02Z  $
+ *  Version: $Id: sc1.c 5690 2017-06-08 14:04:08Z thiadmer $
  */
 #include <assert.h>
 #include <ctype.h>
 #include <limits.h>
-#include <process.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -37,6 +36,9 @@
 #if defined __WIN32__ || defined _WIN32 || defined __MSDOS__
   #include <conio.h>
   #include <io.h>
+  #include <process.h>
+#else
+  #include <spawn.h>
 #endif
 #if defined __GNUC__ || defined __clang__
   #include <unistd.h>
@@ -436,6 +438,30 @@ long pc_lengthbin(void *handle)
 #endif  /* !defined NO_MAIN */
 
 
+#if !(defined __MSDOS__ || defined __WIN32__ || defined _Windows)
+int posix_spawnl(char *pgm,...)
+{
+  #define SPAWN_MAX_ARGS  10
+  pid_t pid;
+  va_list ap;
+  char *ptr;
+  char *argv[SPAWN_MAX_ARGS];
+  char *envp[] = { NULL };
+  int stat,i;
+
+  argv[0]=pgm;
+  for (i=1, va_start(ap,pgm); (ptr=va_arg(ap,char*))!=NULL && i<SPAWN_MAX_ARGS; i++)
+    argv[i]=ptr;
+  argv[i]=NULL;
+  va_end(ap);
+
+  stat=posix_spawn(&pid,pgm,NULL,NULL,argv,envp);
+  if (stat==0)
+    waitpid(pid,&stat,0);
+  return stat;
+}
+#endif
+
 /*  "main" of the compiler
  */
 #if defined __cplusplus
@@ -647,10 +673,11 @@ int pc_compile(int argc, char *argv[])
           set_extension(dotname,".dot",TRUE);
           #if defined __MSDOS__ || defined __WIN32__ || defined _Windows
             sprintf(pgmname,"%s%cstategraph.exe",sc_binpath,DIRSEP_CHAR);
+            spawnl(P_WAIT,pgmname,pgmname,reportname,dotname,NULL);
           #else
             sprintf(pgmname,"%s%cstategraph",sc_binpath,DIRSEP_CHAR);
+            posix_spawnl(pgmname,reportname,dotname,NULL);
           #endif
-          spawnl(P_WAIT,pgmname,pgmname,reportname,dotname,NULL);
         }
       } /* if */
       if (pc_globaldoc!=NULL) {
@@ -1427,7 +1454,7 @@ static void setopt(int argc,char **argv,char *oname,char *ename,char *pname,
 
   #if !defined PAWN_LIGHT
     /* first parse a "config" file with default options */
-    if (sc_binpath[0]!='\0') {
+    if (sc_rootpath[0]!='\0') {
       char cfgfile[_MAX_PATH];
       const char *ptr;
       char *base;
@@ -1460,10 +1487,16 @@ static void setopt(int argc,char **argv,char *oname,char *ename,char *pname,
             strlcat(cfgfile,".cfg",_MAX_PATH);
         } /* if */
       } /* for */
-      if (access(cfgfile,4)==0)
+      if (access(cfgfile,4)==0) {
         parserespf(cfgfile,oname,ename,pname,rname,codepage);
-      else if (found)
+      } else if (found) {
         error(100,cfgfile);  /* config. file was explicitly specified, but cannot be read */
+      } else if (sc_binpath[0]!='\0') {
+        /* for compatibility, try the old name */
+        sprintf(cfgfile,"%s%cpawn.cfg",sc_binpath,DIRSEP_CHAR);
+        if (access(cfgfile,4)==0)
+          parserespf(cfgfile,oname,ename,pname,rname,codepage);
+      }
     } /* if */
   #endif
   parseoptions(argc,argv,oname,ename,pname,rname,codepage);
