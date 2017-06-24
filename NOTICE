@@ -1,6 +1,6 @@
 Pawn is a scripting language system consisting of a compiler and an abstract
 machine, for building and running programs in the Pawn language. The Pawn
-system is copyright (c) ITB CompuPhase, 1997-2016.
+system is copyright (c) ITB CompuPhase, 1997-2017.
 
 This work is based in part on the "Small C Compiler" by Ron Cain and
 James E. Hendrix, as published in the book "Dr. Dobb's Toolbook of C",

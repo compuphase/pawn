@@ -23,7 +23,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: sc1.c 5690 2017-06-08 14:04:08Z thiadmer $
+ *  Version: $Id: sc1.c 5691 2017-06-09 19:48:22Z thiadmer $
  */
 #include <assert.h>
 #include <ctype.h>
@@ -570,6 +570,8 @@ int pc_compile(int argc, char *argv[])
       pc_writesrc(ftmp,(unsigned char*)"\"\n#line 0\n");
       while (pc_readsrc(fsrc,tstring,sizeof tstring))
         pc_writesrc(ftmp,tstring);
+      if (strchr(tstring,'\n')==NULL) /* force newline on last line of each input file */
+        pc_writesrc(ftmp,"\n");
       pc_closesrc(fsrc);
     } /* for */
     pc_closesrc(ftmp);
@@ -1606,7 +1608,7 @@ static void setconfig(char *root)
 
 static void setcaption(void)
 {
-  pc_printf("Pawn compiler %-25s Copyright (c) 1997-2016, ITB CompuPhase\n\n",VERSION_STR);
+  pc_printf("Pawn compiler %-25s Copyright (c) 1997-2017, ITB CompuPhase\n\n",VERSION_STR);
 }
 
 static void about(void)

@@ -41,7 +41,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: sc7.c 5596 2016-11-02 17:18:02Z  $
+ *  Version: $Id: sc7.c 5691 2017-06-09 19:48:22Z thiadmer $
  */
 #include <assert.h>
 #include <stdio.h>

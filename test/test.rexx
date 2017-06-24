@@ -30,7 +30,6 @@ say 'You can abort the test run by entering "BYE" at any "test#" prompt.'
 
 /* check whether we are running in Windows or Linux */
 sysname = uname('S')
-say sysname
 if sysname = WINNT | sysname = WIN2K | sysname = WINXP | sysname = WIN7 | sysname = WIN8 | sysname = WIN95 | sysname = WIN98 then
   iswin32 = 1
 else
@@ -576,8 +575,8 @@ test42:
   return
 
 test43:
-  say '43. The following test should compile successfully. When it runs, it should'
-  say '    print:'
+  say '43. The following test should compile successfully (with verbose output). When'
+  say '    it runs, it should print:'
   say '           Bigger'
   say '           Unequal'
   say ''
@@ -605,8 +604,8 @@ test44:
   return
 
 test45:
-  say '45. The following test should compile successfully. When it runs, it should'
-  say '    print:'
+  say '45. The following test should compile successfully (with verbose output). When'
+  say '    it runs, it should print:'
   say '           ''''a'''' okay'
   say '           ''''b'''' okay'
   say ''

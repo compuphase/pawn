@@ -1,6 +1,6 @@
 /*  Pawn compiler - File input, preprocessing and lexical analysis functions
  *
- *  Copyright (c) ITB CompuPhase, 1997-2016
+ *  Copyright (c) ITB CompuPhase, 1997-2017
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not
  *  use this file except in compliance with the License. You may obtain a copy
@@ -1081,6 +1081,14 @@ static int command(void)
         inpfname=duplicatestring(pathname);
         if (inpfname==NULL)
           error(103);           /* insufficient memory */
+        /* adjust fcurrent too, after storing the filename in the file table (if needed) */
+        fcurrent=find_inputfile(pathname);
+        if (fcurrent<0) {
+          insert_inputfile(pathname);
+          fnumber++;
+          fcurrent=fnumber;
+        }
+
       } /* if */
     } /* if */
     check_empty(lptr);

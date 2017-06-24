@@ -1,0 +1,76 @@
+[Hello world]
+description=<h1>Hello world</h1><p>The very first program that is traditionally written in a new language, is one that prints the words "Hello world".<p>Compiling and running this program, and adapting the text that it prints, makes you get aquainted with the language and the tools.
+files=hello.p
+
+[Greatest common divisor]
+description=<h1>Greatest common divisor</h1><p>This script calculates the "greatest common divisor" of two values that you enter. The script uses Euclides algorithm for the greatest common divisor.<p>The script illustrates loops and simple arithmetic.
+files=gcd.p
+
+[Sieve of Eratosthenes]
+description=<h1>Sieve of Eratosthenes</h1><p>This script prints a list of prime numbers below 100. It uses the "sieve of Eratosthenes" to filter out all numbers that are not primes.<p>The script illustrates loops and arrays.
+files=sieve.p
+
+[Fibonacci numbers]
+description=<h1>Fibonacci numbers</h1><p>A simple script that calculates the Fibonacci number of a given value, using an iterative algorithm.<p>The script illustrates funtions (as well as loops and arithmetic).
+files=fib.p
+
+[Julian day numbers and dates]
+description=<h1>Julian day numbers and dates</h1><p>"Julian Day Number" are used to reconcile dates in historic documents, and in astronomy to calculate intervals between two events more easily. This script calculates the Julian Day Number for a given date, and inversely returns the date for a given Julian Day Number.<p>Julian Day Numbers are not related to the Julian Calendar, by the way.<p>The script illustrates function calling conventions, specifically "call-by-value" versus "call-by-reference".
+files=julian.p
+
+[Celsius to fahrenheit]
+description=<h1>Celsius to fahrenheit</h1><p>A simple script that displays a conversion table from temperatures in Celsius to Fahrenheit.<p>The script illustrates rational number support. Rational numbers are numbers with a fractional part, such as 7.35. Pawn supports two kinds of fractional numbers: fixed-point or floating-point.
+files=c2f.p
+
+[Obfuscating text]
+description=<h1>Obfuscating text</h1><p>A very simple, and not very save, method to encrypt text is an algorithm bearing the name "ROT13". What it does is to rotate every letter in the alphabet 13 positions to the right. This script demonstrates the algorithm.<p>The script illustrates handling text strings.
+files=rot13.p
+
+[Word count]
+description=<h1>Word count</h1><p>A script that counts the number of words in a string that the user types on the console.<p>The script illustrates handling text strings.
+files=wcount.p
+
+[Message queue]
+description=<h1>Message queue</h1><p>This script allows the user to type in a series of messages (maximum 10) and assign a priority to each message. The script will then print the messages in the order of decreasing priority.<p>The script illustrates structured data, using arrays and symbolic indices.
+files=queue.p
+
+[Sets (intersection, union)]
+description=<h1>Sets (intersection, union)</h1><p>Set operations can make some complex looking algorithms, like path finding, relatively easy. This script contains a virtual map with positions and it returns all destinations that can be reached from a specific location on this map in a given number of steps.<p>The script illustrates sets and bit operations.
+files=set.p
+
+[Reverse-polish notation calulator]
+description=<h1>Reverse-polish notation calulator</h1><p>RPN calculators make you type the numbers before the operation. For example, to add the value 4 and 6, you would type "4 6 +" in an RPN calculator (without the quotes). Similarly, "12 3 /" divides 12 by 3 (giving 4).<p>The script illustrates how to decompose a larger program into separate source files.
+files=rpn/strtok.i rpn/stack.i rpn/rpnparse.i rpn/rpn.p
+
+[Faculty numbers]
+description=<h1>Faculty numbers</h1><p>A simple script that calculates the "faculty" of a given value, using an iterative algorithm.<p>The script illustrates funtions and loops.
+files=faculty.p
+
+[Calculating the day of the week]
+description=<h1>Calculating the day of the week</h1><p>For every date (on the Gregorian calendar), the day of the week can be calculated with an ingeneous algorithm by the German mathematician Zeller.<p>The script illustrates arithmetic (division and remainder after division), and the "switch" instruction, as well as embedding documentation in the source code.
+files=weekday.p
+
+[Tower of Hanoi]
+description=<h1>Tower of Hanoi</h1><p>The Tower of Hanoi is a puzzle where a stack of disks with decreasing sizes must be moved from one location to a next, with one more location for intermediate storage. The rules for moving a tower are:<ul><li>you can only move one disk at a time<li>you can move only the uppermost disk on a stack<li>you may not place a disk onto a smaller disk</ul><p>This script gives a solution for the puzzle, using a recursive function call.
+files=hanoi.p
+
+[An interactive comment parser]
+description=<h1>An interactive comment parser</h1><p>This script does "syntax colouring" for programming comments (that start with /* and end with */). What is special about this script is that it does this interactively, and without stepping back on a decision taken earlier.<p>The script illustrates state machines (automatons) event-driven programming.
+files=comment.p
+
+[Pedestrian crossing lights]
+description=<h1>Pedestrian crossing lights</h1><p>A traffic light synchronizer for a pedestrian crossing, using states in an event-driven model<p>The script illustrates states end event-driven programming.
+files=traffic.p
+
+[Improved pedestrian crossing lights]
+description=<h1>Improved pedestrian crossing lights</h1><p>The script from the previous tutorial was improved with a "fairness" rule (pedestrians cannot block all road traffic by repeatedly pressing the "Walk" button), and an override for emergency vehicles.<p>The script illustrates state variables.
+files=traffic2.p
+
+[Desktop calculator]
+description=<h1>Desktop calculator</h1><p>This is a simple four-function calculator, but one that pops up a nice windowed interface.<p>The script requires the "process control" and "string" modules, plus GTK-server. In addition to demonstrating how to interface Pawn with GUI builders and libraries, this script also illustrates using multiple automatons to simplify larger tasks.
+files=gtkcalc.p
+
+[A peer-to-peer chat program]
+description=<h1>A peer-to-peer chat program</h1><p>This script creates a very simple console-based chat program. When running this script on two computers, two users can exchange messages with each other.<p>This script requires the "datagram" module for sending network packets. The script illustrates event-driven programming.
+files=chat.p
+

@@ -6,7 +6,7 @@
  *  o  Documentation tags and automatic listings
  *  o  Debug strings
  *
- *  Copyright (c) ITB CompuPhase, 2001-2016
+ *  Copyright (c) ITB CompuPhase, 2001-2017
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not
  *  use this file except in compliance with the License. You may obtain a copy
@@ -178,6 +178,20 @@ static stringlist *find_string(stringlist *root,const char *string)
       return cur;
   } /* for */
   return NULL;
+}
+
+static int find_string_idx(stringlist *root,const char *string)
+{
+  stringlist *cur;
+  int index;
+
+  assert(root!=NULL);
+  assert(string!=NULL);
+  for (cur=root->next, index=0; cur!=NULL; cur=cur->next, index++) {
+    if (strcmp(cur->text,string)==0)
+      return index;
+  } /* for */
+  return -1;
 }
 
 static int delete_string(stringlist *root,int index)
@@ -357,14 +371,19 @@ SC_FUNC void delete_sourcefiletable(void)
 /* ----- parsed file list (explicit + included files) ------------ */
 static stringlist inputfiles = {NULL, NULL};
 
-SC_FUNC stringlist *insert_inputfile(const char *string)
+SC_FUNC stringlist *insert_inputfile(const char *path)
 {
-  return insert_string(&inputfiles,string,1);
+  return insert_string(&inputfiles,path,1);
 }
 
 SC_FUNC const char *get_inputfile(int index)
 {
   return get_string(&inputfiles,index);
+}
+
+SC_FUNC int find_inputfile(const char *path)
+{
+  return find_string_idx(&inputfiles,path);
 }
 
 SC_FUNC void delete_inputfiletable(void)
@@ -384,7 +403,7 @@ SC_FUNC stringlist *insert_undefsymbol(const char *symbolname,int linenr)
   sprintf(symname,"%x %s",linenr,symbolname);
   item=find_string(&undefsymbols,symname);
   if (item==NULL)
-    insert_string(&undefsymbols,symname,0);
+    item=insert_string(&undefsymbols,symname,0);
   return item;
 }
 

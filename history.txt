@@ -1,0 +1,2662 @@
+Version 4.0, Build 5691
+-----------------------
+* The STACK opcode has different semantics: it now sets the ALT register to the
+  value of STK after adjusting it (instead of setting it to the value that STK
+  had before the adjustment). This change has no impact on compiled scripts or
+  the abstract machine. In the past and current release, the Pawn compiler does
+  not rely on the ALT register after a STACK opcode.
+
+* Addition of a tool to create "dot" files for the Graphviz programs, to create
+  graphs of state machines.
+
+* The location of configuration files for target hosts has changed, from the
+  "bin" directory to the directory "targets". The default configuration file is
+  now "default.cfg". For backward compatibility, if no "default.cfg" is found
+  (and no other configuration file is specified), the compiler falls back to
+  "pawn.cfg" file in the "bin" directory.
+
+* For target host, host-specific include files have moved to a subdirectory with
+  the name of the target host, below the "include" directory. This is similar to
+  the locations of host-specific documentation and samples.
+
+* In Quincy (the Pawn IDE), the sample browser has returned. In the menu, see
+  Tools / Sample browser...
+
+* Portability fix: Linux no longer provides the "spawn()" function, so it has
+  been simulated with posix_spawn() and waitpid().
+
+* BUG fix: in support of packed opcodes, since the support for 64-bit cells,
+  negative parameters were no longer optimized to packed opcodes. (The generated
+  code was correct, but sub-optimal.)
+
+* BUG fix: code generation error for native functions that return an array.
+  (Pawn functions returning an array were not affected.)
+
+
+Version 4.0, Build 5588
+-----------------------
+* The IDE has been rewritten in wxWidgets (instead of MFC), so that it now runs
+  on Linux as well.
+
+* New warning to check for functions whose existance is checked (in
+  conditionally compiled sections) before the functions are defined (which also
+  requires an extra compilation pass).
+
+* Identical literal strings are merged, as to reduce the "data" memory footprint.
+
+* #warning directive (which works like #error, with the excaption that it is a
+  non-fatal message).
+
+* #pragma warning directive, to push/pop/enable/disable warnings.
+
+* #ifdef and #ifndef are supported (in addition to #if defined) for
+  compatibility with C.
+
+* The default extension for include files are now both .i and .inc.
+
+* All documentation is updated to a format that is easier to read from a screen
+  (as opposed to being printed).
+
+* Improved support for new versions of GCC, clang and Borland/Embarcadero.
+
+* BUG fix: dangling comma on initializers of two-dimensional arrays caused
+  incorrect code generation. This has been corrected.
+
+* BUG fix: when two files have a symbol with the same name, the debugger could
+  pick the wrong source file. This has been corrected.
+
+* BUG fix in test for UTF-8 files.
+
+
+Version 4.0, Build 4733
+-----------------------
+* BUG fix: the optimizer generated wrong code for subtraction of a variable from
+  a constant. This has been corrected.
+
+* BUG fix: overlay code caused "legacy" virtual instructions to be generated,
+  instead of the instructions from the new set.
+
+* The CMake build scripts were updated to reflect the changes in recent versions
+  of CMake.
+
+* In Quincy, the bottom panel may close automatically when it looses focus and
+  re-open when it gains focus. This allows to keep a large edit window and still
+  access the build/log windows with a single click. (Note: this functionality
+  can be disabled in the applocation options.)
+
+* In Quincy, code snippets may now optionally also expand on a space character
+  (previously, only the TAB character was supported).
+
+* A compilation problem with the ARM7 and Thumb2 cores, in combination with
+  recent releases of the GNU "newlib" chain, has been corrected.
+
+
+Version 4.0, Build 4548
+-----------------------
+* The instruction set of the Pawn abstract machine has been revised and cleaned
+  up. This release is therefore not compatible with previous releases. AMX files
+  built with an old version of the Pawn compiler (before 4.0) will not run with
+  the current abstract machine, and AMX files built with the current compiler
+  will not run with the old abstract machine.
+
+  The Pawn language itself has also changed in the area of handling arrays with
+  symbolic subscripts and handling packed versus unpacked arrays. The scripts
+  need to be adjusted to the new syntax to compile in version 4.0.
+
+  See the separate "Pawn Porting Guide" for instructions for porting scripts and
+  host applications from Pawn 3.x to Pawn 4.0.
+
+* The Pawn abstract machine now supports three sets of instructions:
+  - The "core" set is the minimal set of instructions that an abstract machine
+    must implement. If you need to mininmize the footprint of the Pawn abstract
+    machine (e.g. on an embedded system on a small micro-controller), use this
+    set. A Just-In-Time compiler will typically also implement the core set.
+  - The "supplemental" set adds macro instructions to the core set. A macro
+    instruction replaces two or more of the core instructions by a single one.
+    This reduces the size of the script and makes it run quicker as well (by
+    reducing the overhead of decoding the instructions). For a Just-In-Time
+    compiler, it is usually redundant to support this, because the macro
+    instructions are typically translated to the same native code as the
+    original sequence of core instructions.
+  - The "full" instruction set is a superset that adds "packed" instructions to
+    the supplemental+core instruction set. Packed instructions decrease the
+    size that the compiled script takes. It is mostly useful on embedded systems
+    (with a small micro-controller) that run a script from RAM (but have enough
+    ROM to contain a full abstract machine).
+
+* The interface to public functions in the abstract machine has changed slightly:
+  functions that allocate memory inside the abstract machine now return only a
+  single pointer. Previous versions returned two pointers: one pointer to access
+  the data, and one pointer to pass to the abstract machine (a "virtual" pointer).
+  The manual has been updated for this; see also the "Pawn Porting Guide".
+
+* The interface in the abstract machine to native functions has changed: native
+  functions now get passed addresses that it can use directly. Converting
+  addresses through amx_GetAddr() is no longer needed; in fact, that function
+  no longer exists. See also the "Pawn Porting Guide" for details.
+
+* The Pawn compiler now generates 32-bit, 64-bit or 16-bit AMX files (for the
+  abstract machine). A new command-line option indicates the cell size. There
+  is no more need to create two versions of the Pawn compiler if you wish to
+  support both 32-bit and 64-bit scripts.
+
+* The "enum" keyword is removed from the Pawn language. Instead, "const" now
+  declares either single constants or enumerated lists. In most cases, you can
+  just replace "enum" with "const", but note that the very first constant in
+  the enumerated list must be initialized (it does not default to zero).
+
+  For example:
+        const a = 10            // single constant
+
+        const Ping: {           // constant list, default tag is "Ping"
+                b = 1,
+                c,
+                Pong: d         // tag override
+              }
+
+* In the language, the syntaxes for packed and unpacked strings have changed.
+  A packed string now uses the syntax:
+        "this is a packed string"
+  And unpacked string is now enclosed between two pairs of single quotes:
+        ''this is an unpacked string''
+  The left-most quotes may also be back-quotes (for similarity with TeX):
+        ``this is also an unpacked string''
+
+* For literal arrays and array initialization, the syntax has also changed.
+  Square brackets now mean unpacked arrays and braces (curly brackets) meand
+  packed arrays. In a multi-dimensional array, only the last dimension may
+  be packed.
+
+  In practice, this means that in most cases the braces must be replaced by
+  brackets. For example, to declare and initialize an array with four cells,
+  you now use:
+        new rect[4] = [ 1, 2, 3, 4 ]
+
+  For packed arrays, you use braces both in the declaration of the array size
+  and in the initialization. For example:
+        new packed{10} = {'a', 'b', 'c' ... }
+  The above declares an array of ten characters (these fit in three cells on a
+  32-bit configuration).
+
+* The "char" keyword is gone, see above for the new way to declare packed
+  arrays.
+
+* Previous versions of Pawn used enumerations and tags to simulate a
+  light-weight variant of structures. This has been replaced by a more direct
+  way to declare "symbolic indices" in arrays. An array can now be declared
+  as:
+        new rect[.left, .top, .right, .bottom]
+  The array can then only be indexed with one of the declared symbolic fields,
+  such as in:
+        rect[.bottom] = rect[.top] + 15
+  Since the only valid index is a symbolic field, the brackets may be omitted,
+  giving the shorter equivalent:
+        rect.bottom = rect.top + 15
+
+  Symbolic indices may specify a tag for the field, and may also indicate a
+  (pseudo-)array. Please see the "Language Guide" for details.
+
+* To make the new way to specify symbolic indices more practical, the "#define"
+  preprocessor directive now also supports definitions that are delimited with
+  square brackets. This means that definitions do not have to fit on a single
+  line. An example of such a declaration:
+        #define PRODUCT[
+                    .code,
+                    .description{20},
+                    Float: .price
+                ]
+
+  Later, this definition can be used to declare an array, for example:
+        new product[PRODUCT]
+
+* There are many minor improvements in Quincy, which enhance its usability.
+  For example, when hoovering over a warning or error message, a balloon pops
+  up with a description text for the message, and the relevant line in the
+  source code is marked at the same time.
+
+* Quincy has also obtained a symbol browser. This browser gets its data from
+  the XML reports that are generated by the compiler. The symbol browser also
+  extracts details from the documentation comments, and shows these in the
+  pop-up balloons when appropriate.
+
+
+Version 3.3, build 4127
+-----------------------
+* The entire Pawn toolkit is now licensed under the Apache license, version 2.
+  The Apache license is a very liberal license (permitting use in commercial
+  projects), but it contains a patent clause. The previous license (zLib/libpng)
+  did not have a patent clause.
+
+* wxQuincy, a minimalistic IDE distributed in the Linux autopackage and TAR files
+  now comes with source code. The IDE has been enhanced with a multiple-document
+  interface.
+
+* The compiler is now a little better at guessing the TAB size in case of mixed
+  indentation with TABs and spaces. This avoids the warning "loose indentation"
+  to be reported erroneously.
+
+* Keep the stack 8-byte aligned in the ARM7 assembler versions of the abstract
+  machine (some ARM compilers require this).
+
+* amxFile uses the newest version of minIni.
+
+* Quincy (Microsoft Windows version) now detects FTDI virtual ports (for remote
+  debugging); it supports up to 15 user help files and it supports host-specific
+  help files. Quincy now also has the ability to insert accented characters
+  (extended ASCII), and a new "repeat star in multi-line comments" option.
+
+* BUG fix with strings with an escape character followed by a single line
+  comment (preprocessor parser error).
+
+* BUG fix in expressions with chained relational operators and constant operands.
+
+* BUG fix in the optimizer: removed redundant calls to malloc().
+
+* BUG fix related to passing arrays based on an enumeration to a function.
+
+* BUG fix in auto-completion in Quincy, related to non-alphabetic characters
+  ('_' and '@').
+
+
+Version 3.3, build 4097
+-----------------------
+* The Pawn compiler can now take a configuration file with specific settings for
+  an environment. New command line option: -T.
+
+* The Linux distribution now comes with a minimalistic IDE, called wxQuincy.
+
+* Uncrustify replaces "artistic style" as the code beautifier for Quincy.
+
+* BUG fix: minor bug correction in missing comma in initialler of 2-dimensional
+  array.
+
+* Modifications in Quincy: better detection of read-only paths (or drives), an
+  option to save the file in a different location without aborting the compile,
+  a message in the "build log" that signals that a source file was changed since
+  last build (and thus needs rebuilding), a window to view strings received over
+  the serial line.
+
+* Improvements for GraphApp terminal (for Linux).
+
+
+Version 3.3, build 4058
+-----------------------
+* Improvements in documentation comments, among which creating an "auto-summary"
+  from the phrase in a comment.
+
+* Moved from libffi to Dyncall for the "process and libary control" module.
+  Dyncall is easier to build, and easier to integrate in a product.
+
+* The interface to the debugger (from Quincy) is improved, especially for
+  scripts built from multiple source files. It is now also possible to set
+  break-points while debugging (previously, you either needed to leave the
+  debugger to set a breakpoint and restart the debugging session, or to set
+  the breakpoint by typing it in the debugger console).
+
+* Quincy now has auto-completion of known function names and words that it
+  looks up from the current source file.
+
+* Quincy now uses an improved GREP utility (GNU GREP, with a modification, see
+  the "grep.txt" file in the archive).
+
+* BUG fix: a regression in handling multi-dimensional arrays.
+
+* BUG fix: amx_GetString() could terminate a string with a double zero byte,
+  possibly exceeding the maximum array size with one byte.
+
+* BUG fix: the code generator used 17-bit signed values for packed opcodes
+  (should be 16-bit).
+
+
+Version 3.3, build 4026
+-----------------------
+* "exit" state functions are now also supported (in addition to "entry" state
+  functions).
+
+* The call.pri and jump.pri opcodes have been removed, because they made a
+  buffer-overrun attack possible.
+
+* Trailing commas are now allowed in the initialization data of arrays. For
+  example, the comma behind the closing brace of the second sub-array in the
+  following declaration is allowed (but optional). The commas behind the digits
+  2 and 4 are allowed too (and also optional).
+    new arr[2][2] = {
+                      { 1, 2,},
+                      { 3, 4,},
+                    }
+
+* The macro substition processor now recognizes the "#" character for
+  "stringizing" a parameter. For example, if you have the definition
+
+    #define log(%1) #%1
+
+  Then the expression log(test) will result in "test".
+
+  Note that concatenation of literal strings requires an ellipsis in Pawn (which
+  is different than C/C++). So to combine the parameter with literal strings,
+  use a syntax like:
+
+    #define log(%1) "logging: " ... #%1 ... "\n"
+
+  The stringize operator is only available in the replacement text of a macro.
+
+* Support for the "thousands" separator (a comma) in numbers.
+
+* When a source file contains indenting with both spaces and tab characters, and
+  no explicit tab size is given, the compiler now makes an educated guess for
+  the tab space to use. This reduces warnings about "loose indentation".
+
+* SECURITY FIX: the CALL.pri and JUMP.pri instructions were removed, because
+  one could use them to force a jump out of the virtual sand box of the abstract
+  machine and call arbitrary code that is carefully laid out in the data section
+  of the script.
+
+* The handshake of the debugger in a remote-debugging configuration is a little
+  faster. That is, the debugger finds the remote device/host faster. Remote
+  debugging is typically used with embedded systems.
+
+* Better support for ncurses, which is now also the default for Linux (if it
+  is installed).
+
+* for the amxProcess module, the dyncall library now replaces the libffi
+  library, because dyncall comes with ports for Unix/Linux, Macintosh and
+  Windows (libffi only supported Unix-like systems). The amxProcess module
+  now also compiles without dyncall, but with reduced functionality.
+  See http://www.dyncall.org/ for details on dyncall.
+
+* The "binreloc" module is now optional when compiling pawnrun and pawndbg
+  under Linux; binreloc is part of the "autopackage" developer tools.
+
+* A portable INI file parser in the amxFile extension module.
+
+* Support for code snippets and balloon "info tips" in Quincy, as well as
+  supporting info-tips in the debugger for the current value of variables.
+
+* Quincy supports workspaces (light-weight projects). A set of open files and
+  the currently selected compilation options can be saved in a workspace, for
+  quickly switching between projects.
+
+* Various BUG fixes and improvements in the Pawn debugger (pawndbg) for working
+  with Quincy.
+
+* BUG fix: the ternary operator ("a ? b : c") had a bug when "b" and "c" were
+  arrays of different lengths. This bug was reported by Bailopan on the Pawn
+  forum.
+
+* BUG fix: amxFile had an error in the file CRC calculation.
+
+* BUG fix: function uuencode() in amxString was broken.
+
+* BUG fix: when basing a one-dimensional array on an enumaration and using the
+  ellipsis ("...") in the initialler to initialize the complete array to a
+  value, the ellipsis would drop out immediately and fail to fill the remainder
+  with the given value/sequence.
+
+* BUG fix in amxString: valstr() failed on large numbers.
+
+* BUG fix: a string like "\\" was not accepted by the Pawn compiler (double
+  backslash at the end of a string).
+
+* BUG fixes in amxpool (minor bugs).
+
+* BUG fix: indexing an undeclared symbol made the compiler abort with an
+  "assertion failed" message. This has been corrected.
+
+* Various other bug fixes, and many improvements in Quincy.
+
+
+Version 3.3, build 3930
+-----------------------
+* New native functions fattrib() and filecrc() in the amxFile module.
+
+* On enum declarations, a "terminating" comma is now optional if there is only
+  one constant per line.
+
+* Concatenation of literal strings (using "...") in the lexer, see the Language
+  Guide for details.
+
+* Increased maximum line length for script files in the compiler (it is now
+  dynamically allocated).
+
+* Implement a true LRU scheme in the overlay pool manager, also add an option
+  to mark blocks as "protected" (not swapped out).
+
+* Various improvements in the Quincy IDE, including updated documentation.
+
+* Minor fix in pawnrun.c: event-driven programs without main() now also work.
+  Previously, pawnrun required a script to have a function "main()", even if
+  that function were just empty.
+
+* BUG fix in one of the new (packed) opcodes. The bug occurred in the "C"
+  versions of the abstract machine only. The assembler implementations were not affected.
+
+* BUG fix: enum field size was not taken into account when implicitly passed to
+  a function (default value of a parameter of a function, using "sizeof").
+
+* BUG fix: skipping lines on the imput (in the Pawn compiler) did not work with
+  UTF8 scanning (a static variable was overwritten).
+
+* BUG fix in amx.c: when calling amx_Exec() with the flag to continue from the
+  point that the abstract machine encountered a "sleep" instruction, it should
+  also reload the overlay (a nested call to the AMX could have kicked the
+  sleeping function out of the pool).
+
+* BUG fix: support array assignment of a two-dimensional array into part of a
+  three-dimensional array.
+
+* Added opcode "PICK", for copying multi-dimensional arrays.
+
+* Minor corrections in ARM7 assembler syntax (RealView assembler).
+
+* BUG fix: stack not reset correctly for native function returning SLEEP.
+
+* BUG fix: overlays and user-defined operators did not mix.
+
+* BUG fix: the compiler dropped on an assertion in parsing a native function
+  that returns an array.
+
+
+Version 3.3, build 3875
+-----------------------
+
+* The error system is now more helpful in the common case of a mistyped symbol
+  name: it tells you the name of a known symbol whose name closely matches.
+
+* The compiler now generates "position-independent code", which makes it easier
+  to run code from ROM or to load portions of the code as overlays. Old compiled
+  scripts are transformed automatically to position-independent code (except
+  for the JIT's, which still use physical code addresses).
+
+* Now that that is mentioned, the abstract machine has hooks and special opcodes
+  to load overlaid functions and the Pawn compiler can optionally create tables
+  suitable for this purpose. The Implementer's Guide has a new appendix on using
+  overlays. Overlays allow the creation of relatively large scripts in a memory
+  constrained environment (it is used on embedded systems with a hard upper
+  limit on the amount of RAM for a script, for example).
+
+* The compiler also generates "packed instructions", where the opcode and its
+  parameter are packed in a single cell.
+
+* amxFile has the new functions frename() and fstat(). Function fstat() returns
+  the size and the time stamp of a file. In contrast to flength(), this
+  function does not need to open the file to get its size.
+
+* amxTime has a new function cvttimestamp() to convert Unix timestamps (number
+  of seconds since midnight of January 1, 1970) to date and time fields. In
+  addition, function settimestamp() was documented and declared in the header,
+  but not implemented. This has been corrected.
+
+* amxString now contains the function strcopy(), which copies a packed string
+  into another packed string and an unpacked string into another unpacked
+  string. To convert strings between packed and unpacked strings, you can still
+  use the functions strpack() and strunpack().
+
+* Support for array comparison, with a syntax and restrictions similar to array
+  assignment. Comparing two arrays is convenient when using arrays as
+  light-weight structures. Only the "==" and "!=" are implemented, just like
+  the comparison of structures in C/C++.
+
+* There are new P-code interpreters for the ARM7 architecture. This
+  implemenation gives a significant performance boost compared to the C version,
+  especially because it manages to map all pseudo-registers to ARM registers.
+  The ARM7 core is implemented both in GNU AS syntax and in ARM assembler
+  syntax, in the files amxexec_arm7_gas.s and amxexec_arm7.s respectively.
+
+* Jacob Dall sent patches to avoid a few common calling-convention issues on
+  Microsoft Windows.
+
+* Opcode checking has become stricter: when initializing an abstract machine,
+  the abstract machine tests the parameters of branch instructions and of
+  instructions that access data in the data segment or the stack/heap.
+
+* BUG fixes for Big Endian processors: one was in loading the debug information
+  and another in the "getch" code (for Linux/MacOS platforms). Both were
+  reported by Jim Schimpf on the Pawn forum.
+
+* BUG fix: the garbage collector dereference a pointer before checking for its
+  validity. This bug was found by Jason Hughes and reported on the Pawn forum.
+
+* BUG fix: amx_FindNative() used binary search on function names, but the
+  native table is sorted on SYSREQ IDs rather than names. This bug was reported
+  by "faluco" on the Pawn forum.
+
+* BUG fix: the printf() function in the "console" module did not handle "%%"
+  correctly. It should print a single "%".
+
+* BUG fix: under particular circumstances (including a file with stock functions
+  at the bottom of the file, and not using that particular stock function), the
+  debug information might not refer to the correct file. This bug was signaled
+  by Jean-Robert Laffineur.
+
+* BUG fix: the debug information always included all public functions, even
+  those that were not implemented.
+
+* BUG fix: "loo" reported a bug that turned out to be in the "termwin" module
+  (the "Microsoft Windows" graphical console). This bug occurred with scripts
+  that use events, and especially keyboard events.
+
+* BUG fix: when using recursive functions, the stack depth check was sometimes
+  completely wrong and no indication for recursion was given.
+
+* BUG fix: the libcall() function in the "Process" module pushed (on some
+  environments) the parameters in reversed order.
+
+* BUG fix: the JIT attempted to access memory before that memory was allocated.
+  This bug was reported by Bailopan on the Pawn forum.
+
+* Other fixes and improvements, notably a list of minor fixes posted by
+  Søren Hannibal and numerous bug reports by Bailopan.
+
+
+Version 3.2, build 3664
+-----------------------
+
+* BUG fix: using user-defined operators with the compiler option -O2 (for using
+  macro instructions) could produce code that the abstract machine finds
+  "invalid". Actually, the code is good, but the abstract machine sees a
+  combination of instructions that it does not expect.
+
+* The Linux autopackage now uses autopackage version 1.2. This should make the
+  Linux setup more robust.
+
+* BUG fix: The function libcall() in the amxProcess extension module pushed the
+  parameters in the wrong order under Microsoft Windows (when the module was
+  built with Borland C++ and perhaps with other C/C++ compilers too).
+
+* BUG fix: when the conditional operator is used in combination with functions
+  returning arrays, the heap was restored twice (once too often). In particular
+  the expression
+        a ? test1() : test2()
+  where test1() and test2() are both functions that return an array, had the
+  effect that both the "true branch" and the "false branch" allocate space for
+  the return value on the heap, and the heap is restored for the total of
+  test1() and test2() at the end of the expression. However, only one of the
+  branches is taken, so the heap is incremented for either test1() or test2(),
+  but restored for both.
+
+  This bug was reported by Bailopan on the Pawn forum.
+
+* BUG fix: the heap checking (overrun and underrun) was incorrect in the JITs.
+  This made heap underflows go by mostly undetected. This bug was found by
+  Bailopan, when he investigated the bug with the conditional operator.
+
+* The expression "++a" in a statement like "return ++a" was optimized
+  incorrectly by the peephole optimizer, because it considered the expression
+  result as "unused". This also occurred in the statements "sleep" and "exit".
+  This bug was reported by Bailopan on the Pawn forum.
+
+* BUG fix: "nametable" field in the AMX header was swapped twice on Big Endian
+  architectures. This bug was reported by Pekka Nikander on the Pawn forum.
+
+* There is a new build macro to remove the default implementation of
+  amx_Callback(). A patch from Markus Schaber, on the Pawn forum.
+
+* The Abstract Machine core that uses computed gotos ("labels as values") is
+  now also used for the Intel C/C++ compiler (ICC). The Intel compiler supports
+  the GNU GCC extension. This change was suggested by Markus Schaber on the Pawn
+  forum.
+
+* The AMX API functions amx_PushArray() and amx_PushString() now accept NULL for
+  the "amx_addr" parameter. This is convenient, because amx_Release() can free
+  heap memory for multiple allocations at once.
+
+* The compiler now adds a warning for the expression
+        showval (a > 0) ? 1 : 2
+  because this is interpreted as calling showval() with the parameter "a > 0",
+  like in:
+        (showval(a > 0)) ? 1 : 2
+  What was intended is:
+        showval((a > 0) ? 1 : 2)
+
+* On Microsoft Windows, there is a second pre-compiled debugger that splits the
+  debugger output from the script output. This debugger is intended to be used
+  from an IDE like Quincy.
+
+* The definition of native functions has changed so that "params" is now a
+  "const" parameter. This gives some protection against inadvertedly changing
+  the stack in the abstract machine.
+
+* Improved support for running scripts in ROM. In this configuration, the P-code
+  of the script resides in ROM and the data/stack/heap is in RAM. The abstract
+  machine must be configured specifically for running scripts in ROM, because
+  various optimizations (such as relocating jump addresses) no longer work.
+
+* Various minor improvements to the Pawn debugger and the Quincy IDE.
+
+* Various minor optimizations and minor fixes. Some related to Macintosh
+  support, others to the Linux Autopackage. A few error/warning messages in the
+  compiler were made more precise/accurate too.
+
+
+Version 3.2, build 3636
+-----------------------
+
+* Performance of the compiler has improved, due to a faster "memory file"
+  interface. The new interface was donated by the AMX Mod X team
+  (http://www.amxmodx.org).
+
+* BUG fix: for "optimize level" 2 and when using GCC or the assembler core, the
+  SYSREQ.N instructions were not replaced correctly by SYSREQ.ND. Mostly, it
+  failed to replace the instruction; when it did replace the instruction, it
+  did so at the wrong position, leading to a crash. This problem did not occur
+  with the ANSI C version of the abstract machine.
+
+* amxProcess now loads libffi dynamically, so that it works with both version
+  1.20 and version 2.00-beta. Version 1.20 is the only release that can still be
+  downloaded separately, and which is needed for GCC versions before 3.4;
+  see http://sources.redhat.com/libffi/.
+  libffi is only used for the Linux version of amxProcess; the Microsoft Windows
+  version uses its own code.
+
+* Better checks for unreachable code, including a test for code following an
+  infinite loop.
+
+* If no AMXLIB environment variable is set, pawnrun and pawndbg now look for
+  the add-in modules in the same path as where they reside themselves. This
+  change makes it easier to run Pawn "out of the box" on Linux machines.
+
+* When making an array without specifiying the dimensions, but where the element
+  count at the lowest dimension is the same for all, the compiler now "counts"
+  this size, rather than setting the lowest dimension as "variable length".
+
+  An example for this situation is the declaration:
+        new my_array[][] = { {1,0}, {2,1}, {3,1} }
+  No dimensions are given, but the new compiler determines that the minor
+  dimension is 2 (and the major dimension is 3). Previous compilers set the
+  minor dimension to 0 --meaning "variable".
+
+* BUG fix: #elseif handling did not work. Bug reported and patched by "rain" at
+  the Pawn forum.
+
+* A minor compiler bug (which surfaced when you would change the file output
+  stage) was reported by Bailopan on the Pawn forum, including a suggested fix.
+
+
+Version 3.2, build 3599
+-----------------------
+
+* Constants (fields) in an enumeration may now be redeclared in other
+  enumerations, provided that all enumerations have a tag. When arrays are
+  declared with these enumeration tags for the index, the same constant
+  name may refer to different elements in different arrays.
+
+* The directive "#pragma depricated" now allows for a comment on the directive
+  line. This comment is appended to the warning message (warning 234). This
+  feature was requested on the Pawn forum by "Greenberet" and Felix Kollmann.
+
+* New extension module amxProcess, bringing process control and a "foreign
+  function interface" (meaning that you can call functions from dynamically
+  loaded DLLs in Microsoft Windows or shared libraries in Unix/Linux). There
+  is an example script, gtkcalc, that uses the amxProcess module to create a
+  simple GUI via gtk-server (see http://www.gtk-server.org/).
+
+* Pawn now uses autopackage 1.0.10, which fixes a problem with the zsh shell
+  (Linux/Unix).
+
+* BUG fix in handling the "precision" (i.e. the maximum width) of string
+  parameters in printf() and strformat() (from the amxCons and amxString
+  modules respectively).
+
+* BUG fix in using a state function before its definition, when this usage
+  occurs from a fall-back state.
+
+* BUG fix: the "@" character was not allowed in macro definitions (while the
+  documentation stated that they were). They are now allowed.
+
+* BUG fix: the retail binaries crashed when an extension module invoked a
+  public function on an event, and that extension module was in a DLL. The
+  cause was that the DLL contained its own copy of amx_Exec(), but possibly
+  one that was compiled differently from the amx_Exec() in the main program.
+  The fix is to let the main host program pass in a pointer to the correct
+  amx_Exec() to use. This bug was reported by Loo on the Pawn forum.
+
+* BUG fix: when compiling with -O2, an invalid assembler instruction
+  occasionally popped up. Reported by Brad Benjamin.
+
+* BUG fix: the OP_SYSREQ_N was not handled correctly in the assembly-optimized
+  version of the AMX. This opcode is only generated when the optimization level
+  (of the Pawn compiler) is set to 2.
+
+* BUG fix in amxCons in relation with amxString: when strformat() forwards to
+  amx_printstring() and the format string contains a %s, amx_printstring() is
+  re-entered, but the redirected output functions were not passed through.
+
+
+Version 3.1, build 3541
+-----------------------
+
+* The debugger now allows for a "split-screen" build, meaning that the debugger
+  output goes to a simple console window/terminal (or "DOS box") and the
+  console output produced by the script goes through a second emulated terminal
+  (termwin for Microsoft Windows, or term_ga for GraphApp).
+
+* Minor improvements in the termwin pseudo-terminal, mostly concerning lay-out.
+
+* For warning 203 (symbol is never used), the reported line number is now the
+  line of the declaration of the symbol. For warning 204 (symbol is assigned a
+  value that is never used), the line number is the one at which the latest
+  assignment appears.
+
+* When the "sleep" instruction is used, the compiler now flags this in its stack
+  usage report. The stack usage may not be accurate in such case, because the
+  sleep instruction often permits re-entrancy (this depends on the host
+  application).
+
+* Quincy now checks for updates once a week. It downloads the PAD file for Pawn
+  and parses it using TinyXML. You can turn this feature off.
+
+* Relevant modifications from the Quincy 2005 project (http://quincy.codecutter.org)
+  were merged into the "Quincy for Pawn" project.
+
+* The Windows installer now registers the file extensions .p and .pawn and
+  associates these with Quincy.
+
+* BUG fixes related to the JIT (it had not been updated in a while).
+
+* BUG fix: a declaration like new array[1000][1000][1000] created invalid code
+  because the total array size exceeds 4 GiB. A check for this limit was
+  missing. Reported by Bailopan on the Pawn forum.
+
+* BUG fix: calling a public function from within a script (where the public
+  function lacks a forward declaration) crashed the compiler. Reported by
+  Bailopan on the Pawn forum.
+
+* BUG fix: the amx_StrParam() macro copied one character too few to the newly
+  allocated string. Reported by Peter W.
+
+* BUG fix: a script having zero native functions still required amx_Register()
+  to be called. This bug was fixed earlier, but it surfaces again... Reported
+  by Peter W.
+
+
+Version 3.1, build 3526
+-----------------------
+
+* The setup program failed to put the documentation (PDF files) in the
+  "Documentation" sub-menu in the Start / Program Files menu.
+
+* Quincy was modified so that it would work when installed in a path with a
+  space character. In addition, the settings are now stored in an INI file,
+  which resides in the same location as the Quincy.exe file. I prefer INI
+  files, because they allow multiple installations of a program (in different
+  directories) with different configurations.
+
+* The modifications done by Allen Cronce for the Mac OS-X port were merged with
+  the main sources. Apart from the port, the modified source code also features
+  bug fixes related to the Endianness of the debugging information, so it is
+  relevant to all users of Big Endian architectures (and who wish to use the
+  debugger).
+
+
+Version 3.1, build 3522
+-----------------------
+
+* Quincy, a C++ IDE written by Al Stevens and published in Dr. Dobb's Journal,
+  is now adapted for Pawn. This is a Windows IDE, featuring an editor and a
+  debugger.
+
+* Remote file uploading functionality in the Pawn debugger (for hosts that
+  support remote debugging).
+  Warning: For remote debugging, port 1 now refers to COM1 in Windows (and
+  ttyS1 in Linux); in previous releases you had to select port 0 for COM1.
+
+* State variables are now available. Just like local variables have a
+  function-local scope, state variables have a scope restricted to a state
+  (or a set of states) --but they may be used across functions that implement
+  that state. The documentation is up to date.
+
+* Keyword "state" is now also an operator; it returns "true" if the automaton
+  is in the indicated state.
+
+* Macro-instructions for common repeated sequences, for more compact code and
+  quicker execution. The new compiler option "-O" sets the optimization level.
+  The JIT does not support these macro instructions, and scripts that may need
+  to run on the JIT must therefore be compiled with -O1 (standard optimization),
+  which is also the default setting.
+
+* Support for re-entrant events in handling the "sleep" instruction.
+
+* Added a delay() routine in amxTime.
+
+* Added file matching and counting routines: fexist() (replaces the old
+  exist() function) and fmatch(). These routines allow wild-cards, similar to
+  those in the Unix shells.
+
+* The Path to the XSL stylesheet is now stored into the report, and the
+  stylesheet information is embedded in the XSL file. The generated report can
+  therefore be viewed directly (with a browser).
+
+* Dynamically loaded extension modules are looked up from the path in the
+  "AMXLIB" environment variable. This is especially useful for applications
+  that have a "plugins" directory, for contributed extensions in the form of
+  Pawn extension modules.
+
+* There is improved support for compiling scripts for execution from read-only
+  memory.
+
+* Native and public functions can be marked "depricated", to help upgrading to
+  new scripting environments.
+
+* To avoid a frequent error: (typing) error in the name/signature of a public
+  function, the compiler now issues a warning if no forward declaration exists
+  for a public function. The idea is that the (implicitly included) include
+  file that the host application supplies, contains forward declarations for
+  all public functions.
+  Warning: this may require that you add forward declarations to existing
+  header files.
+
+* The BinReloc package used for Pawn is now version 2.0 (see
+  www.autopackage.org). This package allows the Pawn compiler to be installed
+  in any path; it will always find the required include files in directories
+  that are relative to the path to the executable.
+
+* The compiler uses strlcpy() and strlcat() as safe alternatives for strncpy()
+  and strncat(). As not all compilers include these functions in their C
+  library, the source code comes with standard implementations in the file
+  lstring.c.
+
+* Fixed several bugs related to the order in which automatons were used and
+  declared.
+
+* BUG fix: the generated code for the entry function (state machines, or
+  "automatons") had the wrong stack convention.
+
+* Minor corrections in macros (for masking absence of terminal support) in the
+  console support (amxcons.c).
+
+* BUG fix in strmid() concerning short destination strings.
+
+* BUG fixes in the string packing routine (used a.o. by strcat()).
+
+* CMakeLists.txt for the compiler: minor path-related fix
+
+* BUG fix in amxjitsn.asm, where the JIT code was split into two different
+  sections for no good reason (probably predating the "mprotect" support code
+  in amx.c). Bug reported and fixed by David "BAILOPAN" Anderson.
+
+* BUG fix: arrays used in logical expressions were not check for full indexing
+  (as they should). Specifically, after declarating "new series[10]" an
+  expression like "if (series || 0)" would compile without errors. Bug
+  reported and fixed by David "BAILOPAN" Anderson (my fix is somewhat
+  different, to catch more cases).
+
+* BUG fix: the #error directive ignored the parsing state, so an #error
+  directive folded inside #if 0 ... #endif still fired. Reported by "chop".
+
+* BUG fix: the tagof operator used as a default value for function arguments
+  took the tag of a variable, but not of an expression. Reported and fixed by
+  Jonathan on the Pawn forum.
+
+* BUG fix in recursion detection.
+
+* BUG fix for the sleep opcode: the STK and HEA registers were not updated in
+  the AMX structure (ANSI C and GNU C versions only; the assembler versions
+  were correct). Reported and fixed by "chop".
+
+* BUG fix: the "JIT" flag was erased under specific conditions in amx_Init().
+
+* BUG fix: memory block for the JIT code must be aligned under Linux.
+
+* BUG fix: structure packing was incorrect for GCC.  Also removed "far"
+  pointers from the definitions of the debug structures.
+
+* Warning: The fixed point function fixedstr() is renamed to strfixed() to be
+  in line with the string functions strval() and valstr(). Similarly,
+  floatstr() is renamed to strfloat().
+
+
+
+Change log for older releases
+-----------------------------
+
+28/07/2005      BUG fix for the "switch" opcode in the JIT, in the situation
+                        where only the "default" case was present (no other
+                        cases, which means that the switch was actually
+                        redundant). This bug found and fixed by Bailopan, and
+                        reported on the Pawn forum.
+                BUG fixes for debugging symbols in 64-bit mode, found and fixed
+                        by Bailopan and reported on the Pawn forum.
+                Fixes in the CMakeList.txt file for compiling under Linux/UNIX.
+
+22/07/2005      The compiler has native support for states and automatons.
+                        Implementing finite state machines is thereby easier,
+                        and the compiler helps in checking that the state
+                        machine is coherent. See the language guide for details.
+                Several bugs related to arrays and enumerations have been
+                        fixed. Some of these bugs were (also) reported by
+                        Vic Viper on the forums.
+                Yet one more Big Endian bug was found and fixed.
+                Robert Daniels found and fixed a problem related to
+                        3-dimensional arrays with a variable last dimension.
+                        His fixes have been merged in the main source.
+                A 64-bit bug found by Bailopan was fixed. Compact Encoding
+                        should now also work with 64-bit cells.
+                There are three new native function modules: one with string
+                        manipulation functions, one with simple network packet
+                        exchange functions and one with time/date functions.
+                A general purpose way to accept event sources has been
+                        implemented in the "pawnrun" example program and in
+                        several of the native function libraries. With this
+                        interface, a native function library can "register"
+                        a public function that it will call upon a specific
+                        event. See pawnrun.c and the modules "amxCons.c"
+                        (@keypressed) and amxTime.c ("@timer") for details and
+                        examples.
+                The debug protocol has changed completely. The old debug opcodes
+                        are replaced by a single new opcode: BREAK. The debug
+                        information is now appended to the AMX file, instead of
+                        being intermixed with the normal opcodes. The rationale
+                        of the new design is improved performance when running
+                        scripts with debug information, and the ability to
+                        do remote debugging.
+                The console debugger has been enhanced to support states and to
+                        allow debugging over a serial line (RS-232), provided
+                        that the host application supports the protocol too.
+                        The screen lay-out was improved as well.
+                The Linux compiler now uses the BinReloc package from
+                        www.autopackage.org to locate the include files and the
+                        configuration file. This should be more robust than the
+                        earlier hack.
+                The peephole optimizer was improved. After finding an
+                        optimization, it now recurses over all rules to find
+                        (more) optimizations on the adjusted code.
+                Documentation comments have been improved (and now include the
+                        automatons and the transitions). The lay-out has been
+                        improved as well.
+                New #pragma "amxlimit" lets the compiler verify that the script
+                        fits the abstract machine after compilation. This is
+                        useful for embedded devices with little memory for
+                        scripts.
+
+18/03/2005      Small is renamed to Pawn. Changing the name has been requested
+                        regularly, by various individuals, because searching
+                        for information on the "small" scripting language (on
+                        the Internet) was not exactly easy. The word "Small"
+                        is fairly common. The new name, "Pawn" should improve
+                        the odds that when you search for "Pawn scripting",
+                        you will get information on the language. Together with
+                        the product name, names of utilities and executables
+                        changed as well.
+                        Warning: when your host application relies on the name
+                        of the compiler to be "sc.exe" or "sc", you must either
+                        rename the executable after it is built, or you must
+                        adjust your host application to run "pawncc.exe" or
+                        "pawncc" instead.
+                The compiler is now built as a shared library/DLL. The compiler
+                        command line program is now just a driver for the
+                        library (except for the 16-bit version of the compiler).
+                The abstract machine can now support the JIT and the assembler
+                        core together. In earlier releases, you had to choose
+                        for either the JIT or the assembler core. As the JIT
+                        does not support the debugging hook, the new scheme
+                        allows you to build the abstract machine such that you
+                        debug your scripts using the assembler core and run the
+                        final version using the JIT.
+                        Warning: the initialization of the JIT has changed (but
+                        only slightly). Host applications that use the JIT must
+                        set the AMX_FLAG_JITC flag before calling amx_Init().
+
+16/03/2005      BUG fix: when introducing version 7 of the binary file format
+                        I accidentally accessed the binary file directly instead
+                        of passing through sc_resetbin(). This made in-memory
+                        compilation impossible.
+
+12/03/2005      BUG fix: declaring a global array variable with a symbolic
+                        constant (for the array size) before that symbolic
+                        constant is defined itself, could result in a hang
+                        (or a significant compilation delay).
+                Documentation fix: the documentation for enumerations in
+                        relation to explicit tags and array indices was
+                        incorrect.
+                Global variables may now be declared both public and stock.
+                        Functions must still be either public or stock (or
+                        neither); note that there is not much use for public
+                        stock functions, as functions can be "forward declared"
+                        and variables cannot.
+
+28/02/2005      The debug information format and the debug hook have changed
+                        dramatically. The existing 5 opcodes for the debug hook
+                        FILE, LINE, SYMBOL, SRANGE and SYMTAG are now redundant,
+                        and replaced by a single new opcode: BREAK. Other
+                        opcodes that previously called the debug hook, such as
+                        CALL, RETN, and STACK, no longer call the debug hook.
+                The information for (local and global) variables is no longer
+                        mixed in the executable code, but now appended to the
+                        file in a separate chunk. There is a new component,
+                        amxdbg.c, with functions that parse the debug
+                        information and can look up functions, line numbers and
+                        variables, given an address.
+                Warning: all code that uses a debugging hook must be adapted.
+                        The new debugging hook strategy has the following
+                        advantages:
+                        - the debug hook can be set up on an "as-needed" basis:
+                          when you want to break out of a "hung" script, you
+                          can set up a debug hook while the script is still
+                          running;
+                        - even with the debug hook installed, the hook is a lot
+                          quicker because there are less opcodes that call the
+                          hook and the amount of data that needs to be parsed
+                          and passed on is lower;
+                        - the presence of debug information does not influence
+                          the performance of the script execution as much (but
+                          scripts without debug information and bounds checking
+                          will still run quicker that those with those checks);
+                        - the new method is more suitable for remote debugging,
+                          especially over slow links.
+                        There is also a disadvantage (apart from increased
+                        complexity of the debugger and the compiler): when an
+                        assertion fails it only gives the code address of
+                        failure --to get the matching file & line number, you
+                        need to look them up using the debug information.
+
+22/02/2005      The estimate of stack usage has become more precise. In the
+                        older version, the estimate could be too low, because
+                        stack usage due to parameter passing was not taken into
+                        account.
+                The XML report (script documentation) was enhanced with a list
+                        dependencies for each function; the dependency
+                        information is the inverse of the referral information.
+
+17/02/2005      The method of passing parameters to public functions has
+                        changed. In the past, these were passed to amx_Exec();
+                        when arrays or strings had to be passed, you had to
+                        allocate space, copy the array/string and release the
+                        space after amx_Exec() returns. In the current method,
+                        there are the functions amx_Push(), amx_PushArray() and
+                        amx_PushString() which you call before calling
+                        amx_Exec(). The required data is allocated and copied
+                        implicitly; you must still release the allocated space,
+                        however.
+                Function amx_Execv() is now gone, as there is no more use for
+                        it.
+                The 16-bit version of the AMX DLL (AMX16.DLL) now has all
+                        functions as "FAR PASCAL" (which is standard), rather
+                        than "__cdecl". The 32-bit version of the AMX DLL
+                        (AMX32.DLL) declares the exported function amx_Exec()
+                        now as "__stdcall". This should be transparent to the
+                        compiler.
+
+ 8/02/2005      Support for the JIT in FreeBSD and OpenBSD is improved. A few
+                        fixes were implemented. These were reported by Laurent
+                        on the Small forum.
+                Merged in changes by Allen Cronce, for the support for Mac-OS.
+                        The project file for Metrowerks Codewarrior was updated
+                        as well.
+
+ 4/02/2005      BUG fix: there was an incorrect assertion in the parser which
+                        would break an expression like "a[0] = a[1] = a[2] = 0"
+                        (unless you build the Small compiler without
+                        assertions). This bug was reported by "kexz" on the
+                        Small forum.
+                BUG fix: a self-assignment warning was issued in a special case
+                        of an assignment of an array element into another
+                        element of the same array. This bug was reported by PM
+                        on the Small forums.
+                BUG fix: 64-bit support used the wrong shift counts in
+                        generating byte offsets from cell offsets. This was
+                        reported by BAILOPAN on the Small forum.
+                Better portability to 64-bit cells, for example by storing the
+                        full 64-bit function pointer to a native function in
+                        the internal native function table. P-code files with
+                        a 64-bit cell size have a different "magic" value
+                        (or "signature") in the header. Most of these
+                        modifications were described by BAILOPAN on the Small
+                        forum.
+                BUG fix: the peephole optimizer could not handle long symbol
+                        names (i.e. over 21 characters) for local variables.
+                        This bug was reported by BAILOPAN on the Small forum.
+                BUG fix: constants passed into functions that accept a variable
+                        argument list (such as printf) caused a crash. This bug
+                        was also reported by BAILOPAN on the Small forum.
+                BUG fix: when a field in an enumeration had the same name as
+                        another symbol (name conflict/symbol redefinition), the
+                        compile crashed instead of reporting the error. This
+                        bug was reported by "Stu" on the Small forums.
+
+31/01/2005      BUG fix: the implementation of the "SWITCH" opcode in the
+                        abstract machine would not work correctly when a cell
+                        is 16-bit. This bug was reported by "chop" on the
+                        Small forum.
+                BUG fix: in AMXJITSN.ASM (the JIT compiler in NASM format),
+                        one symbol was incorrectly exported, which made the
+                        file produce a linker error when used with GCC on
+                        Cygwin. This bug was reported by Laurent on the Small
+                        forum.
+                BUG fix: in amx_Execv(), the number of parameters was forwarded
+                        to the main function amx_Exec() in a way that was
+                        incompatible with 16-bit architectures. This was
+                        reported by Pierre de Vos, who is porting Small to the
+                        Atmel ATmega128 controller.
+
+18/01/2005      Corrections merged from Embryo, the adaption of Small from the
+                        Enlightenment team.
+                The command line parsing in the Small compiler was modified to
+                        be more flexible (and perhaps slightly more conforming
+                        to what is common with GNU programs).
+                A simple "script arguments" native function library was
+                        developed. This library provides general purpose
+                        "command line argument" parsing functions. It is
+                        somewhat in between of argc/argv and the getopt()
+                        library.
+                A few bugs were fixed in the Microsoft Windows "terminal",
+                        especially related to scrolling and resizing.
+                BUG fix: in the "switch" statement was fixed a bug would occur
+                        if an expression between the parentheses of the switch
+                        had a side effect. This bug was reported on the Small
+                        forum by Lajos Molnar, and analysed by BAILOPAN.
+                The NASM version of the assembler core of the abstract machine
+                        would not assemble under Cygwin. This has been fixed.
+                        The error was reported by Lexx on the Small forum.
+                BUG fix: the "#pragma unused" directive did not accept symbol
+                        names with digits, underscores or "@" characters. This
+                        bug was reported by "chop" on the Small forum.
+
+ 3/01/2005      The pre-build LIBSC DLL was missing an export, making the DLL
+                        unuseable (you would have to rebuild the DLL to use it).
+                The self-installing setup had the version number wrong (it still
+                        said 2.5).
+                The README.TXT was not up to date. The version packed in the
+                        product came from a different directory than the one
+                        I kept up to date.
+                There is a #section directive that hides all symbols declared
+                        "static" (the #section directive simulates a file
+                        switch). This was low on my wish list, but a recently
+                        introduced feature in the compiler required it.
+
+22/12/2004      The JIT-compiler was translated to NASM by G.W.M. Vissers. This
+                        makes the JIT available in Linux, and probably other
+                        Unix-like operating systems. The port was initially done
+                        for the free MMORPG "Eternal Lands" (by a member of the
+                        team of the game).
+                Modifications for better support of FreeBSD and OpenBSD.
+                The Small compiler now allows multiple source files on the
+                        command line. The compiler combines all sources to
+                        build a single output file.
+                Improved the report file and the ability to extract
+                        "documentation comments". The toolkit now comes with
+                        a matching XSL file and an accompanying stylesheet.
+                        These allow the report file to be directly readable in
+                        a web-browser.
+                Constants that are part of an enumeration are now flagged as
+                        such, this those constants to be grouped with the
+                        enumeration definition in the report (XML documentation).
+                The argument comparison for forwardly declared functions (with
+                        the actual implementation) was improved.
+                The tags of array indices are also now checked for arrays passed
+                        as arguments to functions.
+                I increased the maximum number of function arguments to 127 (it
+                        was 64, and this turned out to be too little for some
+                        users!).
+                BUG fix: an object code generation flaw in the Watcom C/C++
+                        compiler caused the abstract machine to crash after
+                        calling a native function for the second time. The code
+                        generation problem has be circumvented by rewriting the
+                        expression to do exactly the same thing in a slightly
+                        different way.
+                There is a GraphApp terminal as an example terminal. This
+                        terminal supports UTF-8 natively. It also supports
+                        wide characters, if compiled as such. Look at
+                        http://enchantia.com/software/graphapp/ for information
+                        on the cross-platform library GraphApp.
+                The DLL versions of the abstract machine (AMX16.DLL and
+                        AMX32.DLL) now use the "termwin" terminal, which allows
+                        for font scaling and coloured text.
+                BUG fix: the NASM version of the abstract machine core did not
+                        set the "debug event code" on a "line" event.
+                The documentation was improved, especially regarding compilation
+                        on Linux and Unix-like platforms. There is a new section
+                        on CMake, a cross-platform "makefile" generator utility.
+
+
+22/07/2004      Functions can return arrays. The size of the array that is
+                        returned must be fixed (functions returning
+                        variable-length arrays are not supported).
+                The warning "function uses both `return' and `return <value>'"
+                        is now an error.
+                The compiler writes extra information related to the
+                        declarations of constants, variables and functions to
+                        the report file, and it now also supports documentation
+                        comments. The toolkit comes with an XSL stylesheet to
+                        create a HTML file from the report file (which is in
+                        XML format).
+
+25/06/2004      Warning messages can be disabled individually (compiler option
+                        -w).
+                I added the makefiles for FreeBSD contributed by Raphael
+                        Raimbault to the standard distribution. In general,
+                        FreeBSD support has been improved.
+                Adam D. Moss contributed a modified version of the makefile
+                        for the abstract machine for Linux. If have called this
+                        "makefile.linux" (because it seems more complete) and
+                        my original "makefile_asm.linux" (because my version
+                        compiles the assembler implementation of the core
+                        executive).
+                Arrays whose size is declared with an "enum" symbol now allow
+                        initialization by field size. In addition, the "sizeof"
+                        and "tagof" operators look at the size and tag of the
+                        enumeration element. This allows Small to mimic (simple)
+                        structures with arrays.
+                BUG fix: when generating debug information, the compiler still
+                        assumed that it was always writing to file (instead of
+                        possibly writing to memory).
+                Two new preprocessor directives: #error, which is similar to the
+                        same directive in C/C++, and #tryinclude, which fails
+                        silently if the include file cannot be found.
+
+26/03/2004      Expressions in preprocessor directives were not preprocessed
+                        themselves. A bug found by "SniperBeamer".
+                The "#elseif" directive was (finally) implemented. It allows
+                        you to chain conditionally compiled sections more
+                        easily. Note that in contrast to C/C++, it is called
+                        "#elseif", not "#elif".
+                A few modules for the abstract machine are enhanced for Unicode
+                        and UTF-8 support.
+                In AMXCONS.C, create the terminal "late", meaning that if a
+                        script does not use a terminal, it does not pop up.
+                Better support for having an abstract machine that uses both
+                        fixed and floating point calculations. The format
+                        string of the native printf() function uses %f for
+                        floating point, %q for fixed point and %r for either
+                        floating point or fixed point (if floating point is
+                        not available).
+                A new include file "rational.inc" allows you to write a script
+                        using "rational numbers" and leave it to the abstract
+                        machine as to whether this means "floating point" or
+                        "fixed point".
+
+25/03/2004      Fixed a syntax problem where the conditional operator
+                        interferes with tagnames, in an expression like:
+                                new bool:a=(b<10)?true:false
+                        Here "true:" is seen as a tagname, rather than as the
+                        second part of the "? :" operator. Adding whitespace
+                        fixes the matter, of course. The expression:
+                                new bool:a=(b<10)?true : false
+                        gives no problems.
+                        The current compiler requires that tagnames in a
+                        conditional expression appear between paranteheses,
+                        like in:
+                                new plain:a=(b<10)?(plain:true):(plain:false)
+                        This bug was found by "PM", who posted it on the Small
+                        forum.
+                Names of native functions were still truncated to 19 characters
+                        even though the new binary file format no longer
+                        imposes a length restriction on external names. This
+                        limit is now removed. Another bug found by "PM", and
+                        posted on the Small forum.
+                The logical operators did not force the tag to "bool:" (which
+                        they should, according to the documentation).
+                A few type-casts were added, to allow the source to be compiled
+                        as C++ source.
+
+15/03/2004      The file SCLIB.C, that compiles the "Small compiler" to a
+                        single object file for embedding into an application,
+                        was updated to include the new files. At the same time,
+                        it was renamed to LIBSC (for conformance with Linux).
+                        In addition, the library file can now be compiled as a
+                        DLL (without needing a change in the source code) and
+                        the DLL supports the functionality required by
+                        RUNDLL32.EXE.
+                The example "SRUN" files (implementation examples for the
+                        abstract machine) have been cleaned-up a bit and
+                        another example, for the JIT compiler was added. The
+                        function amx_InitJIT() is now finally documented.
+                The syntax for declaring an increment for a constant in an
+                        enumeration has changed. The old syntax:
+                            enum {
+                                first : 10,
+                                second : 5,
+                            }
+                        has become:
+                            enum {
+                                first[10],
+                                second[5],
+                            }
+                        I need this changed syntax for a new feature that I
+                        intent to implement. In addition, I have accidentally
+                        used the new syntax on various occasions, so it may
+                        be more intuitive than the old syntax.
+
+ 3/3/2004       I added a -v switch to the compiler to set the verbosity. For
+                        the moment, this does not change much: -v0 disables the
+                        copyright banner and -v2 displays extra stack/heap
+                        usage information; -v1 is the default.
+                The declaration and initialization of simple variables (single
+                        cell) to constant values is significantly optimized:
+                        from 3 opcodes to one opcode. This makes declaring a
+                        new variable a light-weight operation.
+
+29/02/2004      The maximum number of dimensions for arrays has been increased
+                        to 3. Hopefully, increasing it further now involves no
+                        more than changing a constant.
+                As an example for how the Small abstract machine can be
+                        extended, I have added a simple general purpose garbage
+                        collector in a separate C file (AMXGC.C). The
+                        "Implementor's Guide" discusses the interface and gives
+                        an example of use, using the "Better String library"
+                        (http://bstring.sourceforge.net/) for creating the
+                        "garbage".
+                Basic support for UTF-8 is now also in the abstract machine.
+                        The new functions amx_UTF8Get() and amx_UTF8Put()
+                        extract or store a single (wide) character in UTF-8
+                        encoding. The new function amx_UTF8Check enables you to
+                        verify whether some input string is in valid UTF-8.
+                        All functions return an error code. All functions use
+                        a strict interpretation of the UTF-8 syntax.
+
+23/02/2004      The compiler is now able to translate "extended" ASCII files
+                        (i.e. 8-bit ASCII) to Unicode by using a codepage
+                        mapping file. Only characters in unpacked strings or
+                        in character constants are translated. Appropriate
+                        mapping files can be found on
+                        ftp://ftp.unicode.org/Public/MAPPINGS/.
+                        In the compiler, the option "-c" no longer sets the
+                        character size (there were bugs in this setting, so
+                        I doubt that anyone ever used it). It now sets the
+                        codepage for translation.
+                Robert Daniels provided fixes for bugs related to Big Endian
+                        processors (I introduced these new bugs when adding
+                        the "symbol names" table to the header in the AMX file
+                        format.
+                Robert Daniels also gave a fix for an error that has been in
+                        the toolkit much longer: several core functions had
+                        to peek/poke into the data section of an abstract
+                        machine, but they did not take the possibility of
+                        "cloned" abstract machines into account.
+
+17/02/2004      The parser stack is now "growable". In earlier releases it had
+                        a fixed size.
+                A memory leakage was fixed; the leakage was related to a double
+                        declaration of a native function.
+                The compiler now accepts UTF-8 files on input. It translates
+                        non-ASCII characters (that are encoded in UTF-8) to
+                        Unicode characters in unpacked strings. See the manual
+                        for details.
+                The compiler allows character codes to be entered with a
+                        hexadecimal escape (in addition to the existing decimal
+                        escape): '\x82' is the same as '\130'.
+                Unicode support uncovered a few bugs in the handling of unpacked
+                        strings in the "core" and "console" modules: checking
+                        whether a string is packed or unpacked did not work for
+                        characters above 255. This is now fixed, and it also
+                        led to a new predefined constant in the compile:
+                        "ucharmax".
+                The LINE opcode now allows a debug hook function to cause the
+                        program to "sleep". Previously, a "sleep" mode could
+                        only be started from a native function or via the
+                        "sleep" statement of the Small language.
+
+ 5/02/2004      For arrays with 2 dimensions, the major dimension no longer
+                        needs to be explicitly specified when there are
+                        initiallers. The compiler can now count the number of
+                        items itself.
+                "Johnny got his gun" reported the bug that the compiler signals
+                        the expression "var = !var" as a self-assignment. This
+                        bug applied to most unary operators. (It is now fixed.)
+                A new extension library (native function library) comes with
+                        the toolkit: file input/output. Text files (plain ASCII
+                        and UTF-8) and binrary files are supported.
+                There is a new terminal implementation: "termwin". This
+                        terminal emulates a console on Microsoft Windows; its
+                        primary feature is that you can have several of these
+                        consoles at the same time and that it supports Unicode.
+                For the purpose of Unicode, the functions amx_GetString() and
+                        amx_SetString() got an extra parameter, for interpreting
+                        the source or destination string (on the "C" side) as
+                        a "wchar_t" string.
+                Anthalir gave an update to the FreeBSD support. His changes
+                        were merged into the main branch.
+
+16/01/2004      When you compile with option -d2, the compiler now gives you
+                        an estimate of stack/heap usage. Even without this
+                        option, the compiler will warn you when the stack/heap
+                        area is too small. The stack/heap determination does
+                        not work in the presence of recursive functions.
+                When you do not use the return value of a function, you mostly
+                        do not need to enclose the function's arguments in
+                        parantheses. That is, the snippet below is now a valid
+                        Small program:
+                        -----------------------------------------------------
+                            main()
+                                printf "Hello world\n"
+                        -----------------------------------------------------
+                        The manual has been updated to use this "friendlier"
+                        syntax where possible.
+                The RET and RETN opcodes of the abstract machine now check
+                        whether the "return address" (on the stack) lies inside
+                        the code segment. This makes buffer overrun exploits
+                        much less likely (perhaps impossible). This address
+                        check is also done in "no debug" mode (unlike array
+                        bounds checking, for example).
+                Opcode SYSREQ.D is now fully implemented. When calling a native
+                        function, the "callback hook" function looks up the
+                        function address. If it has found it, it may store this
+                        address in the code stream and change the opcode from
+                        SYSREQ.C to SYSREC.D. The SYSREQ.D calls the native
+                        function directly, avoiding any overhead from the
+                        callback hook.
+
+ 9/01/2004      The compiler generates the intermediate (assembler) file in
+                        memory. This is faster and cleaner: compiling a .AMX
+                        file now no longer overwrites (and deletes) the .ASM
+                        file, if one exists.
+                When you do not use the result of a function call, you may now
+                        omit the parantheses around the function's parameters.
+                        That is, you can say:
+                                printf "Hello world\n"
+                        This syntax may make Small source code a little
+                        friendlier to read, especially for novice users.
+                The changes of FUTURE Interactive, to support a 64-bit cell,
+                        were merged into the main branch.
+
+30/12/2003      I switched to the zLib license for the toolkit. The original
+                        license was already quite similar to the zLib license,
+                        and in retrospect, the clauses that I added are not
+                        very useful.
+                I changed the regression test suite to a REXX script (instead
+                        of the older DOS "batch" file). REXX is available on
+                        many platforms, so I hope that the regression suite
+                        will be more useful to those users that do not run
+                        Microsoft Windows (or DOS). By the way, I use Regina
+                        REXX (see http://regina-rexx.sourceforge.net/).
+
+19/12/2003      Søren Hannibal proposed the use of a private implementation
+                        for strdup(), to make it easier to use other memory
+                        allocators (than standard malloc()).
+                More options for fixed/floating point value formatting in the
+                        printf() function (width/number of decimals)
+                The console functions (AMXCONS.C) were redesigned and now have
+                        improved VT100 & Win32-console support. New native
+                        functions are gotoxy(), wherexy(), clreol(), clrscr()
+                        and setattr().
+                The toupper() and tolower() from the "core" library now also
+                        work with accented characters using ANSI fonts
+                        (Microsoft Windows).
+                New opcodes SYMTAG and SYSREQ.D. SYMTAG is for the debugger,
+                        it allows a debugger to choose a display format based
+                        on the "tag" of a symbol. (It was added mostly for
+                        displaying fixed/floating point values.) SYSREQ.D is
+                        to optimize the performance of native function
+                        callbacks.
+                The ".AMX" file format changed: it now has a separate "symbol
+                        name" table, so that the name length limit of 19
+                        characters for "public" or "native" symbol names no
+                        longer applies. The run-time (AMX.C) reads modules
+                        with the previous file format as well. The compiler
+                        only generates files in the new format, though.
+                The file header is now also padded to the requested "symbol",
+                        alignment. This way, the code and data sections are
+                        also automatically aligned to the chosen alignment.
+                The Small debugger now uses the console functions in AMXCONS.C
+                        for output. This gives (almost) automatic recognition
+                        of the proper "terminal" support. The debugger is also
+                        improved in its display of fixed/floating point values.
+                        Hard limits (number of files, number of breakpoints,
+                        number of watches) have been removed.
+
+24/11/2003      The preprocessor was "fixed". One problem were various match
+                        and replacement errors (for parametrized macros),
+                        another problem was its slow operation.
+                There were "tag mismatch" errors related to the user-defined
+                        assignment operator. These have been fixed.
+                AMX.C now contains various conditionally compiled sections. If,
+                        for example, you only need to call the function
+                        amx_Register() from an extension module, you can save
+                        of 10 kBytes of code by compiling AMX.C with the macro
+                        AMX_REGISTER defined. This strips out all other
+                        functions in AMX.C.
+                The floating point support module got a few more native
+                        functions: floatsqroot(), floatpower(), floatlog(),
+                        floatsin(), floatcos(), floattan() and n_floatabs().
+                        In addition, I documented the floating point support
+                        in an "application note" (just like the fixed point
+                        library).
+
+20/11/2003      The fixed point module was corrected to have accurate rounding
+                        behaviour; for example 2.0 / 3.0 now is 0.667 instead
+                        of 0.666. These rounding rules apply to both the
+                        multiplication and the division operators and functions.
+                        The documentation for the fixed point library is now
+                        separate from the "user manual". In addition, I added a
+                        power, a square root and an absolute value function to
+                        the library (plus a useful "multiply, then divide"
+                        function which avoids loss of precision in the
+                        intermediate result).
+                Another error was also fixed in the library: the ANSI C version
+                        of fixed point multiplication was prone to an
+                        intermediate overflow bug. (I didn't catch this bug
+                        earlier, because for most compilers there is an
+                        optimized version for this function that uses 64-bit
+                        arithmetic.) In addition, there are a few minor
+                        corrections in the include file.
+
+10/11/2003      In AMXCONS.C, I changed the definition of getstring() so that
+                        the buffer size is now in "cells" rather than
+                        characters. In practice, this makes it much easier to
+                        use getstring(). It is, however, not compatible with
+                        earlier releases.
+
+ 5/11/2003      AMXCONS.C, the example "console" interface was extended with
+                        an improved ANSI/VT100 terminal support and a native
+                        Win32 console interface. New native functions are:
+                        clrscr()        clear screen
+                        clreol()        clear up to the end of line
+                        gotoxy(x, y)    set text cursor position
+                        setattr(f, b)   set foreground and background colours
+                I added a check for invalid "AMX" addresses in the
+                        amx_StrParam() macro, to "fortify" native functions
+                        against tampered ".AMX" files.
+                The new function amx_StrError() gives a descriptive error
+                        string for an error code.
+                Frank Condello updated the project files for CodeWarrior, to
+                        compile Small on the Macintosh. These files are found
+                        in a subdirectory.
+
+ 1/11/2003      The Implementor's Guide was extended again, with notably a
+                        much improved section on writing native functions,
+                        including how to bind methods from a C++ class to
+                        Small.
+                Under Microsoft Windows and Linux, extension modules can now
+                        also be made as a DLL or shared library. The abstract
+                        machine will automatically load the DLLs/shared
+                        libraries that are required for the script that you
+                        run. This allows you to create general purpose, plug-in
+                        extension modules that you make available to an
+                        implementation of the Small run-time without needing to
+                        recompile this run-time.
+                The example extension modules that come with the toolkit were
+                        adapted to make them suitable for dynamic loading.
+                To unload all DLLs & shared libraries after running the code,
+                        you should call the new function amx_Cleanup(). When
+                        dynamic loading of extension modules is disabled (or
+                        not available), this function does nothing.
+                There is also an AMXEXPORT macro to use for extension modules
+                        that are compiled as a DLL/shared library.
+                There were a few fixes in the CMake configuration files. I
+                        renamed the Linux makefile back to "makefile.linux"
+                        instead of "makefile.unx".
+
+20/10/2003      Savas Savvides (from StockWiz.com) found a bug in the array
+                        bounds-checking of Small: negative array indices were
+                        not caught. This was fixed.
+                A bug in address range checking was fixed. The bug classified
+                        array accesses to an array at the very end of the data
+                        section (so a global array variable) as invalid. This
+                        was a classic "off by one" error. It occurred rarely,
+                        though, because there is usually "string literal data"
+                        at the end of the data section.
+                The definition of MAX_PATH was made more platform-independent;
+                        the definition of POSIX is now used when available.
+
+14/10/2003      Some opcodes now do a bit more checking on the environment:
+                        block moves/compares/fills now check the validity of
+                        the memory ranges of the destination & source arrays;
+                        RET and RETN check whether the return address lines
+                        inside the "code space" of the abstract machine.
+                A memory leak in the compiler was fixed (related to functions
+                        that take optional values on any of the arguments).
+                Failure to mark a symbol "public" in the NASM version of the
+                        abstract machine core made this file not usable. This
+                        was easily fixed.
+
+ 8/10/2003      I thought Small was fairly well documented, but re-reading a
+                        few less common sections proved me otherwise: parts
+                        of the documentation is outdated and several features/
+                        functions were undocumented. Especially the
+                        "Implementors Guide" was corrected and expanded.
+                        I cannot say that the documentation is now fully
+                        correct and comprehensive, but the situation is at
+                        least "better".
+                The compiler now tries to include the file "default.inc" from
+                        the include directory (not from the current directory);
+                        this fails silently if the file does not exist. The
+                        default.inc file may be used to include other "standard"
+                        include files (console.inc, core.inc, ...) or an
+                        application-specific include file. This may avoid the
+                        common error of a script-writer forgetting to include a
+                        file (especially if user-defined operators are used).
+
+ 3/10/2003      The GNU GCC and assembler versions of the Abstract Machine
+                        now have alternative "non-debug" versions of a few
+                        opcodes, to avoid checking for the "debug hook" flag
+                        every time that particular opcode comes by.
+                The "#subst" directive was renamed to "#define". I feel that I
+                        have made an error to keep the "#define" directive
+                        (which declares only numeric constants) and add a new
+                        "#subst" directive that is actually far more similar to
+                        what #define does in C/C++. In addition, the syntax of
+                        #subst is a superset of that of the old #define in
+                        Small, so old scripts continue to compile.
+                While "renaming" #subst to #define, I added the #undef
+                        directive.
+
+29/09/2003      The report file is now in XML format. This probably makes it
+                        easier to integrate it into other applications.
+                For the #include directive, it is in most circumstances no
+                        longer necessary to enclose the filename in quotes or
+                        in angle brackets.
+                There is a syntax for "literal strings" (and also for "literal
+                        characters", but this is less important). A literal
+                        string does not recognize "control characters" (which
+                        are what C/C++ calls "escape sequences").
+                The default control character ("escape character") is now a
+                        backslash (instead of the caret). I used the caret
+                        earlier, because DOS/Windows uses the backslash as a
+                        directory separator. The backslash is so common as a
+                        "special character" in Unix and other programming
+                        languages, that I now feel that choosing the caret was
+                        a wrong choice.
+                        For backward compatibility, you can create a SC.CFG file
+                        and add the command line option "-^".
+
+18/09/2003      An "enum" can now also be given an explicit tag. If an explicit
+                        tag is absent, the name of the enumeration will be
+                        de default tagname (this is the old behaviour).
+                When there are three warning error messages referring to the
+                        same line (or to the same multi-line expression), the
+                        compiler now halts with a fatal error. This situation
+                        is mostly due to the parser being unable to recover
+                        from an earlier error.
+                The user-defined assignment operator is now implemented. This
+                        operator allows you to implement your own coercions;
+                        for example: from integer to IEEE 754 floating point
+                        (and vive versa).
+                        The assignment operator is also called for function
+                        arguments that are passed "by value".
+
+15/09/2003      The peephole optimizer is now recursive. This allows the
+                        optimizer to re-evaluate the code after initial
+                        optimizations. In addition, I have added a few rules.
+                Some minor corrections in AMXEXECN.ASM so that it works better
+                        with older versions of NASM. In addition, with GCC,
+                        the assembler version was never used, due to an
+                        incorrect conditional compilation ("#ifdef") test.
+
+ 8/09/2003      Many bug fixes. Over the last year, several bugs (and fixes!)
+                        were reported on the Small forum. Apart from a few that
+                        I could not reproduce, these have been fixed in this
+                        release. Thanks go to "chop", Chris Jones, Nacho,
+                        Lajos Molnar, "John", Jeppe Oland, RTaylor/Akira,
+                        Stephane Denis, James Haley, and probably many others.
+                A new operator "tagof", which will be useful for functions with
+                        plurally tagged arguments.
+                New functions in the Abstract Machine: amx_FindNative(),
+                        amx_GetNative() and amx_NumNatives().
+                The floating point support file (FLOAT.C) was changed to no
+                        longer require dynamic memory (malloc/free). In
+                        addition, a new rounding mode was added, which mimics
+                        the way that C/C++ "truncate" floating point numbers to
+                        integers (on a type cast).
+
+ 1/09/2003      The Small compiler now has a preprocessor. The preprocessor
+                        matches text patterns and replaces them with other
+                        patterns. The syntax for the patterns differs from
+                        both the C/C++ preprocessor and from the "regular
+                        expression" syntax, though (Small's preprocessor was
+                        inspired by TeX macros). The Small manual was updated.
+                From a high-level description of the implementation of a
+                        LINT-like tool, I got enough information to add two
+                        more warning messages to the Small compiler:
+                        "unreachable code" and "self-assignment".
+                The Small compiler creates "compact" P-code files by default,
+                        but it cannot cope with input files whose "compact"
+                        encoding would in fact be larger than their "plain"
+                        encoding. (The problem lies in the "in-place" unpacking
+                        in the abstract machine.) I prematurely fixed this
+                        problem by generating a fatal error for those rare
+                        cases, and requiring you to (re-)compile such input
+                        files with "plain" encoding.
+                The sizeof operator now gives the number of elements in an
+                        array. This means that for a two-dimensional array, it
+                        can return the number of rows or the number of columns
+                        (depending on the syntax of the sizeof operand).
+
+26/08/2002      An experimental "destructor" operator is implemented. The "~"
+                        operator is automatically called when a variable drops
+                        out of scope.
+                A few performance optimizations in the generated pseudo-code,
+                        especially for "for" loops.
+                A bug where the "function should return a value" was not given
+                        is fixed. This ocurred in a situation where you said
+                        "new myvar = myfunc()" where "myfunc()" does not return
+                        a value.
+                The "expand" function now also uses the stack space while
+                        expanding. This hopefully solves the (already rare)
+                        cases where the expand function got short of buffer
+                        space. Bug reported by Robert Daniels.
+                Maurizio Ferraris reported a bug where the compiler crashed
+                        when it tried to recover from a symatic error in a
+                        particular context.
+                Frank Condello donated a Macintosh port of the compiler and
+                        abstract machine. His changes were merged with this
+                        release. In addition, there is a separate directory
+                        with additional source code and a CodeWarrior project.
+
+19/08/2002      Native functions can now also force a "sleep", simply by
+                        returning AMX_ERR_SLEEP.
+
+ 6/08/2002      To avoid the problem of structure fields being aligned
+                        differently by different compilers, the header format
+                        was changed to exploit "natural" alignment. Even
+                        compilers that do not support "#pragma pack()" should
+                        not have the good alignment. The changed header lay-out
+                        is the main reason that this release got version number
+                        2.0.
+                There is a new compiler option, -A, and a new #pragma, "align",
+                        which allow you to align variables on a boundary that
+                        is an arbitrary power of 2. These tricks are sometimes
+                        convenient (or necessary) with native functions that
+                        use SIMD instructions. These changes are based on
+                        code donated by Stephane Denis.
+                New functions amx_Clone() and amx_MemInfo(), both to support
+                        cloned abstract machines.
+                For using bit masks as light-weight sets, the "enum"
+                        instruction supports automatically multiplying by 2 of
+                        all constants.
+                As an optimization, the compiler now generates a "halt"
+                        instruction at address zero, so that the "RET" and
+                        "RETN" instructions do not have to check for a special
+                        zero address.
+                Dan Andersson found a bug in the JIT, which has now been
+                        corrected. The JIT has also been brought up to date; it
+                        now supports the "sleep" instruction.
+                As suggested by Stephane Denis, amx_Exec() now verifies that
+                        all native functions used in a script are actually
+                        registered, before executing any of the script.
+                The debugger can now optionally use the Unix "readline" package
+                        for a more convenient command line. Due to the design
+                        of the readline package, it requires that you build the
+                        application, with the same compiler as the one that was
+                        used to create the readline DLL or shared library. As
+                        such, I recommend that you only use the "readline"
+                        package with Unix/Linux or Microsoft Visual C/C++.
+                One could easily make mistakes with floating point variables
+                        and the user-defined operators without any warning from
+                        the compiler. For example, in several situations,
+                        forgetting a "float:" tag on a variable declaration
+                        gives no warning but generates completely wrong code.
+                        Therefore, I have modified the floating point support
+                        to use "strong" tags, i.e. "Float:". You may need to
+                        modify your scripts if you work with the new include
+                        files "float.inc" and "console.inc". You can look up
+                        the "strong tags" issues in the language guide.
+
+ 6/05/2002      Oops, skipping compound blocks in the first pass, introduced
+                        at 25/02/2002, caused several regression failures; in
+                        retrospect, the compiler really needs to scan every
+                        statement in the first pass, to record the function
+                        and variable usage.
+                Maurizio Ferraris donated a modification of the compiler that
+                        gives it support for multiple "include" directories.
+                BUG fix: there was a peculiar parsing error that started with
+                        a call to an undefined function, continued with the
+                        compiler confusing code with data declarations, and
+                        ended with the compiler generating faulthy code without
+                        any error/warning message whatsoever (bug reported by
+                        Maurizio Ferraris).
+                BUG fix: when you use "#pragma ctrlchar" halfway a program,
+                        the second pass uses the new "ctrlchar" value right
+                        from the start, which causes trouble if include files
+                        depend on the original (or default) value. (This issue
+                        was brought to my attention by Florian Zschocke.)
+                BUG fix: the AMX function amx_GetAddr() could return success
+                        on a negative address (bug reported by Robert Daniels).
+                BUG fix: when re-defining a function with more parameters than
+                        the previous definition, the compiler could crash when
+                        it tried to compare the parameter lists of the old and
+                        the new definitions; the compiler didn't check the
+                        length of both lists (bug reported by Robert Daniels).
+
+25/02/2002      BUG fix: when the conditional operator has unindexed arrays as
+                        its second and third operands, the "variable type"
+                        of the resulting expression should also be an array.
+                        (Bug found by Linus Nuber.)
+                To increase the performance of the compiler, compound blocks
+                        are skipped in the first pass (the Small compiler is
+                        a two-pass compiler).
+
+14/02/2002      The manual is split in half: there are now two "Small booklets":
+                        one covering the language and one for implementing
+                        Small in applications. Much of the information from the
+                        README.TXT is now the the ``Implementor's Guide''.
+                The new Implmentor's Guide also got a section on calling
+                        public functions (other than "main()") and passing
+                        parameters (both numeric and string parameters).
+
+13/02/2002      BUG fix: the JULIAN.SMA example program had an error in the
+                        check for dates in the month February (bug reported
+                        by Jan Vooijs).
+
+12/02/2002      "chop" found a series of bugs in the Small compiler and the
+                abstract machine:
+                BUG fix: the functions strpack() and strunpack in AMXCORE.C
+                        check the validity of the memory range for the
+                        destination string. However, the number of bytes that
+                        were checked was far too small: the checking code
+                        confused sizes of bytes and cells.
+                BUG fix: the functions amx_StrLen() and amx_GetString() in
+                        AMX.C, the functions amx_StrPack() and amx_StrUnpack()
+                        in AMXCORE.C and the function printstring() in
+                        AMXCONS.C all had a problem with determining packed
+                        strings, in case you use characters above ANSI 127.
+                        The manual also had an error in the "ispacked()"
+                        function in the chapter ``Assorted tips'' had the
+                        same error.
+                BUG fix: in the Small debugger (SDBG.C) a check for an
+                        available breakpoint entry was missing a semicolon.
+                BUG fix: chained operators did not work correctly with
+                        user-defined relational operators, because the operator
+                        functions garbled the ALT register. The ALT register is
+                        now saved around the call.
+                BUG fix: a global variable being used prior to its definition
+                        was not flagged correctly; it also caused a code
+                        generation error.
+
+ 7/02/2002      BUG fix: The AMX DLLs apparently had problems when being used
+                        with Microsoft Visual C/C++, due to a calling
+                        convention mismatch (failure to save/restore some
+                        registers).
+                Clem Vasseur proposed a binary search for the opcode lookup
+                        in the compiler. This has been implemented.
+
+ 5/12/2001      Linus Nuber found that double-character user-defined operators
+                        and debug information (options -d2 or -d3) do not go
+                        well together: the size of a SYMBOL opcode may overflow
+                        the size that the compiler initially estimated and this
+                        causes the function to be generated at the wrong
+                        address.
+
+30/11/2001      As per the request of Linus Nuber, I changed the way that the
+                        compiler options are set and reset. Now the -C, -P and
+                        -; options can have a "+" or "-" suffix that sets or
+                        clears the desired option; without suffix, the option
+                        is toggled. With this, you can set your default options
+                        in the configuration file (SC.CFG) and toggle the
+                        option on the command line.
+
+27/11/2001      "Compact encoding" of the .AMX file has become the default; use
+                        the "-C-" compiler option to return to the old (plain)
+                        encoding.
+
+23/11/2001      BUG fix: Linus Nuber found a code generation bug in the case
+                        where a user-defined operator was called with a
+                        constant on either size, such as "1.5 * 2.5" with
+                        operator*(float:a, float:b).
+
+20/11/2001      BUG fix: Gilad Novik found that unused public variables would
+                        be stripped from the compiled file and their addresses
+                        re-used by other global variables (or array literals),
+                        but that the public variable was still listed in the
+                        file header.
+                BUG fix: when you ask for "sizeof x" and "x" is an array of
+                        indeterminate size, you get a warning. The warning did
+                        not occur if the "sizeof" expression appeared in the
+                        default value of a function argument (in a function
+                        definition). The lack of the warning makes the "sizeof"
+                        default value error prone, the warning makes it safer.
+
+ 8/11/2001      The manual was updated to include the changes since the last
+                        public release of the Small toolkit.
+                The performance of the compiler was enhanced.
+
+30/10/2001      You may specify a hard "index" for a native function, which
+                        omits the native function from the compiled .AMX file.
+                        For this to work, you need to implement your own native
+                        function dispatcher; see the manual.
+                As per the suggestion of Stephane Denis, I used the more
+                        specific integer types int16_t and int32_t in structure
+                        definitions. These are defined in the ISO C99 standard.
+
+ 9/10/2001      The default value of a function parameter can now be the
+                        "sizeof" of another parameter of the same function.
+                        This is convenient to pass the sizes of array
+                        parameters to the function without requiring the
+                        programmer to explicitly pass the size.
+                The new SC_LIGHT macro allows you to exclude non-essential
+                        components of the Small compiler upon recompilation.
+                        These components are: the cross-reference report (-r
+                        option), parsing of "response files" and the default
+                        configuration file ("sc.cfg"). More may follow (for the
+                        moment, the peephole optimizer is considered
+                        "essential").
+
+10/09/2001      BUG fix: getproperty() of the "core" native function set read
+                        contents from a memory block after freeing it.
+                BUG fix: a bit of code that writes the AMX file header still
+                        assumed that a cell is always 32-bit.
+                BUG fixes: in the symbol name handling of user-defined
+                        operators. There were several bugs; the operator that
+                        suffered the most from these is probably the unary
+                        minus operator.
+
+28/08/2001      BUG fix: defining the % operator would often introduce an error
+                        in the symbol table. Cause: the % character is special
+                        for sprintf() functions that the compiler uses to
+                        construct symbol names.
+                BUG fix: Linus Nuber reported a bug where functions that were
+                        called before their definition would be marked as
+                        "unused" and stripped from the compiled code.
+                BUG fix: Clem Vasseur noted that on a fatal error, the local
+                        variable table was not cleared; this then subsequently
+                        fires an assertion in the exit code.
+                A prototype mismatch (of sc_error()) between the source and the
+                        header files was also reported by Clem Vasseur.
+
+27/08/2001      BUG fix: Dario Sacca sent in a fix for an error in the
+                        assembler implementation of the abstract machine. In
+                        the debug hook for the line opcode, the "frame" offset
+                        was not updated correctly.
+                New compiler option: -r, to generate a cross reference report.
+                        The report lists all constants, global variables and
+                        functions and tells what function is accessing them.
+                        Stock functions that are never used are still in the
+                        report. Native functions that are never used are not
+                        in the report. The report file is intentionally
+                        formatted in a minimal way, to make it easier to have
+                        it parsed by other programs (call tree, cross-reference,
+                        etc).
+
+ 8/08/2001      BUG fix: Linus Nuber was surprised to find that the version
+                        uploaded 5 August no longer accepted user-defined
+                        operators that were declared as stock. This
+                        embarrassing bug is fixed. (Oh, and a silly error in
+                        the Linux include file, also reported by Linus Nuber,
+                        was fixed too.)
+                BUG fix: Odie Calima found a few more global variables that
+                        needed to be cleared on exit.
+
+ 3/08/2001      BUG fix: Robert Daniels found a code generation bug in the
+                        situation where a "for" loop contains a variable
+                        declaration in its first expression and a break in its
+                        body. This is now fixed.
+
+23/07/2001      The debugger got a minor improvements (quiker redraw of the
+                        screen in termibal emulation mode).
+                Using a "&" where a "&&" is probably intended, or a "|" where
+                        a "||" makes more sense, is now detected by the
+                        compiler. (Actually, the compiler already issued a
+                        warning for this, but it did it dumbly and too often;
+                        now, when the compiler warns for a possibly unintended
+                        bitwise operator, it is very likely indeed an error.)
+
+16/07/2001      The general purpose DLL calling functions have been implemented
+                        fully and documented in the manual.
+
+ 2/07/2001      Stock variables: if no function accesses a global variable,
+                        this variable gets stripped from the compiled output
+                        file, and without warning if that variable was declared
+                        "stock".
+                BUG fix: a bug in appending implicit extensions to #include
+                        files was fixed.
+                Functions and global variables can be declared "static", which
+                        restricts their scope to the current file.
+
+25/06/2001      BUG fix: if you omitted the colons on cases in a switch
+                        statement, the compiler hung. This was corrected. (Bug
+                        found by Joe Hansche.)
+                The detection of unused functions has improved. Specifically,
+                        if function is called only by other functions which
+                        are never used, that function is marked unused as well.
+                BUG fix: a script that was edited under DOS/Windows and
+                        compiled under Linux, would give error "invalid line
+                        continuation" for a "//" style comment. This was
+                        corrected.
+
+27/04/2001      BUG fix: Stéphane Bouteille corrected another error that had to
+                        do with Big Endian memory layout (in amx_Exec()).
+                I added "strong" tags in addition to the current "weak" tags.
+                        See the manual for the differences.
+
+17/04/2001      I added a -S<value> option to the compiler to set the size
+                        of the stack+heap (what you would otherwise need to
+                        do with #pragma dynamic).
+                The Small compiler now parses a SC.CFG file with default
+                        options (if that file exists). If the executable of
+                        the compiler is called "SC16.EXE" or "a.out", then the
+                        configuration file will be "SC16.CFG" and "a.cfg"
+                        respectively.
+                The DLL version of the abstract machine got two new native
+                        functions: loaddll() and freedll(). The calldll()
+                        function that was already present could only call into
+                        DLLs that had already been loaded.
+
+10/04/2001      Added a swapchars() core function that swaps all bytes in a
+                        cell (so the low byte becomes the high byte).
+                More new native functions are a set of date and time functions
+                        in AMXTIME.C and TIME.INC.
+                Dieter Neubauer made a 16-bit version of the Small tools
+                        (meaning that a cell is 16-bit, instead of 32-bit).
+                        His changes were merged in the original distribution.
+
+ 5/04/2001      BUG fix: Raymond Holz found that the Small compiler returned 0
+                        after a "fatal error", where a return value of 2 would
+                        be expected.
+                BUG fix: Linus Nuber found that accented characters were
+                        treated as either negative values or as positive
+                        values, depending on the C compiler used to build the
+                        Small compiler.
+                Linus Nuber also found that the compilation instructions in
+                        the README.TXT were inadequate for the Linux platform.
+                        The README.TXT is corrected and a few details in the
+                        Small compiler were adjusted (for Linux) as well.
+
+23/03/2001      BUG fix: Linus Nuber found a bug in default array parameters
+                        that were tagged as const. As an optimization, the
+                        compiler does not copy such arrays to the heap, but the
+                        compiler DID try to remove them from the heap.
+
+12/03/2001      Overloaded operators are (finally) "operational". The manual
+                        is updated to show how this new feature works.
+                The compiler supports literal values with a fractional part,
+                        but you must enable this support specifically: Small
+                        can interpret these so-called "rational numbers" as
+                        either fixed point or as floating point numbers. Again,
+                        see the manual for details.
+                For your convenience, I updated the FIXED.INC and FLOAT.INC
+                        include files. The pre-compiled SRUN.EXE (Win32)
+                        includes the "float.cpp" module.
+
+ 5/03/2001      BUG fix: native functions strpack() and strunpack() mixed up
+                        the source and destination strings.
+                Maintaining correct tags became inconvenient at times; I
+                        therefore introduced the "default tag" override "_:".
+                        This token removes any tag from its operand (on the
+                        right).
+
+23/02/2001      BUG fix: the code generation for the INC.I and DEC.I opcodes
+                        was wrong (the compiler encoded one parameter).
+                BUG fix: code generated for an expression like "array[index]++"
+                        was wrong: the loading of the expression result
+                        garbled the address of the array cell to increment
+                        subsequently.
+
+19/02/2001      Relational operators now always set a "bool" tag on their
+                        expression result
+                Native functions may have an "alias" name. This lifts the
+                        limitation of 19 characters for a native function.
+
+15/02/2001      On a fatal error, the Small compiler now forces a jump back
+                        through the main function, rather than aborting the
+                        program. This allows for easier embedding of the
+                        compiler in an application.
+
+25/01/2001      The "sleep" instruction is implemented, but quite differently
+                        than the partial implementation (of 19/12/2000). The
+                        sleep instruction takes an optional expression (like
+                        the "return" and the "exit" instructions) and ends the
+                        abstract machine in a way that it can be restarted. The
+                        tagname of the expression of "sleep" is also saved (in
+                        the ALT register), so that you can attach a "meaning"
+                        to the expression.
+                        The changes from the earlier (partial) implementation
+                        are that I used the HALT opcode rather than the SLEEP
+                        opcode (and I subsequently removed the SLEEP opcode).
+                        The HALT opcode needed modification to support a
+                        restart of the AMX.
+                The AMX file format now saves exported tagnames (tagnames that
+                        are used on the "sleep" and "exit" instructions) and
+                        the abstract machine has three new functions:
+                                amx_NumTags()
+                                amx_GetTag()
+                                amx_FindTagId()
+                The SRUN sample is adapted for the "sleep" instruction, but
+                        simply ignores it. The SDBG sample ignores the sleep
+                        instructions as well, but prints an informative message
+                        when it occurs.
+                Due to optional semicolons, the end of an expression is now not
+                        always easy to detect. Quite often, an error in an
+                        expression can only be flagged when the end of the
+                        expression has been found. As a result, an error is
+                        now sometimes flagged one or more lines below the line
+                        that really contains the error. This has been fixed
+                        by giving both top and bottom line numbers between
+                        which the error was found.
+
+28/12/2000      The DBG_LINE opcode can now abort the abstract machine. This
+                        makes it possible to have a simple debug hook that
+                        breaks out of "hung programs" (infinite loops). The
+                        SRUN sample shows how to set this function up.
+
+19/12/2000      Søren Hannibal implemented a "sleep" opcode to have a
+                        light-weight multi-tasking of abstract machines.
+                        Preliminary support for the sleep is in this version
+                        (basically I copied just Søren's changes).
+                BUG fix: adding a "tag" to a constant declared with a #define
+                        caused an error message with a garbled symbol name.
+                        (Bug found by Søren Hannibal.)
+                A few minor memory leaks were fixed.
+
+12/12/2000      BUG fix: the conditional operator generated wrong code if the
+                        "false" expression was a constant. (Bug found by Linus
+                        Nuber.)
+                Variables and function arguments can now be declared "const".
+                        Two typical uses are declaring a public variable
+                        const (so only the host application can modify them)
+                        and declaring array arguments const (arrays are always
+                        passed by reference).
+
+ 4/12/2000      BUG fix: the import library for Microsoft Visual C/C++ for
+                        AMX32.DLL had an incorrect definition for amx_Exec().
+
+24/11/2000      BUG fix: public functions should not allow default values for
+                        their parameters, as their is no way that you can set
+                        the defaults from the C/C++ side.
+                Unused parameters of public functions do not issue a warning
+                        anymore; public functions often have a "required"
+                        interface, so an unused parameter cannot be simply
+                        deleted.
+                Parameters of a function may have multiple tags between braces.
+                        This allows the function to accept a selection of
+                        parameter "types". For an example of the syntax:
+                            native Move({sprite,actor,weapon}:animob, x, y)
+                        Function "Move()" can take as its first parameter a
+                        handle tagged as "sprite", "actor" or "weapon". You can
+                        use this on non-native functions too. Inside the
+                        function, the parameter "animob" has the tag that is
+                        first in the list (so "sprite" in this example).
+                BUG fix: after an earlier fix, SDBG now removed symbolic
+                        information for static variables too early. (Bug found
+                        and corrected by Linus Nuber.)
+
+18/11/2000      BUG fix: the "not" operator did not work in the Assembler
+                        code of the abstract machine (AMXEXEC.ASM), due to
+                        an "aggressive" optimization (by me, probably).
+
+14/11/2000      BUG fix: an expression like "if (1==1)" gives a warning about
+                        a test that is always true, but then continues to
+                        generate faulthy code. (Bug found by David Burgess.)
+                BUG fix: the SDBG debugger did not remove symbols for static
+                        variables, causing a new one to be declared for every
+                        call to a function containing the static declaration.
+                        (Bug found by Linus Nuber.)
+
+ 1/11/2000      BUG fix: AMXEXEC.ASM can now finally be assembled with MASM
+                        without using the "code segment" trick. This was
+                        important because Visual C/C++ 6.0 returns incorrect
+                        addresses for data declared in the code segment.
+
+26/10/2000      The Small compiler is now a two-pass compiler; prototypes are
+                        no longer needed.
+                An internal problem, where the end of an expression could not
+                        be determined (due to optional semicolons) in the
+                        presence of a "preprocessor" directive, was fixed.
+                Array arguments with a default value are now copied to the heap
+                        if the default value is used. This *fixes* the problem,
+                        rather than trying to forbid it (as in the release of
+                        9/10/2000). The issue, by the way, was pointed out
+                        by Søren Hannibal mid July (I may be slow, but I am
+                        persistent).
+                The new function amx_Execv() allows programming languages other
+                        than C/C++ use the AMX DLLs. It is limited to up to
+                        four parameters, however (this is easy to change if
+                        you ever need more).
+                A bug where a recursive function provoked a warning about a
+                        missing return value was fixed.
+
+19/10/2000      The SDBG debugger prints the return value of functions. The
+                        integrated debugger in the DLL also supports a few
+                        function keys:
+                                F1 = Help
+                                F3 = List (refresh screen)
+                                F5 = Go
+                                F8 = Step (trace into functions)
+                                F10 = Next (step over functions)
+                A new "interface function" in the compiler, sc_error(), lets
+                        you intercept error/warning messages that are produced
+                        by the compiler (if you statically link the compiler as
+                        a "library function").
+
+09/10/2000      BUG fix: using the -C and -d2 compiler options together caused
+                        wrong encoding.
+                The debugger is integrated in the AMX DLLs. If you compile
+                        with debug information, the debugger will launch
+                        automatically. The AMX DLLs support a subset of the
+                        ANSI terminal escape codes, so that it has a slightly
+                        better interface.
+                The AMX DLLs have two new native functions: iswin32() allows
+                        you to check whether you are running with the 16-bit
+                        or 32-bit DLL and calldll() allows you to call any
+                        DLL function (provided that it has a standard calling
+                        convention).
+                Array arguments with a default value may not be modified (as
+                        arrays are always passed by reference, and allowing
+                        this would change the default value).
+                Updated documentation.
+
+27/09/2000      Definition of "interface functions" (called by the compiler)
+                        allows to compile the Small compiler as a "library".
+                        See the README.TXT file for details.
+                To use the Small compiler as a linkable library, a set of macro
+                        definitions allow for a drastic reducal of namespace
+                        polution (by global variables and functions).
+                A function may be declared as a "stock" function, which means
+                        that if it isn't used, it may be stripped from the
+                        compiled program (without warning). This way, you can
+                        make "library" functions in header files.
+
+11/09/2000      A bug was fixed concerning the use of #endinput within an
+                        #if ... #endif section; the compiler did not reset
+                        the "#if" nesting level on #endinput. (Bug reported
+                        by Jim McGinty from Artran, Inc.)
+                Expressions like "1 <= var <= 10" are now allowed. The result
+                        of such an expression is 1 if all conditions hold, and
+                        zero otherwise. The "chained relational expressions"
+                        feature was copied from BCPL.
+                New opcodes SWAP.pri/alt, which are needed for chained
+                        relational expressions.
+                New opcode PUSHADDR, which optimizes passing a variable by
+                        reference.
+                By generating better pseudo-code for the "for" instruction, the
+                        "Sieve of Erathosthenes" runs approximately 10% faster
+                        (w/o print), and so will typically all small "for"
+                        loops.
+                To better cope with the ever expanding lists of error/warning
+                        messages and peephole optimizer sequence strings, these
+                        strings are now compressed. They are still compiled as
+                        literal strings in the executable, but a separate
+                        utility, SCPACK, preprocesses the files and compresses
+                        the strings.
+
+14/08/2000      Semicolons are now optional by default. This may give, in your
+                        existing programs, warning 218 ("old style prototypes
+                        used with optional semicolumns"). Use the "forward"
+                        keyword to forward-declare functions; use the "/;+"
+                        compiler option to "require" semicolons.
+                As per suggestion of Søren Hannibal, you may now mix positional
+                        and named parameters in a function call, with the
+                        restriction that all positional parameters must precede
+                        all named parameters. Thus a call like:
+                                getproperty(123, .value = 456)
+                        would now be valid.
+
+24/07/2000      A large set of bugs, reported by Søren Hannibal, were fixed.
+                These include:
+                        * code generation error for function arguments that are
+                          passed to sub-functions by reference and that were
+                          passed by reference themselves too;
+                        * code generation error for labels (for "goto");
+                        * literal arrays passed to functions were always
+                          flagged as "not the same size as the formal argument"
+                        * missing "#endif" at the end of the main file was not
+                          (always) detected
+                        * reaching end-of-file while inside a /* ... */ style
+                          comment was undetected
+                        * address 0 is a valid address, so the fix in the
+                          release of 17/07/2000 for amx_Exec() actually
+                          introduced an error.
+
+19/07/2000      As per the suggestion of Søren Hannibal, the NO_OPTIMIZE
+                        macro is replaced by a command line option in the
+                        compiler (-d3).
+
+17/07/2000      Underscores between digits in a number are now allowed. This
+                        may improve readability of large integers (for
+                        example: 1_234_567) and for literals used in fixed
+                        point expressions.
+                #pragma library is now (finally) working. This allows you to
+                        give a tag to each native function to which
+                        (dynamically loaded) library it belongs. The abstract
+                        machine has functions to extract the library names that
+                        it needs to load.
+                amx_Exec() will no longer start executing from address 0 if you
+                        feed it with a program without a main() and ask to run
+                        the "main" entry function.
+                The DBG_CALL event now tells to which address it is about to
+                        jump, so a stack trace can be built. In addtition, you
+                        will get a DBG_CALL event for the entry point (so that
+                        the stack trace is never empty).
+                The sample debugger was extended with stack trace commands and
+                        an option to print a one-dimensional array as a string.
+
+26/06/2000      A code generation bug (found by Dark Fiber) in the last update
+                        was fixed.
+
+29/05/2000      Three bug corrections in the initialisation of the staging
+                        buffer (that will teach me to easily change data
+                        structures from "fixed size" to "grow as needed").
+                Support for public variables (in addition to public functions).
+                        Since the manual is not yet up to date, here is a
+                        summary:
+                        * Only simple (global) variables can be public, no
+                          arrays
+                        * To create a public variable, "public" replaces "new":
+                            public myvar;
+                        * Alternatively, the '@' prefix works as well:
+                            new @myvar;
+                        * To access public variables from a C/C++ program, use
+                          the new AMX functions:
+                            amx_NumPubVars()
+                            amx_GetPubVar()
+                            amx_FindPubVar()
+                          amx_GetPubVar() and amx_FindPubVar() return the
+                          address of the variable relative to the AMX; use
+                          amx_GetAddr() to get a pointer to the cell
+                There was (still) a problem with the stack clean-up. I don't
+                        know what I was thinking three months ago when I made
+                        my first fix, but I probably only tested the 32-bit
+                        version.
+                Someone sent me a bug report concerning a prototype mismatch
+                        that I misclassified. I found it again by accident,
+                        corrected the bug that the example demonstrated and
+                        added it to regression testing.
+                The BCPL manual from Martin Richards pointed out that when you
+                        have statements end implicitly on a line end, but still
+                        allow expressions to wrap over multiple lines, there
+                        may be a problem with unary operators. I tested a few
+                        cases and, indeed, found an error.
+
+22/03/2000      Bug correction in the dynamic growth of the staging buffer.
+                Bug correction in the stack handling of amx_Exec(), which did
+                        not remove arguments from the "abstract machine" stack.
+                        If you ran the same AMX program over and over again
+                        (without reloading it), you would slowly eat up the
+                        AMX stack.
+                While correcting the above mentioned bug, I also added code to
+                        clean up the stack "the hard way" on a run time error.
+                        The extra local variable required for this also lets
+                        me verify (with an assertion) that the normal route
+                        indeed cleaned up the stack correctly.
+                Bug correction in the assembler version of the AMX: when
+                        compiling with a stack-oriented parameter passing
+                        convention, it must also save the value of EBX.
+
+13/03/2000      Using symbolic constants in the "case" statements of a "switch"
+                        could cause the label to be interpreted as a tagname.
+                Marc Peter converted the JIT to use __cdecl calling convention
+                        and added (minimal) support for the SRANGE instruction
+                        at the same time. This means that you can now use the
+                        JIT with Borland or Microsoft's compilers.
+                Dark Fiber contributes an AMX extensions with high quality
+                        pseudo-random numbers, plus a simple card game as a
+                        non-trivial example script in Small.
+
+17/02/2000      An attempt to assign a value to a constant (or any expression
+                        that is not an lvalue) inside a test, resulted in an
+                        assertion failure or a crash.
+                The compiler let invalid prototypes pass, while complaining on
+                        correct prototypes.
+                Logical expressions with && and || operators were never
+                        identified as "constant expressions", even if the
+                        operands on either side were constants. This prevented
+                        such logical expressions to be used in preprocessor
+                        expressions.
+                The "loose indentation" warning works nicely if you use only
+                        TABs or only space characters to indent a line, but if
+                        you use a combination, the warning fires even if there
+                        is no reason. To lift this problem, the current release
+                        introduces the -t option and the "tabsize" pragma (with
+                        which you can set the tab size).
+                Years ago the compiler was changed to align all opcodes to 4
+                        byte boundaries, to increase the speed of the virtual
+                        machine at the expense of larger compiled files. The
+                        current release introduces a -C switch with which the
+                        compiler writes the output file in a more compact
+                        encoding, at the cost of slightly longer load times.
+
+16/12/1999      Marc Peter corrected a problem in the JIT.
+                Path names with embedded spaces caused the compiler to fail if
+                        you compiled with the -d2 option.
+                Bernard Fouche ported the sources to Linux. Based on his
+                        changes and comments, the portability of the compiler
+                        and the abstract machine have been improved.
+                Symbol names now have 31 significant characters. Native and
+                        public names still have a maximum of 19 significant
+                        characters.
+
+19/11/1999      Bug correction in the "for" loop concerning local variables at
+                        the same scope as the "for" loop (found by Joe Felton).
+                amx_Exec() can now take NULL for the parameter for the script's
+                        return value.
+                New function "random()" in AMXCORE.C.
+
+12/11/1999      Some changes for Greg Garner's module for floating point
+                        support.
+                Two more "interface" function for the compiler. These functions
+                        allow you to set "pre-defined" tag names and constants.
+                AMXCONS.C includes two more native functions to read a
+                        character or a string from the keyboard.
+
+ 2/11/1999      Fixed minor annoyances in the compiler like failures to find
+                        the include path on non-DOS platforms.
+
+25/10/1999      Warning message for local variables that "shadow" a function
+                        or a variable at an earlier scope (by having the same
+                        name, they make the earlier symbol inaccessible).
+                Warning message for the infamous "dangling else" problem.
+                Bug correction: functions with upper case letters were not
+                        assembled correctly (bug found by Greg Garner).
+                New control character "^e" which has value 27 ("escape").
+
+12/10/1999      The abstract machine is now also available as a DLL for
+                        Microsoft Windows. Both 16-bit and 32-bit DLLs are
+                        provided (including source).
+
+ 1/10/1999      Semicolons to end each statement can now be made optional with
+                        the compiler switch "-;" or with:
+                          #pragma semicolon false
+                The assembler implementation of the abstract machine now also
+                        supports __stdcall declaration. See the README for
+                        information on compiling.
+                There are now two "fixed point" libraries: binary (18:14) and
+                        decimal (three decimal digits). The decimal fixed
+                        point library may be more "exact" when working in "real
+                        live" calculations (which are often based on a decimal
+                        base).
+
+27/08/1999      Bug correction: parameters passed to a Small function (called
+                        with amx_Exec() were not stored at the correct
+                        location (bug found & corrected by Marc Peter).
+                Marc Peter's JIT underwent radical changes: on the "Towers of
+                        Hanoi" benchmark the increase of performance is 80%,
+                        see the history log in JIT.ASM for details.
+
+23/08/1999      The assembler version of the abstract machine (by Marc Peter)
+                        now also compiles with Microsoft Visual C/C++ 5.0 and
+                        6.0.
+                Bug correction: using the assembler abstract machine in a
+                        program with a default calling convention of __stdcall
+                        resulted in a crash.
+
+20/08/1999      Mark Peter's Just-In-Time compiler is now integrated with
+                        the standard release. The JIT gives yet another
+                        major increase in performance.
+
+18/08/1999      The assembler version of the abstract machine (by Marc Peter)
+                        now also compiles with Borland C++ 5.0.
+                Updated documentation; better lay-out too.
+
+31/07/1999      Small supports two-dimensional arrays. See the manual for
+                        the precise syntax and usage of this new feature.
+
+18/07/1999      Plus debugging opcodes for the size and dimensions of an
+                        array.
+
+ 2/07/1999      Trailing spaces are ignored when concatenating lines with
+                        a \ at the end of the line.
+
+ 7/06/1999      Updated the Assembler AMX (by Marc Peter) for the new
+                        opcodes (e.g. the SWITCH opcode and associated
+                        case table).
+                Bug correction: the compiler could "ignore" a fatal error
+                        in a rare condition, leading to a crash or random
+                        output.
+                Bug correction: overflowing the stage buffer issued the
+                        wrong error message ("cannot read from file").
+
+24/05/1999      The switch statement was redesigned: the minor improvement
+                        is the support for ranges (e.g. "case 1..8:"), the
+                        major change is the fastly improved code generation.
+
+10/05/1999      The compiler has an option to switch the syntaxes for packed
+                        and unpacked strings; there is also a new #pragma to
+                        to this.
+                        and unpacked strings.
+
+ 1/05/1999      Array assignment is more relaxed for literal strings: the
+                        destination array does not have to be exactly the
+                        same size as the string length (in cells).
+
+17/04/1999      Terminal support (ANSI escape sequences) for the debugger.
+                The debugger supports "watches" and a few more commands.
+
+15/04/1999      Support for static local variables.
+                Bug correction: the compiler did not give an error message
+                        when returning an array from a function.
+                New commands in the debugger:
+                        "GO RET" (run until function exit)
+                        "GO n" (run until line n)
+                        "LIST ON" (list 10 source lines after each step)
+                        "LIST OFF" (turns above option off)
+                        Pressing <Return> repeats the last STEP or NEXT
+
+12/04/1999      Bug correction for line continuation (\ at the end of the
+                        line).
+                Error message when a \ appears in a single line comment.
+                New predefined constants "language" (version of the Small
+                        language) and "compiler" (version of the Small
+                        compiler).
+
+31/03/1999      Bug corrections for three opcodes of the abstract machine (none
+                        of which were generated by the Small compiler) were
+                        found and corrected by Marc Peter.
+                A bug in the fixed point module (relating the division of
+                        negative numbers) was found and corrected by Marc
+                        Peter.
+                Array assignment is permitted, under the condition that the
+                        arrays at both sides of the "=" operator are of equal
+                        size.
+
+24/02/1999      The compiler has an option to skip a number of lines before
+                        starting to compile; this comes handy for scripts
+                        inside text files.
+                The file format can now store the names of required modules
+                        (that must possibly be dynamically linked); this is
+                        currently supported through "#pragma library".
+                The new "#endscript" directive is an alias for the existing
+                        directive "#endinput".
+                User data fields in the abstract machine are now "tagged", so
+                        that you get some kind of name/value pair; you can
+                        now determine whether a user data field is "in use".
+                The compiler has a few more command line options.
+
+ 9/12/1998      Finished integration with Marc Peter's assembler abstract
+                        machine, including the debugger interface.
+                Updated documentation for new features.
+
+27/11/1998      Two more warnings: nested comment and loose indentation (both
+                        frequently indicate an error).
+
+ 6/11/1998      Integration of Marc Peter's abstract machine in assembler (this
+                        is still an experimental version).
+
+ 4/11/1998      Major re-design of the compiler and the ANSI C version of the
+                        abstract machine: opcodes are now cell sized.
+
+30/10/1998      Major changes in the debugger interface to accomodate the
+                        design of a re-entrant debugger.
+                Early relocation of JUMPs and CALLs, which speeds up execution.
+                Changes in instructions to make array indexing faster.
+                New opcode to speed up passing long argument lists to
+                        functions.
+                Variable arguments may now be tagged.
+                The manual got another full reading... and corrections.
+
+23/10/1998      New directive "#emit" for those who want to program directly
+                        in the assembler of the Small abstract machine.
+                New directive "#endinput" to skip the rest of the file.
+                New function amx_FindPublic() that returns the index of a
+                        public function whose name is specified.
+                Public functions are now written to the output file in sorted
+                        order; this allows a quicker lookup of a public
+                        function using a binary search.
+                "funcidx()" is a new native function in AMXCORE.C that returns
+                        the index of a function in the "public function table"
+                        so that a script can return the index that the
+                        application should call next.
+
+19/10/1998      BUG fix: when calling an unknown function, the compiler would
+                        issue a diagnostic and then crash or hang.
+                Command line options changed; you can now also add definitions
+                        on the command line of the compiler.
+                The debugging interface changed (it became simpler), a console
+                        mode debugger is included as an example.
+                New function amx_Flags() to check whether the compiled program
+                        contains symbolic (debugging) information.
+                The property functions (core library) got an extra parameter
+                        to avoid ambiguity in some cases.
+                A new "native function" module: fixed point arithmetic.
+                Clarifications and corrections in the manual.
+
+01/10/1998      BUG fix: conditional expression was inverted!
+                BUG fix: conditional expressions or logical operators generated
+                        incorrect jumps when used in function arguments
+                        (because arguments are evaluated right-to-left, but
+                        code is generated left-to-right).
+                Support for named parameters (in addition to positional
+                        parameters). See the documentation for this major
+                        feature.
+
+28/09/1998      New functions pass strings between C and Small functions.
+                Run-time check for Little/Big Endian machines.
+                Some extra compiler checks: unused local constants and
+                        side-effects of expressions.
+
+24/09/1998      BUG fix: code generation bug when incrementing or decrementing
+                        a "reference" argument with the "++" or "--" operators.
+                Support for accessing (packed) characters from a (cell) array
+                        with the {..} operator (function similarly to the [..]
+                        operator).
+                REMOVED module names for native functions. This turned out
+                        to be a feature that complicated the implementation
+                        without adding much.
+                Several changes in the AMX, removed amx_CheckModules() and
+                        amx_Unregister(). No need for callback functions
+                        in an extension module. New function amx_NativeInfo().
+
+22/09/1998      Support for Unicode characters in strings and character
+                        literals.
+                Support for line concatenation with a backslash at the end
+                        of a line.
+                Two more predefined constants: cellbits and charbits give the
+                        size of a cell and a character respectively.
+                More error messages (errors 41 and 42 are new).
+                Functions whose name start with an '@' are always public.
+                An indirect threaded interpreter of the abstract machine
+                        (AMX.C) when compiled with GNU CC (I used Delorie
+                        GCC). The GNU C version is twice as fast as the
+                        ANSI C version.
+                BUG fix: the compiler had a memory leak in the allocation of
+                        the type list of function arguments.
+                The #define directive can now easily be removed from the
+                        language (its support is a kludge anyway).
+                Packed strings are now stored in Big Endian, and no longer
+                        terminated with a full zero cell; the new specification
+                        makes it easier to determine whether a string is
+                        packed or unpacked.
+
+ 3/09/1998      BUG fix: multiple initialized local arrays in a compound
+                        block were not initialized correctly.
+                Memory for function arguments was not explicitly freed.
+                Support for literal arrays, just like literal strings, like
+                        in "print( {'H','e','l','l','o',0} );
+                Support for default values of array arguments, as in
+                            "addvector(a[], b[] = {1, 1, 1}, size = 3);"
+                        or
+                            "messagebox(text[], caption[] = "error");"
+
+28/08/1998      BUG fix: local arrays were not initialized to their full
+                        extent.
+                All unitialized variables and array elements are now set
+                        to zero (default initialization).
+                A few clarifications and additions in the manual.
+
+24/08/1998      BUG fix: prototypes caused invalid code generation.
+                BUG fix: expression involving constants could generate invalid
+                         code.
+                Added the FILL opcode in the abstract machine.
+                More compact code generation for arrays initialized to a
+                        single value.
+                Extra error message 41 (invalid use of ellipsis).
+
+20/08/1998      Improved portability of the compiler.
+
+18/08/1998      First public release.
