@@ -116,7 +116,7 @@ static int udp_Send(const char *host,short port,const char *message,int size)
   if (sLocal==INVALID_SOCKET)
     return -1;
 
-  memset((void *)&sRemote,sizeof sRemote,0);
+  memset((void *)&sRemote,0,sizeof sRemote);
   sRemote.sin_family=AF_INET;
   sRemote.sin_port=htons(port);
   sRemote.sin_addr.s_addr= (host==NULL) ? htonl(INADDR_BROADCAST) : udp_GetHostAddr(host,0);
@@ -176,7 +176,7 @@ static int udp_Listen(short port)
 {
   struct sockaddr_in sFrom;
 
-  memset((void *)&sFrom,sizeof sFrom,0);
+  memset((void *)&sFrom,0,sizeof sFrom);
   sFrom.sin_family=AF_INET;
   sFrom.sin_port=htons(port);
   sFrom.sin_addr.s_addr=htonl(INADDR_ANY);
