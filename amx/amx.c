@@ -1870,7 +1870,7 @@ static AMX_NATIVE findfunction(char *name, const AMX_NATIVE_INFO *list, int numb
   int i;
 
   assert(list!=NULL);
-  for (i=0; list[i].name!=NULL && (i<number || number==-1); i++)
+  for (i=0; (i<number || number==-1) && list[i].name!=NULL; i++)
     if (strcmp(name,list[i].name)==0)
       return list[i].func;
   return NULL;
