@@ -1190,6 +1190,7 @@ static int hier13(value *lval)
   if (matchtoken('?')) {
     int locheap=decl_heap;      /* save current heap delta */
     long heap1,heap2;           /* max. heap delta either branch */
+    valuepair *heaplist_node;
     int flab1=getlabel();
     int flab2=getlabel();
     value lval2={0};
@@ -1206,7 +1207,12 @@ static int hier13(value *lval)
                                  * should return a value */
     } /* if */
     heap1=heap2=0;				/* just to avoid a compiler warning */
-    if (sc_status!=statBROWSE) {
+    if (sc_status==statBROWSE) {
+      /* We should push a new node right now otherwise we will pop it in the
+       * wrong order on the write stage.
+       */
+      heaplist_node=push_heaplist(0,0); /* save the pointer to write the actual data later */
+    } else if (sc_status==statWRITE || sc_status==statSKIP) {
       #if !defined NDEBUG
         int result=
       #endif
@@ -1291,7 +1297,11 @@ static int hier13(value *lval)
        * on the heap may needed by the remaining expression.
        */
       int max=(heap1>heap2) ? heap1 : heap2;
-      push_heaplist(max-heap1,max-heap2);
+      heaplist_node->first=max-heap1;
+      heaplist_node->second=max-heap2;
+      decl_heap=locheap+max; /* otherwise it will contain locheap+heap2 and the
+                              * max. heap usage will be wrong for the upper
+                              * expression */
     } /* if */
     assert(sc_status!=statWRITE || heap1==heap2);
     if (lval->ident==iARRAY)

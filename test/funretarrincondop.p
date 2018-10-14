@@ -10,3 +10,11 @@ f() {
 	new arr[256];
 	return arr;
 }
+
+#ifdef NESTED
+main() {
+	printf(p() ? (p() ? f() : "") : "");
+	printf(p() ? (p() ? "" : f()) : "");
+	printf(p() ? (p() ? "" : "") : f());
+}
+#endif

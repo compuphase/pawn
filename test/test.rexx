@@ -1884,3 +1884,13 @@ test151:
   pawncc 'BEFOREDEF= funretarrincondop'
   return
 
+test152:
+  say '152. The following test should compile successfully.'
+  say ''
+  say '     Using function that returns array in nested conditional operator is valid.'
+  say ''
+  say 'Symptoms of detected bug: assertion failure in the assembler stage.'
+  say '-----'
+  pawncc 'NESTED= funretarrincondop'
+  return
+
