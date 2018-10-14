@@ -1873,3 +1873,14 @@ test150:
   pawncc 'PRAGMA_WARNING= test1'
   return
 
+test151:
+  say '151. The following test should compile successfully.'
+  say ''
+  say '     Using function that returns array in conditional operator before its'
+  say '     definition is valid.'
+  say ''
+  say 'Symptoms of detected bug: assertion failure in the assembler stage.'
+  say '-----'
+  pawncc 'BEFOREDEF= funretarrincondop'
+  return
+
