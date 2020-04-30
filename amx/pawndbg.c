@@ -14,7 +14,7 @@
  *  - ability to do remote debugging over an RS232 connection
  *
  *
- *  Copyright (c) ITB CompuPhase, 1998-2016
+ *  Copyright (c) CompuPhase, 1998-2020
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not
  *  use this file except in compliance with the License. You may obtain a copy
@@ -28,7 +28,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: pawndbg.c 5588 2016-10-25 11:13:28Z  $
+ *  Version: $Id: pawndbg.c 6131 2020-04-29 19:47:15Z thiadmer $
  *
  *
  *  Command line options:

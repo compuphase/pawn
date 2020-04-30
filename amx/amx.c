@@ -1,6 +1,6 @@
 /*  Pawn Abstract Machine (for the Pawn language)
  *
- *  Copyright (c) ITB CompuPhase, 1997-2017
+ *  Copyright (c) CompuPhase, 1997-2020
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not
  *  use this file except in compliance with the License. You may obtain a copy
@@ -14,7 +14,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: amx.c 5509 2016-05-17 07:49:04Z  $
+ *  Version: $Id: amx.c 6130 2020-04-29 12:35:51Z thiadmer $
  */
 
 #define WIN32_LEAN_AND_MEAN
@@ -141,6 +141,12 @@
 #endif
 #if !defined AMX_NO_PACKED_OPC && !defined AMX_TOKENTHREADING
   #define AMX_TOKENTHREADING    /* packed opcodes require token threading */
+#endif
+
+#if defined _I64_MAX || defined __x86_64__ || defined HAVE_I64
+  #define NATIVEADDR(addr,high)  (AMX_NATIVE)((intptr_t)(addr) | ((intptr_t)((uint64_t)high<<32)))
+#else
+  #define NATIVEADDR(addr,high)  (AMX_NATIVE)(intptr_t)(addr)
 #endif
 
 #if defined AMX_ALTCORE
@@ -439,7 +445,7 @@ typedef enum {
   }
 #endif
 
-#if (BYTE_ORDER==BIG_ENDIAN || PAWN_CELL_SIZE==64) && (defined _I64_MAX || defined HAVE_I64)
+#if (BYTE_ORDER==BIG_ENDIAN || PAWN_CELL_SIZE==64) && (defined _I64_MAX || defined __x86_64__ || defined HAVE_I64)
   void amx_Swap64(uint64_t *v)
   {
     unsigned char *s = (unsigned char *)v;
@@ -486,7 +492,7 @@ uint32_t * AMXAPI amx_Align32(uint32_t *v)
   return v;
 }
 
-#if defined _I64_MAX || defined HAVE_I64
+#if defined _I64_MAX || defined __x86_64__ || defined HAVE_I64
 uint64_t * AMXAPI amx_Align64(uint64_t *v)
 {
   assert(sizeof(*v)==8);
@@ -496,7 +502,7 @@ uint64_t * AMXAPI amx_Align64(uint64_t *v)
   #endif
   return v;
 }
-#endif  /* _I64_MAX || HAVE_I64 */
+#endif  /* _I64_MAX || __x86_64__ || HAVE_I64 */
 #endif  /* AMX_ALIGN || AMX_INIT */
 
 #if defined AMX_FLAGS
@@ -540,7 +546,7 @@ int AMXAPI amx_Callback(AMX *amx, cell index, cell *result, const cell *params)
 #endif
     assert(index>=0 && index<(cell)NUMENTRIES(hdr,natives,libraries));
     func=GETENTRY(hdr,natives,index);
-    f=(AMX_NATIVE)(intptr_t)func->address;
+    f=NATIVEADDR(func->address,func->nameofs);
 #if defined AMX_NATIVETABLE
   } /* if */
 #endif
@@ -1093,6 +1099,31 @@ static int VerifyPcode(AMX *amx)
 /* definitions used for amx_Init() and amx_Cleanup() */
 #if (defined _Windows || defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__ || defined __APPLE__) && !defined AMX_NODYNALOAD
   typedef int AMXEXPORT (AMXAPI _FAR *AMX_ENTRY)(AMX _FAR *amx);
+
+  static void getlibname(char *libname,const char *source)
+  {
+    int i;
+    #if defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__ || defined __APPLE__
+      char *root=getenv("AMXLIB");
+    #endif
+
+    assert(libname!=NULL && source!=NULL);
+    libname[0]='\0';
+    #if defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__ || defined __APPLE__
+      if (root!=NULL && *root!='\0') {
+        strcpy(libname,root);
+        if (libname[strlen(libname)-1]!='/')
+          strcat(libname,"/");
+      } /* if */
+    #endif
+    strcat(libname,"amx");
+    strcat(libname,source);
+    #if defined _Windows
+      strcat(libname,".dll");
+    #elif defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__ || defined __APPLE__
+      strcat(libname,".so");
+    #endif
+  }
 #endif
 
 int AMXAPI amx_Init(AMX *amx,void *program)
@@ -1101,22 +1132,6 @@ int AMXAPI amx_Init(AMX *amx,void *program)
   int err;
   uint16_t *namelength;
   unsigned char *data;
-  #if (defined _Windows || defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__ || defined __APPLE__) && !defined AMX_NODYNALOAD
-    #if defined _Windows
-      char libname[sNAMEMAX+8]; /* +1 for '\0', +3 for 'amx' prefix, +4 for extension */
-      HINSTANCE hlib;
-    #elif defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__ || defined __APPLE__
-      char libname[_MAX_PATH];
-      char *root;
-      void *hlib;
-      #if !defined AMX_LIBPATH
-        #define AMX_LIBPATH     "AMXLIB"
-      #endif
-    #endif
-    int numlibraries;
-    AMX_FUNCSTUB *lib;
-    AMX_ENTRY libinit;
-  #endif
 
   if ((amx->flags & AMX_FLAG_INIT)!=0)
     return AMX_ERR_INIT;  /* already initialized (may not do so twice) */
@@ -1152,7 +1167,9 @@ int AMXAPI amx_Init(AMX *amx,void *program)
   if (hdr->defsize!=sizeof(AMX_FUNCSTUB))
     return AMX_ERR_FORMAT;
   /* check the maximum name length in the separate name table */
-  amx_Align32((uint32_t*)&hdr->nametable);
+  #if BYTE_ORDER==BIG_ENDIAN
+    amx_Align32((uint32_t*)&hdr->nametable);
+  #endif
   namelength=(uint16_t*)((unsigned char*)program + (unsigned)hdr->nametable);
   amx_Align16(namelength);
   if (*namelength>sNAMEMAX)
@@ -1280,26 +1297,22 @@ int AMXAPI amx_Init(AMX *amx,void *program)
   /* load any extension modules that the AMX refers to */
   #if (defined _Windows || defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__ || defined __APPLE__) && !defined AMX_NODYNALOAD
   { /* local */
-    int i;
-    #if defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__ || defined __APPLE__
-      root=getenv("AMXLIB");
+    #if defined _Windows
+      char libname[sNAMEMAX+8]; /* +1 for '\0', +3 for 'amx' prefix, +4 for extension */
+      HINSTANCE hlib;
+    #elif defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__ || defined __APPLE__
+      char libname[_MAX_PATH];
+      void *hlib;
     #endif
+    int numlibraries,i;
+    AMX_FUNCSTUB *lib;
+    AMX_ENTRY libinit;
     hdr=(AMX_HEADER *)amx->base;
     numlibraries=NUMENTRIES(hdr,libraries,pubvars);
     for (i=0; i<numlibraries; i++) {
       lib=GETENTRY(hdr,libraries,i);
-      libname[0]='\0';
-      #if defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__ || defined __APPLE__
-        if (root!=NULL && *root!='\0') {
-          strcpy(libname,root);
-          if (libname[strlen(libname)-1]!='/')
-            strcat(libname,"/");
-        } /* if */
-      #endif
-      strcat(libname,"amx");
-      strcat(libname,GETENTRYNAME(hdr,lib));
+      getlibname(libname,GETENTRYNAME(hdr,lib));
       #if defined _Windows
-        strcat(libname,".dll");
         #if defined __WIN32__
           hlib=LoadLibraryA(libname);
         #else
@@ -1308,7 +1321,6 @@ int AMXAPI amx_Init(AMX *amx,void *program)
             hlib=NULL;
         #endif
       #elif defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__ || defined __APPLE__
-        strcat(libname,".so");
         hlib=dlopen(libname,RTLD_NOW);
       #endif
       if (hlib!=NULL) {
@@ -1439,10 +1451,17 @@ int AMXAPI amx_InitJIT(AMX *amx,void *compiled_program,void *reloc_table)
 int AMXAPI amx_Cleanup(AMX *amx)
 {
   #if (defined _Windows || defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__ || defined __APPLE__) && !defined AMX_NODYNALOAD
+    #if defined _Windows
+      char libname[sNAMEMAX+8]; /* +1 for '\0', +3 for 'amx' prefix, +4 for extension */
+      HINSTANCE hlib;
+    #elif defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__ || defined __APPLE__
+      char libname[_MAX_PATH];
+      void *hlib;
+    #endif
     AMX_HEADER *hdr;
-    int numlibraries,i;
     AMX_FUNCSTUB *lib;
     AMX_ENTRY libcleanup;
+    int numlibraries,i;
   #endif
 
   /* unload all extension modules */
@@ -1453,23 +1472,37 @@ int AMXAPI amx_Cleanup(AMX *amx)
     for (i=0; i<numlibraries; i++) {
       lib=GETENTRY(hdr,libraries,i);
       if (lib->address!=0) {
-        char funcname[sNAMEMAX+12]; /* +1 for '\0', +4 for 'amx_', +7 for 'Cleanup' */
-        strcpy(funcname,"amx_");
-        strcat(funcname,GETENTRYNAME(hdr,lib));
-        strcat(funcname,"Cleanup");
+        getlibname(libname,GETENTRYNAME(hdr,lib));
         #if defined _Windows
-          libcleanup=(AMX_ENTRY)GetProcAddress((HINSTANCE)lib->address,funcname);
+          #if defined __WIN32__
+            hlib=GetModuleHandleA(libname);
+          #else
+            hlib=GetModuleHandle(libname);
+            if (hlib<=HINSTANCE_ERROR)
+              hlib=NULL;
+          #endif
         #elif defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__ || defined __APPLE__
-          libcleanup=(AMX_ENTRY)dlsym((void*)(intptr_t)lib->address,funcname);
+          hlib=dlopen(libname,RTLD_NOLOAD);
         #endif
-        if (libcleanup!=NULL)
-          libcleanup(amx);
-        #if defined _Windows
-          FreeLibrary((HINSTANCE)lib->address);
-        #elif defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__ || defined __APPLE__
-          dlclose((void*)(intptr_t)lib->address);
-        #endif
-      } /* if */
+        if (hlib!=NULL) {
+          char funcname[sNAMEMAX+12]; /* +1 for '\0', +4 for 'amx_', +7 for 'Cleanup' */
+          strcpy(funcname,"amx_");
+          strcat(funcname,GETENTRYNAME(hdr,lib));
+          strcat(funcname,"Cleanup");
+          #if defined _Windows
+            libcleanup=(AMX_ENTRY)GetProcAddress(hlib,funcname);
+          #elif defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__ || defined __APPLE__
+            libcleanup=(AMX_ENTRY)dlsym(hlib,funcname);
+          #endif
+          if (libcleanup!=NULL)
+            libcleanup(amx);
+          #if defined _Windows
+            FreeLibrary(hlob);
+          #elif defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__ || defined __APPLE__
+            dlclose(hlib);
+          #endif
+        } /* if (hlib!=NULL) */
+      } /* if (lib->address!=0) */
     } /* for */
   #else
     (void)amx;
@@ -1896,10 +1929,15 @@ int AMXAPI amx_Register(AMX *amx, const AMX_NATIVE_INFO *list, int number)
     if (func->address==0) {
       /* this function is not yet located */
       funcptr=(list!=NULL) ? findfunction(GETENTRYNAME(hdr,func),list,number) : NULL;
-      if (funcptr!=NULL)
-        func->address=(ucell)(intptr_t)funcptr;
-      else
+      if (funcptr!=NULL) {
+        func->address=(uint32_t)(intptr_t)funcptr;
+        #if defined _I64_MAX || defined __x86_64__ || defined HAVE_I64
+          /* for 64-bit version the high part of the pointer must be stored too */
+          func->nameofs=(uint32_t)((intptr_t)funcptr >> 32);
+        #endif
+      } else {
         err=AMX_ERR_NOTFOUND;
+      }
     } /* if */
     func=(AMX_FUNCSTUB*)((unsigned char*)func+hdr->defsize);
   } /* for */

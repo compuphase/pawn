@@ -1,6 +1,6 @@
-/* Pawn disassembler  - crude, but (perhaps) useful
+/* Pawn disassembler  - crude, but hopefully useful
  *
- *  Copyright (c) ITB CompuPhase, 2007-2017
+ *  Copyright (c) CompuPhase, 2007-2020
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not
  *  use this file except in compliance with the License. You may obtain a copy
@@ -14,9 +14,10 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: pawndisasm.c 5690 2017-06-08 14:04:08Z thiadmer $
+ *  Version: $Id: pawndisasm.c 6130 2020-04-29 12:35:51Z thiadmer $
  */
 #include <assert.h>
+#include <inttypes.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -298,13 +299,13 @@ static void print_param(FILE *ftxt,cell param,int eol)
   param &= cellmask;
   switch (pc_cellsize) {
   case 2:
-    fprintf(ftxt,"%04x",(unsigned short)param);
+    fprintf(ftxt,"%0" PRIx16,(uint16_t)param);
     break;
   case 4:
-    fprintf(ftxt,"%08lx",(unsigned long)param);
+    fprintf(ftxt,"%0" PRIx32,(uint32_t)param);
     break;
   case 8:
-    fprintf(ftxt,"%016llx",(uint64_t)param);
+    fprintf(ftxt,"%0" PRIx64,(uint64_t)param);
     break;
   default:
     assert(0);
@@ -696,15 +697,15 @@ int main(int argc,char *argv[])
     } /* if */
     switch (pc_cellsize) {
     case 2:
-      fprintf(fplist,"%04x ",*(short*)cip);
+      fprintf(fplist,"%0" PRIx16 " ",*(uint16_t*)cip);
       addchars(name,*(short*)cip,count);
       break;
     case 4:
-      fprintf(fplist,"%08lx ",*(long*)cip);
+      fprintf(fplist,"%0" PRIx32 " ",*(uint32_t*)cip);
       addchars(name,*(long*)cip,count);
       break;
     case 8:
-      fprintf(fplist,"%016llx ",*(int64_t*)cip);
+      fprintf(fplist,"%0" PRIx64 " ",*(uint64_t*)cip);
       addchars(name,*(int64_t*)cip,count);
       break;
     default:

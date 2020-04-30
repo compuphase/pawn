@@ -16,9 +16,9 @@
 #define VERSIONSTR           "4.0.0\0"
 #define VERSIONNAME          "amxString.dll\0"
 #define VERSIONDESCRIPTION   "Pawn AMX: String manipulation routines\0"
-#define VERSIONCOMPANYNAME   "ITB CompuPhase\0"
+#define VERSIONCOMPANYNAME   "CompuPhase\0"
 #define VERSIONPRODUCTNAME   "amxString\0"
-#define VERSIONCOPYRIGHT     "Copyright \251 2005-2016 ITB CompuPhase\0"
+#define VERSIONCOPYRIGHT     "Copyright \251 2005-2016 CompuPhase\0"
 
 VS_VERSION_INFO VERSIONINFO
 FILEVERSION    VERSION, REVISION, BUILD, 0

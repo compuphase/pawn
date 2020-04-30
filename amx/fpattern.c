@@ -54,10 +54,10 @@
 *       dtribble@flash.net
 *
 * Copyright 1997-1998 by David R. Tribble, all rights reserved.
-* Copyright (c) 2005-2015, ITB CompuPhase, all rights reserved.
+* Copyright (c) 2005-2020, CompuPhase, all rights reserved.
 * www.compuphase.com
 *
-* Version: $Id: fpattern.c 5690 2017-06-08 14:04:08Z thiadmer $
+* Version: $Id: fpattern.c 6131 2020-04-29 19:47:15Z thiadmer $
 */
 
 

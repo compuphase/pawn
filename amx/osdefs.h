@@ -8,7 +8,7 @@
  *   __ECOS__     set if Pawn was included with the eCos with configtool
  *   __LINUX__    set when compiling for Linux
  *
- * Copyright 1998-2011, ITB CompuPhase, The Netherlands.
+ * Copyright 1998-2020, CompuPhase, The Netherlands.
  * No usage restrictions, no warranties.
  */
 

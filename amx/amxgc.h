@@ -1,6 +1,6 @@
 /*  Simple garbage collector for the Pawn Abstract Machine
  *
- *  Copyright (c) ITB CompuPhase, 2004-2016
+ *  Copyright (c) CompuPhase, 2004-2020
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not
  *  use this file except in compliance with the License. You may obtain a copy
@@ -14,7 +14,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: amxgc.h 5504 2016-05-15 13:42:30Z  $
+ *  Version: $Id: amxgc.h 6131 2020-04-29 19:47:15Z thiadmer $
  */
 
 #ifndef AMXGC_H

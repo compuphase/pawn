@@ -1,6 +1,6 @@
 /*  Pawn compiler - Binary code generation (the "assembler")
  *
- *  Copyright (c) ITB CompuPhase, 1997-2016
+ *  Copyright (c) CompuPhase, 1997-2020
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not
  *  use this file except in compliance with the License. You may obtain a copy
@@ -14,7 +14,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: sc6.c 5596 2016-11-02 17:18:02Z  $
+ *  Version: $Id: sc6.c 6130 2020-04-29 12:35:51Z thiadmer $
  */
 #include <assert.h>
 #include <stdio.h>

@@ -7,7 +7,7 @@
  *  originally created by Ron Cain, july 1980, and enhanced by James E. Hendrix.
  *  The modifications in Pawn come close to a complete rewrite, though.
  *
- *  Copyright ITB CompuPhase, 1997-2017
+ *  Copyright CompuPhase, 1997-2020
  *  Copyright J.E. Hendrix, 1982, 1983
  *  Copyright R. Cain, 1980
  *
@@ -23,7 +23,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: sc1.c 5691 2017-06-09 19:48:22Z thiadmer $
+ *  Version: $Id: sc1.c 6130 2020-04-29 12:35:51Z thiadmer $
  */
 #include <assert.h>
 #include <ctype.h>
@@ -677,7 +677,7 @@ int pc_compile(int argc, char *argv[])
             sprintf(pgmname,"%s%cstategraph.exe",sc_binpath,DIRSEP_CHAR);
             spawnl(P_WAIT,pgmname,pgmname,reportname,dotname,NULL);
           #else
-            sprintf(pgmname,"%s%cstategraph",sc_binpath,DIRSEP_CHAR);
+            snprintf(pgmname,sizearray(pgmname),"%s%cstategraph",sc_binpath,DIRSEP_CHAR);
             posix_spawnl(pgmname,reportname,dotname,NULL);
           #endif
         }
@@ -1465,7 +1465,7 @@ static void setopt(int argc,char **argv,char *oname,char *ename,char *pname,
        * of the base name
        */
       assert((strlen(sc_rootpath)+8)<sizeof cfgfile); /* +7 for "/target/" */
-      sprintf(cfgfile,"%s%ctarget%c",sc_rootpath,DIRSEP_CHAR,DIRSEP_CHAR);
+      snprintf(cfgfile,sizearray(cfgfile),"%s%ctarget%c",sc_rootpath,DIRSEP_CHAR,DIRSEP_CHAR);
       base=strchr(cfgfile,'\0');
       assert(base!=NULL);
       strcpy(base,"default.cfg");
@@ -1495,7 +1495,7 @@ static void setopt(int argc,char **argv,char *oname,char *ename,char *pname,
         error(100,cfgfile);  /* config. file was explicitly specified, but cannot be read */
       } else if (sc_binpath[0]!='\0') {
         /* for compatibility, try the old name */
-        sprintf(cfgfile,"%s%cpawn.cfg",sc_binpath,DIRSEP_CHAR);
+        snprintf(cfgfile,sizearray(cfgfile),"%s%cpawn.cfg",sc_binpath,DIRSEP_CHAR);
         if (access(cfgfile,4)==0)
           parserespf(cfgfile,oname,ename,pname,rname,codepage);
       }
@@ -1524,7 +1524,7 @@ static void setconfig(char *root)
     GetModuleFileName(NULL,path,_MAX_PATH);
   #elif defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__
     /* see www.autopackage.org (now Listaller) for the BinReloc module */
-    br_init_lib(NULL);
+    br_init(NULL);
     ptr=br_find_exe("/opt/Pawn/bin/pawncc");
     strlcpy(path,ptr,sizeof path);
     free(ptr);
@@ -1608,7 +1608,7 @@ static void setconfig(char *root)
 
 static void setcaption(void)
 {
-  pc_printf("Pawn compiler %-25s Copyright (c) 1997-2017, ITB CompuPhase\n\n",VERSION_STR);
+  pc_printf("Pawn compiler %-25s Copyright (c) 1997-2020, CompuPhase\n\n",VERSION_STR);
 }
 
 static void about(void)

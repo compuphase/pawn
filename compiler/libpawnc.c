@@ -2,7 +2,7 @@
  *
  *  A "glue file" for building the Pawn compiler as a DLL or shared library.
  *
- *  Copyright (c) ITB CompuPhase, 2000-2016
+ *  Copyright (c) CompuPhase, 2000-2016
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not
  *  use this file except in compliance with the License. You may obtain a copy
@@ -16,7 +16,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: libpawnc.c 5514 2016-05-20 14:26:51Z  $
+ *  Version: $Id: libpawnc.c 6131 2020-04-29 19:47:15Z thiadmer $
  */
 #include <assert.h>
 #include <stdio.h>

@@ -1,6 +1,6 @@
 /*  Pawn Abstract Machine (for the Pawn language)
  *
- *  Copyright (c) ITB CompuPhase, 1997-2016
+ *  Copyright (c) CompuPhase, 1997-2020
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not
  *  use this file except in compliance with the License. You may obtain a copy
@@ -14,7 +14,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: amx.h 5588 2016-10-25 11:13:28Z  $
+ *  Version: $Id: amx.h 6130 2020-04-29 12:35:51Z thiadmer $
  */
 
 #ifndef AMX_H_INCLUDED
@@ -220,6 +220,7 @@ typedef int (AMXAPI *AMX_IDLE)(struct tagAMX *amx, int AMXAPI Exec(struct tagAMX
   #pragma warning(disable:4127)  /* "conditional expression is constant" (needed for static_assert) */
   #pragma warning(disable:4996)  /* POSIX name is deprecated */
 #elif defined __GNUC__
+  #pragma GCC diagnostic ignored "-Waddress-of-packed-member"
 #elif defined __clang__
   #pragma GCC diagnostic ignored "-Wlogical-op-parentheses"
   #pragma GCC diagnostic ignored "-Wbitwise-op-parentheses"

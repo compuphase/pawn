@@ -1,7 +1,7 @@
 /*  Simple "run-time" for the Pawn Abstract Machine, with optional support
  *  for debugging information and overlays.
  *
- *  Copyright (c) ITB CompuPhase, 1997-2016
+ *  Copyright (c) CompuPhase, 1997-2020
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not
  *  use this file except in compliance with the License. You may obtain a copy
@@ -15,7 +15,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: pawnrun.c 5514 2016-05-20 14:26:51Z  $
+ *  Version: $Id: pawnrun.c 6130 2020-04-29 12:35:51Z thiadmer $
  */
 #include <assert.h>
 #include <stdio.h>
@@ -377,11 +377,10 @@ int main(int argc,char *argv[])
        * usage right from the beginning of the script.
        */
       amx_SetDebugHook(&amx, prun_Monitor);
-    } else if (strcmp(argv[i],"-time")) {
+    } else if (strcmp(argv[i],"-time") == 0) {
       start=clock();
     } /* if */
   } /* for */
-
 
   /* Run the compiled script and time it. The "sleep" instruction causes the
    * abstract machine to return in a "restartable" state (it restarts from

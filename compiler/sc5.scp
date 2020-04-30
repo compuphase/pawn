@@ -1,6 +1,6 @@
 /*  Pawn compiler - Error message strings (plain and compressed formats)
  *
- *  Copyright (c) ITB CompuPhase, 2000-2016
+ *  Copyright (c) CompuPhase, 2000-2016
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not
  *  use this file except in compliance with the License. You may obtain a copy
@@ -14,7 +14,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: sc5.sch 5579 2016-09-12 07:58:43Z  $
+ *  Version: $Id: sc5.sch 6131 2020-04-29 19:47:15Z thiadmer $
  */
 
 SC_FUNC int strexpand(char *dest, const unsigned char *source, int maxlen, const unsigned char pairtable[128][2]);

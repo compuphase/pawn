@@ -16,9 +16,9 @@
 #define VERSIONSTR           "4.0.0\0"
 #define VERSIONNAME          "amxFloat.dll\0"
 #define VERSIONDESCRIPTION   "Pawn AMX: Floating Point support\0"
-#define VERSIONCOMPANYNAME   "ITB CompuPhase\0"
+#define VERSIONCOMPANYNAME   "CompuPhase\0"
 #define VERSIONPRODUCTNAME   "amxFloat\0"
-#define VERSIONCOPYRIGHT     "Copyright \251 2003-2013 ITB CompuPhase\0"
+#define VERSIONCOPYRIGHT     "Copyright \251 2003-2013 CompuPhase\0"
 
 VS_VERSION_INFO VERSIONINFO
 FILEVERSION    VERSION, REVISION, BUILD, 0

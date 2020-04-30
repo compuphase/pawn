@@ -1,7 +1,7 @@
 /*  Pawn compiler - Peephole optimizer "sequences" strings (plain
  *                  and compressed formats)
  *
- *  Copyright (c) ITB CompuPhase, 2000-2016
+ *  Copyright (c) CompuPhase, 2000-2016
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not
  *  use this file except in compliance with the License. You may obtain a copy
@@ -15,7 +15,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: sc7.sch 5691 2017-06-09 19:48:22Z thiadmer $
+ *  Version: $Id: sc7.sch 6131 2020-04-29 19:47:15Z thiadmer $
  */
 
 /* Special characters in the strings of this file:

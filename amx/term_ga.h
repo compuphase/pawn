@@ -1,6 +1,6 @@
 /*  Simple terminal using GraphApp
  *
- *  Copyright (c) ITB CompuPhase, 2004-2011
+ *  Copyright (c) CompuPhase, 2004-2020
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not
  *  use this file except in compliance with the License. You may obtain a copy
@@ -14,7 +14,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: term_ga.h 4523 2011-06-21 15:03:47Z thiadmer $
+ *  Version: $Id: term_ga.h 6131 2020-04-29 19:47:15Z thiadmer $
  */
 
 #if !defined TERMGA_H_INCLUDED

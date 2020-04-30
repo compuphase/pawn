@@ -1,6 +1,6 @@
 /*  Script Arguments support module for the Pawn Abstract Machine
  *
- *  Copyright (c) ITB CompuPhase, 2005-2016
+ *  Copyright (c) CompuPhase, 2005-2020
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not
  *  use this file except in compliance with the License. You may obtain a copy
@@ -14,7 +14,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: amxargs.c 5588 2016-10-25 11:13:28Z  $
+ *  Version: $Id: amxargs.c 6131 2020-04-29 19:47:15Z thiadmer $
  */
 #if defined _UNICODE || defined __UNICODE__ || defined UNICODE
 # if !defined UNICODE   /* for Windows */

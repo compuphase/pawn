@@ -6,7 +6,7 @@
  *  o  Documentation tags and automatic listings
  *  o  Debug strings
  *
- *  Copyright (c) ITB CompuPhase, 2001-2017
+ *  Copyright (c) CompuPhase, 2001-2017
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not
  *  use this file except in compliance with the License. You may obtain a copy
@@ -20,7 +20,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: sclist.c 5587 2016-10-25 09:59:46Z  $
+ *  Version: $Id: sclist.c 6131 2020-04-29 19:47:15Z thiadmer $
  */
 #include <assert.h>
 #include <limits.h>
