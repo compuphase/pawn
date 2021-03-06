@@ -1102,7 +1102,6 @@ static int VerifyPcode(AMX *amx)
 
   static void getlibname(char *libname,const char *source)
   {
-    int i;
     #if defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__ || defined __APPLE__
       char *root=getenv("AMXLIB");
     #endif
@@ -1497,7 +1496,7 @@ int AMXAPI amx_Cleanup(AMX *amx)
           if (libcleanup!=NULL)
             libcleanup(amx);
           #if defined _Windows
-            FreeLibrary(hlob);
+            FreeLibrary(hlib);
           #elif defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__ || defined __APPLE__
             dlclose(hlib);
           #endif
