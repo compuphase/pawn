@@ -74,6 +74,7 @@
 #if defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__ || defined __APPLE__
   #include <sclinux.h>
   #include <binreloc.h> /* from BinReloc, see www.autopackage.org */
+  #include <sys/wait.h>
 #endif
 
 #include "svnrev.h"
