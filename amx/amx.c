@@ -14,7 +14,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: amx.c 6130 2020-04-29 12:35:51Z thiadmer $
+ *  Version: $Id: amx.c 6181 2020-08-11 15:05:27Z thiadmer $
  */
 
 #define WIN32_LEAN_AND_MEAN
@@ -84,7 +84,7 @@
 #if defined AMX_XXXPUBLICS  || defined AMX_XXXPUBVARS   || defined AMX_XXXSTRING
   #define AMX_EXPLIT_FUNCTIONS
 #endif
-#if defined AMX_XXXTAGS     || defined AMX_XXXUSERDATA
+#if defined AMX_XXXTAGS     || defined AMX_XXXUSERDATA  || defined AMX_VERIFYADDR
   #define AMX_EXPLIT_FUNCTIONS
 #endif
 #if !defined AMX_EXPLIT_FUNCTIONS
@@ -112,6 +112,7 @@
   #define AMX_XXXSTRING         /* amx_StrLen(), amx_GetString() and amx_SetString() */
   #define AMX_XXXTAGS           /* amx_NumTags(), amx_GetTag() and amx_FindTagId() */
   #define AMX_XXXUSERDATA       /* amx_GetUserData() and amx_SetUserData() */
+  #define AMX_VERIFYADDR        /* amx_VerifyAddress() */
 #endif
 #undef AMX_EXPLIT_FUNCTIONS
 #if defined AMX_ANSIONLY
@@ -3472,6 +3473,22 @@ int AMXAPI amx_Release(AMX *amx,cell *address)
   return AMX_ERR_NONE;
 }
 #endif /* AMX_ALLOT || AMX_PUSHXXX */
+
+#if defined AMX_VERIFYADDR
+int AMXAPI amx_VerifyAddress(AMX *amx,cell *address)
+{
+  AMX_HEADER *hdr;
+  unsigned char *data;
+
+  assert(amx!=NULL);
+  hdr=(AMX_HEADER *)amx->base;
+  assert(hdr!=NULL);
+  assert(hdr->magic==AMX_MAGIC);
+  data=(amx->data!=NULL) ? amx->data : amx->base+(int)hdr->dat;
+
+  return address>=data && address<data+hdr->stp;
+}
+#endif /* AMX_VERIFYADDR */
 
 #if defined AMX_XXXSTRING || defined AMX_UTF8XXX
 

@@ -14,7 +14,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: amx.h 6130 2020-04-29 12:35:51Z thiadmer $
+ *  Version: $Id: amx.h 6181 2020-08-11 15:05:27Z thiadmer $
  */
 
 #ifndef AMX_H_INCLUDED
@@ -503,6 +503,7 @@ int AMXAPI amx_UTF8Check(const char *string, int *length);
 int AMXAPI amx_UTF8Get(const char *string, const char **endptr, cell *value);
 int AMXAPI amx_UTF8Len(const cell *cstr, int *length);
 int AMXAPI amx_UTF8Put(char *string, char **endptr, int maxchars, cell value);
+int AMXAPI amx_VerifyAddress(AMX *amx, cell *address);
 
 #if PAWN_CELL_SIZE==16
   void amx_Swap16(uint16_t *v);
