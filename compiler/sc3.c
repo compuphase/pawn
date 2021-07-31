@@ -1,6 +1,6 @@
 /*  Pawn compiler - Recursive descend expresion parser
  *
- *  Copyright (c) CompuPhase, 1997-2017
+ *  Copyright (c) CompuPhase, 1997-2021
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not
  *  use this file except in compliance with the License. You may obtain a copy
@@ -14,7 +14,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: sc3.c 6131 2020-04-29 19:47:15Z thiadmer $
+ *  Version: $Id: sc3.c 6335 2021-07-31 19:31:11Z thiadmer $
  */
 #include <assert.h>
 #include <stdio.h>
@@ -834,7 +834,7 @@ static cell calc(cell left,void (*oper)(),cell right,char *boolresult)
   else if (oper==os_sar)
     return (left >> (int)right);
   else if (oper==ou_sar)
-    return ((ucell)left >> (ucell)right);
+    return ((ucell)(left & (~(~(ucell)0 << pc_cellsize*8))) >> (ucell)right);
   else if (oper==ob_sal)
     return ((ucell)left << (int)right);
   else if (oper==ob_add)

@@ -7,7 +7,7 @@
  *  originally created by Ron Cain, july 1980, and enhanced by James E. Hendrix.
  *  The modifications in Pawn come close to a complete rewrite, though.
  *
- *  Copyright CompuPhase, 1997-2020
+ *  Copyright CompuPhase, 1997-2021
  *  Copyright J.E. Hendrix, 1982, 1983
  *  Copyright R. Cain, 1980
  *
@@ -23,7 +23,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: sc1.c 6130 2020-04-29 12:35:51Z thiadmer $
+ *  Version: $Id: sc1.c 6335 2021-07-31 19:31:11Z thiadmer $
  */
 #include <assert.h>
 #include <ctype.h>
