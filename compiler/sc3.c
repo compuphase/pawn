@@ -1863,7 +1863,7 @@ restart:
           cell2addr();  /* normal array index */
         } else {
           if (sym->dim.array.length!=0)
-            ffbounds(sym->dim.array.length*(32/sCHARBITS)-1);
+            ffbounds(sym->dim.array.length*((8*pc_cellsize)/sCHARBITS)-1);
           char2addr();  /* character array index */
         } /* if */
         popreg(sALT);
