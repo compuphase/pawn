@@ -81,6 +81,7 @@ ENDIF(APPLE)
 IF(UNIX AND NOT APPLE)
   ADD_CUSTOM_COMMAND(TARGET amxArgs POST_BUILD COMMAND strip ARGS -K amx_ArgsInit -K amx_ArgsCleanup -K amx_ArgsSetCmdLine ${CMAKE_BINARY_DIR}/amxArgs.so)
 ENDIF(UNIX AND NOT APPLE)
+INSTALL(TARGETS amxArgs LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
 
 # amxDGram
 SET(DGRAM_SRCS amxdgram.c amx.c)
@@ -102,6 +103,7 @@ ENDIF(APPLE)
 IF(UNIX AND NOT APPLE)
   ADD_CUSTOM_COMMAND(TARGET amxDGram POST_BUILD COMMAND strip ARGS -K amx_DGramInit -K amx_DGramCleanup ${CMAKE_BINARY_DIR}/amxDGram.so)
 ENDIF(UNIX AND NOT APPLE)
+INSTALL(TARGETS amxDGram LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
 
 # amxFile
 SET(FILE_SRCS amxfile.c amx.c)
@@ -122,6 +124,7 @@ ENDIF(APPLE)
 IF(UNIX AND NOT APPLE)
   ADD_CUSTOM_COMMAND(TARGET amxFile POST_BUILD COMMAND strip ARGS -K amx_FileInit -K amx_FileCleanup ${CMAKE_BINARY_DIR}/amxFile.so)
 ENDIF(UNIX AND NOT APPLE)
+INSTALL(TARGETS amxFile LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
 
 # amxFixed
 SET(FIXED_SRCS amxfixed.c amx.c)
@@ -143,6 +146,7 @@ IF(UNIX AND NOT APPLE)
   TARGET_LINK_LIBRARIES(amxFixed m)
   ADD_CUSTOM_COMMAND(TARGET amxFixed POST_BUILD COMMAND strip ARGS -K amx_FixedInit -K amx_FixedCleanup ${CMAKE_BINARY_DIR}/amxFixed.so)
 ENDIF(UNIX AND NOT APPLE)
+INSTALL(TARGETS amxFixed LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
 
 # amxFloat
 SET(FLOAT_SRCS amxfloat.c amx.c)
@@ -164,6 +168,7 @@ IF(UNIX AND NOT APPLE)
   TARGET_LINK_LIBRARIES(amxFloat m)
   ADD_CUSTOM_COMMAND(TARGET amxFloat POST_BUILD COMMAND strip ARGS -K amx_FloatInit -K amx_FloatCleanup ${CMAKE_BINARY_DIR}/amxFloat.so)
 ENDIF(UNIX AND NOT APPLE)
+INSTALL(TARGETS amxFloat LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
 
 # amxProcess
 SET(PROCESS_SRCS amxprocess.c amx.c)
@@ -190,6 +195,7 @@ IF(UNIX AND NOT APPLE)
   TARGET_LINK_LIBRARIES(amxProcess dl)
   ADD_CUSTOM_COMMAND(TARGET amxProcess POST_BUILD COMMAND strip ARGS -K amx_ProcessInit -K amx_ProcessCleanup ${CMAKE_BINARY_DIR}/amxProcess.so)
 ENDIF(UNIX AND NOT APPLE)
+INSTALL(TARGETS amxProcess LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
 
 # amxString
 SET(STRING_SRCS amxstring.c amx.c amxcons.c)
@@ -210,7 +216,11 @@ IF(APPLE)   #Export list is set at link time
 ENDIF(APPLE)
 IF(UNIX AND NOT APPLE)
   ADD_CUSTOM_COMMAND(TARGET amxString POST_BUILD COMMAND strip ARGS -K amx_StringInit -K amx_StringCleanup ${CMAKE_BINARY_DIR}/amxString.so)
+  IF(HAVE_CURSES_H)
+    TARGET_LINK_LIBRARIES(amxString curses)
+  ENDIF(HAVE_CURSES_H)
 ENDIF(UNIX AND NOT APPLE)
+INSTALL(TARGETS amxString LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
 
 # amxTime
 SET(TIME_SRCS amxtime.c amx.c)
@@ -231,6 +241,7 @@ ENDIF(APPLE)
 IF(UNIX AND NOT APPLE)
   ADD_CUSTOM_COMMAND(TARGET amxTime POST_BUILD COMMAND strip ARGS -K amx_TimeInit -K amx_TimeCleanup ${CMAKE_BINARY_DIR}/amxTime.so)
 ENDIF(UNIX AND NOT APPLE)
+INSTALL(TARGETS amxTime LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
 
 # --------------------------------------------------------------------------
 # Simple run-time (example program)
@@ -252,6 +263,7 @@ IF (UNIX)
     TARGET_LINK_LIBRARIES(pawnrun dl)
   ENDIF(HAVE_CURSES_H)
 ENDIF (UNIX)
+INSTALL(TARGETS pawnrun RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 
 # --------------------------------------------------------------------------
 # Simple console debugger
@@ -273,3 +285,41 @@ IF (UNIX)
     TARGET_LINK_LIBRARIES(pawndbg dl)
   ENDIF(HAVE_CURSES_H)
 ENDIF (UNIX)
+INSTALL(TARGETS pawndbg RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+
+# --------------------------------------------------------------------------
+# libamx
+
+SET(AMXLIB_MAJOR "4")
+SET(AMXLIB_VER "4.0.0")
+SET(AMXLIB_SRCS amx.c amxaux.c amxcore.c amxcons.c amxpool.c amxdbg.c amxstring.c)
+IF (UNIX)
+  SET(AMXLIB_SRCS ${AMXLIB_SRCS} ${CMAKE_CURRENT_SOURCE_DIR}/../linux/binreloc.c)
+  IF(NOT HAVE_CURSES_H)
+    SET(AMXLIB_SRCS ${AMXLIB_SRCS} ${CMAKE_CURRENT_SOURCE_DIR}/../linux/getch.c)
+  ENDIF(NOT HAVE_CURSES_H)
+ENDIF (UNIX)
+ADD_LIBRARY(amx SHARED ${AMXLIB_SRCS})
+IF(CMAKE_C_COMPILER_ID MATCHES "Clang|GNU")
+  TARGET_COMPILE_DEFINITIONS(amx PUBLIC GCC_HASCLASSVISIBILITY)
+  TARGET_COMPILE_OPTIONS(amx PUBLIC -fvisibility=hidden)
+ENDIF()
+SET_TARGET_PROPERTIES(amx PROPERTIES
+        SOVERSION "${AMXLIB_MAJOR}"
+        VERSION "${AMXLIB_VER}")
+IF(HAVE_CURSES_H)
+  TARGET_LINK_LIBRARIES(amx curses)
+ENDIF()
+INSTALL(TARGETS amx LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
+
+# --------------------------------------------------------------------------
+# pkgconfig
+
+CONFIGURE_FILE(amx.pc.in amx.pc @ONLY)
+INSTALL(FILES ${CMAKE_CURRENT_BINARY_DIR}/amx.pc 
+	DESTINATION "${CMAKE_INSTALL_LIBDIR}/pkgconfig")
+
+# --------------------------------------------------------------------------
+# Headers
+
+INSTALL(FILES amx.h amxaux.h amxdbg.h osdefs.h DESTINATION include/pawn/amx)
