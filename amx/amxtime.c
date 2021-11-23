@@ -32,7 +32,7 @@
      two's-complement arithmetic */
   #pragma GCC diagnostic ignored "-Wshift-negative-value"
 #endif
-#define CELLMIN   (-1 << (8*sizeof(cell) - 1))
+#define CELLMIN   (-1L << (8*sizeof(cell) - 1))
 
 #define SECONDS_PER_MINUTE	60
 #define SECONDS_PER_HOUR	3600
