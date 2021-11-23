@@ -554,7 +554,12 @@ int pc_compile(int argc, char *argv[])
       tmpname=NULL;
       sname=NULL;
     #else
-      tmpname=tempnam(NULL,"pawn");
+      int tmpfd = mkstemp("pawn.XXXXXX");
+      char *procname = alloca(64);
+      tmpname = alloca(PATH_MAX);
+      sprintf(procname, "/proc/self/fd/%d", tmpfd);
+      readlink(procname, tmpname, PATH_MAX);
+      close(tmpfd);
     #endif
     ftmp=(FILE*)pc_createsrc(tmpname);
     for (fidx=0; (sname=get_sourcefile(fidx))!=NULL; fidx++) {
