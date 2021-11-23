@@ -36,6 +36,8 @@
 
 #if defined __WIN32__ || defined _WIN32 || defined WIN32 || defined __NT__
   #define DLLEXPORT __declspec (dllexport)
+#elif defined HAVE_VISIBILITY
+  #define DLLEXPORT __attribute__ ((visibility("default")))
 #endif
 #include "sc.h"
 

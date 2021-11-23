@@ -67,6 +67,8 @@
 
 #if defined __WIN32__ || defined _WIN32 || defined WIN32 || defined __NT__
   #define DLLEXPORT __declspec (dllexport)
+#elif defined HAVE_VISIBILITY
+  #define DLLEXPORT __attribute__ ((visibility("default")))
 #endif
 
 #include "lstring.h"
@@ -183,6 +185,8 @@ int main(int argc, char *argv[])
 {
   return pc_compile(argc,argv);
 }
+
+#endif  /* !defined NO_MAIN */
 
 /* pc_printf()
  * Called for general purpose "console" output. This function prints general
@@ -435,9 +439,6 @@ long pc_lengthbin(void *handle)
 {
   return ftell((FILE*)handle);
 }
-
-#endif  /* !defined NO_MAIN */
-
 
 #if !(defined __MSDOS__ || defined __WIN32__ || defined _Windows)
 int posix_spawnl(char *pgm,...)
