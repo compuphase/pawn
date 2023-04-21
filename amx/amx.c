@@ -3527,7 +3527,7 @@ int AMXAPI amx_StrLen(const cell *cstr, int *length)
       len=len - len % sizeof(cell);     /* len = multiple of "cell" bytes */
       while ((c & CHARMASK)!=0) {
         len++;
-        c <<= 8*sizeof(char);
+        c = (ucell)c << 8*sizeof(char);
       } /* if */
     #endif
   } else {
