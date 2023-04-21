@@ -891,7 +891,9 @@ cleanup:
   } else {
     retcode=jmpcode;
   } /* if */
+  #if defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__
   br_deinit();
+  #endif
   #if defined FORTIFY
     Fortify_ListAllMemory();
   #endif
