@@ -37,6 +37,7 @@ typedef enum {
 /* Mangle symbol names to avoid symbol collisions with other ELF objects. */
 	#define br_init             SbCJ22537442193159_br_init
 	#define br_init_lib         SbCJ22537442193159_br_init_lib
+	#define br_deinit           SbCJ22537442193159_br_deinit
 	#define br_find_exe         SbCJ22537442193159_br_find_exe
 	#define br_find_exe_dir     SbCJ22537442193159_br_find_exe_dir
 	#define br_find_prefix      SbCJ22537442193159_br_find_prefix
@@ -55,6 +56,7 @@ typedef enum {
 #endif
 int   br_init             (BrInitError *error);
 int   br_init_lib         (BrInitError *error);
+void  br_deinit           (void);
 
 char *br_find_exe         (const char *default_exe);
 char *br_find_exe_dir     (const char *default_dir);

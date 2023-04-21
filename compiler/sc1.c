@@ -891,6 +891,7 @@ cleanup:
   } else {
     retcode=jmpcode;
   } /* if */
+  br_deinit();
   #if defined FORTIFY
     Fortify_ListAllMemory();
   #endif

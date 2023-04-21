@@ -307,6 +307,12 @@ br_init (BrInitError *error)
 	return exe != NULL;
 }
 
+void
+br_deinit(void)
+{
+	free (exe);
+	exe = NULL;
+}
 
 /** Initialize the BinReloc library (for libraries).
  *
