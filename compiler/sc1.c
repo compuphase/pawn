@@ -1692,7 +1692,7 @@ static void setconstants(void)
   add_constant("cellmin",(cell)((ucell)-1<<(8*pc_cellsize-1)),sGLOBAL,0);
   add_constant("charbits",sCHARBITS,sGLOBAL,0);
   add_constant("charmin",0,sGLOBAL,0);
-  add_constant("charmax",~(~0 << sCHARBITS),sGLOBAL,0);
+  add_constant("charmax",~(~0UL << sCHARBITS),sGLOBAL,0);
   add_constant("ucharmax",((cell)1 << (pc_cellsize-1)*8)-1,sGLOBAL,0);
 
   add_constant("__Pawn",VERSION_INT,sGLOBAL,0);
