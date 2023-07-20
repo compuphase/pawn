@@ -23,7 +23,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: sc1.c 6932 2023-04-03 13:56:19Z thiadmer $
+ *  Version: $Id: sc1.c 6965 2023-07-20 15:44:35Z thiadmer $
  */
 #include <assert.h>
 #include <ctype.h>
@@ -592,6 +592,7 @@ int pc_compile(int argc, char *argv[])
   if (inpf_org==NULL)
     error(100,inpfname);
   freading=TRUE;
+  sc_is_utf8=(short)scan_utf8(inpf_org,inpfname);
   outf=(FILE*)pc_openasm(outfname); /* first write to assembler file (may be temporary) */
   if (outf==NULL)
     error(101,outfname);

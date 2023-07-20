@@ -12,7 +12,7 @@
  *  is allocated statically, so loading SBCS tables cannot fail (if the tables
  *  themselves are valid, of course).
  *
- *  Copyright (c) CompuPhase, 2004-2016
+ *  Copyright (c) CompuPhase, 2004-2023
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not
  *  use this file except in compliance with the License. You may obtain a copy
@@ -26,7 +26,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: sci18n.c 6932 2023-04-03 13:56:19Z thiadmer $
+ *  Version: $Id: sci18n.c 6965 2023-07-20 15:44:35Z thiadmer $
  */
 #include <assert.h>
 #include <stdio.h>
@@ -413,8 +413,8 @@ SC_FUNC int scan_utf8(FILE *fp,const char *filename)
     } /* while */
     pc_resetsrc(fp,resetpos);
     if (bom_found) {
-      unsigned char bom[3];
-      pc_readsrc(fp,bom,3);     /* read the BOM again to strip it from the file */
+      unsigned char bom[4];
+      pc_readsrc(fp,bom,4);     /* read the BOM again to strip it from the file */
       assert(bom[0]==0xef && bom[1]==0xbb && bom[2]==0xbf);
       if (!utf8)
         error(77,filename);     /* malformed UTF-8 encoding */
