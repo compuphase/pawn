@@ -3445,7 +3445,7 @@ SC_FUNC symbol *fetchfunc(const char *name,int tag)
     sym=addsym(name,code_idx,iFUNCTN,sGLOBAL,tag,0);
     assert(sym!=NULL);          /* fatal error 103 must be given on error */
     /* assume no arguments */
-    sym->dim.arglist=(arginfo*)malloc(1*sizeof(arginfo));
+    sym->dim.arglist=(arginfo*)calloc(1, sizeof(arginfo));
     sym->dim.arglist[0].ident=0;
     /* set library ID to NULL (only for native functions) */
     sym->x.lib=NULL;
@@ -4242,7 +4242,7 @@ static int declargs(symbol *sym,int chkshadow)
   char *ptr;
   int argcnt,oldargcnt,numtags;
   cell val;
-  arginfo arg;
+  arginfo arg = { 0 };
   arginfo *arglist;
   int ident,fpublic,fconst;
   int idx;
