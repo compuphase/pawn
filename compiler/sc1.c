@@ -844,7 +844,7 @@ cleanup:
     assert(inpfname!=NULL && inpfname!=(char*)-1);
     free(inpfname);
     assert(inpf!=NULL && inpf!=(FILE*)-1);
-    fclose(inpf);
+    pc_closesrc(inpf);
   } /* if */
   lexinit(TRUE);                          /* reset and release buffers */
   phopt_cleanup();
