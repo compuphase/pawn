@@ -303,7 +303,7 @@ static void write_pairtable(FILE *output, unsigned char pairtable[128][2], char 
 
   /* dump the pair table */
   fprintf(output, "/*-*SCPACK start of pair table, do not change or remove this line */\n");
-  fprintf(output, "const unsigned char %s[][2] = {", tablename);
+  fprintf(output, "const unsigned char %s[128][2] = {", tablename);
   for (i=0; i<128 && pairtable[i][0]!=0 && pairtable[i][1]!=0; i++) {
     if ((i % 16)==0)
       fprintf(output, "\n  ");

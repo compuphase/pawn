@@ -51,7 +51,7 @@ IF(UNIX)
 ENDIF(UNIX)
 
 FILE(READ svnrev.h SVNREV_STR)
-STRING(REGEX REPLACE ".*#define[ \t]+SVN_REV[ \t]+([0-9]+).*" "\\1" PAWNC_REV "${SVNREV_STR}")
+STRING(REGEX REPLACE ".*#define[ \t]+SVNREV_NUM[ \t]+([0-9]+).*" "\\1" PAWNC_REV "${SVNREV_STR}")
 FILE(READ sc1.c SC1_STR)
 STRING(REGEX REPLACE ".*#define[ \t]+VERSION_STR[ \t]+\"([0-9]+).*" "\\1" PAWNC_MAJOR "${SC1_STR}")
 STRING(REGEX REPLACE ".*#define[ \t]+VERSION_STR[ \t]+\"([0-9]+).([0-9]+).*" "\\2" PAWNC_MINOR "${SC1_STR}")

@@ -1912,7 +1912,9 @@ SC_FUNC void lex_fetchindent(const unsigned char *string,const unsigned char *po
 
   pc_stmtindent=0;
   pc_indentmask=0;
-  for (pc_indentbits=0; pc_indentbits<(int)(pos-string); pc_indentbits++) {
+  if (pos-string>255)
+    return;
+  for (pc_indentbits = 0; pc_indentbits < (unsigned)(pos - string); pc_indentbits++) {
     assert(pc_tabsize>0);
     if (string[pc_indentbits]=='\t') {
       pc_stmtindent += (int)(pc_tabsize - (pc_stmtindent+pc_tabsize) % pc_tabsize);
