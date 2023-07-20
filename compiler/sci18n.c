@@ -26,7 +26,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: sci18n.c 6131 2020-04-29 19:47:15Z thiadmer $
+ *  Version: $Id: sci18n.c 6932 2023-04-03 13:56:19Z thiadmer $
  */
 #include <assert.h>
 #include <stdio.h>
@@ -232,7 +232,7 @@ SC_FUNC int cp_set(const char *name)
     if (*ptr!='\0') {
       /* content on line */
       unsigned code=LEADBYTE;
-      int num=sscanf(ptr,"%i %i",&index,&code);
+      int num=sscanf(ptr,"%u %u",&index,&code);
       /* if sscanf() returns 1 and the index is in range 0..255, then the
        * code is a DBCS lead byte; if sscanf() returns 2 and index>=256, this
        * is a double byte pair (lead byte + follower)

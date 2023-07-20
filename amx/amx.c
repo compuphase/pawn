@@ -1,6 +1,6 @@
 /*  Pawn Abstract Machine (for the Pawn language)
  *
- *  Copyright (c) CompuPhase, 1997-2020
+ *  Copyright (c) CompuPhase, 1997-2023
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not
  *  use this file except in compliance with the License. You may obtain a copy
@@ -14,7 +14,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: amx.c 6181 2020-08-11 15:05:27Z thiadmer $
+ *  Version: $Id: amx.c 6964 2023-07-19 19:08:42Z thiadmer $
  */
 
 #define WIN32_LEAN_AND_MEAN
@@ -144,7 +144,7 @@
   #define AMX_TOKENTHREADING    /* packed opcodes require token threading */
 #endif
 
-#if defined _I64_MAX || defined __x86_64__ || defined HAVE_I64
+#if defined __64BIT__
   #define NATIVEADDR(addr,high)  (AMX_NATIVE)((intptr_t)(addr) | ((intptr_t)((uint64_t)high<<32)))
 #else
   #define NATIVEADDR(addr,high)  (AMX_NATIVE)(intptr_t)(addr)
@@ -1003,10 +1003,10 @@ static int VerifyPcode(AMX *amx)
         amx->flags &= ~AMX_FLAG_VERIFY;
         return AMX_ERR_BOUNDS;
       } /* if */
-      /* drop through */
+      /* fall through */
     case OP_CALL_OVL:
       cip+=sizeof(cell);
-      /* drop through */
+      /* fall through */
     case OP_RETN_OVL:
       assert(hdr->overlays!=0 && hdr->overlays!=hdr->nametable);
       #if defined AMX_JIT
@@ -1931,7 +1931,7 @@ int AMXAPI amx_Register(AMX *amx, const AMX_NATIVE_INFO *list, int number)
       funcptr=(list!=NULL) ? findfunction(GETENTRYNAME(hdr,func),list,number) : NULL;
       if (funcptr!=NULL) {
         func->address=(uint32_t)(intptr_t)funcptr;
-        #if defined _I64_MAX || defined __x86_64__ || defined HAVE_I64
+        #if defined __64BIT__
           /* for 64-bit version the high part of the pointer must be stored too */
           func->nameofs=(uint32_t)((intptr_t)funcptr >> 32);
         #endif
@@ -3486,7 +3486,7 @@ int AMXAPI amx_VerifyAddress(AMX *amx,cell *address)
   assert(hdr->magic==AMX_MAGIC);
   data=(amx->data!=NULL) ? amx->data : amx->base+(int)hdr->dat;
 
-  return address>=data && address<data+hdr->stp;
+  return (unsigned char*)address>=data && (unsigned char*)address<data+hdr->stp;
 }
 #endif /* AMX_VERIFYADDR */
 

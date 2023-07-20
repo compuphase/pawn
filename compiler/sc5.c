@@ -16,7 +16,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: sc5.c 6131 2020-04-29 19:47:15Z thiadmer $
+ *  Version: $Id: sc5.c 6932 2023-04-03 13:56:19Z thiadmer $
  */
 #include <assert.h>
 #if defined	__WIN32__ || defined _WIN32 || defined __MSDOS__
@@ -79,7 +79,7 @@ static int errline;     /* forced line number for the error message */
  */
 SC_FUNC int error(long number,...)
 {
-static char *prefix[3]={ "error", "fatal error", "warning" };
+static const char *prefix[3]={ "error", "fatal error", "warning" };
 static int lastline,errorcount;
 static short lastfile;
   const unsigned char *msg,*pre;
@@ -227,8 +227,9 @@ SC_FUNC int error_suggest_list(int number,const char *name,constvalue *list)
   if (sc_status==statWRITE) {
     constvalue *closest=NULL;
     if (strlen(name)>0) {
-      int dist,closestdist=INT_MAX;
+      int closestdist=INT_MAX;
       while (list->next!=NULL) {
+        int dist;
         list=list->next;
         dist=levenshtein_distance(list->name,name);
         if (dist<closestdist && dist<=MAX_EDIT_DIST) {
@@ -406,7 +407,7 @@ static int find_closestsymbol_table(const char *name,const symbol *root,int symb
   int dist,closestdist=INT_MAX;
   char symname[2*sNAMEMAX+16];
   symbol *sym=root->next;
-  int ident,critdist;
+  int critdist;
 
   assert(closestsym!=NULL);
   *closestsym=NULL;
@@ -415,6 +416,7 @@ static int find_closestsymbol_table(const char *name,const symbol *root,int symb
   if (critdist>MAX_EDIT_DIST)
     critdist=MAX_EDIT_DIST;
   while (sym!=NULL) {
+    int ident;
     funcdisplayname(symname,sym->name);
     ident=sym->ident;
     if (symboltype==iARRAY && ident==iREFARRAY)

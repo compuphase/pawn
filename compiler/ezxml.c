@@ -137,7 +137,7 @@ const char **ezxml_pi(ezxml_t xml, const char *target)
 }
 
 // set an error string and return root
-ezxml_t ezxml_err(ezxml_root_t root, char *s, const char *err, ...)
+ezxml_t ezxml_err(ezxml_root_t root, const char *s, const char *err, ...)
 {
     va_list ap;
     int line = 1;
@@ -624,7 +624,7 @@ ezxml_t ezxml_parse_fp(FILE *fp)
 
     if (! s) return NULL;
     root = (ezxml_root_t)ezxml_parse_str(s, len);
-    root->len = -1; // so we know to free s in ezxml_free()
+    root->len = ~0u; // so we know to free s in ezxml_free()
     return &root->xml;
 }
 
@@ -653,7 +653,7 @@ ezxml_t ezxml_parse_fd(int fd)
 #endif // EZXML_NOMMAP
         l = read(fd, m = malloc(st.st_size), st.st_size);
         root = (ezxml_root_t)ezxml_parse_str(m, l);
-        root->len = -1; // so we know to free s in ezxml_free()
+        root->len = ~0u; // so we know to free s in ezxml_free()
 #ifndef EZXML_NOMMAP
     }
 #endif // EZXML_NOMMAP
@@ -743,7 +743,7 @@ char *ezxml_toxml_r(ezxml_t xml, char **s, size_t *len, size_t *max,
 
     *len += sprintf(*s + *len, "</%s>", xml->name); // close tag
 
-    while (txt[off] && off < xml->off) off++; // make sure off is within bounds
+    while (off < xml->off && txt[off]) off++; // make sure off is within bounds
     return (xml->ordered) ? ezxml_toxml_r(xml->ordered, s, len, max, off, attr)
                           : ezxml_ampencode(txt + off, -1, s, len, max, 0);
 }
@@ -818,7 +818,7 @@ void ezxml_free(ezxml_t xml)
         }
         if (root->pi[0]) free(root->pi); // free processing instructions
 
-        if (root->len == -1) free(root->m); // malloced xml data
+        if (root->len == ~0u) free(root->m); // malloced xml data
 #ifndef EZXML_NOMMAP
         else if (root->len) munmap(root->m, root->len); // mem mapped xml data
 #endif // EZXML_NOMMAP

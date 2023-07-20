@@ -7,7 +7,7 @@
  *  originally created by Ron Cain, july 1980, and enhanced by James E. Hendrix.
  *  The modifications in Pawn come close to a complete rewrite, though.
  *
- *  Copyright CompuPhase, 1997-2021
+ *  Copyright CompuPhase, 1997-2023
  *  Copyright J.E. Hendrix, 1982, 1983
  *  Copyright R. Cain, 1980
  *
@@ -23,7 +23,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: sc1.c 6335 2021-07-31 19:31:11Z thiadmer $
+ *  Version: $Id: sc1.c 6932 2023-04-03 13:56:19Z thiadmer $
  */
 #include <assert.h>
 #include <ctype.h>
@@ -78,7 +78,7 @@
 #endif
 
 #include "svnrev.h"
-#define VERSION_STR "4.0." SVN_REVSTR
+#define VERSION_STR "4.0." SVNREV_STR
 #define VERSION_INT 0x0400
 
 
@@ -679,7 +679,7 @@ int pc_compile(int argc, char *argv[])
             spawnl(P_WAIT,pgmname,pgmname,reportname,dotname,NULL);
           #else
             snprintf(pgmname,sizearray(pgmname),"%s%cstategraph",sc_binpath,DIRSEP_CHAR);
-            posix_spawnl(pgmname,reportname,dotname,NULL);
+            posix_spawnl(pgmname,reportname,dotname,(char*)NULL);
           #endif
         }
       } /* if */
@@ -991,7 +991,7 @@ static void initglobals(void)
   errnum=0;             /* number of errors */
   warnnum=0;            /* number of warnings */
   optproccall=TRUE;     /* support "procedure call" */
-  verbosity=1;          /* verbosity level, no copyright banner */
+  verbosity=1;          /* verbosity level, 0=no copyright banner */
   sc_debug=sCHKBOUNDS;  /* by default: bounds checking+assertions */
   pc_optimize=sOPTIMIZE_CORE;
   sc_needsemicolon=FALSE;/* semicolon required to terminate expressions? */
@@ -1434,8 +1434,6 @@ static void parserespf(char *filename,char *oname,char *ename,char *pname,
     argv[argc++]=ptr;
     ptr=strtok(NULL," \t\r\n");
   } /* while */
-  if (ptr!=NULL)
-    error(102,"option table");   /* table overflow */
   /* parse the option table */
   parseoptions(argc,argv,oname,ename,pname,rname,codepage);
   /* free allocated memory */
@@ -1595,9 +1593,11 @@ static void setconfig(char *root)
     insert_path(path);
     /* same for the codepage root */
     #if !defined PAWN_NO_CODEPAGE
-      *ptr='\0';
-      if (!cp_path(path,"codepage"))
-        error(109,path);        /* codepage path */
+      if (ptr!=NULL) {
+        *ptr = '\0';
+          if (!cp_path(path,"codepage"))
+            error(109,path);        /* codepage path */
+      }
     #endif
     /* also copy the root path (for the XML documentation and target host files) */
     #if !defined PAWN_LIGHT
@@ -1609,7 +1609,7 @@ static void setconfig(char *root)
 
 static void setcaption(void)
 {
-  pc_printf("Pawn compiler %-25s Copyright (c) 1997-2020, CompuPhase\n\n",VERSION_STR);
+  pc_printf("Pawn compiler %-25s Copyright (c) 1997-2023, CompuPhase\n\n",VERSION_STR);
 }
 
 static void about(void)
@@ -1712,7 +1712,7 @@ void sc_attachdocumentation(symbol *sym,int onlylastblock)
 {
   int line;
   size_t length;
-  char *str,*doc,*end;
+  char *doc;
   const char *txt;
 
   if (!sc_makereport || sc_status!=statBROWSE || sc_parsenum>0) {
@@ -1732,6 +1732,7 @@ void sc_attachdocumentation(symbol *sym,int onlylastblock)
      * append it to the global documentation
      */
     int wrap=0;
+    char *str,*end;
     length=strlen(pc_recentdoc);
     if (onlylastblock) {
       assert(sym!=NULL);
@@ -1993,10 +1994,10 @@ static void parse(void)
     case tSYMBOL:
     case tOPERATOR:
       /* at this level, if the token is tEXIT, it is probably the declaration
-       * of a state exist function, not the "exit" statement
+       * of a state exit function, not the "exit" statement
        */
       if (tok==tEXIT)
-        tok=lexsettoken(tSYMBOL,_EXITFUNC);
+        lexsettoken(tSYMBOL,_EXITFUNC);
       lexpush();
       if (!newfunc(NULL,-1,FALSE,FALSE,FALSE)) {
         error(10);              /* illegal function or declaration */
@@ -2035,17 +2036,15 @@ static void parse(void)
  */
 static void dumplits(void)
 {
-  int j,k;
+  int k=0;
 
   if (sc_status==statSKIP)
     return;
-
-  k=0;
   while (k<litidx){
     /* should be in the data segment */
+    int j=32/pc_cellsize; /* 16 values per line for 2-byte cells, 8 for 4-byte cells, etc. */
     assert(curseg==2);
     defstorage();
-    j=32/pc_cellsize; /* 16 values per line for 2-byte cells, 8 for 4-byte cells, etc. */
     while (j && k<litidx){
       outval(litq[k],TRUE,FALSE);
       stgwrite(" ");
@@ -2737,11 +2736,10 @@ static void initials(int ident,int usage,int tag,cell *size,int dim[],int numdim
                      constvalue *dimnames[])
 {
   int ctag;
-  cell tablesize;
   int curlit=litidx;
-  int err=0;
 
   if (!matchtoken('=')) {
+    cell tablesize;
     assert(ident!=iARRAY || numdim>0);
     if (ident==iARRAY && dim[numdim-1]==0) {
       /* declared as "myvar[];" which is senseless (note: this *does* make
@@ -2783,6 +2781,7 @@ static void initials(int ident,int usage,int tag,cell *size,int dim[],int numdim
       int idx;
       constvalue lastdim={NULL,"",0,0};     /* sizes of the final dimension */
       int skipdim=0;
+      int err=0;
 
       if (dim[numdim-1]!=0)
         *size=calc_arraysize(dim,numdim,0); /* calc. full size, if known */
@@ -2805,7 +2804,7 @@ static void initials(int ident,int usage,int tag,cell *size,int dim[],int numdim
         /* also look whether, by any chance, all "counted" final dimensions are
          * the same value; if so, we can store this
          */
-        constvalue *ld=lastdim.next;
+        constvalue *ld;
         int count=0,match,total,d;
         for (ld=lastdim.next; ld!=NULL; ld=ld->next) {
           assert(strtol(ld->name,NULL,16)==count % dim[numdim-2]);  /* index is stored in the name, it should match the sequence */
@@ -2920,7 +2919,7 @@ static cell initvector(int ident,int usage,int tag,cell size,int fillzero,
   cell prev1=0,prev2=0;
   int ellips=FALSE;
   int curlit=litidx;
-  int ctag,ftag;
+  int ctag;
   int match=0;
   int packcount=-1;
   cell packitem=0;
@@ -2942,7 +2941,7 @@ static cell initvector(int ident,int usage,int tag,cell size,int fillzero,
       error(51);        /* error (only unpacked arrays can use symbolic indices) */
     do {
       int fieldlit=litidx;
-      int matchbrace,fieldusage,i;
+      int matchbrace,fieldusage,ftag;
       if (matchtoken(match)) {  /* to allow for trailing ',' after the initialization */
         lexpush();
         break;
@@ -2982,11 +2981,12 @@ static cell initvector(int ident,int usage,int tag,cell size,int fillzero,
       if (dimnames!=NULL && (field==NULL || field->name[0]=='\0'))
         error(227);             /* more initiallers than array fields */
       if (field!=NULL && field->name[0]!='\0') {
-        cell step,val,size;
+        cell step,val,fsize;
+        int i;
         assert(field->next!=NULL);
-        size=(field->next->value - field->value);
+        fsize=(field->next->value - field->value);
         assert(fieldlit<litidx || packcount>0);
-        if (litidx-fieldlit>size)
+        if (litidx-fieldlit>fsize)
           error(228);           /* length of initialler exceeds size of the array field */
         if (ellips) {
           val=prev1;
@@ -2995,7 +2995,7 @@ static cell initvector(int ident,int usage,int tag,cell size,int fillzero,
           step=0;
           val=0;                /* fill up with zeros */
         } /* if */
-        for (i=litidx-fieldlit; i<size; i++) {
+        for (i=litidx-fieldlit; i<fsize; i++) {
           if (packcount>=0) {
             assert(packcount<pc_cellsize);
             do {
@@ -3187,7 +3187,7 @@ static cell needsub(char match,constvalue **namelist)
       needtoken(tSYMLABEL);
     } /* for */
     /* add a sentinel, so that we know the size of the last symbol */
-    field=append_constval(*namelist,"",index,0);
+    append_constval(*namelist,"",index,0);
     val=index;
   } else {
     symbol *sym;
@@ -3296,8 +3296,7 @@ static int getstates(const char *funcname)
   cell val;
   char *str;
   constvalue *automaton;
-  constvalue *state;
-  int fsa,islabel;
+  int fsa;
   int *list;
   int count,listsize,state_id;
 
@@ -3313,6 +3312,8 @@ static int getstates(const char *funcname)
   fsa=-1;
 
   do {
+    constvalue *state;
+    int islabel;
     if ((islabel=matchtoken(tLABEL))==0 && !needtoken(tSYMBOL))
       break;
     tokeninfo(&val,&str);
@@ -4132,18 +4133,18 @@ static int newfunc(char *firstname,int firsttag,int fpublic,int fstatic,int stoc
          ignore it if this function is marked as the fallback; there is no
          purpose in documenting a fallback that causes no state switch) */
       int idx,count;
-      size_t len;
       for (idx=count=0; (str=(char*)get_docstring(idx))!=NULL && *str!=sDOCSEP; idx++)
         if (strstr(str,"<transition ")!=NULL)
           count++;
       if (count==0) {
         /* there are no transitions, so the event is handled internally;
            document this with pseudo-transitions */
-        char *doc;
         count=state_count(stlist->id);
         for (idx=0; idx<count; idx++) {
           int state_id=state_listitem(stlist->id,idx);
           int fsa=state_getfsa(stlist->id);
+          size_t len;
+          char *doc;
           constvalue *state=state_findid(state_id,fsa);
           assert(state!=NULL);
           len=strlen(state->name)+50; /* +50 for the fixed part of "<transition ..." */
@@ -4230,12 +4231,10 @@ static int declargs(symbol *sym,int chkshadow)
 {
   #define MAXTAGS 16
   char *ptr;
-  int argcnt,oldargcnt,tok,numtags;
-  int tags[MAXTAGS];
+  int argcnt,oldargcnt,numtags;
   cell val;
   arginfo arg;
   arginfo *arglist;
-  char name[sNAMEMAX+1];
   int ident,fpublic,fconst;
   int idx;
 
@@ -4254,6 +4253,9 @@ static int declargs(symbol *sym,int chkshadow)
   assert(litidx==0);                    /* literal queue should be empty */
   /* the '(' parantheses has already been parsed */
   if (!matchtoken(')')){
+    char name[sNAMEMAX+1];
+    int tags[MAXTAGS];
+    int tok;
     do {                                /* there are arguments; process them */
       /* any legal name increases argument count (and stack offset) */
       tok=lex(&val,&ptr);
@@ -4391,7 +4393,7 @@ static int declargs(symbol *sym,int chkshadow)
   for (idx=0; idx<argcnt && arglist[idx].ident!=0; idx++) {
     if ((arglist[idx].hasdefault & uSIZEOF)!=0 || (arglist[idx].hasdefault & uTAGOF)!=0) {
       int altidx;
-      int dist,closestdist=INT_MAX;
+      int closestdist=INT_MAX;
       int closestidx=-1;
       /* Find the argument with the name mentioned after the "sizeof" or "tagof".
        * Note that we cannot use findloc here because we need the arginfo struct,
@@ -4400,6 +4402,7 @@ static int declargs(symbol *sym,int chkshadow)
       ptr=arglist[idx].defvalue.size.symname;
       assert(ptr!=NULL);
       for (altidx=0; altidx<argcnt; altidx++) {
+        int dist;
         if (strcmp(ptr,arglist[altidx].name)==0)
           break;
         dist=levenshtein_distance(arglist[altidx].name,ptr);
@@ -6077,22 +6080,19 @@ static int test(int label,int parens,int invert)
 
 static int doif(void)
 {
-  int flab1,flab2;
-  int ifindent;
-
-  ifindent=pc_stmtindent;       /* save the indent of the "if" instruction */
-  flab1=getlabel();             /* get label number for false branch */
+  int ifindent=pc_stmtindent;   /* save the indent of the "if" instruction */
+  int flab1=getlabel();         /* get label number for false branch */
   test(flab1,TRUE,FALSE);       /* get expression, branch to flab1 if false */
   statement(NULL,FALSE);        /* if true, do a statement */
   if (!matchtoken(tELSE)) {     /* if...else ? */
     setlabel(flab1);            /* no, simple if..., print false label */
   } else {
     int lastst_true=lastst;     /* save last statement of the "true" branch */
+    int flab2=getlabel();
     /* to avoid the "dangling else" error, we want a warning if the "else"
      * has a lower indent than the matching "if" */
     if (pc_stmtindent<ifindent)
       error(217);               /* loose indentation */
-    flab2=getlabel();
     if ((lastst!=tRETURN) && (lastst!=tGOTO))
       jumplabel(flab2);         /* "true" branch jumps around "else" clause, unless the "true" branch statement already jumped */
     lastst=tELSE;               /* flag this as an "else" clause, for testing expressions */
@@ -6515,12 +6515,13 @@ static symbol *fetchlab(char *name)
  */
 static void doreturn(void)
 {
-  int tag,ident;
-  int level,remparams;
+  int tag;
+  int remparams;
   symbol *sym,*sub;
 
   if (!matchtoken(tTERM)) {
     /* "return <value>" */
+    int ident;
     if ((rettype & uRETNONE)!=0)
       error(78);                        /* mix "return;" and "return value;" */
     ident=doexpr(TRUE,FALSE,TRUE,FALSE,&tag,&sym,TRUE);
@@ -6551,6 +6552,7 @@ static void doreturn(void)
       constvalue *dimnames[sDIMEN_MAX];
       int numdim=0;
       cell arraysize;
+      int level;
       assert(sym!=NULL);
       if (sub!=NULL) {
         assert(sub->ident==iREFARRAY);

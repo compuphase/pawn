@@ -1,6 +1,6 @@
 /*  Pawn Abstract Machine (for the Pawn language)
  *
- *  Copyright (c) CompuPhase, 1997-2020
+ *  Copyright (c) CompuPhase, 1997-2023
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not
  *  use this file except in compliance with the License. You may obtain a copy
@@ -14,7 +14,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: amx.h 6181 2020-08-11 15:05:27Z thiadmer $
+ *  Version: $Id: amx.h 6964 2023-07-19 19:08:42Z thiadmer $
  */
 
 #ifndef AMX_H_INCLUDED
@@ -84,6 +84,17 @@
 #if defined _LP64 || defined WIN64 || defined _WIN64
   #if !defined __64BIT__
     #define __64BIT__
+  #endif
+#endif
+#if defined INTPTR_MAX
+  #if INTPTR_MAX == INT64_MAX
+    #if !defined __64BIT__
+      #define __64BIT__
+    #endif
+  #elif INTPTR_MAX == INT32_MAX
+    #if !defined __32BIT__
+      #define __32BIT__
+    #endif
   #endif
 #endif
 
@@ -224,6 +235,7 @@ typedef int (AMXAPI *AMX_IDLE)(struct tagAMX *amx, int AMXAPI Exec(struct tagAMX
 #elif defined __clang__
   #pragma GCC diagnostic ignored "-Wlogical-op-parentheses"
   #pragma GCC diagnostic ignored "-Wbitwise-op-parentheses"
+  #pragma clang diagnostic ignored "-Wint-to-pointer-cast"
 #endif
 
 /* Some compilers do not support the #pragma align, which should be fine. Some
@@ -381,7 +393,7 @@ enum {
   AMX_ERR_PARAMS,       /* parameter error */
   AMX_ERR_DOMAIN,       /* domain error, expression result does not fit in range */
   AMX_ERR_GENERAL,      /* general error (unknown or unspecific error) */
-  AMX_ERR_OVERLAY,      /* overlays are unsupported (JIT) or uninitialized */
+  AMX_ERR_OVERLAY       /* overlays are unsupported (JIT) or uninitialized */
 };
 
 #define AMX_FLAG_OVERLAY  0x01  /* all function calls use overlays */

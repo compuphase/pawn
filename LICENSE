@@ -1,14 +1,14 @@
 The software toolkit "Pawn" (the compiler, the abstract machine and the support
-routines) is copyright (c) 1997-2017 by ITB CompuPhase, and distributed under
-the "Apache License" version 2.0, which is reproduced below, plus an exception
+routines) is copyright (c) 1997-2023 by CompuPhase, and distributed under the
+"Apache License" version 2.0, which is reproduced below, plus an exception
 clause regarding static linking.
 
 The Pawn compiler is a derivative of "Small C". Small C is copyright 1982-1983
 J.E. Hendrix, and copyright 1980 R. Cain. J.E. Hendrix has made the Small C
-compiler available for royalty free use in private or commerical endeavors, on the
-condition that the original copyright notices of the original authors (Ron Cain &
-James Hendrix) be retained in derivative versions. Ron Cain has put his work in
-the public domain.
+compiler available for royalty free use in private or commerical endeavors, on
+the condition that the original copyright notices of the original authors (Ron
+Cain & James Hendrix) be retained in derivative versions. Ron Cain has put his
+work in the public domain.
 
 See the file NOTICES for contributions and their respective licenses.
 
@@ -202,12 +202,11 @@ TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION
 
 ------------------------------------------------------------------------------
 
-The Pawn documentation is copyright (c) 1997--2012 by ITB CompuPhase, and
-licensed under the Creative Commons Attribution/Share-Alike 3.0 License. To
-view a copy of this licence, visit http://creativecommons.org/licenses/by-sa/3.0/
-or send a letter to Creative Commons, 559 Nathan Abbott Way, Stanford,
-California 94305, USA. Below is a "human-readable" summary of the Legal Code
-(the full licence).
+The Pawn documentation is copyright (c) 1997-2023 by CompuPhase, and licensed
+under the Creative Commons Attribution/Share-Alike 3.0 License. To view a copy
+of this licence, visit http://creativecommons.org/licenses/by-sa/3.0/ or send a
+letter to Creative Commons, 559 Nathan Abbott Way, Stanford, California 94305,
+USA. Below is a "human-readable" summary of the Legal Code (the full licence).
 
 You are free:
   to Share --- to copy, distribute and transmit the work

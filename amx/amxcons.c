@@ -18,7 +18,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: amxcons.c 6335 2021-07-31 19:31:11Z thiadmer $
+ *  Version: $Id: amxcons.c 6932 2023-04-03 13:56:19Z thiadmer $
  */
 
 #if defined _UNICODE || defined __UNICODE__ || defined UNICODE
@@ -531,9 +531,9 @@
   void CreateConsole(void)
   { static int createdconsole=0;
     if (!createdconsole) {
-  	  AllocConsole();
-  	  createdconsole=1;
-  	} /* if */
+      AllocConsole();
+      createdconsole=1;
+    } /* if */
   }
 #elif defined CURSES && CURSES != 0
   // The Mac OS X build variant uses curses.
@@ -577,19 +577,19 @@ enum {
 
 static TCHAR *reverse(TCHAR *string,int stop)
 {
-	int start=0;
-	TCHAR temp;
+  int start=0;
+  TCHAR temp;
 
-	/* swap the string */
-	stop--;				/* avoid swapping the '\0' byte to the first position */
-	while (stop - start > 0) {
-		temp = string[start];
-		string[start] = string[stop];
-		string[stop] = temp;
-		start++;
-		stop--;
-	} /* while */
-	return string;
+  /* swap the string */
+  stop--;       /* avoid swapping the '\0' byte to the first position */
+  while (stop - start > 0) {
+    temp = string[start];
+    string[start] = string[stop];
+    string[stop] = temp;
+    start++;
+    stop--;
+  } /* while */
+  return string;
 }
 
 /* Converts an integral value to a string, with optional padding with spaces or
@@ -602,47 +602,54 @@ static TCHAR *reverse(TCHAR *string,int stop)
  */
 static TCHAR *amx_strval(TCHAR buffer[], long value, int format, int width)
 {
-	int start, stop;
-	TCHAR temp;
+  int start, stop;
+  TCHAR temp;
 
-	start = stop = 0;
-	if (format == SV_DECIMAL) {
-		if (value < 0) {
-			buffer[0] = __T('-');
-			start = stop = 1;
-			value = -value;
-		}
-		do {
-			buffer[stop++] = (TCHAR)((value % 10) + __T('0'));
-			value /= 10;
-		} while (value != 0);
-	} else {
-		/* hexadecimal */
-		unsigned long v = (unsigned long)value;	/* copy to unsigned value for shifting */
-		do {
-			buffer[stop] = (TCHAR)((v & 0x0f) + __T('0'));
-			if (buffer[stop] > __T('9'))
-				buffer[stop] += (TCHAR)(__T('A') - __T('0') - 10);
-			v >>= 4;
-			stop++;
-		} while (v != 0);
-	} /* if */
+  start = stop = 0;
+  if (format == SV_DECIMAL) {
+    if (value < 0) {
+      buffer[0] = __T('-');
+      start = stop = 1;
+      do {
+        temp = (TCHAR)(value % 10);
+        if (temp > 0)
+          temp = (TCHAR)(temp - 10);
+        buffer[stop++] = (TCHAR)(__T('0') - temp);
+        value /= 10;
+      } while (value != 0);
+    } else {
+      do {
+        buffer[stop++] = (TCHAR)((value % 10) + __T('0'));
+        value /= 10;
+      } while (value != 0);
+    }
+  } else {
+    /* hexadecimal */
+    unsigned long v = (unsigned long)value; /* copy to unsigned value for shifting */
+    do {
+      buffer[stop] = (TCHAR)((v & 0x0f) + __T('0'));
+      if (buffer[stop] > __T('9'))
+        buffer[stop] += (TCHAR)(__T('A') - __T('0') - 10);
+      v >>= 4;
+      stop++;
+    } while (v != 0);
+  } /* if */
 
-	/* pad to given width */
-	if (width < 0) {
-		temp = __T('0');
-		width = -width;
-	} else {
-		temp = __T(' ');
-	} /* if */
-	while (stop < width)
-		buffer[stop++] = temp;
+  /* pad to given width */
+  if (width < 0) {
+    temp = __T('0');
+    width = -width;
+  } else {
+    temp = __T(' ');
+  } /* if */
+  while (stop < width)
+    buffer[stop++] = temp;
 
-	buffer[stop] = __T('\0');
+  buffer[stop] = __T('\0');
 
-	/* swap the string, and we are done */
-	reverse(buffer+start,stop-start);
-	return buffer;
+  /* swap the string, and we are done */
+  reverse(buffer+start,stop-start);
+  return buffer;
 }
 
 #if defined FIXEDPOINT
@@ -995,8 +1002,8 @@ int amx_printstring(AMX *amx,cell *cstr,AMX_FMTINFO *info)
     } else {
       /* unpacked string */
       for (i=0; cstr[i]!=0; i++) {
-      	if (skip-->0)
-      	  continue;
+        if (skip-->0)
+          continue;
         assert(idx<sizeof cache);
         cache[idx++]=(TCHAR)cstr[i];
         if (idx==sizeof cache - 1) {
@@ -1142,7 +1149,7 @@ static cell AMX_NATIVE_CALL n_getchar(AMX *amx,const cell *params)
   c=amx_getch();
   if (params[1]) {
     #if defined(SUPPRESS_ECHO)
- 	  /* For Mac OS X, non-Curses, don't echo the character */
+    /* For Mac OS X, non-Curses, don't echo the character */
     #else
       amx_putchar((TCHAR)c);
       amx_fflush();
@@ -1174,7 +1181,7 @@ static cell AMX_NATIVE_CALL n_getstring(AMX *amx,const cell *params)
     while (c!=EOF && c!=EOL_CHAR && chars<max-1) {
       str[chars++]=(TCHAR)c;
       #if defined(SUPPRESS_ECHO)
- 	    /* For Mac OS X, non-Curses, don't echo the character */
+      /* For Mac OS X, non-Curses, don't echo the character */
       #else
         amx_putchar((TCHAR)c);
         amx_fflush();
@@ -1214,7 +1221,7 @@ static void acceptchar(int c,int *num)
     break;
   default:
     #if defined(SUPPRESS_ECHO)
- 	  /* For Mac OS X, non-Curses, don't echo the character */
+    /* For Mac OS X, non-Curses, don't echo the character */
     #else
       amx_putchar((TCHAR)c);
     #endif

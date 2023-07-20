@@ -1,6 +1,6 @@
 /*  Simple garbage collector for the Pawn Abstract Machine
  *
- *  Copyright (c) CompuPhase, 2004-2020
+ *  Copyright (c) CompuPhase, 2004-2023
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not
  *  use this file except in compliance with the License. You may obtain a copy
@@ -14,7 +14,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: amxgc.c 6131 2020-04-29 19:47:15Z thiadmer $
+ *  Version: $Id: amxgc.c 6964 2023-07-19 19:08:42Z thiadmer $
  */
 #include <assert.h>
 #include <limits.h>
@@ -33,7 +33,6 @@ typedef struct tagGCINFO {
   GC_FREE callback;
   int exponent;
   int flags;
-  int count;
 } GCINFO;
 
 #define SHIFT1          (sizeof(cell)*4)
@@ -50,10 +49,11 @@ typedef struct tagGCINFO {
                         /* call FOLD3(c) if the table size < MASK3 */
 #define MASK(exp)       (~(((cell)-1) << (exp)))
 
-static unsigned increments[17] = { 1, 1, 1, 3, 5, 7, 17, 31, 67, 127, 257,
-                                   509, 1021, 2053, 4099, 8191, 16381 };
+static const unsigned increments[17] = {
+  1, 1, 1, 3, 5, 7, 17, 31, 67, 127, 257,
+  509, 1021, 2053, 4099, 8191, 16381 };
 
-static unsigned char inverse[256] = {
+static const unsigned char inverse[256] = {
   255,254,253,252,251,250,249,248,247,246,245,244,243,242,241,240,
   239,238,237,236,235,234,233,232,231,230,229,228,227,226,225,224,
   223,222,221,220,219,218,217,216,215,214,213,212,211,210,209,208,
@@ -91,35 +91,38 @@ int gc_settable(int exponent, int flags)
     } /* if */
     SharedGC.exponent=0;
     SharedGC.flags=0;
-    SharedGC.count=0;
   } else {
-    int size,oldsize;
+    unsigned size,oldsize,total,index;
     GCPAIR *table,*oldtable;
 
-    if (exponent<7 || (1L<<exponent)>INT_MAX)
+    if (exponent<7 || (1UL<<exponent)>INT_MAX)
       return GC_ERR_PARAMS;
-    size=(1<<exponent);
+    /* save the statistics of the old table */
+    oldtable=SharedGC.table;
+    oldsize=(1<<SharedGC.exponent);
+    total=0;
+    if (oldtable!=NULL) {
+      for (index=0; index<oldsize; index++)
+        if (oldtable[index].value!=0 && oldtable[index].count!=0)
+          total+=1;
+    }
     /* the hash table should not hold more elements than the new size */
-    if (SharedGC.count>size)
-      return GC_ERR_PARAMS;
+    size=(1<<exponent);
+    if (total>size)
+      return GC_ERR_PARAMS; /* new table is too small */
     /* allocate the new table */
     table=malloc(size*sizeof(*table));
     if (table==NULL)
       return GC_ERR_MEMORY;
-    /* save the statistics of the old table */
-    oldtable=SharedGC.table;
-    oldsize=(1<<SharedGC.exponent);
     /* clear and set the new table */
     memset(table,0,size*sizeof(*table));
     SharedGC.table=table;
     SharedGC.exponent=exponent;
-    SharedGC.count=flags;
-    SharedGC.count=0;           /* old table in initially empty */
+    SharedGC.flags=flags;
     /* re-mark all objects in the old table */
     if (oldtable!=NULL) {
-      int index;
       for (index=0; index<oldsize; index++)
-        if (oldtable[index].value!=0)
+        if (oldtable[index].value!=0 && oldtable[index].count!=0)
           gc_mark(oldtable[index].value);
       free(oldtable);
     } /* if */
@@ -132,23 +135,39 @@ int gc_tablestat(int *exponent,int *percentage)
   if (exponent!=NULL)
     *exponent=SharedGC.exponent;
   if (percentage!=NULL) {
-    int size=(1L<<SharedGC.exponent);
+    unsigned size=(1L<<SharedGC.exponent);
     /* calculate with floating point to avoid integer overflow */
-    double p=100.0*SharedGC.count/size;
-    *percentage=(int)p;
+    unsigned total=0;
+    if (SharedGC.table!=NULL) {
+      unsigned index;
+      for (index=0; index<size; index++)
+        if (SharedGC.table[index].value!=0 && SharedGC.table[index].count!=0)
+          total+=1;
+    }
+    if (size>0) {
+      double p = 100.0 * total / size;
+      *percentage=(int)(p+0.5);
+    } else {
+      *percentage=0.0;
+    }
   } /* if */
   return GC_ERR_NONE;
 }
 
 int gc_mark(cell value)
 {
-  int index,incr,incridx,mask;
+  unsigned size,total,index,incr,incridx,mask;
   cell v,t;
   unsigned char *minorbyte;
 
   if (SharedGC.table==NULL)
     return GC_ERR_INIT;
-  if (SharedGC.count>=(1<<SharedGC.exponent)) {
+  size=1<<SharedGC.exponent;
+  total=0;
+  for (index=0; index<size; index++)
+    if (SharedGC.table[index].value!=0 && SharedGC.table[index].count!=0)
+      total+=1;
+  if (total>=size) {
     int err;
     if ((SharedGC.flags & GC_AUTOGROW)==0)
       return GC_ERR_TABLEFULL;
@@ -156,7 +175,7 @@ int gc_mark(cell value)
     if (err!=GC_ERR_NONE)
       return err;
   } /* if */
-  assert(SharedGC.count<(1<<SharedGC.exponent));
+  assert(total<(1<<SharedGC.exponent));
 
   /* first "fold" the value, to make maximum use of all bits */
   v=value;
@@ -199,7 +218,7 @@ int gc_mark(cell value)
 
 static void scansection(cell *start,size_t size)
 {
-  int index,incr,incridx,incridx_org,mask;
+  unsigned index,incr,incridx,incridx_org,mask,tablesize;
   cell v,t;
   unsigned char *minorbyte;
 
@@ -232,13 +251,15 @@ static void scansection(cell *start,size_t size)
     index=(v & mask);
 
     /* find it in the table */
+    tablesize=1<<SharedGC.exponent;
     incridx=incridx_org;
     incr=increments[incridx];
-    while ((t=SharedGC.table[index].value)!=*start && t!=0) {
+    while ((t=SharedGC.table[index].value)!=*start && t!=0 && tablesize>0) {
       assert(incr>0);
       index=(index+incr) & mask;
       if (incridx>0)
         incr=increments[--incridx];
+      tablesize--;
     } /* while */
 
     /* if found, mark it */

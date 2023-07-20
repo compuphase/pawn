@@ -14,7 +14,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: sc6.c 6130 2020-04-29 12:35:51Z thiadmer $
+ *  Version: $Id: sc6.c 6932 2023-04-03 13:56:19Z thiadmer $
  */
 #include <assert.h>
 #include <stdio.h>
@@ -400,8 +400,8 @@ static cell do_switch(FILE *fbin,const char *params,cell opcode,cell cip)
 
 static cell do_case(FILE *fbin,const char *params,cell opcode,cell cip)
 {
+  ucell v;
   int i;
-  ucell p,v;
 
   (void)opcode;
   v=hex2ucell(params,&params);
@@ -409,6 +409,7 @@ static cell do_case(FILE *fbin,const char *params,cell opcode,cell cip)
   assert(i>=0 && i<sc_labnum);
 
   if (fbin!=NULL) {
+    ucell p;
     assert(lbltab!=NULL);
     p=lbltab[i]-cip;
     write_cell(fbin,v);
@@ -620,7 +621,7 @@ static OPCODE opcodelist[] = {
 #define MAX_INSTR_LEN   30
 static int findopcode(char *instr,int maxlen)
 {
-  int low,high,mid,cmp;
+  int low,high;
   char str[MAX_INSTR_LEN];
 
   if (maxlen>=MAX_INSTR_LEN)
@@ -633,7 +634,8 @@ static int findopcode(char *instr,int maxlen)
   low=1;                /* entry 0 is reserved (for "not found") */
   high=(sizeof opcodelist / sizeof opcodelist[0])-1;
   while (low<high) {
-    mid=(low+high)/2;
+    int cmp;
+    int mid=(low+high)/2;
     assert(opcodelist[mid].name!=NULL);
     cmp=stricmp(str,opcodelist[mid].name);
     if (cmp>0)
@@ -960,7 +962,7 @@ SC_FUNC int assemble(FILE *fout,FILE *fin)
   if (pc_overlays>0) {
     AMX_OVERLAYINFO info;
     #if !defined NDEBUG
-      int count=0;
+      int entrycount=0;
     #endif
     pc_resetbin(fout,hdr.overlays);
     /* first the special overlay(s) for the return point(s) */
@@ -974,7 +976,7 @@ SC_FUNC int assemble(FILE *fout,FILE *fin)
         #endif
         pc_writebin(fout,&info,sizeof info);
         #if !defined NDEBUG
-          count++;
+          entrycount++;
         #endif
       } /* if */
     } /* for */
@@ -985,7 +987,7 @@ SC_FUNC int assemble(FILE *fout,FILE *fin)
           && (sym->usage & uDEFINE)!=0)
       {
         assert(sym->scope==sGLOBAL);
-        assert(strcmp(sym->name,_ENTRYFUNC)==0 || sym->index==count++);/* overlay indices must be in sequential order */
+        assert(strcmp(sym->name,_ENTRYFUNC)==0 || sym->index==entrycount++);/* overlay indices must be in sequential order */
         assert(strcmp(sym->name,_ENTRYFUNC)==0 || sym->addr<sym->codeaddr);
         /* write the overlay for the stub function first */
         if (strcmp(sym->name,_ENTRYFUNC)!=0) {
@@ -1002,7 +1004,7 @@ SC_FUNC int assemble(FILE *fout,FILE *fin)
           /* for functions with states, write an overlay block for every implementation */
           statelist *stlist;
           for (stlist=sym->states->next; stlist!=NULL; stlist=stlist->next) {
-            assert(stlist->label==count++);
+            assert(stlist->label==entrycount++);
             info.offset=(int32_t)stlist->addr;
             info.size=(int32_t)(stlist->endaddr - stlist->addr);
             #if BYTE_ORDER==BIG_ENDIAN

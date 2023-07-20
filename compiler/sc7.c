@@ -41,7 +41,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: sc7.c 6131 2020-04-29 19:47:15Z thiadmer $
+ *  Version: $Id: sc7.c 6932 2023-04-03 13:56:19Z thiadmer $
  */
 #include <assert.h>
 #include <stdio.h>
@@ -448,9 +448,8 @@ SC_FUNC int phopt_init(void)
 
 SC_FUNC int phopt_cleanup(void)
 {
-  int i;
   if (sequences!=NULL) {
-    i=0;
+    int i=0;
     while (sequences[i].find!=NULL || sequences[i].replace!=NULL) {
       if (sequences[i].find!=NULL)
         free((char*)sequences[i].find);
@@ -472,7 +471,7 @@ SC_FUNC int phopt_cleanup(void)
   #define MAX_ALIAS       (PAWN_CELL_SIZE/4) * MAX_OPT_CAT
 #endif
 
-static int matchsequence(char *start,char *end,const char *pattern,
+static int matchsequence(char *start,const char *end,const char *pattern,
                          char symbols[MAX_OPT_VARS+1][MAX_ALIAS+1],
                          int *match_length)
 {
@@ -506,34 +505,34 @@ static int matchsequence(char *start,char *end,const char *pattern,
       str[i]='\0';
       if (var==0) {
         /* match only if the parameter is numeric and in the range of a half cell */
-        const char *ptr;
+        const char *varptr;
         /* getparamvalue() resolves leading '-' on values and adds multiple
            values (the peephole optimizer may create such variants) */
-        ucell v=getparamvalue(str,&ptr);
+        ucell v=getparamvalue(str,&varptr);
         /* sign-extend the value to check whether the value is in the range for
            packed parameters */
         ucell v2=v;
         if ((v2 & ((ucell)1<<pc_cellsize*8-1))!=0)
           v2|=~(ucell)0<<pc_cellsize*8;
-        if (*ptr>' ' || v2>=((ucell)1<<((pc_cellsize*4)-1)) && v2<=~((ucell)1<<((pc_cellsize*4)-1)))
+        if (*varptr>' ' || v2>=((ucell)1<<((pc_cellsize*4)-1)) && v2<=~((ucell)1<<((pc_cellsize*4)-1)))
           return FALSE;
         /* reconvert the value to a string (without signs or expressions) */
-        ptr=itoh(v);
+        varptr=itoh(v);
         #if !defined NDEBUG
-          assert(strlen(ptr)==2*(size_t)pc_cellsize);
-          assert((ptr[0]=='0' || ptr[0]=='f') && (ptr[1]=='0' || ptr[1]=='f'));
+          assert(strlen(varptr)==2*(size_t)pc_cellsize);
+          assert((varptr[0]=='0' || varptr[0]=='f') && (varptr[1]=='0' || varptr[1]=='f'));
           if (pc_cellsize>=32)
-            assert((ptr[2]=='0' || ptr[2]=='f') && (ptr[3]=='0' || ptr[3]=='f'));
+            assert((varptr[2]=='0' || varptr[2]=='f') && (varptr[3]=='0' || varptr[3]=='f'));
           if (pc_cellsize>=64) {
-            assert((ptr[4]=='0' || ptr[4]=='f') && (ptr[5]=='0' || ptr[5]=='f'));
-            assert((ptr[6]=='0' || ptr[6]=='f') && (ptr[7]=='0' || ptr[7]=='f'));
+            assert((varptr[4]=='0' || varptr[4]=='f') && (varptr[5]=='0' || varptr[5]=='f'));
+            assert((varptr[6]=='0' || varptr[6]=='f') && (varptr[7]=='0' || varptr[7]=='f'));
           } /* if */
         #endif
         if (v==0) {
           str[0]='0'; /* make zero transform to '0' rather than '0000' */
           str[1]='\0';
         } else {
-          memmove(str,ptr+pc_cellsize,pc_cellsize+1);
+          memmove(str,varptr+pc_cellsize,pc_cellsize+1);
         } /* if */
       } /* if */
       if (symbols[var][0]!='\0') {
@@ -605,7 +604,7 @@ static int matchsequence(char *start,char *end,const char *pattern,
 
 static char *replacesequence(const char *pattern,char symbols[MAX_OPT_VARS+1][MAX_ALIAS+1],int *repl_length)
 {
-  char *lptr;
+  char *sptr;
   int var,optsym;
   char *buffer;
 
@@ -617,13 +616,13 @@ static char *replacesequence(const char *pattern,char symbols[MAX_OPT_VARS+1][MA
   assert(repl_length!=NULL);
   *repl_length=0;
   optsym=FALSE;
-  lptr=(char*)pattern;
-  while (*lptr) {
-    switch (*lptr) {
+  sptr=(char*)pattern;
+  while (*sptr) {
+    switch (*sptr) {
     case '%':
-      lptr++;           /* skip '%' */
-      assert(isdigit(*lptr));
-      var=atoi(lptr);
+      sptr++;           /* skip '%' */
+      assert(isdigit(*sptr));
+      var=atoi(sptr);
       assert(var>=0 && var<=MAX_OPT_VARS);
       assert(symbols[var][0]!='\0' || optsym);  /* variable should be defined */
       assert(var!=0 || strlen(symbols[var])==(size_t)pc_cellsize || (symbols[var][0]=='-' && strlen(symbols[var])==(size_t)pc_cellsize+1) || atoi(symbols[var])==0);
@@ -631,9 +630,9 @@ static char *replacesequence(const char *pattern,char symbols[MAX_OPT_VARS+1][MA
       optsym=FALSE;
       break;
     case '~': /* optional space followed by optional symbol */
-      assert(lptr[1]=='%');
-      assert(isdigit(lptr[2]));
-      var=atoi(lptr+2);
+      assert(sptr[1]=='%');
+      assert(isdigit(sptr[2]));
+      var=atoi(sptr+2);
       assert(var>=0 && var<=MAX_OPT_VARS);
       if (symbols[var][0]!='\0')
         *repl_length+=1;  /* copy space if following symbol is valid */
@@ -641,12 +640,12 @@ static char *replacesequence(const char *pattern,char symbols[MAX_OPT_VARS+1][MA
         optsym=TRUE;      /* don't copy space, and symbol is optional */
       break;
     case '#':
-      lptr++;           /* skip '#' */
-      assert(alphanum(*lptr) || *lptr=='-');
-      if (*lptr=='-')
-        lptr++;
-      while (alphanum(lptr[1]))
-        lptr++;
+      sptr++;           /* skip '#' */
+      assert(alphanum(*sptr) || *sptr=='-');
+      if (*sptr=='-')
+        sptr++;
+      while (alphanum(sptr[1]))
+        sptr++;
       *repl_length+=pc_cellsize*2;
       break;
     case '!':
@@ -655,7 +654,7 @@ static char *replacesequence(const char *pattern,char symbols[MAX_OPT_VARS+1][MA
     default:
       *repl_length+=1;
     } /* switch */
-    lptr++;
+    sptr++;
   } /* while */
 
   /* allocate a buffer to replace the sequence in */
@@ -666,10 +665,10 @@ static char *replacesequence(const char *pattern,char symbols[MAX_OPT_VARS+1][MA
 
   /* replace the pattern into this temporary buffer */
   optsym=FALSE;
-  lptr=buffer;
-  *lptr++='\t';         /* the "replace" patterns do not have tabs */
+  sptr=buffer;
+  *sptr++='\t';         /* the "replace" patterns do not have tabs */
   while (*pattern) {
-    assert((int)(lptr-buffer)<*repl_length);
+    assert((int)(sptr-buffer)<*repl_length);
     switch (*pattern) {
     case '%':
       /* write out the symbol */
@@ -679,8 +678,8 @@ static char *replacesequence(const char *pattern,char symbols[MAX_OPT_VARS+1][MA
       assert(var>=0 && var<=MAX_OPT_VARS);
       assert(symbols[var][0]!='\0' || optsym);  /* variable should be defined */
       assert(symbols[var][0]=='\0' || !optsym); /* but optional variable should be undefined */
-      strcpy(lptr,symbols[var]);
-      lptr+=strlen(symbols[var]);
+      strcpy(sptr,symbols[var]);
+      sptr+=strlen(symbols[var]);
       optsym=FALSE;
       break;
     case '~':
@@ -689,15 +688,15 @@ static char *replacesequence(const char *pattern,char symbols[MAX_OPT_VARS+1][MA
       var=atoi(pattern+2);
       assert(var>=0 && var<=MAX_OPT_VARS);
       if (symbols[var][0]!='\0')
-        *lptr++=' ';      /* replace ~ by a space */
+        *sptr++=' ';      /* replace ~ by a space */
       else
         optsym=TRUE;      /* don't copy space, and symbol is optional */
       break;
     case '#': {
       ucell v=hex2ucell(pattern+1,NULL);
       char *ptr=itoh(v);
-      strcpy(lptr,ptr);
-      lptr+=strlen(ptr);
+      strcpy(sptr,ptr);
+      sptr+=strlen(ptr);
       assert(alphanum(pattern[1]) || pattern[1]=='-');
       if (pattern[1]=='-')
         pattern++;
@@ -707,18 +706,18 @@ static char *replacesequence(const char *pattern,char symbols[MAX_OPT_VARS+1][MA
     } /* case */
     case '!':
       /* finish the line, optionally start the next line with an indent */
-      *lptr++='\n';
-      *lptr++='\0';
+      *sptr++='\n';
+      *sptr++='\0';
       if (*(pattern+1)!='\0')
-        *lptr++='\t';
+        *sptr++='\t';
       break;
     default:
-      *lptr++=*pattern;
+      *sptr++=*pattern;
     } /* switch */
     pattern++;
   } /* while */
 
-  assert((int)(lptr-buffer)==*repl_length);
+  assert((int)(sptr-buffer)==*repl_length);
   return buffer;
 }
 
@@ -745,20 +744,20 @@ static void strreplace(char *dest,char *replace,int sub_length,int repl_length,i
 
 static void stgopt(char *start,char *end,int (*outputfunc)(char *str))
 {
-  char symbols[MAX_OPT_VARS+1][MAX_ALIAS+1];
-  int seq,match_length,repl_length;
-  int matches;
+  int match_length,repl_length;
   char *debut=start;  /* save original start of the buffer */
 
   assert(sequences!=NULL);
   /* do not match anything if debug-level is maximum */
   if (pc_optimize>sOPTIMIZE_NONE && sc_status==statWRITE) {
+    int matches;
     do {
       matches=0;
       start=debut;
       while (start<end) {
-        seq=0;
+        int seq=0;
         while (sequences[seq].find!=NULL) {
+          char symbols[MAX_OPT_VARS+1][MAX_ALIAS+1];
           assert(seq>=0);
           if (*sequences[seq].find<sOPTIMIZE_NUMBER) {
             if (*sequences[seq].find>pc_optimize)

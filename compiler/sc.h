@@ -23,7 +23,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: sc.h 6131 2020-04-29 19:47:15Z thiadmer $
+ *  Version: $Id: sc.h 6932 2023-04-03 13:56:19Z thiadmer $
  */
 #ifndef SC_H_INCLUDED
 #define SC_H_INCLUDED
@@ -630,7 +630,7 @@ SC_FUNC symbol *finddepend(const symbol *parent);
 SC_FUNC symbol *addsym(const char *name,cell addr,int ident,int scope,int tag,
                        int usage);
 SC_FUNC symbol *addvariable(const char *name,cell addr,int ident,int scope,int tag,
-                            int dim[],constvalue *dimnames[],int numdim,int ispacked);
+                            const int dim[],constvalue *dimnames[],int numdim,int ispacked);
 SC_FUNC int getlabel(void);
 SC_FUNC char *itoh(ucell val);
 

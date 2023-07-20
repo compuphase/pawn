@@ -14,7 +14,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: sc2.c 6131 2020-04-29 19:47:15Z thiadmer $
+ *  Version: $Id: sc2.c 6932 2023-04-03 13:56:19Z thiadmer $
  */
 #include <assert.h>
 #include <stdio.h>
@@ -311,7 +311,6 @@ static void readline(unsigned char *line,int append)
 {
   int i,cont;
   unsigned char *ptr;
-  symbol *sym;
   size_t num;
 
   if (lptr==term_expr)
@@ -324,6 +323,7 @@ static void readline(unsigned char *line,int append)
   } /* if */
   cont=FALSE;
   do {
+    symbol *sym;
     if (inpf==NULL || pc_eofsrc(inpf)) {
       if (cont)
         error(49);        /* invalid line continuation */
@@ -1233,8 +1233,8 @@ static int command(void)
         } else if (strcmp(str,"unused")==0) {
           char name[sNAMEMAX+1];
           int i,comma;
-          symbol *sym;
           do {
+            symbol *sym;
             /* get the name */
             while (*lptr<=' ' && *lptr!='\0')
               lptr++;
@@ -1308,7 +1308,7 @@ static int command(void)
         lptr++;
       start=lptr;       /* save starting point of the match pattern */
       count=0;
-      while (*lptr>' ' && *lptr!='[' && *lptr!='\0') {
+      while (*lptr>' ' && *lptr!='[') {
         litchar(&lptr,0); /* litchar() advances "lptr" and handles escape characters */
         count++;
       } /* while */
@@ -1334,7 +1334,7 @@ static int command(void)
       if (count>=2 && isdigit(pattern[count-1]) && pattern[count-2]=='%')
         pattern[count-2]='\0';
       /* find substitution string */
-      while (*lptr<=' ' && *lptr!='[' && *lptr!='\0')
+      while (*lptr<=' ' && *lptr!='\0')
         lptr++;
       matchbracket=(*lptr=='[');
       if (matchbracket)
@@ -1547,8 +1547,7 @@ static int substpattern(unsigned char *line,size_t buffersize,char *pattern,char
   int prefixlen;
   const unsigned char *p,*s,*e;
   unsigned char *args[10];
-  int match,arg,instring;
-  int stringize;
+  int match,arg;
   size_t len;
 
   memset(args,0,sizeof args);
@@ -1643,7 +1642,8 @@ static int substpattern(unsigned char *line,size_t buffersize,char *pattern,char
 
   if (match) {
     /* calculate the length of the substituted string */
-    instring=0;
+    int instring=0;
+    int stringize;
     for (e=(unsigned char*)substitution,len=0; *e!='\0'; e++) {
       if (*e=='#' && *(e+1)=='%' && isdigit(*(e+2)) && !instring) {
         stringize=1;
@@ -1882,13 +1882,10 @@ static void unpackedstring(const unsigned char *str,int flags)
 
 static void packedstring(const unsigned char *str,int flags)
 {
-  int i;
-  ucell val,c;
-
-  i=pc_cellsize-(sCHARBITS/8);  /* start at most significant byte */
-  val=0;
+  int i=pc_cellsize-(sCHARBITS/8);    /* start at most significant byte */
+  ucell val=0;
   while (*str!='\0') {
-    c=litchar(&str,flags);      /* litchar() alters "str" */
+    ucell c=litchar(&str,flags);      /* litchar() alters "str" */
     if (c>=(ucell)(1 << sCHARBITS))
       error(43,(long)c);        /* character constant exceeds range */
     val |= (c << 8*i);
@@ -3131,7 +3128,7 @@ SC_FUNC symbol *addsym(const char *name,cell addr,int ident,int scope,int tag,in
 }
 
 SC_FUNC symbol *addvariable(const char *name,cell addr,int ident,int scope,int tag,
-                            int dim[],constvalue *dimnames[],int numdim,int usage)
+                            const int dim[],constvalue *dimnames[],int numdim,int usage)
 {
   symbol *sym;
 

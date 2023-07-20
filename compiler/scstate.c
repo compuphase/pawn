@@ -39,7 +39,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: scstate.c 6131 2020-04-29 19:47:15Z thiadmer $
+ *  Version: $Id: scstate.c 6932 2023-04-03 13:56:19Z thiadmer $
  */
 #include <assert.h>
 #include <limits.h>
@@ -209,7 +209,7 @@ SC_FUNC void state_buildlist(int **list,int *listsize,int *count,int stateid)
   *count+=1;
 }
 
-static statepool *state_findlist(int *list,int count,int fsa,int *last)
+static statepool *state_findlist(const int *list,int count,int fsa,int *last)
 {
   statepool *ptr;
   int i;

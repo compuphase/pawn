@@ -2,7 +2,7 @@
  *  memory.
  *
  *  Copyright (c) faluco / http://www.amxmodx.org/, 2006
- *  Version: $Id: memfile.c 5596 2016-11-02 17:18:02Z  $
+ *  Version: $Id: memfile.c 6932 2023-04-03 13:56:19Z thiadmer $
  */
 
 #include <assert.h>
@@ -72,8 +72,7 @@ size_t memfile_read(memfile_t *mf, void *buffer, size_t maxsize)
 	if (mf->usedoffs - mf->offs < maxsize)
 	{
 		maxsize = mf->usedoffs - mf->offs;
-		if (!maxsize)
-			return 0;
+		assert(maxsize > 0);
 	}
 
 	memcpy(buffer, mf->base + mf->offs, maxsize);

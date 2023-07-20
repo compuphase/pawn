@@ -14,7 +14,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: sc3.c 6335 2021-07-31 19:31:11Z thiadmer $
+ *  Version: $Id: sc3.c 6932 2023-04-03 13:56:19Z thiadmer $
  */
 #include <assert.h>
 #include <stdio.h>
@@ -34,7 +34,7 @@ static int plnge1(int (*hier)(value *lval),value *lval);
 static void plnge2(void (*oper)(void),void (*arrayoper)(cell),
                    int (*hier)(value *lval),
                    value *lval1,value *lval2);
-static cell calc(cell left,void (*oper)(),cell right,char *boolresult);
+static cell calc(cell left,const void (*oper)(),cell right,char *boolresult);
 static int hier14(value *lval);
 static int hier13(value *lval);
 static int hier12(value *lval);
@@ -53,8 +53,8 @@ static int primary(value *lval,int *symtok);
 static void clear_value(value *lval);
 static void callfunction(symbol *sym,value *lval_result,int matchparanthesis);
 static int skiptotoken(int token);
-static int dbltest(void (*oper)(),value *lval1,value *lval2);
-static int commutative(void (*oper)());
+static int dbltest(const void (*oper)(),value *lval1,value *lval2);
+static int commutative(const void (*oper)());
 static int constant(value *lval);
 
 static char lastsymbol[sNAMEMAX+1]; /* name of last function/variable */
@@ -380,8 +380,8 @@ SC_FUNC int matchtag(int formaltag,int actualtag,int allowcoerce)
 static int skim(const int *opstr,void (*testfunc)(int),int dropval,int endval,
                 int (*hier)(value*),value *lval)
 {
-  int lvalue,hits,droplab,endlab,opidx;
-  int allconst,foundop;
+  int hits,droplab,endlab,opidx;
+  int allconst;
   cell constval;
   int index;
   cell cidx;
@@ -392,7 +392,8 @@ static int skim(const int *opstr,void (*testfunc)(int),int dropval,int endval,
   constval=0;
   droplab=0;                    /* to avoid a compiler warning */
   for ( ;; ) {
-    lvalue=plnge1(hier,lval);   /* evaluate left expression */
+    int lvalue=plnge1(hier,lval);   /* evaluate left expression */
+    int foundop;
 
     allconst= allconst && (lval->ident==iCONSTEXPR);
     if (allconst) {
@@ -811,7 +812,7 @@ static cell flooreddiv(cell a,cell b,int return_remainder)
   return return_remainder ? r : q;
 }
 
-static cell calc(cell left,void (*oper)(),cell right,char *boolresult)
+static cell calc(cell left,const void (*oper)(),cell right,char *boolresult)
 {
   if (oper==ob_or)
     return (left | right);
@@ -2321,7 +2322,7 @@ static int nesting=0;
       if (argpos>=sMAXARGS)
         error(45);                /* too many function arguments */
       stgmark((char)(sEXPRSTART+argpos));/* mark beginning of new expression in stage */
-      if (arglist[argpos]!=ARG_UNHANDLED)
+      if (argpos<sMAXARGS && arglist[argpos]!=ARG_UNHANDLED)
         error(58);                /* argument already set */
       if (matchtoken('_')) {
         arglist[argpos]=ARG_IGNORED;  /* flag argument as "present, but ignored" */
@@ -2478,33 +2479,33 @@ static int nesting=0;
               append_constval(&arrayszlst,arg[argidx].name,array_sz,0);
             } /* if */
           } else {
-            symbol *sym=lval.sym;
+            symbol *rsym=lval.sym;
             short level=0;
-            assert(sym!=NULL);
-            if (sym->dim.array.level+1!=arg[argidx].numdim)
+            assert(rsym!=NULL);
+            if (rsym->dim.array.level+1!=arg[argidx].numdim)
               error(48);          /* array dimensions must match */
             /* the lengths for all dimensions must match, unless the dimension
              * length was defined at zero (which means "undefined")
              */
-            while (sym->dim.array.level>0) {
+            while (rsym->dim.array.level>0) {
               assert(level<sDIMEN_MAX);
-              if (arg[argidx].dim[level]!=0 && sym->dim.array.length!=arg[argidx].dim[level])
+              if (arg[argidx].dim[level]!=0 && rsym->dim.array.length!=arg[argidx].dim[level])
                 error(47);        /* array sizes must match */
-              if (!compare_consttable(arg[argidx].dimnames[level],sym->dim.array.names))
+              if (!compare_consttable(arg[argidx].dimnames[level],rsym->dim.array.names))
                 error(47);        /* array definitions must match */
-              append_constval(&arrayszlst,arg[argidx].name,sym->dim.array.length,level);
-              sym=finddepend(sym);
-              assert(sym!=NULL);
+              append_constval(&arrayszlst,arg[argidx].name,rsym->dim.array.length,level);
+              rsym=finddepend(rsym);
+              assert(rsym!=NULL);
               level++;
             } /* if */
             /* the last dimension is checked too, again, unless it is zero */
             assert(level<sDIMEN_MAX);
-            assert(sym!=NULL);
-            if (arg[argidx].dim[level]!=0 && sym->dim.array.length!=arg[argidx].dim[level])
+            assert(rsym!=NULL);
+            if (arg[argidx].dim[level]!=0 && rsym->dim.array.length!=arg[argidx].dim[level])
               error(47);          /* array sizes must match */
-            if (!compare_consttable(arg[argidx].dimnames[level],sym->dim.array.names))
+            if (!compare_consttable(arg[argidx].dimnames[level],rsym->dim.array.names))
               error(47);        /* array definitions must match */
-            append_constval(&arrayszlst,arg[argidx].name,sym->dim.array.length,level);
+            append_constval(&arrayszlst,arg[argidx].name,rsym->dim.array.length,level);
           } /* if */
           /* address already in PRI */
           if (!checktag(arg[argidx].tags,arg[argidx].numtags,lval.tag))
@@ -2725,7 +2726,7 @@ static int skiptotoken(int token)
  *  byte offsets. In all other cases, the function returns 1. The result of this
  *  function can therefore be used to multiple the array index.
  */
-static int dbltest(void (*oper)(),value *lval1,value *lval2)
+static int dbltest(const void (*oper)(),value *lval1,value *lval2)
 {
   if ((oper!=ob_add) && (oper!=ob_sub))
     return 1;
@@ -2752,7 +2753,7 @@ static int dbltest(void (*oper)(),value *lval1,value *lval2)
  *  precautionary "push" of the primary register is scrapped and the constant
  *  is read into the secondary register immediately.
  */
-static int commutative(void (*oper)())
+static int commutative(const void (*oper)())
 {
   return oper==ob_add || oper==os_mult
          || oper==ob_eq || oper==ob_ne

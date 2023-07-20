@@ -321,7 +321,7 @@ static void write_pairtable(FILE *output, unsigned char pairtable[128][2], char 
 void writefile(FILE *input, FILE *output, unsigned char *buffer, unsigned buffersize, unsigned char pairtable[128][2])
 {
   char str[256];
-  int insection, indent, needseparator;
+  int insection, indent;
   unsigned char *bufptr;
 
   bufptr = buffer;
@@ -329,6 +329,7 @@ void writefile(FILE *input, FILE *output, unsigned char *buffer, unsigned buffer
 
   rewind(input);
   while (!feof(input)) {
+    int needseparator;
     while (fgets(str,sizeof str,input)!=NULL) {
       fprintf(output,"%s",str);
       if (check_tablename(str)) {
@@ -396,7 +397,6 @@ int main(int argc, char **argv)
   FILE *in, *out;
   unsigned char *buffer;
   unsigned buffersize, orgbuffersize;
-  unsigned char pairtable[128][2];
 
   if (argc < 2 || argc > 3)
     usage();
@@ -419,6 +419,7 @@ int main(int argc, char **argv)
   buffer = (unsigned char *)malloc(MAXSIZE);
   if (buffer == NULL) {
     printf("SCPACK: error allocating memory\n");
+    fclose(out);
     return 1;
   } /* if */
   /* 1. read the buffer
@@ -428,6 +429,7 @@ int main(int argc, char **argv)
   buffersize = readbuffer(in, buffer);
   orgbuffersize = buffersize;
   if (buffersize > 0) {
+    unsigned char pairtable[128][2];
     buffersize = compress(buffer, buffersize, pairtable);
     writefile(in, out, buffer, buffersize, pairtable);
     printf("SCPACK: compression ratio: %ld%% (%u -> %u)\n",
