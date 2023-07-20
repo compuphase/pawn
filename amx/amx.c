@@ -14,7 +14,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: amx.c 6964 2023-07-19 19:08:42Z thiadmer $
+ *  Version: $Id: amx.c 6965 2023-07-20 15:44:35Z thiadmer $
  */
 
 #define WIN32_LEAN_AND_MEAN
@@ -1178,11 +1178,11 @@ int AMXAPI amx_Init(AMX *amx,void *program)
     return AMX_ERR_FORMAT;
   assert(hdr->hea == hdr->size);
   #if BYTE_ORDER==BIG_ENDIAN
-    if ((hdr->flags & AMX_FLAG_COMPACT)==0) {
+    {
       ucell *code=(ucell *)((unsigned char *)program+(int)hdr->cod);
       while (code<(ucell *)((unsigned char *)program+(int)hdr->hea))
         amx_SwapCell(code++);
-    } /* if */
+    }
   #endif
 
   amx->base=(unsigned char *)program;
