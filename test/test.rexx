@@ -1950,3 +1950,14 @@ test153:
   pawncc 'issue45'
   return
 
+test154:
+  say '154. The compilation should issue error 013 (no entry point).'
+  say ''
+  say '     Using a semicolon as the "empty statement".'
+  say ''
+  say 'Symptoms of detected bug: as the entry function is prototyped only, no code is'
+  say 'generated for it; but due to the prototype, no warning is given either.'
+  say '-----'
+  pawncc '-; EMPTY_MAIN= test14'
+  return
+

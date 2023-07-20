@@ -9,3 +9,7 @@ public cmd(num)
 }
 #endif
 
+#if defined EMPTY_MAIN
+main()
+    ;
+#endif

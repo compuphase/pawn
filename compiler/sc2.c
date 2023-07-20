@@ -1,6 +1,6 @@
 /*  Pawn compiler - File input, preprocessing and lexical analysis functions
  *
- *  Copyright (c) CompuPhase, 1997-2020
+ *  Copyright (c) CompuPhase, 1997-2023
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not
  *  use this file except in compliance with the License. You may obtain a copy
@@ -14,7 +14,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: sc2.c 6932 2023-04-03 13:56:19Z thiadmer $
+ *  Version: $Id: sc2.c 6965 2023-07-20 15:44:35Z thiadmer $
  */
 #include <assert.h>
 #include <stdio.h>

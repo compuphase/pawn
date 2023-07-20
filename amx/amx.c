@@ -14,7 +14,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: amx.c 6965 2023-07-20 15:44:35Z thiadmer $
+ *  Version: $Id: amx.c 6966 2023-07-20 18:46:01Z thiadmer $
  */
 
 #define WIN32_LEAN_AND_MEAN

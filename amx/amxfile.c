@@ -1,6 +1,6 @@
 /* Text file I/O module for the Pawn Abstract Machine
  *
- *  Copyright (c) CompuPhase, 2003-2020
+ *  Copyright (c) CompuPhase, 2003-2023
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not
  *  use this file except in compliance with the License. You may obtain a copy
@@ -14,7 +14,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: amxfile.c 6131 2020-04-29 19:47:15Z thiadmer $
+ *  Version: $Id: amxfile.c 6965 2023-07-20 15:44:35Z thiadmer $
  */
 #if defined _UNICODE || defined __UNICODE__ || defined UNICODE
 # if !defined UNICODE   /* for Windows */

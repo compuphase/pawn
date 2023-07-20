@@ -23,7 +23,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: sc1.c 6965 2023-07-20 15:44:35Z thiadmer $
+ *  Version: $Id: sc1.c 6966 2023-07-20 18:46:01Z thiadmer $
  */
 #include <assert.h>
 #include <ctype.h>
@@ -5432,7 +5432,7 @@ static int testsymbols(symbol *root,int level,int testlabs,int testconst)
           error(203,symname);       /* symbol isn't used ... (and not public/native/stock) */
         } /* if */
       } /* if */
-      if ((sym->usage & uPUBLIC)!=0 || (sym->flags & flgENTRYPOINT)!=0)
+      if (((sym->usage & uPUBLIC)!=0 || (sym->flags & flgENTRYPOINT)!=0) && (sym->usage & uDEFINE)!=0)
         entry=TRUE;                 /* there is an entry point */
       /* also mark the function to the debug information */
       if (((sym->usage & uREAD)!=0 || (sym->usage & uPUBLIC)!=0 && (sym->usage & uDEFINE)!=0)

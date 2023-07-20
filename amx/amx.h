@@ -14,7 +14,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: amx.h 6964 2023-07-19 19:08:42Z thiadmer $
+ *  Version: $Id: amx.h 6965 2023-07-20 15:44:35Z thiadmer $
  */
 
 #ifndef AMX_H_INCLUDED
