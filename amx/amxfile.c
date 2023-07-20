@@ -93,7 +93,7 @@
   #define _tgetenv      getenv
   #define _tremove      remove
   #define _trename      rename
-  #if defined __APPLE__
+  #if defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__ || defined __APPLE__
     #define _tmkdir     mkdir
     #define _trmdir     rmdir
     #define _tstat      stat
@@ -623,7 +623,7 @@ static cell AMX_NATIVE_CALL n_fgetchar(AMX *amx, const cell *params)
   #define aligncell amx_Align16
 #elif PAWN_CELL_SIZE==32
   #define aligncell amx_Align32
-#elif PAWN_CELL_SIZE==64 && (defined _I64_MAX || defined HAVE_I64)
+#elif PAWN_CELL_SIZE==64 && (defined _I64_MAX || defined HAVE_I64 || __SIZEOF_POINTER__==8)
   #define aligncell amx_Align64
 #else
   #error Unsupported cell size

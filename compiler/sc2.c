@@ -84,9 +84,10 @@ SC_FUNC void pushstk(stkitem val)
     if (newstack==NULL)
       error(102,"parser stack");  /* stack overflow (recursive include?) */
     /* swap the stacks */
-    memcpy(newstack,stack,stkidx*sizeof(stkitem));
-    if (stack!=NULL)
+    if (stack!=NULL) {
+      memcpy(newstack,stack,stkidx*sizeof(stkitem));
       free(stack);
+    }
     stack=newstack;
     stktop=newsize;
   } /* if */

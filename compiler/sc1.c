@@ -67,6 +67,8 @@
 
 #if defined __WIN32__ || defined _WIN32 || defined WIN32 || defined __NT__
   #define DLLEXPORT __declspec (dllexport)
+#elif defined HAVE_VISIBILITY
+  #define DLLEXPORT __attribute__ ((visibility("default")))
 #endif
 
 #include "lstring.h"
@@ -183,6 +185,8 @@ int main(int argc, char *argv[])
 {
   return pc_compile(argc,argv);
 }
+
+#endif  /* !defined NO_MAIN */
 
 /* pc_printf()
  * Called for general purpose "console" output. This function prints general
@@ -436,9 +440,6 @@ long pc_lengthbin(void *handle)
   return ftell((FILE*)handle);
 }
 
-#endif  /* !defined NO_MAIN */
-
-
 #if !(defined __MSDOS__ || defined __WIN32__ || defined _Windows)
 int posix_spawnl(char *pgm,...)
 {
@@ -554,7 +555,12 @@ int pc_compile(int argc, char *argv[])
       tmpname=NULL;
       sname=NULL;
     #else
-      tmpname=tempnam(NULL,"pawn");
+      int tmpfd = mkstemp("pawn.XXXXXX");
+      char *procname = alloca(64);
+      tmpname = alloca(PATH_MAX);
+      sprintf(procname, "/proc/self/fd/%d", tmpfd);
+      readlink(procname, tmpname, PATH_MAX);
+      close(tmpfd);
     #endif
     ftmp=(FILE*)pc_createsrc(tmpname);
     for (fidx=0; (sname=get_sourcefile(fidx))!=NULL; fidx++) {
@@ -885,6 +891,9 @@ cleanup:
   } else {
     retcode=jmpcode;
   } /* if */
+  #if defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__
+  br_deinit();
+  #endif
   #if defined FORTIFY
     Fortify_ListAllMemory();
   #endif
@@ -1686,7 +1695,7 @@ static void setconstants(void)
   add_constant("cellmin",(cell)((ucell)-1<<(8*pc_cellsize-1)),sGLOBAL,0);
   add_constant("charbits",sCHARBITS,sGLOBAL,0);
   add_constant("charmin",0,sGLOBAL,0);
-  add_constant("charmax",~(~0 << sCHARBITS),sGLOBAL,0);
+  add_constant("charmax",~(~0UL << sCHARBITS),sGLOBAL,0);
   add_constant("ucharmax",((cell)1 << (pc_cellsize-1)*8)-1,sGLOBAL,0);
 
   add_constant("__Pawn",VERSION_INT,sGLOBAL,0);

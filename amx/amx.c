@@ -610,7 +610,7 @@ int AMXAPI amx_Callback(AMX *amx, cell index, cell *result, const cell *params)
   #if defined AMX_NO_PACKED_OPC
     #define GETOPCODE(c)  (OPCODE)(c)
   #else
-    #define GETOPCODE(c)  (OPCODE)((c) & ((1 << sizeof(cell)*4)-1))
+    #define GETOPCODE(c)  (OPCODE)((c) & ((1L << sizeof(cell)*4)-1))
   #endif
 #endif
 #if !defined GETPARAM_P
@@ -656,7 +656,7 @@ static int VerifyPcode(AMX *amx)
   #if defined AMX_NO_PACKED_OPC
     opmask= ~0;
   #else
-    opmask=(1 << sizeof(cell)*4)-1;
+    opmask = (1UL << sizeof(cell)*4)-1;
   #endif
 
   /* sanity checks */
@@ -2828,7 +2828,7 @@ int AMXAPI amx_Exec(AMX *amx, cell *retval, int index)
 #if !defined AMX_NO_OVERLAY
     case OP_CALL_OVL:
       offs=(cell)((unsigned char *)cip-amx->code+sizeof(cell)); /* skip address */
-      assert(offs>=0 && offs<(1<<(sizeof(cell)*4)));
+      assert(offs>=0 && offs<(1L<<(sizeof(cell)*4)));
       PUSH((offs<<(sizeof(cell)*4)) | amx->ovl_index);
       amx->ovl_index=(int)*cip;
       assert(amx->overlay!=NULL);
@@ -3527,7 +3527,7 @@ int AMXAPI amx_StrLen(const cell *cstr, int *length)
       len=len - len % sizeof(cell);     /* len = multiple of "cell" bytes */
       while ((c & CHARMASK)!=0) {
         len++;
-        c <<= 8*sizeof(char);
+        c = (ucell)c << 8*sizeof(char);
       } /* if */
     #endif
   } else {

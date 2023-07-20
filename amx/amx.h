@@ -196,7 +196,11 @@ extern  "C" {
 #define MIN_AMX_VER_JIT  11     /* AMX version supported by the JIT */
 
 #if !defined PAWN_CELL_SIZE
+# if __SIZEOF_POINTER__==8
+  #define PAWN_CELL_SIZE 64     /* use 64-bit cells for 64-bit systems */
+# else
   #define PAWN_CELL_SIZE 32     /* by default, use 32-bit cells */
+# endif
 #endif
 #if PAWN_CELL_SIZE==16
   typedef uint16_t  ucell;
@@ -478,6 +482,7 @@ int AMXAPI amx_Allot(AMX *amx, int cells, cell **address);
 int AMXAPI amx_Callback(AMX *amx, cell index, cell *result, const cell *params);
 int AMXAPI amx_Cleanup(AMX *amx);
 int AMXAPI amx_Clone(AMX *amxClone, AMX *amxSource, void *data);
+int AMXAPI amx_ConsoleInit(AMX *amx);
 int AMXAPI amx_Exec(AMX *amx, cell *retval, int index);
 int AMXAPI amx_FindNative(AMX *amx, const char *name, int *index);
 int AMXAPI amx_FindPublic(AMX *amx, const char *name, int *index);
@@ -510,6 +515,7 @@ int AMXAPI amx_SetCallback(AMX *amx, AMX_CALLBACK callback);
 int AMXAPI amx_SetDebugHook(AMX *amx, AMX_DEBUG debug);
 int AMXAPI amx_SetString(cell *dest, const char *source, int pack, int use_wchar, size_t size);
 int AMXAPI amx_SetUserData(AMX *amx, long tag, void *ptr);
+int AMXAPI amx_StringInit(AMX *amx);
 int AMXAPI amx_StrLen(const cell *cstring, int *length);
 int AMXAPI amx_UTF8Check(const char *string, int *length);
 int AMXAPI amx_UTF8Get(const char *string, const char **endptr, cell *value);
