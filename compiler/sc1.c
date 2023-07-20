@@ -890,7 +890,9 @@ cleanup:
       pc_printf("\n%d Warning%s.\n",warnnum,(warnnum>1) ? "s" : "");
     retcode=0;          /* use "0", so that MAKE and similar tools continue */
   } else {
-    retcode=jmpcode;
+    if (verbosity>0)
+      pc_printf("Completed successfully\n");
+    retcode = jmpcode;
   } /* if */
   #if defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__
     br_deinit();
@@ -1650,7 +1652,7 @@ static void about(void)
     pc_printf("             1    core instruction set (JIT-compatible)\n");
     pc_printf("             2    supplemental instruction set\n");
     pc_printf("             3    full instruction set (packed opcodes)\n");
-    pc_printf("         -p<name> set name of the \"prefix\" file\n");
+    pc_printf("         -p<name> set the \"prefix\" file; omit name to block default prefix file\n");
 #if !defined PAWN_LIGHT
     pc_printf("         -r[name] write cross reference report to console or to specified file\n");
 #endif

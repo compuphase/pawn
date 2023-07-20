@@ -103,6 +103,7 @@ test3:
   say 'that is the last line executed (through the function call).'
   say '-----'
   pawncc ' -d2 ASSERT_LINENO= test2'
+  say '-----'
   pawnrun ' test2.amx'
   return
 
@@ -116,7 +117,7 @@ test4:
   return
 
 test5:
-  say '5. The compilation should issue error 037 ("invalid string")'
+  say '5. The compilation should issue error 037 ("invalid string").'
   say ''
   say '   An unterminated string in a function that accepts a variable number of'
   say '   parameters re-enters the lexer indefinitely searching for the closing ")".'
@@ -208,7 +209,7 @@ test13:
   say ''
   say '    Function names with upper case letters are valid.'
   say ''
-  say 'Symptoms of detected bug: assertion failed (in the assembler)'
+  say 'Symptoms of detected bug: assertion failed (in the assembler).'
   say '-----'
   pawncc ' -p MIXED_CASE= test1'
   return
@@ -220,7 +221,7 @@ test14:
   say '    index was not declared in expr1 of the "for" loop.'
   say ''
   say 'Symptoms of detected bug: compiler error for one or more unknown variable(s)'
-  say 'and an assertion failed (in the staging submodule)'
+  say 'and an assertion failed (in the staging submodule).'
   say '-----'
   pawncc ' -p FOR_DEL_LOCALS= test1'
   return
@@ -275,7 +276,7 @@ test18:
   return
 
 test19:
-  say '19. The compilation should issue error 022 (after warning 211).'
+  say '19. The compilation should issue error 022, after warning 211.'
   say ''
   say '    An attempt to assign a value to a constant in a test should issue error 22'
   say '    and warning 211.'
@@ -357,6 +358,7 @@ test26:
   say 'primary register before pushing it onto the stack.'
   say '-----'
   pawncc ' REFERENCE_ARG= test2'
+  say '-----'
   pawnrun ' test2.amx'
   return
 
@@ -391,6 +393,7 @@ test29:
   say 'the "label" code not being accounted for in the code generation.'
   say '-----'
   pawncc ' test5'
+  say '-----'
   pawnrun ' test5.amx'
   return
 
@@ -451,6 +454,7 @@ test34:
   say 'well.'
   say '-----'
   pawncc ' REDUNDANT_TEST= test2'
+  say '-----'
   pawnrun ' test2.amx'
   return
 
@@ -465,6 +469,7 @@ test35:
   say 'around the following code was scrapped too.'
   say '-----'
   pawncc ' REDUNDANT_CODE= test2'
+  say '-----'
   pawnrun ' test2.amx'
   return
 
@@ -480,6 +485,7 @@ test36:
   say 'constant expression.'
   say '-----'
   pawncc ' COND_EXPR_CONST= test2'
+  say '-----'
   pawnrun ' test2.amx'
   return
 
@@ -497,6 +503,7 @@ test37:
   say 'causes a "heap underflow" error.'
   say '-----'
   pawncc ' DEF_ARRAY_ARG= test2'
+  say '-----'
   pawnrun ' test2.amx'
   return
 
@@ -544,6 +551,7 @@ test40:
   say 'declarations.'
   say '-----'
   pawncc ' USEROP_STOCK= float'
+  say '-----'
   pawnrun ' float.amx'
   return
 
@@ -556,6 +564,7 @@ test41:
   say 'Symptoms of detected bug: p was set to -30, due to an optimizer bug.'
   say '-----'
   pawncc ' SUB_CONST_EXPR= test2'
+  say '-----'
   pawnrun ' test2.amx'
   return
 
@@ -571,6 +580,7 @@ test42:
   say 'register and pushed onto the stack.'
   say '-----'
   pawncc ' USEROP_CONSTPARAMS= float'
+  say '-----'
   pawnrun ' float.amx'
   return
 
@@ -587,6 +597,7 @@ test43:
   say 'the symbol renaming with user-defined operators and symbol length variations).'
   say '-----'
   pawncc ' -d2 USEROP_DEBUGINFO= float'
+  say '-----'
   pawnrun ' float.amx'
   return
 
@@ -618,6 +629,7 @@ test45:
   say 'the user-defined operator is likely to clobber it.'
   say '-----'
   pawncc ' -d2 USEROP_CHAINOP= float'
+  say '-----'
   pawnrun ' float.amx'
   return
 
@@ -636,6 +648,7 @@ test46:
   say 'of its value (which is the address of the appropriate array).'
   say '-----'
   pawncc ' COND_OPER_ARRAY= test2'
+  say '-----'
   pawnrun ' test2.amx'
   return
 
@@ -747,6 +760,7 @@ test55:
   say 'flagged (e.g. "new array[10]; new x = array[10];" worked).'
   say '-----'
   pawncc ' -p OUT_OF_BOUNDS= test1'
+  say '-----'
   pawnrun ' test1.amx'
   return
 
@@ -793,6 +807,7 @@ test58:
   say 'variable is no longer an lvalue.'
   say '-----'
   pawncc ' POST_INCREMENT_REF= test2'
+  say '-----'
   pawnrun ' test2.amx'
   return
 
@@ -821,6 +836,7 @@ test60:
   say '-----'
   pawncc ' NEGATIVE_INDEX3= test2'
   pawnrun ' test2.amx'
+  say '-----'
   pawncc ' NEGATIVE_INDEX4= test2'
   pawnrun ' test2.amx'
   return
@@ -834,6 +850,7 @@ test61:
   say '    than 3 decimals.'
   say '-----'
   pawncc ' tstfixed'
+  say '-----'
   pawnrun ' tstfixed.amx'
   return
 
@@ -867,6 +884,7 @@ test64:
   say '    dimensions are unspecified.'
   say '-----'
   pawncc ' -p array'
+  say '-----'
   pawnrun ' array.amx'
   return
 
@@ -881,6 +899,7 @@ test65:
   say 'Symptoms of detected bug: the compiler dropped into an assertion.'
   say '-----'
   pawncc ' -p MIX_DIMENSIONS= array'
+  say '-----'
   pawnrun ' array.amx'
   return
 
@@ -1011,6 +1030,7 @@ test76:
   say 'out. This was due to the switch marking an "end of expression".'
   say '-----'
   pawncc ' SWITCH_SIDE_EFFECT= test2'
+  say '-----'
   pawnrun ' test2.amx'
   return
 
@@ -1024,6 +1044,7 @@ test77:
   say 'Symptoms of detected bug: The compiler failed in an assertion.'
   say '-----'
   pawncc ' CHAINED_ARRAY_ASSIGN= test2'
+  say '-----'
   pawnrun ' test2.amx'
   return
 
@@ -1077,6 +1098,7 @@ test82:
   say '    Several tests for string functions (insertion, deletion, selection, ...).'
   say '-----'
   pawncc ' strtst1'
+  say '-----'
   pawnrun ' strtst1'
   return
 
@@ -1087,6 +1109,7 @@ test83:
   say '    More tests for string functions (number conversions).'
   say '-----'
   pawncc ' strtst2'
+  say '-----'
   pawnrun ' strtst2'
   return
 
@@ -1155,6 +1178,7 @@ test89:
   say 'Symptoms of detected bug: No or incorrect text printed.'
   say '-----'
   pawncc ' MULTI_DIM_PARTIAL_COUNT= test2'
+  say '-----'
   pawnrun ' test2.amx'
   return
 
@@ -1171,6 +1195,7 @@ test90:
   say '         14: 1234abcdefghij'
   say '-----'
   pawncc ' strtst4'
+  say '-----'
   pawnrun ' strtst4'
   return
 
@@ -1273,11 +1298,12 @@ test99:
   say 'Symptoms of detected bug: tag was taken from a variable, not of an expression.'
   say '-----'
   pawncc ' TAGOF_PARAM= test2'
+  say '-----'
   pawnrun ' test2.amx'
   return
 
 test100:
-  say '100. The following test should issue error 009 (invalid array size)'
+  say '100. The following test should issue error 009 (invalid array size).'
   say ''
   say '     An array that exceeds 4 GiB.'
   say ''
@@ -1288,7 +1314,7 @@ test100:
 
 test101:
   say '101. The following test should issue warning 235 TWICE (missing forward'
-  say '     declaration)'
+  say '     declaration).'
   say ''
   say '     A public function calls another public function; there are no forward.'
   say '     declarations for the public functions.'
@@ -1299,7 +1325,7 @@ test101:
   return
 
 test102:
-  say '102. The following test should issue warning 201 TWICE (redefined symbol)'
+  say '102. The following test should issue warning 201 TWICE (redefined symbol).'
   say ''
   say '     Redefinition of constants.'
   say ''
@@ -1317,7 +1343,7 @@ test103:
   return
 
 test104:
-  say '104. The following TWO tests should BOTH compile successfully (NO error 38)'
+  say '104. The following TWO tests should BOTH compile successfully (NO error 38).'
   say ''
   say '     #elseif with an expression.'
   say ''
@@ -1340,11 +1366,12 @@ test105:
   say 'Symptoms of detected bug: the parameter was replaced (by an empty string).'
   say '-----'
   pawncc ' MACRO_PARM_INSTR= test2'
+  say '-----'
   pawnrun ' test2.amx'
   return
 
 test106:
-  say '106. The following test should issue warning 236 (followed by errors)'
+  say '106. The following test should issue warning 236 (followed by errors).'
   say ''
   say '     A pre-processor uses a parameter in replacement that is not in the source.'
   say ''
@@ -1370,11 +1397,12 @@ test107:
   say '     Tests for floored division.'
   say '-----'
   pawncc ' FLOORED_DIVISION= test2'
+  say '-----'
   pawnrun ' test2.amx'
   return
 
 test108:
-  say '108. The following test should issue warning 225 (unreachable code)'
+  say '108. The following test should issue warning 225 (unreachable code).'
   say ''
   say '    Code below an infinite loop, which does not contain a "break".'
   say '-----'
@@ -1411,6 +1439,7 @@ test111:
   say 'Symptoms of detected bug: incorrect optimization.'
   say '-----'
   pawncc ' RETURN_WITH_INCR= test2'
+  say '-----'
   pawnrun ' test2.amx'
   return
 
@@ -1426,6 +1455,7 @@ test112:
   say 'branch, while only one branch is taken.'
   say '-----'
   pawncc ' COND_EXP_ARRAY= test2'
+  say '-----'
   pawnrun ' test2.amx'
   return
 
@@ -1445,6 +1475,7 @@ test113:
   say 'branch, while only one branch is taken.'
   say '-----'
   pawncc ' PRINTF_PCT= test2'
+  say '-----'
   pawnrun ' test2.amx'
   return
 
@@ -1490,6 +1521,7 @@ test117:
   say 'Symptoms of detected bug: incorrect size determination by the compiler.'
   say '-----'
   pawncc ' COUNT_ARRAY_SIZE= test2'
+  say '-----'
   pawnrun ' test2.amx'
   return
 
@@ -1538,6 +1570,7 @@ test121:
   say 'Symptoms of detected bug: incorrect print-out, due to overwriting the index vector.'
   say '-----'
   pawncc ' ARRAY2DTO3D= array2'
+  say '-----'
   pawnrun ' array2.amx'
   return
 
@@ -1568,6 +1601,7 @@ test124:
   say '     Concatenation of string literals.'
   say '-----'
   pawncc ' LIT_STRING_CAT= test2'
+  say '-----'
   pawnrun ' test2.amx'
   return
 
@@ -1581,6 +1615,7 @@ test125:
   say '     Concatenation of string literals, but mixing string formats.'
   say '-----'
   pawncc ' LIT_STRING_CAT_MIX= test2'
+  say '-----'
   pawnrun ' test2.amx'
   return
 
@@ -1622,6 +1657,7 @@ test129:
   say 'ellipsis being reset in the code snippet handling enum sub-fields.'
   say '-----'
   pawncc ' ENUM_ELLIPSIS= test2'
+  say '-----'
   pawnrun ' test2.amx'
   return
 
@@ -1633,6 +1669,7 @@ test130:
   say '     Stringize operator.'
   say '-----'
   pawncc ' STRINGIZE_OPER= test2'
+  say '-----'
   pawnrun ' test2.amx'
   return
 
@@ -1664,6 +1701,7 @@ test132:
   say 'a packed opcode while it did not fit in one.'
   say '-----'
   pawncc '-O:2 PACKED_OPCODE_LIMITS= test2'
+  say '-----'
   pawnrun ' test2.amx'
   return
 
@@ -1687,6 +1725,7 @@ test134:
   say 'Symptoms of detected bug: all expressions of such kind were evaluated as 0.'
   say '-----'
   pawncc ' CONST_REL_CHAINED_OP= test2'
+  say '-----'
   pawnrun ' test2.amx'
   return
 
@@ -1704,7 +1743,7 @@ test135:
 test136:
   say '136. The following test should issue warnings 215 and 217, but NOT error 28'
   say ''
-  say 'Symptoms of detected bug: error 25, due to braces being misinterpreted as an'
+  say 'Symptoms of detected bug: error 28, due to braces being misinterpreted as an'
   say 'array index.'
   say '-----'
   pawncc ' ELSE_NO_IF= test1'
@@ -1750,6 +1789,7 @@ test140:
   say '     Using functions to access a full cell of a packed array.'
   say '-----'
   pawncc ' MIX_PACK_FUNC= test2'
+  say '-----'
   pawnrun ' test2.amx'
   return
 
@@ -1812,6 +1852,7 @@ test145:
   say 'optimized incorrectly.'
   say '-----'
   pawncc ' VARIABLE_3D_ARRAY= test2'
+  say '-----'
   pawnrun ' test2.amx'
   return
 
@@ -1828,11 +1869,12 @@ test146:
   say 'Symptoms of detected bug: native strins() ignored the maxlength parameter.'
   say '-----'
   pawncc ' STRINS_MAXLENGTH= test2'
+  say '-----'
   pawnrun ' test2.amx'
   return
 
 test147:
-  say '147. The compilation should issue warning 208 (forward declaration recommended)'
+  say '147. The compilation should issue warning 208 (forward declaration recommended).'
   say ''
   say '    Conditional-compile for a section based on whether a symbol is defined,'
   say '    where that symbol is defined later in the code, forcing an extra pass.'
@@ -1853,11 +1895,12 @@ test148:
   say 'Symptoms of detected bug: The list runs from 0 to 8 (instead of 1 to 9).'
   say '-----'
   pawncc ' INIT_ARRAY_TRAILING_COMMA= test2'
+  say '-----'
   pawnrun ' test2.amx'
   return
 
 test149:
-  say '149. The compilation should issue warning 021 (symbol already defined)'
+  say '149. The compilation should issue error 021 (symbol already defined).'
   say ''
   say '    A duplicate definition of a "goto" label.'
   say ''
@@ -1892,5 +1935,18 @@ test152:
   say 'Symptoms of detected bug: assertion failure in the assembler stage.'
   say '-----'
   pawncc 'NESTED= funretarrincondop'
+  return
+
+test153:
+  say '153. The compilation should issue error 029 (invalid expression).'
+  say ''
+  say '     Invalid syntax on a return statement.'
+  say ''
+  say 'Symptoms of detected bug: the invalid syntax caused the compiler to skip'
+  say 'the closing "}" and thus fail to detect the end of the function, which caused'
+  say 'the operator to be marked as "unused", which caused that the error was not'
+  say 'reported.'
+  say '-----'
+  pawncc 'issue45'
   return
 

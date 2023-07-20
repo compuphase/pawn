@@ -2104,6 +2104,11 @@ static int primary(value *lval,int *symtok)
   if (constant(lval)==0) {
     error(29);          /* expression error, assumed 0 */
     ldconst(0,sPRI);    /* load 0 */
+	/* Normally, gobble up unrecognized symbols, but make an exception for '}',
+	 *  because it closes compound statements.
+	 */
+    if (*symtok=='}')
+      lexpush();
   } /* if */
   return FALSE;         /* return 0 for constants (or errors) */
 }
