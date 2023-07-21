@@ -1,6 +1,6 @@
-/* Pawn disassembler  - crude, but hopefully useful
+/*  Pawn disassembler  - crude, but hopefully useful
  *
- *  Copyright (c) CompuPhase, 2007-2020
+ *  Copyright (c) CompuPhase, 2007-2023
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not
  *  use this file except in compliance with the License. You may obtain a copy
@@ -596,7 +596,7 @@ int main(int argc,char *argv[])
     pc_cellsize=4;
     cellmask=0xffffffffLU;
   } else if (amxhdr.magic==AMX_MAGIC_64) {
-    pc_cellsize=4;
+    pc_cellsize=8;
     cellmask=(ucell)0xffffffffffffffffLL;  /* suffix "LLU" is unsupported on Microsoft Visual C/C++ */
   } else {
     printf("Not a valid AMX file\n");
