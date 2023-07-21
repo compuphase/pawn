@@ -1,6 +1,6 @@
 #build file for CMake, see http://www.cmake.org/
 
-CMAKE_MINIMUM_REQUIRED(VERSION 2.6)
+CMAKE_MINIMUM_REQUIRED(VERSION 3.0)
 
 PROJECT(pawnamx)
 
@@ -34,10 +34,10 @@ ENDIF(HAVE_ALLOCA_H)
 
 # check optional packages
 FIND_PACKAGE(Dyncall)
-IF(DYNCALL_FOUND)
-  ADD_DEFINITIONS(-DHAVE_DYNCALL_H)
-  INCLUDE_DIRECTORIES(${DYNCALL_INCLUDE_DIR} ${DYNLOAD_INCLUDE_DIR})
-ENDIF(DYNCALL_FOUND)
+IF(Dyncall_FOUND)
+  ADD_DEFINITIONS(-DHAVE_Dyncall_H)
+  INCLUDE_DIRECTORIES(${Dyncall_INCLUDE_DIR} ${DYNLOAD_INCLUDE_DIR})
+ENDIF(Dyncall_FOUND)
 
 
 ADD_DEFINITIONS(-DFLOATPOINT -DFIXEDPOINT)
@@ -173,11 +173,11 @@ INSTALL(TARGETS amxFloat LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
 # amxProcess
 SET(PROCESS_SRCS amxprocess.c amx.c)
 ADD_LIBRARY(amxProcess SHARED ${PROCESS_SRCS})
-IF(DYNCALL_FOUND)
-  TARGET_LINK_LIBRARIES(amxProcess ${DYNCALL_LIBRARIES})
-ELSE(DYNCALL_FOUND)
+IF(Dyncall_FOUND)
+  TARGET_LINK_LIBRARIES(amxProcess ${Dyncall_LIBRARIES})
+ELSE(Dyncall_FOUND)
   MESSAGE("The extension module amxProcess requires 'dyncall' (foreign function interface); see http://www.dyncall.org/.\nYou may continue with this build, but without dyncall, the module amxProcess will lack some functionality.\nNote: unpack the 'dyncall' archive in the Pawn source directory (and build it).")
-ENDIF(DYNCALL_FOUND)
+ENDIF(Dyncall_FOUND)
 SET_TARGET_PROPERTIES(amxProcess PROPERTIES PREFIX "")
 IF(WIN32)
   SET(PROCESS_SRCS ${PROCESS_SRCS} dllmain.c amxprocess.rc)

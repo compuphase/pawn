@@ -23,7 +23,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: sc1.c 6966 2023-07-20 18:46:01Z thiadmer $
+ *  Version: $Id: sc1.c 6968 2023-07-21 11:30:53Z thiadmer $
  */
 #include <assert.h>
 #include <ctype.h>
@@ -74,6 +74,7 @@
 #include "lstring.h"
 #include "sc.h"
 #if defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__ || defined __APPLE__
+  #include <sys/wait.h>
   #include <sclinux.h>
   #include <binreloc.h> /* from BinReloc, see www.autopackage.org */
   #include <sys/wait.h>

@@ -18,7 +18,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: amxcons.c 6932 2023-04-03 13:56:19Z thiadmer $
+ *  Version: $Id: amxcons.c 6968 2023-07-21 11:30:53Z thiadmer $
  */
 
 #if defined _UNICODE || defined __UNICODE__ || defined UNICODE
@@ -572,7 +572,8 @@ static int cons_putchar(void *dest,TCHAR ch)
 
 enum {
   SV_DECIMAL,
-  SV_HEX
+  SV_HEX,
+  SV_BINARY
 };
 
 static TCHAR *reverse(TCHAR *string,int stop)
@@ -623,6 +624,12 @@ static TCHAR *amx_strval(TCHAR buffer[], long value, int format, int width)
         value /= 10;
       } while (value != 0);
     }
+  } else if (format == SV_BINARY) {
+    unsigned long v = (unsigned long)value;	/* copy to unsigned value for shifting */
+    do {
+      buffer[stop++] = (TCHAR)((v & 1) + __T('0'));
+      v >>= 1;
+    } while (v != 0);
   } else {
     /* hexadecimal */
     unsigned long v = (unsigned long)value; /* copy to unsigned value for shifting */
@@ -741,6 +748,26 @@ static int dochar(AMX *amx,TCHAR ch,cell param,TCHAR sign,TCHAR decpoint,int wid
   assert(f_putchar!=NULL);
 
   switch (ch) {
+  case __T('b'): {
+    ucell value;
+    int length=1;
+    cptr=amx_Address(amx,param);
+    value=*(ucell*)cptr;
+    while (value>=2) {
+      length++;
+      value>>=1;
+    } /* while */
+    width-=length;
+    if (sign!=__T('-'))
+      while (width-->0)
+        f_putchar(user,filler);
+    amx_strval(buffer,(long)*cptr,SV_BINARY,0);
+    f_putstr(user,buffer);
+    while (width-->0)
+      f_putchar(user,filler);
+    return 1;
+  } /* case */
+
   case __T('c'):
     cptr=amx_Address(amx,param);
     width--;            /* single character itself has a with of 1 */
