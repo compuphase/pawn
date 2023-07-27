@@ -5,28 +5,42 @@
 #include <process>
 #include <string>
 
-enum Btn
+const Btn:
     {
-    Btn0,    Btn1,    Btn2,
-    Btn3,    Btn4,    Btn5,
-    Btn6,    Btn7,    Btn8,
-    Btn9,    BtnDot,  BtnC,
-    BtnCE,   BtnPlus, BtnMin,
-    BtnMul,  BtnDiv,  BtnEqual,
+    Btn0 = 0,
+    Btn1,
+    Btn2,
+    Btn3,
+    Btn4,
+    Btn5,
+    Btn6,
+    Btn7,
+    Btn8,
+    Btn9,
+    BtnDot,
+    BtnC,
+    BtnCE,
+    BtnPlus,
+    BtnMin,
+    BtnMul,
+    BtnDiv,
+    BtnEqual,
     BtnNone,
+    // -----
+    BtnCount
     }
 
 static entry    /* GTK "entry" widget */
-static numberstring[40 char]
+static numberstring{40}
 static accum
 static Btn:pending_op
 
 adddigit(digit, bool:reset = false)
     {
-    new command[80 char], charstr[2 char]
+    new command{80}, charstr{2}
     charstr{0} = (0 <= digit <= 9) ? digit + '0' : digit
     if (reset)
-        numberstring[0] = EOS
+        numberstring = ""
     strcat numberstring, charstr
     strformat command, _, true, "gtk_entry_set_text %d %s", entry, numberstring
     GTK(command)
@@ -34,7 +48,7 @@ adddigit(digit, bool:reset = false)
 
 displayresult(value)
     {
-    new command[80 char]
+    new command{80}
     valstr numberstring, value, true
     strformat command, _, true, "gtk_entry_set_text %d %s", entry, numberstring
     GTK(command)
@@ -165,7 +179,7 @@ event_CE()
 
 main()
     {
-    if (!procexec("gtk-server stdin") && !procexec("gtk-server.exe stdin"))
+    if (!procexec("gtk-server -stdin") && !procexec("gtk-server.exe -stdin"))
         fatal "unable to launch gtk-server"
 
     /* make a window */
@@ -183,7 +197,7 @@ main()
     GTK("gtk_table_attach_defaults %d %d 1 49 1 9", table, entry)
 
     /* the key pad */
-    new buttons[Btn]
+    new buttons[BtnCount]
     buttons[BtnDot] = GTK("gtk_button_new_with_label .")
     GTK("gtk_table_attach_defaults %d %d 21 29 41 49", table, buttons[BtnDot])
     buttons[Btn0] = GTK("gtk_button_new_with_label 0")
@@ -267,7 +281,7 @@ main()
 
 GTK(const format[], ...)
     {
-    new command[256 char]
+    new command{256}
     switch (numargs())
         {
         case 1:
