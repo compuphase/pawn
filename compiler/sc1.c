@@ -5998,6 +5998,7 @@ SC_FUNC int constexpr(cell *val,int *tag,symbol **symptr)
   stgset(FALSE);        /* stop stage-buffering */
   if (ident!=iCONSTEXPR) {
     error(8);           /* must be constant expression */
+    litidx=0;           /* clear the literal pool */
     if (val!=NULL)
       *val=0;
     if (tag!=NULL)
