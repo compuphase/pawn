@@ -6,7 +6,7 @@
 ;   Little Endian.
 ;
 ;   You will need to compile the standard AMX.C file with the macro
-;   ASM32 defined.
+;   AMX_ASM defined.
 ;
 ;   The calling convention conforms to the ARM Architecture Procedure
 ;   Call Standard (AAPCS). This applies both to the function amx_exec_run
@@ -29,7 +29,7 @@
 ;   License for the specific language governing permissions and limitations
 ;   under the License.
 ;
-;   Version: $Id: amxexec_thumb2.s 6131 2020-04-29 19:47:15Z thiadmer $
+;   Version: $Id: amxexec_thumb2.s 6969 2023-07-26 12:26:41Z thiadmer $
 
 
     AREA    amxexec_data, DATA, READONLY
@@ -88,190 +88,190 @@ amx_reloc_size    EQU    120   ; (JIT) required temporary buffer for relocations
 amx_opcodelist
 _amx_opcodelist
     ; core set
-    DCD     OP_NOP
-    DCD     OP_LOAD_PRI
-    DCD     OP_LOAD_ALT
-    DCD     OP_LOAD_S_PRI
-    DCD     OP_LOAD_S_ALT
-    DCD     OP_LREF_S_PRI
-    DCD     OP_LREF_S_ALT
-    DCD     OP_LOAD_I
-    DCD     OP_LODB_I
-    DCD     OP_CONST_PRI
-    DCD     OP_CONST_ALT
-    DCD     OP_ADDR_PRI
-    DCD     OP_ADDR_ALT
-    DCD     OP_STOR
-    DCD     OP_STOR_S
-    DCD     OP_SREF_S
-    DCD     OP_STOR_I
-    DCD     OP_STRB_I
-    DCD     OP_ALIGN_PRI
-    DCD     OP_LCTRL
-    DCD     OP_SCTRL
-    DCD     OP_XCHG
-    DCD     OP_PUSH_PRI
-    DCD     OP_PUSH_ALT
-    DCD     OP_PUSHR_PRI
-    DCD     OP_POP_PRI
-    DCD     OP_POP_ALT
-    DCD     OP_PICK
-    DCD     OP_STACK
-    DCD     OP_HEAP
-    DCD     OP_PROC
-    DCD     OP_RET
-    DCD     OP_RETN
-    DCD     OP_CALL
-    DCD     OP_JUMP
-    DCD     OP_JZER
-    DCD     OP_JNZ
-    DCD     OP_SHL
-    DCD     OP_SHR
-    DCD     OP_SSHR
-    DCD     OP_SHL_C_PRI
-    DCD     OP_SHL_C_ALT
-    DCD     OP_SMUL
-    DCD     OP_SDIV
-    DCD     OP_ADD
-    DCD     OP_SUB
-    DCD     OP_AND
-    DCD     OP_OR
-    DCD     OP_XOR
-    DCD     OP_NOT
-    DCD     OP_NEG
-    DCD     OP_INVERT
-    DCD     OP_EQ
-    DCD     OP_NEQ
-    DCD     OP_SLESS
-    DCD     OP_SLEQ
-    DCD     OP_SGRTR
-    DCD     OP_SGEQ
-    DCD     OP_INC_PRI
-    DCD     OP_INC_ALT
-    DCD     OP_INC_I
-    DCD     OP_DEC_PRI
-    DCD     OP_DEC_ALT
-    DCD     OP_DEC_I
-    DCD     OP_MOVS
-    DCD     OP_CMPS
-    DCD     OP_FILL
-    DCD     OP_HALT
-    DCD     OP_BOUNDS
-    DCD     OP_SYSREQ
-    DCD     OP_SWITCH
-    DCD     OP_SWAP_PRI
-    DCD     OP_SWAP_ALT
-    DCD     OP_BREAK
-    DCD     OP_CASETBL
+    DCD     OP_NOP + 1
+    DCD     OP_LOAD_PRI + 1
+    DCD     OP_LOAD_ALT + 1
+    DCD     OP_LOAD_S_PRI + 1
+    DCD     OP_LOAD_S_ALT + 1
+    DCD     OP_LREF_S_PRI + 1
+    DCD     OP_LREF_S_ALT + 1
+    DCD     OP_LOAD_I + 1
+    DCD     OP_LODB_I + 1
+    DCD     OP_CONST_PRI + 1
+    DCD     OP_CONST_ALT + 1
+    DCD     OP_ADDR_PRI + 1
+    DCD     OP_ADDR_ALT + 1
+    DCD     OP_STOR + 1
+    DCD     OP_STOR_S + 1
+    DCD     OP_SREF_S + 1
+    DCD     OP_STOR_I + 1
+    DCD     OP_STRB_I + 1
+    DCD     OP_ALIGN_PRI + 1
+    DCD     OP_LCTRL + 1
+    DCD     OP_SCTRL + 1
+    DCD     OP_XCHG + 1
+    DCD     OP_PUSH_PRI + 1
+    DCD     OP_PUSH_ALT + 1
+    DCD     OP_PUSHR_PRI + 1
+    DCD     OP_POP_PRI + 1
+    DCD     OP_POP_ALT + 1
+    DCD     OP_PICK + 1
+    DCD     OP_STACK + 1
+    DCD     OP_HEAP + 1
+    DCD     OP_PROC + 1
+    DCD     OP_RET + 1
+    DCD     OP_RETN + 1
+    DCD     OP_CALL + 1
+    DCD     OP_JUMP + 1
+    DCD     OP_JZER + 1
+    DCD     OP_JNZ + 1
+    DCD     OP_SHL + 1
+    DCD     OP_SHR + 1
+    DCD     OP_SSHR + 1
+    DCD     OP_SHL_C_PRI + 1
+    DCD     OP_SHL_C_ALT + 1
+    DCD     OP_SMUL + 1
+    DCD     OP_SDIV + 1
+    DCD     OP_ADD + 1
+    DCD     OP_SUB + 1
+    DCD     OP_AND + 1
+    DCD     OP_OR + 1
+    DCD     OP_XOR + 1
+    DCD     OP_NOT + 1
+    DCD     OP_NEG + 1
+    DCD     OP_INVERT + 1
+    DCD     OP_EQ + 1
+    DCD     OP_NEQ + 1
+    DCD     OP_SLESS + 1
+    DCD     OP_SLEQ + 1
+    DCD     OP_SGRTR + 1
+    DCD     OP_SGEQ + 1
+    DCD     OP_INC_PRI + 1
+    DCD     OP_INC_ALT + 1
+    DCD     OP_INC_I + 1
+    DCD     OP_DEC_PRI + 1
+    DCD     OP_DEC_ALT + 1
+    DCD     OP_DEC_I + 1
+    DCD     OP_MOVS + 1
+    DCD     OP_CMPS + 1
+    DCD     OP_FILL + 1
+    DCD     OP_HALT + 1
+    DCD     OP_BOUNDS + 1
+    DCD     OP_SYSREQ + 1
+    DCD     OP_SWITCH + 1
+    DCD     OP_SWAP_PRI + 1
+    DCD     OP_SWAP_ALT + 1
+    DCD     OP_BREAK + 1
+    DCD     OP_CASETBL + 1
     ; patched instructions
-    DCD     OP_SYSREQ_D
-    DCD     OP_SYSREQ_ND
+    DCD     OP_SYSREQ_D + 1
+    DCD     OP_SYSREQ_ND + 1
     ; overlay instructions
  IF :LNOT::DEF:AMX_NO_OVERLAY
-    DCD     OP_CALL_OVL
-    DCD     OP_RETN_OVL
-    DCD     OP_SWITCH_OVL
-    DCD     OP_CASETBL_OVL
+    DCD     OP_CALL_OVL + 1
+    DCD     OP_RETN_OVL + 1
+    DCD     OP_SWITCH_OVL + 1
+    DCD     OP_CASETBL_OVL + 1
  ENDIF  ; AMX_NO_OVERLAY
     ; supplemental instructions
  IF :LNOT::DEF:AMX_NO_MACRO_INSTR
-    DCD     OP_LIDX
-    DCD     OP_LIDX_B
-    DCD     OP_IDXADDR
-    DCD     OP_IDXADDR_B
-    DCD     OP_PUSH_C
-    DCD     OP_PUSH
-    DCD     OP_PUSH_S
-    DCD     OP_PUSH_ADR
-    DCD     OP_PUSHR_C
-    DCD     OP_PUSHR_S
-    DCD     OP_PUSHR_ADR
-    DCD     OP_JEQ
-    DCD     OP_JNEQ
-    DCD     OP_JSLESS
-    DCD     OP_JSLEQ
-    DCD     OP_JSGRTR
-    DCD     OP_JSGEQ
-    DCD     OP_SDIV_INV
-    DCD     OP_SUB_INV
-    DCD     OP_ADD_C
-    DCD     OP_SMUL_C
-    DCD     OP_ZERO_PRI
-    DCD     OP_ZERO_ALT
-    DCD     OP_ZERO
-    DCD     OP_ZERO_S
-    DCD     OP_EQ_C_PRI
-    DCD     OP_EQ_C_ALT
-    DCD     OP_INC
-    DCD     OP_INC_S
-    DCD     OP_DEC
-    DCD     OP_DEC_S
-    DCD     OP_SYSREQ_N
-    DCD     OP_PUSHM_C
-    DCD     OP_PUSHM
-    DCD     OP_PUSHM_S
-    DCD     OP_PUSHM_ADR
-    DCD     OP_PUSHRM_C
-    DCD     OP_PUSHRM_S
-    DCD     OP_PUSHRM_ADR
-    DCD     OP_LOAD2
-    DCD     OP_LOAD2_S
-    DCD     OP_CONST
-    DCD     OP_CONST_S
+    DCD     OP_LIDX + 1
+    DCD     OP_LIDX_B + 1
+    DCD     OP_IDXADDR + 1
+    DCD     OP_IDXADDR_B + 1
+    DCD     OP_PUSH_C + 1
+    DCD     OP_PUSH + 1
+    DCD     OP_PUSH_S + 1
+    DCD     OP_PUSH_ADR + 1
+    DCD     OP_PUSHR_C + 1
+    DCD     OP_PUSHR_S + 1
+    DCD     OP_PUSHR_ADR + 1
+    DCD     OP_JEQ + 1
+    DCD     OP_JNEQ + 1
+    DCD     OP_JSLESS + 1
+    DCD     OP_JSLEQ + 1
+    DCD     OP_JSGRTR + 1
+    DCD     OP_JSGEQ + 1
+    DCD     OP_SDIV_INV + 1
+    DCD     OP_SUB_INV + 1
+    DCD     OP_ADD_C + 1
+    DCD     OP_SMUL_C + 1
+    DCD     OP_ZERO_PRI + 1
+    DCD     OP_ZERO_ALT + 1
+    DCD     OP_ZERO + 1
+    DCD     OP_ZERO_S + 1
+    DCD     OP_EQ_C_PRI + 1
+    DCD     OP_EQ_C_ALT + 1
+    DCD     OP_INC + 1
+    DCD     OP_INC_S + 1
+    DCD     OP_DEC + 1
+    DCD     OP_DEC_S + 1
+    DCD     OP_SYSREQ_N + 1
+    DCD     OP_PUSHM_C + 1
+    DCD     OP_PUSHM + 1
+    DCD     OP_PUSHM_S + 1
+    DCD     OP_PUSHM_ADR + 1
+    DCD     OP_PUSHRM_C + 1
+    DCD     OP_PUSHRM_S + 1
+    DCD     OP_PUSHRM_ADR + 1
+    DCD     OP_LOAD2 + 1
+    DCD     OP_LOAD2_S + 1
+    DCD     OP_CONST + 1
+    DCD     OP_CONST_S + 1
  ENDIF  ; AMX_NO_MACRO_INSTR
     ; packed opcodes
  IF :LNOT::DEF:AMX_NO_PACKED_OPC
-    DCD     OP_LOAD_P_PRI
-    DCD     OP_LOAD_P_ALT
-    DCD     OP_LOAD_P_S_PRI
-    DCD     OP_LOAD_P_S_ALT
-    DCD     OP_LREF_P_S_PRI
-    DCD     OP_LREF_P_S_ALT
-    DCD     OP_LODB_P_I
-    DCD     OP_CONST_P_PRI
-    DCD     OP_CONST_P_ALT
-    DCD     OP_ADDR_P_PRI
-    DCD     OP_ADDR_P_ALT
-    DCD     OP_STOR_P
-    DCD     OP_STOR_P_S
-    DCD     OP_SREF_P_S
-    DCD     OP_STRB_P_I
-    DCD     OP_LIDX_P_B
-    DCD     OP_IDXADDR_P_B
-    DCD     OP_ALIGN_P_PRI
-    DCD     OP_PUSH_P_C
-    DCD     OP_PUSH_P
-    DCD     OP_PUSH_P_S
-    DCD     OP_PUSH_P_ADR
-    DCD     OP_PUSHR_P_C
-    DCD     OP_PUSHR_P_S
-    DCD     OP_PUSHR_P_ADR
-    DCD     OP_PUSHM_P_C
-    DCD     OP_PUSHM_P
-    DCD     OP_PUSHM_P_S
-    DCD     OP_PUSHM_P_ADR
-    DCD     OP_PUSHRM_P_C
-    DCD     OP_PUSHRM_P_S
-    DCD     OP_PUSHRM_P_ADR
-    DCD     OP_STACK_P
-    DCD     OP_HEAP_P
-    DCD     OP_SHL_P_C_PRI
-    DCD     OP_SHL_P_C_ALT
-    DCD     OP_ADD_P_C
-    DCD     OP_SMUL_P_C
-    DCD     OP_ZERO_P
-    DCD     OP_ZERO_P_S
-    DCD     OP_EQ_P_C_PRI
-    DCD     OP_EQ_P_C_ALT
-    DCD     OP_INC_P
-    DCD     OP_INC_P_S
-    DCD     OP_DEC_P
-    DCD     OP_DEC_P_S
-    DCD     OP_MOVS_P
-    DCD     OP_CMPS_P
-    DCD     OP_FILL_P
-    DCD     OP_HALT_P
-    DCD     OP_BOUNDS_P
+    DCD     OP_LOAD_P_PRI + 1
+    DCD     OP_LOAD_P_ALT + 1
+    DCD     OP_LOAD_P_S_PRI + 1
+    DCD     OP_LOAD_P_S_ALT + 1
+    DCD     OP_LREF_P_S_PRI + 1
+    DCD     OP_LREF_P_S_ALT + 1
+    DCD     OP_LODB_P_I + 1
+    DCD     OP_CONST_P_PRI + 1
+    DCD     OP_CONST_P_ALT + 1
+    DCD     OP_ADDR_P_PRI + 1
+    DCD     OP_ADDR_P_ALT + 1
+    DCD     OP_STOR_P + 1
+    DCD     OP_STOR_P_S + 1
+    DCD     OP_SREF_P_S + 1
+    DCD     OP_STRB_P_I + 1
+    DCD     OP_LIDX_P_B + 1
+    DCD     OP_IDXADDR_P_B + 1
+    DCD     OP_ALIGN_P_PRI + 1
+    DCD     OP_PUSH_P_C + 1
+    DCD     OP_PUSH_P + 1
+    DCD     OP_PUSH_P_S + 1
+    DCD     OP_PUSH_P_ADR + 1
+    DCD     OP_PUSHR_P_C + 1
+    DCD     OP_PUSHR_P_S + 1
+    DCD     OP_PUSHR_P_ADR + 1
+    DCD     OP_PUSHM_P_C + 1
+    DCD     OP_PUSHM_P + 1
+    DCD     OP_PUSHM_P_S + 1
+    DCD     OP_PUSHM_P_ADR + 1
+    DCD     OP_PUSHRM_P_C + 1
+    DCD     OP_PUSHRM_P_S + 1
+    DCD     OP_PUSHRM_P_ADR + 1
+    DCD     OP_STACK_P + 1
+    DCD     OP_HEAP_P + 1
+    DCD     OP_SHL_P_C_PRI + 1
+    DCD     OP_SHL_P_C_ALT + 1
+    DCD     OP_ADD_P_C + 1
+    DCD     OP_SMUL_P_C + 1
+    DCD     OP_ZERO_P + 1
+    DCD     OP_ZERO_P_S + 1
+    DCD     OP_EQ_P_C_PRI + 1
+    DCD     OP_EQ_P_C_ALT + 1
+    DCD     OP_INC_P + 1
+    DCD     OP_INC_P_S + 1
+    DCD     OP_DEC_P + 1
+    DCD     OP_DEC_P_S + 1
+    DCD     OP_MOVS_P + 1
+    DCD     OP_CMPS_P + 1
+    DCD     OP_FILL_P + 1
+    DCD     OP_HALT_P + 1
+    DCD     OP_BOUNDS_P + 1
  ENDIF  ; AMX_NO_PACKED_OPC
 opcodelist_size EQU .-amx_opcodelist
 
