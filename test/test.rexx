@@ -1961,3 +1961,13 @@ test154:
   pawncc '-; EMPTY_MAIN= test14'
   return
 
+test155:
+  say '155. The compilation should issue error 009 (invalid array size).'
+  say ''
+  say '     An array with major dimension of zero and valid minor dimension".'
+  say ''
+  say 'Symptoms of detected bug: no error, but failed on an assertion later on.'
+  say '-----'
+  pawncc 'ZERO_ARRAY_TWO_DIMS= test1'
+  return
+

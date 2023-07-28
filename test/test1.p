@@ -209,6 +209,10 @@ new Filenames[6]{} =
     new port = readcfgvalue(.key = "proxy-port", .filename = config_network)
 #endif
 
+#if defined ZERO_ARRAY_TWO_DIMS
+    new array[0][1];
+#endif
+
 main()
     {
     #if defined UNDEF_FUNC_CALL
@@ -567,6 +571,10 @@ main()
         #pragma warning pop
         b = b;
     #endif
+
+    #if defined ZERO_ARRAY_TWO_DIMS
+        array[0][0]=0
+    #endif
     }
 
 #if defined LOCAL_SHADOWS
@@ -601,3 +609,4 @@ forward dummyfunc()
 public dummyfunc()
     return 0
 #endif
+

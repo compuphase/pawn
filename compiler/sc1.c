@@ -688,7 +688,7 @@ int pc_compile(int argc, char *argv[])
             spawnl(P_WAIT,pgmname,pgmname,reportname,dotname,NULL);
           #else
             snprintf(pgmname,sizearray(pgmname),"%s%cstategraph",sc_binpath,DIRSEP_CHAR);
-            posix_spawnl(pgmname,reportname,dotname,(char*)NULL);
+            posix_spawnl(pgmname,reportname,dotname,NULL);
           #endif
         }
       } /* if */
@@ -2755,19 +2755,23 @@ static void initials(int ident,int usage,int tag,cell *size,int dim[],int numdim
   if (!matchtoken('=')) {
     cell tablesize;
     assert(ident!=iARRAY || numdim>0);
-    if (ident==iARRAY && dim[numdim-1]==0) {
-      /* declared as "myvar[];" which is senseless (note: this *does* make
-       * sense in the case of a iREFARRAY, which is a function parameter)
-       */
-      error(9);         /* array has zero length -> invalid size */
-    } /* if */
     if (ident==iARRAY) {
+      int i;
       assert(numdim>0 && numdim<=sDIMEN_MAX);
+      for (i=0; i<numdim; i++) {
+        if (dim[i]==0) {
+          /* any of array size is zero which is senseless (note: this *does* make
+           * sense in the case of a iREFARRAY, which is a function parameter)
+           */
+          error(9);         /* array has zero length -> invalid size */
+          return;
+        }
+      }
       *size=calc_arraysize(dim,numdim,0);
       if (*size==(cell)CELL_MAX) {
         error(9);       /* array is too big -> invalid size */
         return;
-      } /* if */
+      }
       /* first reserve space for the indirection vectors of the array, then
        * adjust it to contain the proper values
        * (do not use dumpzero(), as it bypasses the literal queue)
