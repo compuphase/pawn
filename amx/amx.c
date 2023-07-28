@@ -42,6 +42,11 @@
     #include <sys/types.h>
     #include <sys/mman.h>
   #endif
+  #if defined __APPLE__
+    #include <zconf.h>
+    #include <errno.h>
+    #include <libproc.h>
+  #endif
 #endif
 #if !defined AMX_ANSIONLY && (defined __LCC__ || defined __LINUX__ || defined __APPLE__)
   #include <wchar.h>    /* for wcslen() */
@@ -610,7 +615,7 @@ int AMXAPI amx_Callback(AMX *amx, cell index, cell *result, const cell *params)
   #if defined AMX_NO_PACKED_OPC
     #define GETOPCODE(c)  (OPCODE)(c)
   #else
-    #define GETOPCODE(c)  (OPCODE)((c) & ((1L << sizeof(cell)*4)-1))
+    #define GETOPCODE(c)  (OPCODE)((c) & ((1UL << sizeof(cell)*4)-1))
   #endif
 #endif
 #if !defined GETPARAM_P
@@ -1120,8 +1125,10 @@ static int VerifyPcode(AMX *amx)
     strcat(libname,source);
     #if defined _Windows
       strcat(libname,".dll");
-    #elif defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__ || defined __APPLE__
+    #elif defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__
       strcat(libname,".so");
+    #elif defined __APPLE__
+      strcat(libname,".dylib");
     #endif
   }
 #endif
@@ -1320,8 +1327,25 @@ int AMXAPI amx_Init(AMX *amx,void *program)
           if (hlib<=HINSTANCE_ERROR)
             hlib=NULL;
         #endif
-      #elif defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__ || defined __APPLE__
+      #elif defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__
         hlib=dlopen(libname,RTLD_NOW);
+      #elif defined __APPLE__
+        /* try to search library in pidpath */
+        char pathbuf[PROC_PIDPATHINFO_MAXSIZE];
+        int ret=proc_pidpath(getpid(), pathbuf, sizeof(pathbuf));
+        if (ret>0) {
+		  char ptr=strrchr(pathbuf,'/');
+		  assert(ptr!=NULL);
+          *ptr='\0';
+          asprintf(&ptr,"%s/%s",pathbuf,libname);
+		  assert(ptr!=NULL);
+          hlib=dlopen(ptr,RTLD_NOW);
+		  free(ptr);
+        }
+        if (hlib==NULL) {
+          /* if failed, try to search elsewhere */
+          hlib=dlopen(libname,RTLD_NOW);
+        }
       #endif
       if (hlib!=NULL) {
         /* a library that cannot be loaded or that does not have the required
