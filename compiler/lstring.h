@@ -7,7 +7,7 @@
   #define HAVE_SAFESTR
 #endif
 
-#if !defined HAVE_SAFESTR
+#if !defined HAVE_SAFESTR && !defined __APPLE__
 
 size_t
 strlcpy(char *dst, const char *src, size_t siz);

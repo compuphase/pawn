@@ -14,7 +14,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: pawndisasm.c 6130 2020-04-29 12:35:51Z thiadmer $
+ *  Version: $Id: pawndisasm.c 6969 2023-07-26 12:26:41Z thiadmer $
  */
 #include <assert.h>
 #include <inttypes.h>
@@ -523,7 +523,7 @@ static void addchars(char *str,int64_t value,int pos)
   *str='\0';
 }
 
-#if defined _MSC_VER || defined __GNUC__ || defined __clang__
+#if (defined _MSC_VER || defined __GNUC__ || defined __clang__) && !defined __APPLE__
 /* Copy src to string dst of size siz.
  * At most siz-1 characters * will be copied. Always NUL terminates (unless siz == 0).
  * Returns strlen(src); if retval >= siz, truncation occurred                        .

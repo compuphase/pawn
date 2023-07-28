@@ -43,7 +43,7 @@
     #include <sys/mman.h>
   #endif
 #endif
-#if defined __LCC__ || defined __LINUX__
+#if !defined AMX_ANSIONLY && (defined __LCC__ || defined __LINUX__ || defined __APPLE__)
   #include <wchar.h>    /* for wcslen() */
 #endif
 
