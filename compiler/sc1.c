@@ -23,7 +23,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: sc1.c 6968 2023-07-21 11:30:53Z thiadmer $
+ *  Version: $Id: sc1.c 6970 2023-07-28 20:12:00Z thiadmer $
  */
 #include <assert.h>
 #include <ctype.h>
@@ -2766,12 +2766,12 @@ static void initials(int ident,int usage,int tag,cell *size,int dim[],int numdim
           error(9);         /* array has zero length -> invalid size */
           return;
         }
-      }
+      } /* if */
       *size=calc_arraysize(dim,numdim,0);
       if (*size==(cell)CELL_MAX) {
         error(9);       /* array is too big -> invalid size */
         return;
-      }
+      } /* if */
       /* first reserve space for the indirection vectors of the array, then
        * adjust it to contain the proper values
        * (do not use dumpzero(), as it bypasses the literal queue)

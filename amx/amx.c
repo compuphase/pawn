@@ -14,7 +14,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: amx.c 6966 2023-07-20 18:46:01Z thiadmer $
+ *  Version: $Id: amx.c 6973 2023-08-05 20:07:04Z thiadmer $
  */
 
 #define WIN32_LEAN_AND_MEAN
@@ -101,7 +101,8 @@
   #define AMX_CLONE             /* amx_Clone() */
   #define AMX_EXEC              /* amx_Exec() */
   #define AMX_FLAGS             /* amx_Flags() */
-  #define AMX_INIT              /* amx_Init() and amx_InitJIT() */
+  #define AMX_INIT              /* amx_Init() */
+  #define AMX_JIT               /* amx_InitJIT() and other JIT support */
   #define AMX_MEMINFO           /* amx_MemInfo() */
   #define AMX_NAMELENGTH        /* amx_NameLength() */
   #define AMX_NATIVEINFO        /* amx_NativeInfo() */
@@ -146,7 +147,10 @@
   #define AMX_ALTCORE
 #endif
 #if !defined AMX_NO_PACKED_OPC && !defined AMX_TOKENTHREADING
-  #define AMX_TOKENTHREADING    /* packed opcodes require token threading */
+  #define AMX_TOKENTHREADING    /* packed opcodes require token threading (or switch threading) */
+#endif
+#if defined AMX_DONT_RELOCATE
+  #define AMX_TOKENTHREADING    /* direct threading cannot be used when opcodes cannot be relocated */
 #endif
 
 #if defined __64BIT__
@@ -564,25 +568,27 @@ int AMXAPI amx_Callback(AMX *amx, cell index, cell *result, const cell *params)
    * This trick cannot work in the JIT, because the program would need to
    * be re-JIT-compiled after patching a P-code instruction.
    */
-  assert((amx->flags & AMX_FLAG_JITC)==0 || amx->sysreq_d==0);
-  if (amx->sysreq_d!=0) {
-    /* at the point of the call, the CIP pseudo-register points directly
-     * behind the SYSREQ(.N) instruction and its parameter(s)
-     */
-    unsigned char *code=amx->code+(int)amx->cip-sizeof(cell);
-    if (amx->flags & AMX_FLAG_SYSREQN)		/* SYSREQ.N has 2 parameters */
-      code-=sizeof(cell);
-    assert(amx->code!=NULL);
-    assert(amx->cip>=4 && amx->cip<(hdr->dat - hdr->cod));
-    assert(sizeof(f)<=sizeof(cell)); /* function pointer must fit in a cell */
-    assert(*(cell*)code==index);
-    #if defined AMX_TOKENTHREADING || !(defined __GNUC__ || defined __ICC || defined AMX_ASM || defined AMX_JIT)
-      assert(!(amx->flags & AMX_FLAG_SYSREQN) && *(cell*)(code-sizeof(cell))==OP_SYSREQ
-             || (amx->flags & AMX_FLAG_SYSREQN) && *(cell*)(code-sizeof(cell))==OP_SYSREQ_N);
-    #endif
-    *(cell*)(code-sizeof(cell))=amx->sysreq_d;
-    *(cell*)code=(cell)(intptr_t)f;
-  } /* if */
+  #if !defined AMX_DONT_RELOCATE
+    assert((amx->flags & AMX_FLAG_JITC)==0 || amx->sysreq_d==0);
+    if (amx->sysreq_d!=0) {
+      /* at the point of the call, the CIP pseudo-register points directly
+       * behind the SYSREQ(.N) instruction and its parameter(s)
+       */
+      unsigned char *code=amx->code+(int)amx->cip-sizeof(cell);
+      if (amx->flags & AMX_FLAG_SYSREQN)    /* SYSREQ.N has 2 parameters */
+        code-=sizeof(cell);
+      assert(amx->code!=NULL);
+      assert(amx->cip>=4 && amx->cip<(hdr->dat - hdr->cod));
+      assert(sizeof(f)<=sizeof(cell)); /* function pointer must fit in a cell */
+      assert(*(cell*)code==index);
+      #if defined AMX_TOKENTHREADING || !(defined __GNUC__ || defined __ICC || defined AMX_ASM || defined AMX_JIT)
+        assert(!(amx->flags & AMX_FLAG_SYSREQN) && *(cell*)(code-sizeof(cell))==OP_SYSREQ
+               || (amx->flags & AMX_FLAG_SYSREQN) && *(cell*)(code-sizeof(cell))==OP_SYSREQ_N);
+      #endif
+      *(cell*)(code-sizeof(cell))=amx->sysreq_d;
+      *(cell*)code=(cell)(intptr_t)f;
+    } /* if */
+  #endif
 
   /* Note:
    *   params[0] == number of bytes for the additional parameters passed to the native function
@@ -1334,13 +1340,13 @@ int AMXAPI amx_Init(AMX *amx,void *program)
         char pathbuf[PROC_PIDPATHINFO_MAXSIZE];
         int ret=proc_pidpath(getpid(), pathbuf, sizeof(pathbuf));
         if (ret>0) {
-		  char ptr=strrchr(pathbuf,'/');
-		  assert(ptr!=NULL);
+          char ptr=strrchr(pathbuf,'/');
+          assert(ptr!=NULL);
           *ptr='\0';
           asprintf(&ptr,"%s/%s",pathbuf,libname);
-		  assert(ptr!=NULL);
+          assert(ptr!=NULL);
           hlib=dlopen(ptr,RTLD_NOW);
-		  free(ptr);
+          free(ptr);
         }
         if (hlib==NULL) {
           /* if failed, try to search elsewhere */
@@ -1455,16 +1461,6 @@ int AMXAPI amx_InitJIT(AMX *amx, void *reloc_table, void *native_code)
   } /* if */
 
   return (res == 0) ? AMX_ERR_NONE : AMX_ERR_INIT_JIT;
-}
-
-#else /* #if defined AMX_JIT */
-
-int AMXAPI amx_InitJIT(AMX *amx,void *compiled_program,void *reloc_table)
-{
-  (void)amx;
-  (void)compiled_program;
-  (void)reloc_table;
-  return AMX_ERR_INIT_JIT;
 }
 
 #endif  /* #if defined AMX_JIT */

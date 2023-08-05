@@ -29,7 +29,7 @@
 ;   License for the specific language governing permissions and limitations
 ;   under the License.
 ;
-;   Version: $Id: amxexec_arm7.s 6131 2020-04-29 19:47:15Z thiadmer $
+;   Version: $Id: amxexec_arm7.s 6973 2023-08-05 20:07:04Z thiadmer $
 
 
     AREA    amxexec_data, DATA, READONLY
@@ -1033,6 +1033,10 @@ OP_CASETBL_OVL
     mov r11, #AMX_ERR_INVINSTR  ; these instructions are no longer supported
     b   amx_exit
 
+
+   ; patched instructions
+ IF :LNOT::DEF:AMX_DONT_RELOCATE
+
 OP_SYSREQ_D                     ; tested
     GETPARAM r12                ; address of native function in r12
     ; store stack and heap state AMX state
@@ -1083,6 +1087,15 @@ OP_SYSREQ_ND                    ; tested
     teq r11, #AMX_ERR_NONE      ; callback hook returned error/abort code?
     bne amx_exit                ; yes -> quit
     NEXT
+
+ ELSE  ; AMX_DONT_RELOCATE
+
+OP_SYSREQ_D
+OP_SYSREQ_ND
+    mov r11, #AMX_ERR_INVINSTR  ; relocation disabled -> patched instructions should not be present
+    b   amx_exit
+
+ ENDIF ; AMX_DONT_RELOCATE
 
 
     ; overlay instructions

@@ -14,7 +14,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: sc2.c 6965 2023-07-20 15:44:35Z thiadmer $
+ *  Version: $Id: sc2.c 6973 2023-08-05 20:07:04Z thiadmer $
  */
 #include <assert.h>
 #include <stdio.h>
@@ -1176,7 +1176,12 @@ static int command(void)
             if (find_constval(&libname_tab,name,-1)==NULL)
               curlibrary=append_constval(&libname_tab,name,0,0);
           } /* if */
-        } else if (strcmp(str,"overlaysize")==0) {
+        } else if (strcmp(str,"opcodeset")==0) {
+          cell val;
+          preproc_expr(&val,NULL);
+          if (val>0 && val<pc_optimize)
+            pc_optimize=(int)val;
+        } else if (strcmp(str, "overlaysize") == 0) {
           symbol *sym;
           cell val;
           preproc_expr(&val,NULL);

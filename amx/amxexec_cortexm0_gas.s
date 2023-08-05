@@ -29,12 +29,35 @@
 @   License for the specific language governing permissions and limitations
 @   under the License.
 @
-@   Version: $Id: amxexec_cortexm0_gas.s 6969 2023-07-26 12:26:41Z thiadmer $
+@   Version: $Id: amxexec_cortexm0_gas.s 6973 2023-08-05 20:07:04Z thiadmer $
 
     .file   "amxexec_cortexm0_gas.s"
     .syntax unified
     .cpu cortex-m0
     .thumb
+
+
+@ Copy GCC preprocessor definitions to assembler equates, so that the assembler
+@ file can be built with 'gcc' as well as 'as'.
+#if defined BIG_ENDIAN
+  .equ BIG_ENDIAN, 1
+#endif
+#if defined AMX_DONT_RELOCATE
+  .equ AMX_DONT_RELOCATE, 1
+#endif
+#if defined AMX_NO_MACRO_INSTR
+  .equ AMX_NO_MACRO_INSTR, 1
+#endif
+#if defined AMX_NO_OVERLAY
+  .equ AMX_NO_OVERLAY, 1
+#endif
+#if defined AMX_NO_PACKED_OPC
+  .equ AMX_NO_PACKED_OPC, 1
+#endif
+#if define AMX_TOKENTHREADING
+  .equ AMX_TOKENTHREADING, 1
+#endif
+
 
 .ifndef AMX_NO_PACKED_OPC
   .ifndef AMX_TOKENTHREADING
@@ -329,7 +352,7 @@ amx_opcodelist:
 .endm
 
 .macro mPOP rx
-    ldmia r6, {\rx}             @ \rx = [STK], STK += 4
+    ldmia r6!, {\rx}            @ \rx = [STK], STK += 4
 .endm
 
 .macro CHKMARGIN rtmp           @ \rtmp = temp register to use
@@ -377,9 +400,6 @@ amx_opcodelist:
   8:
 .endm
 
-.macro CALL rx
-      blx \rx
-.endm
 
 @ ================================================================
 
@@ -477,6 +497,7 @@ amx_exec_run:
     NEXT
 
     @ move pointer to opcode list here (as a kind of literal pool), because LDR needs a positive offset
+    .align 2
 amx_opcodelist_addr:
     .word   amx_opcodelist
 amx_opcodelist_size:
@@ -485,7 +506,7 @@ amx_opcodelist_size:
 .OP_NOP:
     NEXT
 
-.OP_LOAD_PRI:
+.OP_LOAD_PRI:       @ tested
     GETPARAM r2
     ldr r0, [r5, r2]
     NEXT
@@ -541,11 +562,11 @@ amx_opcodelist_size:
   4:
     NEXT
 
-.OP_CONST_PRI:
+.OP_CONST_PRI:      @ tested
     GETPARAM r0
     NEXT
 
-.OP_CONST_ALT:
+.OP_CONST_ALT:      @ tested
     GETPARAM r1
     NEXT
 
@@ -561,7 +582,7 @@ amx_opcodelist_size:
     subs r1, r1, r5             @ reverse relocate
     NEXT
 
-.OP_STOR:
+.OP_STOR:           @ tested
     GETPARAM r2
     str r0, [r5, r2]
     NEXT
@@ -676,7 +697,7 @@ amx_opcodelist_size:
     mov r1, r2
     NEXT
 
-.OP_PUSH_PRI:
+.OP_PUSH_PRI:       @ tested
     mPUSH r0
     NEXT
 
@@ -702,7 +723,7 @@ amx_opcodelist_size:
     ldr r0, [r6, r2]
     NEXT
 
-.OP_STACK:
+.OP_STACK:          @ tested
     GETPARAM r2
     add r6, r6, r2              @ STK += param
     subs r1, r6, r5             @ ALT = STK, reverse-relocated
@@ -720,15 +741,15 @@ amx_opcodelist_size:
     CHKHEAP r3
     NEXT
 
-.OP_PROC:
+.OP_PROC:           @ tested
     mPUSH r7
     mov r7, r6                  @ FRM = stk
     CHKMARGIN r3
     NEXT
 
 .OP_RET:
-    mPOP r7                     @ pop FRM
-    mPOP r4                     @ pop CIP (return address)
+    mPOP r7                     @ pop FRM (relocated)
+    mPOP r4                     @ pop CIP (return address, not relocated)
     @ verify return address (avoid stack/buffer overflow)
     cmp r4, r9                  @ return addres < code_end ?
     bhs .err_memaccess          @ no, error
@@ -736,16 +757,16 @@ amx_opcodelist_size:
     add r4, r4, r8              @ relocate
     NEXT
 
-.OP_RETN:
-    mPOP r7                     @ pop FRM
-    mPOP r4                     @ pop CIP (return address)
+.OP_RETN:           @ tested
+    mPOP r7                     @ pop FRM (relocated)
+    mPOP r4                     @ pop CIP (return address, not relocated)
     @ verify return address (avoid stack/buffer overflow)
     cmp r4, r9                  @ return addres < code_end ?
     bhs .err_memaccess          @ no, error
     @ all tests passed
     add r4, r4, r8              @ relocate
-    ldmia r6!, {r2}             @ read value at the stack (#args passed to func), add 4 to STK
-    add r6, r6, r2              @ STK += #args (+ 4, added in the LDR instruction)
+    mPOP r2                     @ pop # args passed to func
+    add r6, r6, r2              @ STK += #args
     NEXT
 
 .err_memaccess:
@@ -843,7 +864,7 @@ amx_opcodelist_size:
     adds r0, r0, r1
     NEXT
 
-.OP_SUB:
+.OP_SUB:            @ tested
     subs r0, r1, r0
     NEXT
 
@@ -859,7 +880,7 @@ amx_opcodelist_size:
     eors r0, r0, r1
     NEXT
 
-.OP_NOT:
+.OP_NOT:            @ tested
     movs r2, #0                 @ preset r2 = 0
     cmp r0, #0
     bne 1f                      @ originally r0 != 0 -> done (r0 == 0 now)
@@ -978,8 +999,8 @@ amx_opcodelist_size:
   .movs4loop:
     cmp r2, #4                  @ 4 or more bytes to do?
     blt .movs1loop              @ no, quit loop
-    ldmia r0, {r3}
-    stmia r1, {r3}
+    ldmia r0!, {r3}
+    stmia r1!, {r3}
     subs r2, r2, #4
     b .movs4loop
   .movs1loop:
@@ -1016,8 +1037,8 @@ amx_opcodelist_size:
   .cmps4loop:
     cmp r2, #4                  @ 4 or more bytes to do?
     blt .cmps1loop
-    ldmia r0, {r6}
-    ldmia r1, {r3}
+    ldmia r0!, {r6}
+    ldmia r1!, {r3}
     subs r6, r6, r3             @ r6 = [PRI] - [ALT]
     bne .cmpsdone               @ ([PRI] - [ALT]) != 0 -> comparison failed -> done
     subs r2, r2, #4
@@ -1048,7 +1069,7 @@ amx_opcodelist_size:
     adds r3, r1, r5             @ r3 = relocated ALT again
   .fill4loop:
     subs r2, r2, #4
-    bmi filldone
+    bmi .filldone
     stmia r3, {r0}
     b .fill4loop
   .filldone:
@@ -1089,7 +1110,7 @@ amx_opcodelist_size:
   1:
     NEXT
 
-.OP_SYSREQ:
+.OP_SYSREQ:         @ tested
     GETPARAM r0                 @ native function index in r0
     @ store stack and heap state AMX state
     mov r3, r10                 @ copy r10, AMX base
@@ -1105,19 +1126,21 @@ amx_opcodelist_size:
     str r2, [r3, #amxCIP]
     @ invoke callback
     push {r1, r7}               @ save ALT (the callee may trample it), plus extra scratch register
-    mov r7, r14                 @ save r14 (lr) indirectly
-    push {r7}
-    push {r0}                   @ reserve a cell on the stack for the return value, maintain 8-byte alignment (4 registers were pushed)
+    mov r2, r12                 @ save r12 & r14 (lr) indirectly
+    mov r7, r14
+    push {r1, r2, r7}           @ r1 is a dummy, to maintain 8-byte stack alignment
+    push {r0}                   @ reserve a cell on the stack for the return value
     mov r1, r0                  @ 2nd arg = index (in r0, so do this one first)
     mov r0, r10                 @ 1st arg = AMX base
     mov r2, sp                  @ 3rd arg = address of return value
     mov r3, r6                  @ 4th arg = address in the AMX stack
     ldr r7, [r0, #amxCallback]  @ callback function pointer in r7
-    CALL r7
-    mov	r3, r0                  @ get error return in r3
+    blx r7                      @ call natives callback
+    mov r3, r0                  @ get error return in r3
     pop {r0}                    @ get return value, remove from stack
-    pop {r7}                    @ restore r14 indirectly
+    pop {r1, r2, r7}            @ restore r12 & r14 indirectly (and pop of dummy r1)
     mov r14, r7
+    mov r12, r2
     pop {r1, r7}                @ restore saved registers
     cmp r3, #AMX_ERR_NONE       @ callback hook returned error/abort code?
     beq 1f                      @ no
@@ -1175,14 +1198,16 @@ amx_opcodelist_size:
     subs r2, r4, r2             @ reverse-relocate CIP
     str r2, [r3, #amxCIP]
     @ invoke debug hook (address still in r3)
-    push {r0, r1, r4}           @ save register callee may trample, plus r4
-    mov r4, r14                 @ save r14 indirectly
-    push {r4}                   @ pushed 4 registers, so 8-byte alignment is maintained
+    push {r0, r1, r4}           @ save register callee may trample, plus r4 for extra scratch
+    mov r2, r12                 @ save r12 & r14 indirectly
+    mov r4, r14
+    push {r0, r2, r4}           @ push r0 as dummy, to maintain 8-byte stack alignment
     ldr r2, [r3, #amxDebug]     @ r2 = debug callback again
     mov r0, r10                 @ 1st arg = AMX
-    CALL r3
+    blx r2                      @ call debug callback
     mov r3, r0                  @ store exit code in r3 (r0 is restored)
-    pop {r4}                    @ restore r14 indirectly)
+    pop {r0, r2, r4}            @ restore r12 & r14 (indirectly), drop dummy (r0)
+    mov r12, r2
     mov r14, r4
     pop {r0, r1, r4}            @ restore other save registers
     cmp r3, #AMX_ERR_NONE       @ debug hook returned error/abort code?
@@ -1195,6 +1220,10 @@ amx_opcodelist_size:
 .OP_CASETBL_OVL:
     movs r2, #AMX_ERR_INVINSTR  @ these instructions are no longer supported
     bl .amx_exit                @ use BL instruction for longer jump range, r14 is unused by exit code
+
+
+    @ patched instructions
+.ifndef AMX_DONT_RELOCATE
 
 .OP_SYSREQ_D:
     GETPARAM r0                 @ address of native function in r0 (r0 = scratch, because it is overwritten anyway)
@@ -1211,14 +1240,16 @@ amx_opcodelist_size:
     subs r2, r4, r2             @ reverse-relocate CIP
     str r2, [r3, #amxCIP]
     @ invoke callback
+    mov r2, r12                 @ save r12 & r14
+    mov r3, r14
+    push {r1 - r4}              @ save ALT (the callee may trample it), plus values of r12 & r14 (r4 is dummy to maintain 8-byte alignment)
     mov r3, r0                  @ r3 = native function address (copied from r0; r0 is overwritten)
-    mov r2, r14                 @ save r14
-    push {r1, r2}               @ save ALT (the callee may trample it), plus value of r14
     mov r0, r10                 @ 1st arg = AMX
     mov r1, r6                  @ 2nd arg = address in the AMX stack
-    CALL r3
-    pop {r1, r2}                @ restore registers
-    mov r14, r2
+    blx r3                      @ call native function directly
+    pop {r1 - r4}               @ restore registers
+    mov r12, r2
+    mov r14, r3
     mov r2, r10
     ldr r3, [r2, #amxError]     @ get error returned by native function
     cmp r3, #AMX_ERR_NONE       @ callback hook returned error/abort code?
@@ -1247,14 +1278,16 @@ amx_opcodelist_size:
     subs r2, r4, r2             @ reverse-relocate CIP
     str r2, [r3, #amxCIP]
     @ invoke callback (address still in r0)
+    mov r2, r12                 @ save r12 & r14
+    mov r3, r14
+    push {r1 - r3}              @ save ALT (the callee may trample it), value of r12 & r14
     mov r3, r0                  @ r3 = native function address (copied from r0; r0 is overwritten)
-    mov r2, r14                 @ save r14
-    push {r1, r2, r3}           @ save ALT (the callee may trample it), value of r14, plus dummy to maintain 8-byte alignment
     mov r0, r10                 @ 1st arg = AMX
     mov r1, r6                  @ 2nd arg = address in the AMX stack
-    CALL r3
-    pop {r1, r2, r3}            @ restore registers
-    mov r14, r2
+    blx r3                      @ call native function directly
+    pop {r1 - r3}               @ restore registers
+    mov r12, r2
+    mov r14, r3
     add r6, r6, r11             @ remove # parameters from the AMX stack
     adds r6, r6, #4             @ also remove the extra cell pushed on the AMX stack
     pop {r2}                    @ restore original value of r11
@@ -1267,6 +1300,14 @@ amx_opcodelist_size:
   1:
     NEXT
 
+.else   @ AMX_DONT_RELOCATE
+
+.OP_SYSREQ_D:
+.OP_SYSREQ_ND:
+    movs r2, #AMX_ERR_INVINSTR  @ relocation disabled -> patched instructions should not be present
+    bl .amx_exit                @ use BL instruction for longer jump range, r14 is unused by exit code
+
+.endif  @ AMX_DONT_RELOCATE
 
     @ overlay instructions
 .ifndef AMX_NO_OVERLAY
@@ -1284,13 +1325,15 @@ amx_opcodelist_size:
     ldr r2, [r4]                @ r2 = [CIP] = param of ICALL = new overlay index
     mov r3, r10
     str r2, [r3, #amxOvlIndex]
+    mov r2, r12
     mov r3, r14
-    push {r0, r1, r3}           @ save registers PRI & ALT, plus value of r14
+    push {r0 - r4}              @ save registers PRI & ALT, plus values of r12 & r14 (r4 is a dummy, to keep sp 8-byte aligned)
     mov r0, r10                 @ 1st arg = AMX
     mov r1, r2                  @ 2nd arg = overlay index
     ldr r2, [r6, #amxOverlay]   @ callback function pointer in r2
-    CALL r2
-    pop {r0, r1, r3}            @ restore registers
+    blx r2                      @ call overlay callback
+    pop {r0 - r4}               @ restore registers
+    mov r12, r2
     mov r14, r3
     pop {r6}
     mov r3, r10
@@ -1301,10 +1344,11 @@ amx_opcodelist_size:
 .OP_RETN_OVL:
     mPOP r7                     @ pop FRM
     mPOP r4                     @ pop relative CIP (return address) + overlay index
-    ldmia r6, {r2}              @ read value at the stack (#args passed to func), add 4 to STK
-    add r6, r6, r2              @ STK += #args (+ 4, added in the LDR instruction)
-    mov r2, r14
-    push {r0 - r3}              @ save PRI, ALT plus value of r14 (r3 is a dummy, to keep sp 8-byte aligned)
+    mPOP r2                     @ pop # args passed to func
+    add r6, r6, r2              @ STK += #args
+    mov r2, r12
+    mov r3, r14
+    push {r0 - r3}              @ save PRI, ALT plus values of r12 & r14
     mov r0, r10                 @ 1st arg = AMX
     movs r1, #0
     subs r1, r1, #1             @ r1 = 0xffffffff
@@ -1312,9 +1356,10 @@ amx_opcodelist_size:
     ands r1, r4, r1             @ 2nd arg = overlay index
     str r1, [r0, #amxOvlIndex]  @ store new overlay index too
     ldr r2, [r0, #amxOverlay]   @ callback function pointer in r2
-    CALL r2
+    blx r2                      @ call overlay callback
     pop {r0 - r3}               @ restore registers
-    mov r14, r2
+    mov r12, r2
+    mov r14, r3
     mov r3, r10
     ldr r2, [r3, #amxCode]      @ r2 = code pointer (base)
     mov r8, r2                  @ r8 = base address
@@ -1340,14 +1385,16 @@ amx_opcodelist_size:
     pop {r5}                    @ restore saved register
     mov r3, r10
     str r4, [r3, #amxOvlIndex]  @ store new overlay index
-    mov r2, r14
-    push {r0 - r3}              @ save PRI, ALT plus value of r14 (r3 is a dummy, to keep sp 8-byte aligned)
+    mov r2, r12
+    mov r3, r14
+    push {r0 - r3}              @ save PRI, ALT plus values of r12 & r14
     mov r0, r10                 @ 1st arg = AMX
     mov r1, r4                  @ 2nd arg = overlay index
     ldr r2, [r3, #amxOverlay]   @ callback function pointer in r2
-    CALL r2
+    blx r2                      @ call overlay callback
     pop {r0 - r3}               @ restore registers
-    mov r14, r2
+    mov r12, r2
+    mov r14, r3
     mov r3, r10
     ldr r4, [r3, #amxCode]      @ CIP = code base
     mov r8, r4                  @ r8 = code pointer (base)
@@ -1551,12 +1598,12 @@ amx_opcodelist_size:
     NEXT
 
 .OP_SYSREQ_N:
-    mov r2, r11                 @ need extra scratch register
+    mov r2, r12                 @ save r12 (need extra scratch)
     push {r2}
     GETPARAM r0                 @ get native function index
     GETPARAM r3                 @ get # parameters
     mPUSH r3                    @ push second parameter
-    mov r11, r2                 @ r11 = # parameters
+    mov r12, r2                 @ r12 = # parameters
     @ store stack and heap state AMX state
     mov r3, r10                 @ copy r10, AMX base
     subs r2, r7, r5             @ reverse-relocate FRM
@@ -1571,23 +1618,26 @@ amx_opcodelist_size:
     str r2, [r3, #amxCIP]
     @ invoke callback
     mov r2, r14
-    push {r1, r2, r4, r5}       @ save ALT, value of r14, plus extra scratch, plus dummy to keep 8-byte alignment
-    push {r0}                   @ dummy, reserve cell for the return value
+    push {r1, r2, r4, r5}       @ save ALT, values of r12 & r14, plus 2 extra scratch (r4, r5)
+    push {r0}                   @ dummy, reserve cell for the return value (note: 6 registers pushed in total)
+    mov r5, r12                 @ r5 = # parameters
+    mov r3, r10                 @ r3 = AMX base (again)
     ldr r4, [r3, #amxCallback]  @ callback function pointer in r4
     mov r1, r0                  @ 2nd arg = index (in r0, so do this one first)
     mov r0, r10                 @ 1st arg = AMX
     mov r2, sp                  @ 3rd arg = address of return value
     mov r3, r6                  @ 4th arg = address in the AMX stack
-    CALL r4
-    mov	r3, r0                  @ get error return in r3
+    blx r4                      @ call natives callback
+    mov r3, r0                  @ get error return in r3
+    mov r12, r5                 @ r12 = # parameters
     pop {r0}                    @ return value in r0
     pop {r1, r2, r4, r5}        @ restore registers
     mov r14, r2
-    mov r2, r11
+    mov r2, r12                 @ r2 = # parameters
     adds r6, r6, r2             @ remove # parameters from the AMX stack
     adds r6, r6, #4             @ also remove the extra cell pushed
-    pop {r2}                    @ restore r11
-    mov r11, r2
+    pop {r2}                    @ restore r12
+    mov r12, r2
     cmp r3, #AMX_ERR_NONE       @ callback hook returned error/abort code?
     beq 1f                      @ no
     bl .amx_exit                @ yes -> quit (use BL instruction for longer jump range, r14 is unused by exit code)
@@ -2087,8 +2137,9 @@ amx_opcodelist_size:
     str r6, [r5, #amxSTK]       @ STK
     str r7, [r5, #amxFRM]       @ FRM
 
+    add sp, sp, #8              @ restore stack (drop space reserved for return value)
     mov r0, r2                  @ put return value in r0
-    push {r3 - r7}              @ restore high registers
+    pop {r3 - r7}               @ restore high registers
     mov r8, r3
     mov r9, r4
     mov r10, r5

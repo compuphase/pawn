@@ -32,11 +32,34 @@
 @   License for the specific language governing permissions and limitations
 @   under the License.
 @
-@   Version: $Id: amxexec_thumb2_gas.s 6969 2023-07-26 12:26:41Z thiadmer $
+@   Version: $Id: amxexec_thumb2_gas.s 6973 2023-08-05 20:07:04Z thiadmer $
 
     .file   "amxexec_thumb2_gas.s"
     .syntax unified
     .thumb
+
+
+@ Copy GCC preprocessor definitions to assembler equates, so that the assembler
+@ file can be built with 'gcc' as well as 'as'.
+#if defined BIG_ENDIAN
+  .equ BIG_ENDIAN, 1
+#endif
+#if defined AMX_DONT_RELOCATE
+  .equ AMX_DONT_RELOCATE, 1
+#endif
+#if defined AMX_NO_MACRO_INSTR
+  .equ AMX_NO_MACRO_INSTR, 1
+#endif
+#if defined AMX_NO_OVERLAY
+  .equ AMX_NO_OVERLAY, 1
+#endif
+#if defined AMX_NO_PACKED_OPC
+  .equ AMX_NO_PACKED_OPC, 1
+#endif
+#if define AMX_TOKENTHREADING
+  .equ AMX_TOKENTHREADING, 1
+#endif
+
 
 .ifndef AMX_NO_PACKED_OPC
   .ifndef AMX_TOKENTHREADING
@@ -361,9 +384,6 @@ amx_opcodelist:
     blo .err_memaccess          @ yes, then HEA <= \rx && \rx < STK (invalid area)
 .endm
 
-.macro CALL rx
-      blx \rx
-.endm
 
 @ ================================================================
 
@@ -684,8 +704,8 @@ amx_exec_run:
     bhs .err_memaccess          @ no, error
     @ all tests passed
     add r4, r4, r8              @ relocate
-    ldr r11, [r6], #4           @ read value at the stack (#args passed to func), add 4 to STK
-    add r6, r6, r11             @ STK += #args (+ 4, added in the LDR instruction)
+    mPOP r11                    @ pop # args passed to func
+    add r6, r6, r11             @ STK += #args
     NEXT
 
 .err_memaccess:
@@ -1012,7 +1032,7 @@ amx_exec_run:
     mov r2, sp                  @ 3rd arg = address of return value
     mov r3, r6                  @ 4th arg = address in the AMX stack
     ldr r11, [r10, #amxCallback]@ callback function pointer in r11
-    CALL r11
+    blx r11
     mov	r11, r0                 @ get error return in r11
     ldr r0, [sp], #8            @ get return value, restore stack
     ldmfd sp!, {r1 - r3, lr}    @ restore registers
@@ -1068,7 +1088,7 @@ amx_exec_run:
     @ invoke debug hook (address still in r12)
     stmfd sp!, {r0 - r3, r4, lr}@ save some extra registers (r4 is a dummy, to keep sp 8-byte aligned)
     mov r0, r10                 @ 1st arg = AMX
-    CALL r12
+    blx r12
     mov r11, r0                 @ store exit code in r11 (r0 is restored)
     ldmfd sp!, {r0 - r3, r4, lr}@ restore registers
     teq r11, #0                 @ debug hook returned error/abort code?
@@ -1080,6 +1100,10 @@ amx_exec_run:
 .OP_CASETBL_OVL:
     mov r11, #AMX_ERR_INVINSTR  @ these instructions are no longer supported
     b   .amx_exit
+
+
+    @ patched instructions
+.ifndef AMX_DONT_RELOCATE
 
 .OP_SYSREQ_D:                   @ tested
     GETPARAM r12                @ address of native function in r12
@@ -1096,7 +1120,7 @@ amx_exec_run:
     stmfd sp!, {r1 - r3, lr}    @ save some extra registers
     mov r0, r10                 @ 1st arg = AMX
     mov r1, r6                  @ 2nd arg = address in the AMX stack
-    CALL r12
+    blx r12
     ldmfd sp!, {r1 - r3, lr}    @ restore registers
     ldr r11, [r10, #amxError]   @ get error returned by native function
     teq r11, #AMX_ERR_NONE      @ callback hook returned error/abort code?
@@ -1121,7 +1145,7 @@ amx_exec_run:
     stmfd sp!, {r1 - r3, r4, r12, lr} @ save some extra registers (r4 is a dummy, to keep sp 8-byte aligned)
     mov r0, r10                 @ 1st arg = AMX
     mov r1, r6                  @ 2nd arg = address in the AMX stack
-    CALL r11
+    blx r11
     ldmfd sp!, {r1 - r3, r4, r12, lr} @ restore registers
     add r6, r6, r12             @ remove # parameters from the AMX stack
     add r6, r6, #4              @ also remove the extra cell pushed
@@ -1129,6 +1153,15 @@ amx_exec_run:
     teq r11, #AMX_ERR_NONE      @ callback hook returned error/abort code?
     bne .amx_exit               @ yes -> quit
     NEXT
+
+.else   @ AMX_DONT_RELOCATE
+
+.OP_SYSREQ_D:
+.OP_SYSREQ_ND:
+    mov r11, #AMX_ERR_INVINSTR  @ relocation disabled -> patched instructions should not be present
+    b   .amx_exit
+
+.endif  @ AMX_DONT_RELOCATE
 
 
     @ overlay instructions
@@ -1146,7 +1179,7 @@ amx_exec_run:
     mov r0, r10                 @ 1st arg = AMX
     mov r1, r12                 @ 2nd arg = overlay index
     ldr r11, [r10, #amxOverlay] @ callback function pointer in r11
-    CALL r11
+    blx r11
     ldmfd sp!, {r0 - r3, r4, lr}@ restore registers
     ldr r8, [r10, #amxCode]     @ r8 = code pointer (base)
     mov r4, r8                  @ CIP = code base
@@ -1155,8 +1188,8 @@ amx_exec_run:
 .OP_RETN_OVL:
     mPOP r7                     @ pop FRM
     mPOP r4                     @ pop relative CIP (return address) + overlay index
-    ldr r11, [r6], #4           @ read value at the stack (#args passed to func), add 4 to STK
-    add r6, r6, r11             @ STK += #args (+ 4, added in the LDR instruction)
+    mPOP r11                    @ pop # args passed to func
+    add r6, r6, r11             @ STK += #args
     stmfd sp!, {r0 - r3, r4, lr}@ save some extra registers (r4 is a dummy, to keep sp 8-byte aligned)
     mov r0, r10                 @ 1st arg = AMX
     mvn r1, #0                  @ r1 = 0xffffffff
@@ -1164,7 +1197,7 @@ amx_exec_run:
     and r1, r4, r1              @ 2nd arg = overlay index
     str r1, [r10, #amxOvlIndex] @ store new overlay index too
     ldr r11, [r10, #amxOverlay] @ callback function pointer in r11
-    CALL r11
+    blx r11
     ldmfd sp!, {r0 - r3, r4, lr}@ restore registers
     ldr r8, [r10, #amxCode]     @ r8 = code pointer (base)
     add r4, r8, r4, LSR #16     @ r4 = base address + relative address
@@ -1191,7 +1224,7 @@ amx_exec_run:
     mov r0, r10                 @ 1st arg = AMX
     mov r1, r4                  @ 2nd arg = overlay index
     ldr r11, [r10, #amxOverlay] @ callback function pointer in r11
-    CALL r11
+    blx r11
     ldmfd sp!, {r0 - r3, r4, lr}@ restore registers
     ldr r8, [r10, #amxCode]     @ r8 = code pointer (base)
     mov r4, r8                  @ CIP = code base
@@ -1409,7 +1442,7 @@ amx_exec_run:
     mov r2, sp                  @ 3rd arg = address of return value
     mov r3, r6                  @ 4th arg = address in the AMX stack
     ldr r11, [r10, #amxCallback]@ callback function pointer in r11
-    CALL r11
+    blx r11
     mov	r11, r0                 @ get error return in r11
     ldr r0, [sp], #4            @ get return value, restore ARM stack
     ldmfd sp!, {r1 - r3, r12, lr} @ restore registers
@@ -1898,7 +1931,7 @@ amx_exec_run:
     str r7, [r10, #amxFRM]      @ FRM
 
     mov r0, r11                 @ put return value in r0
-    add sp, sp, #8              @ drop register for the return value
+    add sp, sp, #8              @ drop reserved space for the return value
     ldmfd sp!, {r4 - r12, lr}
     bx  lr
 

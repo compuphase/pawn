@@ -15,7 +15,7 @@
 @   machine.
 @
 @
-@   Copyright (c) CompuPhase, 2006-2020
+@   Copyright (c) CompuPhase, 2006-2023
 @
 @   Licensed under the Apache License, Version 2.0 (the "License"); you may not
 @   use this file except in compliance with the License. You may obtain a copy
@@ -29,10 +29,33 @@
 @   License for the specific language governing permissions and limitations
 @   under the License.
 @
-@   Version: $Id: amxexec_arm7_gas.s 6131 2020-04-29 19:47:15Z thiadmer $
+@   Version: $Id: amxexec_arm7_gas.s 6973 2023-08-05 20:07:04Z thiadmer $
 
     .file   "amxexec_arm7_gas.s"
     .syntax unified
+
+
+@ Copy GCC preprocessor definitions to assembler equates, so that the assembler
+@ file can be built with 'gcc' as well as 'as'.
+#if defined BIG_ENDIAN
+  .equ BIG_ENDIAN, 1
+#endif
+#if defined AMX_DONT_RELOCATE
+  .equ AMX_DONT_RELOCATE, 1
+#endif
+#if defined AMX_NO_MACRO_INSTR
+  .equ AMX_NO_MACRO_INSTR, 1
+#endif
+#if defined AMX_NO_OVERLAY
+  .equ AMX_NO_OVERLAY, 1
+#endif
+#if defined AMX_NO_PACKED_OPC
+  .equ AMX_NO_PACKED_OPC, 1
+#endif
+#if define AMX_TOKENTHREADING
+  .equ AMX_TOKENTHREADING, 1
+#endif
+
 
 .ifndef AMX_NO_PACKED_OPC
   .ifndef AMX_TOKENTHREADING
@@ -1024,6 +1047,10 @@ amx_exec_run:
     mov r11, #AMX_ERR_INVINSTR  @ these instructions are no longer supported
     b   .amx_exit
 
+
+    @ patched instructions
+.ifndef AMX_DONT_RELOCATE
+
 .OP_SYSREQ_D:                   @ tested
     GETPARAM r12                @ address of native function in r12
     @ store stack and heap state AMX state
@@ -1074,6 +1101,15 @@ amx_exec_run:
     teq r11, #AMX_ERR_NONE      @ callback hook returned error/abort code?
     bne .amx_exit               @ yes -> quit
     NEXT
+
+.else   @ AMX_DONT_RELOCATE
+
+.OP_SYSREQ_D:
+.OP_SYSREQ_ND:
+    mov r11, #AMX_ERR_INVINSTR  @ relocation disabled -> patched instructions should not be present
+    b   .amx_exit
+
+.endif  @ AMX_DONT_RELOCATE
 
 
     @ overlay instructions
