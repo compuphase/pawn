@@ -23,7 +23,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: sc1.c 6970 2023-07-28 20:12:00Z thiadmer $
+ *  Version: $Id: sc1.c 7009 2023-10-10 19:30:59Z thiadmer $
  */
 #include <assert.h>
 #include <ctype.h>
@@ -1648,6 +1648,7 @@ static void about(void)
     pc_printf("         -i<name> path for include files\n");
     pc_printf("         -k<hex>  key for encrypted scripts\n");
     pc_printf("         -l       create list file (preprocess only)\n");
+    pc_printf("         -N<name>=<num> specify index number for native function\n");
     pc_printf("         -o<name> set base name of (P-code) output file\n");
     pc_printf("         -O<num>  optimization level (default=-O%d)\n",pc_optimize);
     pc_printf("             0    no optimization\n");
@@ -2969,7 +2970,6 @@ static cell initvector(int ident,int usage,int tag,cell size,int fillzero,
       /* for symbolic subscripts, allow another level of braces ("[...]" or "{...}") */
       matchbrace=0;             /* preset */
       fieldusage=usage;
-      ellips=0;
       if (field!=NULL) {
         if (matchtoken('['))
           matchbrace=']';
@@ -3054,7 +3054,7 @@ static cell initvector(int ident,int usage,int tag,cell size,int fillzero,
   } /* if */
   /* fill up the literal queue with a series */
   if (ellips) {
-    cell step=((litidx-curlit)==1) ? (cell)0 : prev1-prev2;
+    cell step=((litidx-curlit)>1 || packcount>1) ? prev1-prev2 : (cell)0;
     if (size==0 || (litidx-curlit)==0 && packcount<=0)
       error(41);                /* invalid ellipsis, array size unknown */
     else if ((litidx-curlit)==(int)size)

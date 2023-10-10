@@ -8,7 +8,7 @@
 @   You may need to set the target architecture on the command line of the
 @   assembler (or GCC compiler), i.e. "-mcpu=cortex-m3".
 @
-@   You will need to compile the standard AMX.C file with the macro
+@   You will need to compile the standard amx.c file with the macro
 @   AMX_ASM defined.
 @
 @   The calling convention conforms to the ARM Architecture Procedure
@@ -32,7 +32,7 @@
 @   License for the specific language governing permissions and limitations
 @   under the License.
 @
-@   Version: $Id: amxexec_thumb2_gas.s 6973 2023-08-05 20:07:04Z thiadmer $
+@   $Id: amxexec_thumb2_gas.S 7006 2023-10-09 08:09:26Z thiadmer $
 
     .file   "amxexec_thumb2_gas.s"
     .syntax unified
@@ -41,31 +41,56 @@
 
 @ Copy GCC preprocessor definitions to assembler equates, so that the assembler
 @ file can be built with 'gcc' as well as 'as'.
-#if defined BIG_ENDIAN
-  .equ BIG_ENDIAN, 1
-#endif
 #if defined AMX_DONT_RELOCATE
-  .equ AMX_DONT_RELOCATE, 1
-#endif
-#if defined AMX_NO_MACRO_INSTR
-  .equ AMX_NO_MACRO_INSTR, 1
+  .equ _DONT_RELOCATE, 1
+#else
+  .ifdef AMX_DONT_RELOCATE
+  .equ _DONT_RELOCATE, 1
+  .endif
 #endif
 #if defined AMX_NO_OVERLAY
-  .equ AMX_NO_OVERLAY, 1
+  .equ _NO_OVERLAY, 1
+#else
+  .ifdef AMX_NO_OVERLAY
+  .equ _NO_OVERLAY, 1
+  .endif
+#endif
+#if defined AMX_NO_MACRO_INSTR
+  .equ _NO_MACRO_INSTR, 1
+#else
+  .ifdef AMX_NO_MACRO_INSTR
+  .equ _NO_MACRO_INSTR, 1
+  .endif
 #endif
 #if defined AMX_NO_PACKED_OPC
-  .equ AMX_NO_PACKED_OPC, 1
+  .equ _NO_PACKED_OPC, 1
+#else
+  .ifdef AMX_NO_PACKED_OPC
+  .equ _NO_PACKED_OPC, 1
+  .endif
 #endif
-#if define AMX_TOKENTHREADING
-  .equ AMX_TOKENTHREADING, 1
+#if defined AMX_TOKENTHREADING
+  .equ _TOKENTHREADING, 1
+#else
+  .ifdef AMX_TOKENTHREADING
+  .equ _TOKENTHREADING, 1
+  .endif
+#endif
+#if defined BIG_ENDIAN
+  .equ _BIGENDIAN, 1
 #endif
 
-
-.ifndef AMX_NO_PACKED_OPC
-  .ifndef AMX_TOKENTHREADING
-    .equ AMX_TOKENTHREADING, 1 @ packed opcodes require token threading
+.ifndef _NO_PACKED_OPC
+  .ifndef _TOKENTHREADING
+    .equ _TOKENTHREADING, 1 @ packed opcodes require token threading
   .endif
 .endif
+.ifdef _DONT_RELOCATE
+  .ifndef _TOKENTHREADING
+    .equ _TOKENTHREADING, 1 @ when opcode patching is disabled, direct threading is impossible
+  .endif
+.endif
+
 
 .equ    AMX_ERR_NONE,       0
 .equ    AMX_ERR_EXIT,       1   @ forced exit
@@ -194,14 +219,12 @@ amx_opcodelist:
     .word   .OP_SYSREQ_D + 1
     .word   .OP_SYSREQ_ND + 1
     @ overlay instructions
-.ifndef AMX_NO_OVERLAY
     .word   .OP_CALL_OVL + 1
     .word   .OP_RETN_OVL + 1
     .word   .OP_SWITCH_OVL + 1
     .word   .OP_CASETBL_OVL + 1
-.endif  @ AMX_NO_OVERLAY
     @ supplemental instructions
-.ifndef AMX_NO_MACRO_INSTR
+.ifndef _NO_MACRO_INSTR
     .word   .OP_LIDX + 1
     .word   .OP_LIDX_B + 1
     .word   .OP_IDXADDR + 1
@@ -245,9 +268,9 @@ amx_opcodelist:
     .word   .OP_LOAD2_S + 1
     .word   .OP_CONST + 1
     .word   .OP_CONST_S + 1
-.endif  @ AMX_NO_MACRO_INSTR
+.endif  @ _NO_MACRO_INSTR
     @ packed opcodes
-.ifndef AMX_NO_PACKED_OPC
+.ifndef _NO_PACKED_OPC
     .word   .OP_LOAD_P_PRI + 1
     .word   .OP_LOAD_P_ALT + 1
     .word   .OP_LOAD_P_S_PRI + 1
@@ -299,13 +322,13 @@ amx_opcodelist:
     .word   .OP_FILL_P + 1
     .word   .OP_HALT_P + 1
     .word   .OP_BOUNDS_P + 1
-.endif  @ AMX_NO_PACKED_OPC
+.endif  @ _NO_PACKED_OPC
 .equ    opcodelist_size, .-amx_opcodelist
 
 
 .macro NEXT
-  .ifdef AMX_TOKENTHREADING
-    .ifdef AMX_NO_PACKED_OPC
+  .ifdef _TOKENTHREADING
+    .ifdef _NO_PACKED_OPC
       ldr r11, [r4], #4         @ get opcode, increment CIP
     .else
       ldr r12, [r4], #4         @ get opcode + parameter, increment CIP
@@ -313,7 +336,7 @@ amx_opcodelist:
     .endif
     ldr pc, [r14, r11, LSL #2]
   .else
-    .ifndef AMX_NO_PACKED_OPC
+    .ifndef _NO_PACKED_OPC
       .err                      @ opcode packing requires token threading
     .endif
     ldr pc, [r4], #4            @ indirect register jump
@@ -584,7 +607,7 @@ amx_exec_run:
 
 .OP_ALIGN_PRI:                  @ tested
     GETPARAM r11
-.ifndef BIG_ENDIAN
+.ifndef _BIGENDIAN
     rsbs r11, r11, #4           @ rsb = reverse subtract; r11 = #4 - param
     it  hi
     eorhi r0, r0, r11           @ PRI ^= (#4 - param), but only if (#4 - param) > 0
@@ -1103,7 +1126,7 @@ amx_exec_run:
 
 
     @ patched instructions
-.ifndef AMX_DONT_RELOCATE
+.ifndef _DONT_RELOCATE
 
 .OP_SYSREQ_D:                   @ tested
     GETPARAM r12                @ address of native function in r12
@@ -1154,18 +1177,18 @@ amx_exec_run:
     bne .amx_exit               @ yes -> quit
     NEXT
 
-.else   @ AMX_DONT_RELOCATE
+.else   @ _DONT_RELOCATE
 
 .OP_SYSREQ_D:
 .OP_SYSREQ_ND:
     mov r11, #AMX_ERR_INVINSTR  @ relocation disabled -> patched instructions should not be present
     b   .amx_exit
 
-.endif  @ AMX_DONT_RELOCATE
+.endif  @ _DONT_RELOCATE
 
 
     @ overlay instructions
-.ifndef AMX_NO_OVERLAY
+.ifndef _NO_OVERLAY
 
 .OP_CALL_OVL:
     add r11, r4, #4             @ r11 = address of next instruction (absolute)
@@ -1230,11 +1253,19 @@ amx_exec_run:
     mov r4, r8                  @ CIP = code base
     NEXT
 
-.endif  @ AMX_NO_OVERLAY
+.else   @ _NO_OVERLAY
+
+.OP_CALL_OVL:
+.OP_RETN_OVL:
+.OP_SWITCH_OVL:
+    mov r11, #AMX_ERR_INVINSTR  @ overlays disabled -> instructions should not be present
+    b   .amx_exit
+
+.endif  @ _NO_OVERLAY
 
 
     @ supplemental instructions
-.ifndef AMX_NO_MACRO_INSTR
+.ifndef _NO_MACRO_INSTR
 
 .OP_LIDX:                       @ tested
     add r12, r1, r0, LSL #2     @ r12 = ALT + 4*PRI
@@ -1424,7 +1455,7 @@ amx_exec_run:
 .OP_SYSREQ_N:                   @ tested
     GETPARAM r0                 @ get native function index
     GETPARAM r12                @ get # parameters
-    mPUSH r12                   @ push second parameter
+    mPUSH r12                   @ push # parameters
     @ store stack and heap state AMX state
     sub r11, r7, r5             @ reverse-relocate FRM
     str r11, [r10, #amxFRM]
@@ -1549,11 +1580,11 @@ amx_exec_run:
     str r12, [r7, r11]
     NEXT
 
-.endif  @ AMX_NO_MACRO_INSTR
+.endif  @ _NO_MACRO_INSTR
 
 
     @ packed opcodes
-.ifndef AMX_NO_PACKED_OPC
+.ifndef _NO_PACKED_OPC
 
 .OP_LOAD_P_PRI:
     GETPARAM_P r11
@@ -1670,7 +1701,7 @@ amx_exec_run:
 
 .OP_ALIGN_P_PRI:
     GETPARAM_P r11
-.ifndef BIG_ENDIAN
+.ifndef _BIGENDIAN
     rsbs r11, r11, #4           @ rsb = reverse subtract; r11 = #4 - param
     it hi
     eorhi r0, r0, r11           @ PRI ^= (#4 - param), but only if (#4 - param) > 0
@@ -1912,7 +1943,7 @@ amx_exec_run:
     bhi .amx_exit
     NEXT
 
-.endif  @ AMX_NO_PACKED_OPC
+.endif  @ _NO_PACKED_OPC
 
 
 .amx_exit:                      @ assume r11 already set to the exit code

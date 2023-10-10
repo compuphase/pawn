@@ -41,7 +41,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: sc7.c 6932 2023-04-03 13:56:19Z thiadmer $
+ *  Version: $Id: sc7.c 7006 2023-10-09 08:09:26Z thiadmer $
  */
 #include <assert.h>
 #include <stdio.h>
@@ -475,7 +475,7 @@ static int matchsequence(char *start,const char *end,const char *pattern,
                          char symbols[MAX_OPT_VARS+1][MAX_ALIAS+1],
                          int *match_length)
 {
-  int var,i,optsym;
+  int var,i,optsym,start_sym;
   char str[MAX_ALIAS+1];
   char *start_org=start;
   cell value;
@@ -483,6 +483,7 @@ static int matchsequence(char *start,const char *end,const char *pattern,
 
   *match_length=0;
   optsym=FALSE;
+  start_sym=TRUE;
   for (var=0; var<=MAX_OPT_VARS; var++)
     symbols[var][0]='\0';
 
@@ -542,6 +543,7 @@ static int matchsequence(char *start,const char *end,const char *pattern,
         strcpy(symbols[var],str);
       } /* if */
       optsym=FALSE;
+      start_sym=FALSE;
       break;
     case '-':
       value=-hex2cell(pattern+1,&pattern);
@@ -553,6 +555,7 @@ static int matchsequence(char *start,const char *end,const char *pattern,
         ptr++;
       } /* while */
       pattern--;  /* there is an increment following at the end of the loop */
+      start_sym=TRUE;
       break;
     case '+':
       value=hex2cell(pattern+1,&pattern);
@@ -570,11 +573,13 @@ static int matchsequence(char *start,const char *end,const char *pattern,
         return FALSE;
       while (start<end && (*start=='\t' || *start==' '))
         start++;
+      start_sym=TRUE;
       break;
     case '~':     /* optional whitespace (followed by optional symbol) */
       while (start<end && (*start=='\t' || *start==' '))
         start++;
       optsym= (pattern[1]=='%');
+      start_sym=TRUE;
       break;
     case '!':
       while (start<end && (*start=='\t' || *start==' '))
@@ -589,11 +594,20 @@ static int matchsequence(char *start,const char *end,const char *pattern,
       if (*(pattern+1)!='\0')
         while (start<end && *start=='\t' || *start==' ')
           start++;              /* skip leading white space of next instruction */
+      start_sym=TRUE;
       break;
     default:
+      if (start_sym && isdigit(*pattern) && *start=='0') {
+        /* for numeric parameters, skip leading zeros */
+        while (*pattern=='0' && isdigit(*(pattern+1)))
+          pattern++;
+        while (*start=='0' && isdigit(*(start+1)))
+          start++;
+      }
       if (tolower(*start) != tolower(*pattern))
         return FALSE;
       start++;
+      start_sym=FALSE;
     } /* switch */
     pattern++;
   } /* while */

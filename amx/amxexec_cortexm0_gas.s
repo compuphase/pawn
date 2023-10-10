@@ -5,7 +5,7 @@
 @   environments, by defining the symbol BIG_ENDIAN; the default configuration
 @   is Little Endian.
 @
-@   You will need to compile the standard AMX.C file with the macro
+@   You will need to compile the standard amx.c file with the macro
 @   AMX_ASM defined.
 @
 @   The calling convention conforms to the ARM Architecture Procedure
@@ -29,9 +29,9 @@
 @   License for the specific language governing permissions and limitations
 @   under the License.
 @
-@   Version: $Id: amxexec_cortexm0_gas.s 6973 2023-08-05 20:07:04Z thiadmer $
+@   $Id: amxexec_cortexm0_gas.S 7009 2023-10-10 19:30:59Z thiadmer $
 
-    .file   "amxexec_cortexm0_gas.s"
+    .file   "amxexec_cortexm0_gas.S"
     .syntax unified
     .cpu cortex-m0
     .thumb
@@ -39,29 +39,53 @@
 
 @ Copy GCC preprocessor definitions to assembler equates, so that the assembler
 @ file can be built with 'gcc' as well as 'as'.
-#if defined BIG_ENDIAN
-  .equ BIG_ENDIAN, 1
-#endif
 #if defined AMX_DONT_RELOCATE
-  .equ AMX_DONT_RELOCATE, 1
-#endif
-#if defined AMX_NO_MACRO_INSTR
-  .equ AMX_NO_MACRO_INSTR, 1
+  .equ _DONT_RELOCATE, 1
+#else
+  .ifdef AMX_DONT_RELOCATE
+  .equ _DONT_RELOCATE, 1
+  .endif
 #endif
 #if defined AMX_NO_OVERLAY
-  .equ AMX_NO_OVERLAY, 1
+  .equ _NO_OVERLAY, 1
+#else
+  .ifdef AMX_NO_OVERLAY
+  .equ _NO_OVERLAY, 1
+  .endif
+#endif
+#if defined AMX_NO_MACRO_INSTR
+  .equ _NO_MACRO_INSTR, 1
+#else
+  .ifdef AMX_NO_MACRO_INSTR
+  .equ _NO_MACRO_INSTR, 1
+  .endif
 #endif
 #if defined AMX_NO_PACKED_OPC
-  .equ AMX_NO_PACKED_OPC, 1
+  .equ _NO_PACKED_OPC, 1
+#else
+  .ifdef AMX_NO_PACKED_OPC
+  .equ _NO_PACKED_OPC, 1
+  .endif
 #endif
-#if define AMX_TOKENTHREADING
-  .equ AMX_TOKENTHREADING, 1
+#if defined AMX_TOKENTHREADING
+  .equ _TOKENTHREADING, 1
+#else
+  .ifdef AMX_TOKENTHREADING
+  .equ _TOKENTHREADING, 1
+  .endif
+#endif
+#if defined BIG_ENDIAN
+  .equ _BIGENDIAN, 1
 #endif
 
-
-.ifndef AMX_NO_PACKED_OPC
-  .ifndef AMX_TOKENTHREADING
-    .equ AMX_TOKENTHREADING, 1 @ packed opcodes require token threading
+.ifndef _NO_PACKED_OPC
+  .ifndef _TOKENTHREADING
+    .equ _TOKENTHREADING, 1 @ packed opcodes require token threading
+  .endif
+.endif
+.ifdef _DONT_RELOCATE
+  .ifndef _TOKENTHREADING
+    .equ _TOKENTHREADING, 1 @ when opcode patching is disabled, direct threading is impossible
   .endif
 .endif
 
@@ -192,14 +216,12 @@ amx_opcodelist:
     .word   .OP_SYSREQ_D + 1
     .word   .OP_SYSREQ_ND + 1
     @ overlay instructions
-.ifndef AMX_NO_OVERLAY
     .word   .OP_CALL_OVL + 1
     .word   .OP_RETN_OVL + 1
     .word   .OP_SWITCH_OVL + 1
     .word   .OP_CASETBL_OVL + 1
-.endif  @ AMX_NO_OVERLAY
     @ supplemental instructions
-.ifndef AMX_NO_MACRO_INSTR
+.ifndef _NO_MACRO_INSTR
     .word   .OP_LIDX + 1
     .word   .OP_LIDX_B + 1
     .word   .OP_IDXADDR + 1
@@ -243,9 +265,9 @@ amx_opcodelist:
     .word   .OP_LOAD2_S + 1
     .word   .OP_CONST + 1
     .word   .OP_CONST_S + 1
-.endif  @ AMX_NO_MACRO_INSTR
+.endif  @ _NO_MACRO_INSTR
     @ packed opcodes
-.ifndef AMX_NO_PACKED_OPC
+.ifndef _NO_PACKED_OPC
     .word   .OP_LOAD_P_PRI + 1
     .word   .OP_LOAD_P_ALT + 1
     .word   .OP_LOAD_P_S_PRI + 1
@@ -297,13 +319,13 @@ amx_opcodelist:
     .word   .OP_FILL_P + 1
     .word   .OP_HALT_P + 1
     .word   .OP_BOUNDS_P + 1
-.endif  @ AMX_NO_PACKED_OPC
+.endif  @ _NO_PACKED_OPC
 .equ    opcodelist_size, .-amx_opcodelist
 
 
 .macro NEXT
-  .ifdef AMX_TOKENTHREADING
-    .ifdef AMX_NO_PACKED_OPC
+  .ifdef _TOKENTHREADING
+    .ifdef _NO_PACKED_OPC
       ldmia r4!, {r2}           @ get opcode, increment CIP
     .else
       ldmia r4!, {r3}           @ get opcode + parameter (in r3), increment CIP
@@ -313,7 +335,7 @@ amx_opcodelist:
     add r2, r14                 @ add base of opcode table
     ldr r2, [r2]                @ read jump address from opcode table
   .else
-    .ifndef AMX_NO_PACKED_OPC
+    .ifndef _NO_PACKED_OPC
       .err                      @ opcode packing requires token threading
     .endif
     ldmia r4!, {r2}             @ direct threading -> instruction opcodes have been patched to jump addresses
@@ -511,50 +533,52 @@ amx_opcodelist_size:
     ldr r0, [r5, r2]
     NEXT
 
-.OP_LOAD_ALT:
+.OP_LOAD_ALT:       @ tested
     GETPARAM r2
     ldr r1, [r5, r2]
     NEXT
 
-.OP_LOAD_S_PRI:
+.OP_LOAD_S_PRI:     @ tested
     GETPARAM r2
     ldr r0, [r7, r2]
     NEXT
 
-.OP_LOAD_S_ALT:
+.OP_LOAD_S_ALT:     @ tested
     GETPARAM r2
     ldr r1, [r7, r2]
     NEXT
 
-.OP_LREF_S_PRI:
+.OP_LREF_S_PRI:     @ tested
     GETPARAM r2
     ldr r2, [r7, r2]
     ldr r0, [r5, r2]
     NEXT
 
-.OP_LREF_S_ALT:
+.OP_LREF_S_ALT:     @ tested
     GETPARAM r2
     ldr r2, [r7, r2]
     ldr r1, [r5, r2]
     NEXT
 
-.OP_LOAD_I:
+.OP_LOAD_I:         @ tested
     adds r3, r0, r5             @ relocate PRI to absolute address
     VERIFYADDRESS r3
     ldr r0, [r3]
     NEXT
 
-.OP_LODB_I:
+.OP_LODB_I:         @ tested
     adds r3, r0, r5             @ relocate PRI to absolute address
     VERIFYADDRESS r3
     GETPARAM r2
     cmp r2, #1
     bne 1f
     ldrb r0, [r3]
+    b 4f
   1:
     cmp r2, #2
     bne 2f
     ldrh r0, [r3]
+    b 4f
   2:
     cmp r2, #4
     bne 4f
@@ -570,13 +594,13 @@ amx_opcodelist_size:
     GETPARAM r1
     NEXT
 
-.OP_ADDR_PRI:
+.OP_ADDR_PRI:       @ tested
     GETPARAM r0
     add r0, r0, r7              @ add FRM
     subs r0, r0, r5             @ reverse relocate
     NEXT
 
-.OP_ADDR_ALT:
+.OP_ADDR_ALT:       @ tested
     GETPARAM r1
     add r1, r1, r7              @ add FRM
     subs r1, r1, r5             @ reverse relocate
@@ -587,34 +611,36 @@ amx_opcodelist_size:
     str r0, [r5, r2]
     NEXT
 
-.OP_STOR_S:
+.OP_STOR_S:         @ tested
     GETPARAM r2
     str r0, [r7, r2]
     NEXT
 
-.OP_SREF_S:
+.OP_SREF_S:         @ tested
     GETPARAM r2
     ldr r2, [r7, r2]
     str r0, [r5, r2]
     NEXT
 
-.OP_STOR_I:
+.OP_STOR_I:         @ tested
     adds r3, r1, r5             @ relocate ALT to absolute address
     VERIFYADDRESS r3
     str r0, [r3]
     NEXT
 
-.OP_STRB_I:
+.OP_STRB_I:         @ tested
     adds r3, r1, r5             @ relocate ALT to absolute address
     VERIFYADDRESS r3
     GETPARAM r2
     cmp r2, #1
     bne 1f
     strb r0, [r3]
+    b 4f
   1:
     cmp r2, #2
     bne 2f
     strh r0, [r3]
+    b 4f
   2:
     cmp r2, #4
     bne 4f
@@ -622,9 +648,9 @@ amx_opcodelist_size:
   4:
     NEXT
 
-.OP_ALIGN_PRI:
+.OP_ALIGN_PRI:      @ tested
     GETPARAM r2
-.ifndef BIG_ENDIAN
+.ifndef _BIGENDIAN
     cmp r2, #4                  @ param < cell size ?
     bhi 1f                      @ no -> skip
     movs r3, #4
@@ -691,7 +717,7 @@ amx_opcodelist_size:
   6:
     NEXT
 
-.OP_XCHG:
+.OP_XCHG:           @ tested
     mov r2, r0
     mov r0, r1
     mov r1, r2
@@ -701,7 +727,7 @@ amx_opcodelist_size:
     mPUSH r0
     NEXT
 
-.OP_PUSH_ALT:
+.OP_PUSH_ALT:       @ tested
     mPUSH r1
     NEXT
 
@@ -710,11 +736,11 @@ amx_opcodelist_size:
     mPUSH r2
     NEXT
 
-.OP_POP_PRI:
+.OP_POP_PRI:        @ tested
     mPOP r0
     NEXT
 
-.OP_POP_ALT:
+.OP_POP_ALT:        @ tested
     mPOP r1
     NEXT
 
@@ -731,7 +757,7 @@ amx_opcodelist_size:
     CHKSTACK r3
     NEXT
 
-.OP_HEAP:
+.OP_HEAP:           @ tested
     GETPARAM r2
     mov r3, r12
     subs r1, r3, r5             @ ALT = HEA, reverse-relocated
@@ -773,41 +799,41 @@ amx_opcodelist_size:
     movs r2, #AMX_ERR_MEMACCESS
     bl .amx_exit                @ use BL instruction for longer jump range, r14 is unused by exit code
 
-.OP_CALL:
+.OP_CALL:           @ tested
     mov r2, r8
-    subs r2, r4, r2             @ r2 = r4 - r8 = relicated CIP - codebase -> reverse-relocate CIP
+    subs r2, r4, r2             @ r2 = r4 - r8 = relocated CIP - codebase -> reverse-relocate CIP
     adds r2, r2, #4             @ r2 = address of next instruction
     mPUSH r2
     JUMPREL r2
     NEXT
 
-.OP_JUMP:
+.OP_JUMP:           @ tested
     JUMPREL r2
     NEXT
 
-.OP_JZER:
+.OP_JZER:           @ tested
     cmp r0, #0
     JUMPREL r2, eq              @ if PRI == 0, jump; otherwise skip param
     NEXT
 
-.OP_JNZ:
+.OP_JNZ:            @ tested
     cmp r0, #0
     JUMPREL r2, ne              @ if PRI != 0, jump; otherwise skip param
     NEXT
 
-.OP_SHL:
+.OP_SHL:            @ tested
     lsls r0, r0, r1             @ PRI = PRI << ALT
     NEXT
 
-.OP_SHR:
+.OP_SHR:            @ tested
     lsrs r0, r0, r1             @ PRI = PRI >> ALT (unsigned)
     NEXT
 
-.OP_SSHR:
+.OP_SSHR:           @ tested
     asrs r0, r0, r1             @ PRI = PRI >> ALT (signed)
     NEXT
 
-.OP_SHL_C_PRI:
+.OP_SHL_C_PRI:      @ tested
     GETPARAM r2
     lsls r0, r0, r2             @ PRI = PRI << param
     NEXT
@@ -817,11 +843,11 @@ amx_opcodelist_size:
     lsls r1, r1, r2             @ ALT = ALT << param
     NEXT
 
-.OP_SMUL:
+.OP_SMUL:           @ tested
     muls r0, r1, r0             @ dest register must also be a source
     NEXT
 
-.OP_SDIV:
+.OP_SDIV:           @ tested
     cmp r0, #0                  @ verify r0 (divisor)
     bne 1f                      @ r0 != 0 -> continue
     movs r2, #AMX_ERR_DIVIDE    @ r0 == 0 -> set error code & abort
@@ -848,7 +874,7 @@ amx_opcodelist_size:
   2:
     mov r6, r4
     eors r6, r6, r5             @ check signs of original dividend and divisor
-    bpl 9f                  @ sign(divident) == sign(divisor) -> done
+    bpl 9f                      @ sign(divident) == sign(divisor) -> done
     rsbs r0, r0, #0             @ sign(quotient) = sign(divident) XOR sign(divisor)
     @ so the quotient is negative (or zero); if the remainder is non-zero,
     @ floor the quotient and adjust the remainder
@@ -860,7 +886,7 @@ amx_opcodelist_size:
     pop {r4 - r6}
     NEXT
 
-.OP_ADD:
+.OP_ADD:            @ tested
     adds r0, r0, r1
     NEXT
 
@@ -868,15 +894,15 @@ amx_opcodelist_size:
     subs r0, r1, r0
     NEXT
 
-.OP_AND:
+.OP_AND:            @ tested
     ands r0, r0, r1
     NEXT
 
-.OP_OR:
+.OP_OR:             @ tested
     orrs r0, r0, r1
     NEXT
 
-.OP_XOR:
+.OP_XOR:            @ tested
     eors r0, r0, r1
     NEXT
 
@@ -889,69 +915,69 @@ amx_opcodelist_size:
     mov r0, r2
     NEXT
 
-.OP_NEG:
+.OP_NEG:            @ tested
     rsbs r0, r0, #0             @ PRI = #0 - PRI
     NEXT
 
-.OP_INVERT:
+.OP_INVERT:         @ tested
     mvns r0, r0                 @ PRI = NOT PRI (all bits inverted)
     NEXT
 
-.OP_EQ:
+.OP_EQ:             @ tested
     movs r2, #1                 @ preset r2 = 1
     cmp r0, r1
-    beq 1f                      @ originally, r0 == r1 -> done
-    movs r2, #0                 @ originally, r0 != r1 -> set r2 = 0
+    beq 1f                      @ r0 == r1 -> done
+    movs r2, #0                 @ r0 != r1 -> set r2 = 0
   1:
     mov r0, r2
     NEXT
 
-.OP_NEQ:
+.OP_NEQ:            @ tested
     movs r2, #1                 @ preset r2 = 1
     cmp r0, r1
-    bne 1f                      @ originally, r0 != r1 -> done
-    movs r2, #0                 @ originally, r0 == r1 -> set r0 = 0
+    bne 1f                      @ r0 != r1 -> done
+    movs r2, #0                 @ r0 == r1 -> set r2 = 0
   1:
     mov r0, r2
     NEXT
 
-.OP_SLESS:
+.OP_SLESS:          @ tested
     movs r2, #1                 @ preset r2 = 1
     cmp r0, r1
-    blt 1f                      @ originally, r0 < r1 -> done
-    movs r2, #0                 @ originally, r0 >= r1 -> set r0 = 0
+    blt 1f                      @ r0 < r1 -> done
+    movs r2, #0                 @ r0 >= r1 -> set r2 = 0
   1:
     mov r0, r2
     NEXT
 
-.OP_SLEQ:
+.OP_SLEQ:           @ tested
     movs r2, #1                 @ preset r2 = 1
     cmp r0, r1
-    ble 1f                      @ originally, r0 <= r1 -> done
-    movs r2, #0                 @ originally, r0 > r1 -> set r0 = 0
+    ble 1f                      @ r0 <= r1 -> done
+    movs r2, #0                 @ r0 > r1 -> set r2 = 0
   1:
     mov r0, r2
     NEXT
 
-.OP_SGRTR:
+.OP_SGRTR:          @ tested
     movs r2, #1                 @ preset r2 = 1
     cmp r0, r1
-    bgt 1f                      @ originally, r0 > r1 -> done
-    movs r0, #0                 @ originally, r0 <= r1 -> set r0 = 0
-  1:
-    mov r2, r2
-    NEXT
-
-.OP_SGEQ:
-    movs r2, #1                 @ preset r2 = 1
-    cmp r0, r1
-    bge 1f                      @ originally, r0 >= r1 -> done
-    movs r2, #0                 @ originally, r0 < r1 -> set r0 = 0
+    bgt 1f                      @ r0 > r1 -> done
+    movs r2, #0                 @ r0 <= r1 -> set r2 = 0
   1:
     mov r0, r2
     NEXT
 
-.OP_INC_PRI:
+.OP_SGEQ:           @ tested
+    movs r2, #1                 @ preset r2 = 1
+    cmp r0, r1
+    bge 1f                      @ r0 >= r1 -> done
+    movs r2, #0                 @ r0 < r1 -> set r2 = 0
+  1:
+    mov r0, r2
+    NEXT
+
+.OP_INC_PRI:        @ tested
     adds r0, r0, #1
     NEXT
 
@@ -959,13 +985,13 @@ amx_opcodelist_size:
     adds r1, r1, #1
     NEXT
 
-.OP_INC_I:
+.OP_INC_I:          @ tested
     ldr r3, [r5, r0]
     adds r3, r3, #1
     str r3, [r5, r0]
     NEXT
 
-.OP_DEC_PRI:
+.OP_DEC_PRI:        @ tested
     subs r0, r0, #1
     NEXT
 
@@ -973,13 +999,13 @@ amx_opcodelist_size:
     subs r1, r1, #1
     NEXT
 
-.OP_DEC_I:
+.OP_DEC_I:          @ tested
     ldr r3, [r5, r0]
     subs r3, r3, #1
     str r3, [r5, r0]
     NEXT
 
-.OP_MOVS:
+.OP_MOVS:           @ tested
     GETPARAM r2
   .movsentry:
     subs r2, r2, #1             @ decrement, for address verification
@@ -997,12 +1023,13 @@ amx_opcodelist_size:
     adds r0, r0, r5             @ relocate r0/r1
     adds r1, r1, r5
   .movs4loop:
-    cmp r2, #4                  @ 4 or more bytes to do?
-    blt .movs1loop              @ no, quit loop
+    subs r2, r2, #4             @ pre-decrement, 4 or more bytes to do?
+    bmi .movs4end               @ no, exit loop
     ldmia r0!, {r3}
     stmia r1!, {r3}
-    subs r2, r2, #4
     b .movs4loop
+  .movs4end:
+    adds r2, r2, #4             @ restore overrun
   .movs1loop:
     subs r2, r2, #1
     bmi .movsdone               @ count dropped negative -> done
@@ -1016,7 +1043,7 @@ amx_opcodelist_size:
     pop {r0, r1}                @ restore PRI and ALT
     NEXT
 
-.OP_CMPS:
+.OP_CMPS:           @ tested
     GETPARAM r2
   .cmpsentry:
     subs r2, r2, #1             @ decrement, for address verification
@@ -1035,14 +1062,15 @@ amx_opcodelist_size:
     add r1, r1, r5
     movs r6, #0                 @ preset result, in case r2 == 0
   .cmps4loop:
-    cmp r2, #4                  @ 4 or more bytes to do?
-    blt .cmps1loop
+    subs r2, r2, #4             @ pre-decrement, 4 or more bytes to do?
+    bmi .cmps4end               @ no, exit loop
     ldmia r0!, {r6}
     ldmia r1!, {r3}
     subs r6, r6, r3             @ r6 = [PRI] - [ALT]
-    bne .cmpsdone               @ ([PRI] - [ALT]) != 0 -> comparison failed -> done
-    subs r2, r2, #4
-    b .cmps4loop
+    beq .cmps4loop              @ ([PRI] - [ALT]) == 0 -> comparison ok -> continue
+    b .cmpsdone                 @ when arrived here, comparison failed -> quit
+  .cmps4end:
+    adds r2, r2, #4             @ restore overrun
   .cmps1loop:
     subs r2, r2, #1
     bmi .cmpsdone               @ count dropped negative -> done
@@ -1057,7 +1085,7 @@ amx_opcodelist_size:
     pop {r1, r6}                @ restore ALT, restore scratch register
     NEXT
 
-.OP_FILL:
+.OP_FILL:           @ tested
     GETPARAM r2
   .fillentry:
     adds r3, r1, r5             @ r3 = relocated ALT
@@ -1070,13 +1098,13 @@ amx_opcodelist_size:
   .fill4loop:
     subs r2, r2, #4
     bmi .filldone
-    stmia r3, {r0}
+    stmia r3!, {r0}
     b .fill4loop
   .filldone:
     NEXT
 
     @ add packed opcodes for MOVS, CMPS and FILL here, so that the jumps to the shared code is in reach
-.ifndef AMX_NO_PACKED_OPC
+.ifndef _NO_PACKED_OPC
 
 .OP_MOVS_P:
     GETPARAM_P r2
@@ -1092,7 +1120,7 @@ amx_opcodelist_size:
 
 .endif
 
-.OP_HALT:
+.OP_HALT:           @ tested
     ldr r2, [sp]                @ get "retval" pointer
     cmp r2, #0                  @ pointer == NULL ?
     beq 1f                      @ yes, skip storing it
@@ -1148,7 +1176,7 @@ amx_opcodelist_size:
   1:
     NEXT
 
-.OP_SWITCH:
+.OP_SWITCH:         @ tested
     push {r6}                   @ need extra register
     ldr r2, [r4]                @ r2 = [CIP], relative offset to case-table
     adds r2, r2, r4             @ r2 = direct address, OP_CASETBL opcode already skipped
@@ -1168,7 +1196,7 @@ amx_opcodelist_size:
     pop {r6}
     NEXT
 
-.OP_SWAP_PRI:
+.OP_SWAP_PRI:       @ tested
     ldr r2, [r6]
     str r0, [r6]
     mov r0, r2
@@ -1223,7 +1251,7 @@ amx_opcodelist_size:
 
 
     @ patched instructions
-.ifndef AMX_DONT_RELOCATE
+.ifndef _DONT_RELOCATE
 
 .OP_SYSREQ_D:
     GETPARAM r0                 @ address of native function in r0 (r0 = scratch, because it is overwritten anyway)
@@ -1258,7 +1286,7 @@ amx_opcodelist_size:
   1:
     NEXT
 
-.OP_SYSREQ_ND:
+.OP_SYSREQ_ND:      @ tested
     mov r2, r11                 @ need extra scratch register
     push {r2}
     GETPARAM r0                 @ address of native function in r0 (temporary)
@@ -1300,17 +1328,17 @@ amx_opcodelist_size:
   1:
     NEXT
 
-.else   @ AMX_DONT_RELOCATE
+.else   @ _DONT_RELOCATE
 
 .OP_SYSREQ_D:
 .OP_SYSREQ_ND:
     movs r2, #AMX_ERR_INVINSTR  @ relocation disabled -> patched instructions should not be present
     bl .amx_exit                @ use BL instruction for longer jump range, r14 is unused by exit code
 
-.endif  @ AMX_DONT_RELOCATE
+.endif  @ _DONT_RELOCATE
 
     @ overlay instructions
-.ifndef AMX_NO_OVERLAY
+.ifndef _NO_OVERLAY
 
 .OP_CALL_OVL:
     push {r6}                   @ need extra scratch register
@@ -1400,21 +1428,29 @@ amx_opcodelist_size:
     mov r8, r4                  @ r8 = code pointer (base)
     NEXT
 
-.endif  @ AMX_NO_OVERLAY
+.else   @ _NO_OVERLAY
+
+.OP_CALL_OVL:
+.OP_RETN_OVL:
+.OP_SWITCH_OVL:
+    movs r2, #AMX_ERR_INVINSTR  @ overlays disabled -> instructions should not be present
+    bl .amx_exit                @ use BL instruction for longer jump range, r14 is unused by exit code
+
+.endif  @ _NO_OVERLAY
 
 
     @ supplemental instructions
-.ifndef AMX_NO_MACRO_INSTR
+.ifndef _NO_MACRO_INSTR
 
-.OP_LIDX:
+.OP_LIDX:           @ tested
     lsls r2, r0, #2             @ r2 = 4*PRI
-    adds r3, r1, r0             @ r3 = ALT + 4*PRI
+    adds r3, r1, r2             @ r3 = ALT + 4*PRI
     adds r3, r3, r5             @ relocate to absolute address
     VERIFYADDRESS r3
     ldr r0, [r3]
     NEXT
 
-.OP_LIDX_B:
+.OP_LIDX_B:         @ tested
     GETPARAM r2
     mov r3, r0                  @ r3 = PRI
     lsls r3, r3, r2             @ r3 = PRI << param
@@ -1424,7 +1460,7 @@ amx_opcodelist_size:
     ldr r0, [r3]
     NEXT
 
-.OP_IDXADDR:
+.OP_IDXADDR:        @ tested
     lsls r0, r0, #2             @ r0 = 4*PRI
     adds r0, r1, r0             @ PRI = ALT + 4*PRI
     NEXT
@@ -1432,27 +1468,27 @@ amx_opcodelist_size:
 .OP_IDXADDR_B:
     GETPARAM r2
     lsls r0, r0, r2             @ r0 = PRI << param
-    adds r0, r0, r1             @ PRI = ALT + (PRI << param)
+    adds r0, r1, r0             @ PRI = ALT + (PRI << param)
     NEXT
 
-.OP_PUSH_C:
+.OP_PUSH_C:         @ tested
     GETPARAM r2
     mPUSH r2
     NEXT
 
-.OP_PUSH:
+.OP_PUSH:           @ tested
     GETPARAM r2
     ldr r2, [r5, r2]
     mPUSH r2
     NEXT
 
-.OP_PUSH_S:
+.OP_PUSH_S:         @ tested
     GETPARAM r2
     ldr r2, [r7, r2]
     mPUSH r2
     NEXT
 
-.OP_PUSH_ADR:
+.OP_PUSH_ADR:       @ tested
     GETPARAM r2
     adds r2, r2, r7             @ relocate to FRM
     subs r2, r2, r5             @ but relative to start of data section
@@ -1478,32 +1514,32 @@ amx_opcodelist_size:
     mPUSH r2
     NEXT
 
-.OP_JEQ:
+.OP_JEQ:            @ tested
     cmp r0, r1
     JUMPREL r2, eq              @ if PRI == ALT, jump; otherwise skip param
     NEXT
 
-.OP_JNEQ:
+.OP_JNEQ:           @ tested
     cmp r0, r1
     JUMPREL r2, ne              @ if PRI != ALT, jump; otherwise skip param
     NEXT
 
-.OP_JSLESS:
+.OP_JSLESS:         @ tested
     cmp r0, r1
     JUMPREL r2, lt              @ if PRI < ALT (signed), jump; otherwise skip param
     NEXT
 
-.OP_JSLEQ:
+.OP_JSLEQ:          @ tested
     cmp r0, r1
     JUMPREL r2, le              @ if PRI <= ALT (signed), jump; otherwise skip param
     NEXT
 
-.OP_JSGRTR:
+.OP_JSGRTR:         @ tested
     cmp r0, r1
     JUMPREL r2, gt              @ if PRI > ALT (signed), jump; otherwise skip param
     NEXT
 
-.OP_JSGEQ:
+.OP_JSGEQ:          @ tested
     cmp r0, r1
     JUMPREL r2, ge              @ if PRI >= ALT (signed), jump; otherwise skip param
     NEXT
@@ -1515,21 +1551,21 @@ amx_opcodelist_size:
     mov r1, r2
     b   .OP_SDIV
 
-.OP_SUB_INV:
+.OP_SUB_INV:        # tested
     subs r0, r0, r1
     NEXT
 
-.OP_ADD_C:
+.OP_ADD_C:          @ tested
     GETPARAM r2
     adds r0, r0, r2             @ PRI += param
     NEXT
 
-.OP_SMUL_C:
+.OP_SMUL_C:         @ tested
     GETPARAM r2
     muls r0, r0, r2             @ PRI *= param
     NEXT
 
-.OP_ZERO_PRI:
+.OP_ZERO_PRI:       @ tested
     movs r0, #0
     NEXT
 
@@ -1537,19 +1573,19 @@ amx_opcodelist_size:
     movs r1, #0
     NEXT
 
-.OP_ZERO:
+.OP_ZERO:           @ tested
     GETPARAM r2
     movs r3, #0
     str r3, [r5, r2]
     NEXT
 
-.OP_ZERO_S:
+.OP_ZERO_S:         @ tested
     GETPARAM r2
     movs r3, #0
     str r3, [r7, r2]
     NEXT
 
-.OP_EQ_C_PRI:
+.OP_EQ_C_PRI:       @ tested
     GETPARAM r2
     movs r3, #1                 @ preset to "true"
     cmp r0, r2
@@ -1569,14 +1605,14 @@ amx_opcodelist_size:
     mov r0, r3
     NEXT
 
-.OP_INC:
+.OP_INC:            @ tested
     GETPARAM r2
     ldr r3, [r5, r2]
     adds r3, r3, #1
     str r3, [r5, r2]
     NEXT
 
-.OP_INC_S:
+.OP_INC_S:          @ tested
     GETPARAM r2
     ldr r3, [r7, r2]
     adds r3, r3, #1
@@ -1597,12 +1633,12 @@ amx_opcodelist_size:
     str r3, [r7, r2]
     NEXT
 
-.OP_SYSREQ_N:
+.OP_SYSREQ_N:       @ tested
     mov r2, r12                 @ save r12 (need extra scratch)
     push {r2}
     GETPARAM r0                 @ get native function index
-    GETPARAM r3                 @ get # parameters
-    mPUSH r3                    @ push second parameter
+    GETPARAM r2                 @ get stack size of parameters (# parameters * cell size)
+    mPUSH r2                    @ push parameter stack size
     mov r12, r2                 @ r12 = # parameters
     @ store stack and heap state AMX state
     mov r3, r10                 @ copy r10, AMX base
@@ -1618,9 +1654,9 @@ amx_opcodelist_size:
     str r2, [r3, #amxCIP]
     @ invoke callback
     mov r2, r14
-    push {r1, r2, r4, r5}       @ save ALT, values of r12 & r14, plus 2 extra scratch (r4, r5)
+    push {r1, r2, r4, r5}       @ save ALT, values of r14, plus 2 extra scratch (r4, r5); r12 was saved earlier
     push {r0}                   @ dummy, reserve cell for the return value (note: 6 registers pushed in total)
-    mov r5, r12                 @ r5 = # parameters
+    mov r5, r12                 @ r5 = parameter stack size
     mov r3, r10                 @ r3 = AMX base (again)
     ldr r4, [r3, #amxCallback]  @ callback function pointer in r4
     mov r1, r0                  @ 2nd arg = index (in r0, so do this one first)
@@ -1629,13 +1665,11 @@ amx_opcodelist_size:
     mov r3, r6                  @ 4th arg = address in the AMX stack
     blx r4                      @ call natives callback
     mov r3, r0                  @ get error return in r3
-    mov r12, r5                 @ r12 = # parameters
+    add r6, r6, r5              @ remove # parameters from the AMX stack (r5 = parameter stack size)
+    adds r6, r6, #4             @ also remove the extra cell pushed
     pop {r0}                    @ return value in r0
     pop {r1, r2, r4, r5}        @ restore registers
     mov r14, r2
-    mov r2, r12                 @ r2 = # parameters
-    adds r6, r6, r2             @ remove # parameters from the AMX stack
-    adds r6, r6, #4             @ also remove the extra cell pushed
     pop {r2}                    @ restore r12
     mov r12, r2
     cmp r3, #AMX_ERR_NONE       @ callback hook returned error/abort code?
@@ -1644,7 +1678,7 @@ amx_opcodelist_size:
   1:
     NEXT
 
-.OP_PUSHM_C:
+.OP_PUSHM_C:        @ tested
     GETPARAM r3                 @ r3 = parameter count
   1:
     GETPARAM r2
@@ -1653,7 +1687,7 @@ amx_opcodelist_size:
     bgt 1b
     NEXT
 
-.OP_PUSHM:
+.OP_PUSHM:          @ tested
     GETPARAM r3                 @ r3 = parameter count
   1:
     GETPARAM r2
@@ -1663,7 +1697,7 @@ amx_opcodelist_size:
     bgt 1b
     NEXT
 
-.OP_PUSHM_S:
+.OP_PUSHM_S:        @ tested
     GETPARAM r3                 @ r3 = parameter count
   1:
     GETPARAM r2
@@ -1673,7 +1707,7 @@ amx_opcodelist_size:
     bgt 1b
     NEXT
 
-.OP_PUSHM_ADR:
+.OP_PUSHM_ADR:      @ tested
     GETPARAM r3                 @ r3 = parameter count
   1:
     GETPARAM r2
@@ -1715,37 +1749,37 @@ amx_opcodelist_size:
     bgt 1b
     NEXT
 
-.OP_LOAD2:
+.OP_LOAD2:          @ tested
     GETPARAM r2
     ldr r0, [r5, r2]
     GETPARAM r2
     ldr r1, [r5, r2]
     NEXT
 
-.OP_LOAD2_S:
+.OP_LOAD2_S:        @ tested
     GETPARAM r2
     ldr r0, [r7, r2]
     GETPARAM r2
     ldr r1, [r7, r2]
     NEXT
 
-.OP_CONST:
+.OP_CONST:          @ tested
     GETPARAM r2
     GETPARAM r3
     str r3, [r5, r2]
     NEXT
 
-.OP_CONST_S:
+.OP_CONST_S:        @ tested
     GETPARAM r2
     GETPARAM r3
     str r3, [r7, r2]
     NEXT
 
-.endif  @ AMX_NO_MACRO_INSTR
+.endif  @ _NO_MACRO_INSTR
 
 
     @ packed opcodes
-.ifndef AMX_NO_PACKED_OPC
+.ifndef _NO_PACKED_OPC
 
 .OP_LOAD_P_PRI:
     GETPARAM_P r2
@@ -1786,10 +1820,12 @@ amx_opcodelist_size:
     cmp r2, #1
     bne 1f
     ldrb r0, [r3]
+    b 4f
   1:
     cmp r2, #2
     bne 2f
     ldrh r0, [r3]
+    b 4f
   2:
     cmp r2, #4
     bne 4f
@@ -1840,10 +1876,12 @@ amx_opcodelist_size:
     cmp r2, #1
     bne 1f
     strb r0, [r3]
+    b 4f
   1:
     cmp r2, #2
     bne 2f
     strh r0, [r3]
+    b 4f
   2:
     cmp r2, #4
     bne 4f
@@ -1864,12 +1902,12 @@ amx_opcodelist_size:
 .OP_IDXADDR_P_B:
     GETPARAM_P r2
     lsls r0, r0, r2             @ r0 = PRI << param
-    adds r0, r0, r1             @ PRI = ALT + (PRI << param)
+    adds r0, r1, r0             @ PRI = ALT + (PRI << param)
     NEXT
 
 .OP_ALIGN_P_PRI:
     GETPARAM_P r2
-.ifndef BIG_ENDIAN
+.ifndef _BIGENDIAN
     cmp r2, #4                  @ param < cell size ?
     bhi 1f                      @ no -> skip
     movs r3, #4
@@ -2116,7 +2154,7 @@ amx_opcodelist_size:
   1:
     NEXT
 
-.endif  @ AMX_NO_PACKED_OPC
+.endif  @ _NO_PACKED_OPC
 
 
 .amx_exit:                      @ assume r2 already set to the exit code

@@ -29,7 +29,7 @@
 ;   License for the specific language governing permissions and limitations
 ;   under the License.
 ;
-;   Version: $Id: amxexec_thumb2.s 6973 2023-08-05 20:07:04Z thiadmer $
+;   $Id: amxexec_thumb2.s 6974 2023-08-08 12:47:41Z thiadmer $
 
 
     AREA    amxexec_data, DATA, READONLY
@@ -167,12 +167,10 @@ _amx_opcodelist
     DCD     OP_SYSREQ_D + 1
     DCD     OP_SYSREQ_ND + 1
     ; overlay instructions
- IF :LNOT::DEF:AMX_NO_OVERLAY
     DCD     OP_CALL_OVL + 1
     DCD     OP_RETN_OVL + 1
     DCD     OP_SWITCH_OVL + 1
     DCD     OP_CASETBL_OVL + 1
- ENDIF  ; AMX_NO_OVERLAY
     ; supplemental instructions
  IF :LNOT::DEF:AMX_NO_MACRO_INSTR
     DCD     OP_LIDX + 1
@@ -1217,6 +1215,14 @@ op_iswitch_done
     ldr r8, [r10, #amxCode]     ; r8 = code pointer (base)
     mov r4, r8                  ; CIP = code base
     NEXT
+
+ ELSE  ; AMX_NO_OVERLAY
+
+OP_CALL_OVL
+OP_RETN_OVL
+OP_SWITCH_OVL
+    mov r11, #AMX_ERR_INVINSTR  ; overlays disabled -> instructions should not be present
+    b.w amx_exit
 
  ENDIF  ; AMX_NO_OVERLAY
 

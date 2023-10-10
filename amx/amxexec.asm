@@ -14,7 +14,7 @@
 ;      convention. Use the macros CDECL or STDECL for __cdecl and __stdcall
 ;      respectively. (Since STDCALL is a reserved word on the assembler, I had
 ;      to choose a different name for the macro, hence STDECL.)
-; * You will need to compile the standard AMX.C file with the macro AMX_ASM
+; * You will need to compile the standard amx.c file with the macro AMX_ASM
 ;   defined. On the command line, use:
 ;       wcl386 /l=nt /dAMX_ASM pawnrun.c amx.c amxcore.c amxcons.c amxexec.asm
 ; * OP_CASETBL and OP_ICASETBL are not implemented, but they should not occur
@@ -26,9 +26,9 @@
 ;The assembler implementation of the abstract machine for the Pawn language,
 ;specifically the file AMXEXEC.ASM, is copyright (c) 1998-2000 by Marc Peter.
 ;
-;Pertaining to condition 2 of the license (see below), I (Thiadmer Riemersma)
-;note that the original file has been substantially altered since its original
-;submission. (See also the history of changes).
+;Pertaining to condition 2 of the license (see below), take note that that the
+;original file has been substantially altered by Thiadmer Riemersma. (See also
+;the history of changes).
 ;
 ;Permission is hereby granted, without written agreement and without paid
 ;license or royalty fees, to use, copy, modify, and distribute this software
@@ -1331,7 +1331,15 @@ ENDIF
         mov     code,esi        ; save new code base in local variable
         NEXT
 
-ENDIF  ; AMX_NO_OVERLAY
+ELSE	; AMX_NO_OVERLAY
+
+OP_CALL_OVL:
+OP_RETN_OVL:
+OP_SWITCH_OVL:
+        mov     eax,AMX_ERR_INVINSTR
+        jmp     _return
+
+ENDIF   ; AMX_NO_OVERLAY
 
 
         ; supplemental instructions
@@ -2448,12 +2456,10 @@ opcodelist LABEL DWORD
         DD      OP_SYSREQ_D
         DD      OP_SYSREQ_ND
         ; overlay instructions
-IFNDEF AMX_NO_OVERLAY
         DD      OP_CALL_OVL
         DD      OP_RETN_OVL
         DD      OP_SWITCH_OVL
         DD      OP_CASETBL_OVL
-ENDIF   ; AMX_NO_OVERLAY
         ; supplemental instructions
 IFNDEF AMX_NO_MACRO_INSTR
         DD      OP_LIDX

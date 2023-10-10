@@ -15,7 +15,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: sc7.sch 6131 2020-04-29 19:47:15Z thiadmer $
+ *  Version: $Id: sc7.sch 7006 2023-10-09 08:09:26Z thiadmer $
  */
 
 /* Special characters in the strings of this file:
@@ -42,14 +42,14 @@ SC_FUNC int strexpand(char *dest, const unsigned char *source, int maxlen, const
 #define SCPACK_TABLE sequences_table
 /*-*SCPACK start of pair table, do not change or remove this line */
 const unsigned char sequences_table[128][2] = {
-  {105,32}, {114,128}, {112,129}, {46,130}, {49,33}, {37,132}, {32,37}, {97,100}, {115,104}, {117,136}, {112,137}, {46,115}, {59,36}, {32,133}, {108,111}, {50,33},
-  {142,135}, {97,108}, {145,116}, {46,146}, {46,112}, {105,33}, {131,133}, {114,33}, {131,37}, {97,151}, {112,153}, {140,154}, {115,116}, {144,139}, {46,99}, {114,149},
-  {148,159}, {48,33}, {152,143}, {134,143}, {135,100}, {110,156}, {111,165}, {99,166}, {147,33}, {112,111}, {169,112}, {138,114}, {112,33}, {120,172}, {101,173}, {140,174},
-  {134,161}, {134,51}, {138,160}, {170,168}, {134,49}, {147,141}, {157,162}, {126,37}, {177,33}, {103,33}, {104,185}, {99,186}, {120,187}, {164,114}, {46,135}, {122,101},
-  {190,114}, {191,114}, {101,113}, {155,138}, {167,150}, {46,149}, {110,100}, {52,33}, {32,35}, {105,110}, {201,99}, {101,99}, {100,203}, {155,171}, {141,175}, {157,150},
-  {53,33}, {164,33}, {194,33}, {138,109}, {189,150}, {134,199}, {144,150}, {108,158}, {134,50}, {106,193}, {105,100}, {115,103}, {115,108}, {218,120}, {180,163}, {147,163},
-  {178,182}, {117,198}, {136,215}, {111,225}, {98,227}, {114,101}, {229,102}, {193,111}, {228,115}, {181,182}, {180,216}, {217,141}, {144,162}, {232,184}, {179,209}, {108,230},
-  {139,141}, {138,158}, {171,109}, {198,33}, {170,160}, {152,161}, {156,111}, {246,114}, {97,243}, {183,50}, {183,51}, {134,48}, {139,176}, {147,176}, {234,177}
+  {105,32}, {114,128}, {112,129}, {46,130}, {49,33}, {37,132}, {32,37}, {97,100}, {115,104}, {117,136}, {112,137}, {46,115}, {32,133}, {50,33}, {59,36}, {108,111},
+  {143,135}, {97,108}, {145,116}, {46,146}, {46,112}, {105,33}, {131,133}, {114,33}, {131,37}, {97,151}, {112,153}, {142,154}, {115,116}, {144,139}, {46,99}, {114,149},
+  {148,159}, {152,141}, {48,33}, {135,100}, {147,33}, {134,141}, {110,156}, {111,166}, {99,167}, {112,111}, {169,112}, {138,114}, {112,33}, {120,172}, {101,173}, {142,174},
+  {138,160}, {134,162}, {134,51}, {170,164}, {147,140}, {134,49}, {157,161}, {126,37}, {178,33}, {103,33}, {104,185}, {99,186}, {120,187}, {163,114}, {46,135}, {122,101},
+  {190,114}, {191,114}, {101,113}, {155,138}, {168,150}, {46,149}, {110,100}, {105,110}, {52,33}, {32,35}, {199,99}, {101,99}, {100,203}, {155,171}, {140,175}, {114,101},
+  {207,102}, {157,150}, {53,33}, {108,208}, {163,33}, {189,150}, {194,33}, {136,108}, {138,109}, {134,200}, {144,150}, {134,50}, {106,193}, {105,100}, {115,103}, {115,108},
+  {221,120}, {215,158}, {181,165}, {147,165}, {176,182}, {117,198}, {111,229}, {98,230}, {193,111}, {231,115}, {180,182}, {181,219}, {211,139}, {220,140}, {144,161}, {233,184},
+  {179,212}, {139,140}, {158,140}, {171,109}, {152,162}, {198,33}, {170,160}, {156,111}, {247,114}, {97,245}, {183,50}, {235,178}, {183,51}, {134,48}, {139,177}
 };
 /*-*SCPACK end of pair table, do not change or remove this line */
 
@@ -87,8 +87,8 @@ static const SEQUENCE sequences_cmp[] = {
       "load.s.pri %1!push.pri!load.s.pri %2!pop.alt!",
       "load.s.pri %2!load.s.alt %1!",
     #else
-      "\317\340\263",
-      "\266\235\265",
+      "\321\344\263",
+      "\266\235\264",
     #endif
     4-2, 2-2
   },
@@ -97,8 +97,8 @@ static const SEQUENCE sequences_cmp[] = {
       "load.pri %1!push.pri!load.s.pri %2!pop.alt!",
       "load.s.pri %2!load.alt %1!",
     #else
-      "\326\340\263",
-      "\266\220\265",
+      "\332\344\263",
+      "\266\220\264",
     #endif
     4-2, 2-2
   },
@@ -107,8 +107,8 @@ static const SEQUENCE sequences_cmp[] = {
       "load.s.pri %1!push.pri!load.pri %2!pop.alt!",
       "load.pri %2!load.s.alt %1!",
     #else
-      "\317\262\354\263",
-      "\354\235\265",
+      "\321\260\356\263",
+      "\356\235\264",
     #endif
     4-2, 2-2
   },
@@ -117,8 +117,8 @@ static const SEQUENCE sequences_cmp[] = {
       "load.pri %1!push.pri!load.pri %2!pop.alt!",
       "load.pri %2!load.alt %1!",
     #else
-      "\326\262\354\263",
-      "\354\220\265",
+      "\332\260\356\263",
+      "\356\220\264",
     #endif
     4-2, 2-2
   },
@@ -130,8 +130,8 @@ static const SEQUENCE sequences_cmp[] = {
       "addr.pri %1!push.pri!load.s.pri %2!pop.alt!",
       "addr.alt %1!load.s.pri %2!",
     #else
-      "\324\340\263",
-      "\275\351",
+      "\325\344\263",
+      "\275\352",
     #endif
     4-2, 2-2
   },
@@ -140,8 +140,8 @@ static const SEQUENCE sequences_cmp[] = {
       "addr.pri %1!push.pri!load.pri %2!pop.alt!",
       "addr.alt %1!load.pri %2!",
     #else
-      "\324\262\354\263",
-      "\275\265\354",
+      "\325\260\356\263",
+      "\275\264\356",
     #endif
     4-2, 2-2
   },
@@ -153,8 +153,8 @@ static const SEQUENCE sequences_cmp[] = {
       "const.pri %1!push.pri!load.s.pri %2!pop.alt!",
       "load.s.pri %2!const.alt %1!",
     #else
-      "\304\340\263",
-      "\266\247\265",
+      "\304\344\263",
+      "\266\250\264",
     #endif
     4-2, 2-2
   },
@@ -163,8 +163,8 @@ static const SEQUENCE sequences_cmp[] = {
       "const.pri %1!push.pri!load.pri %2!pop.alt!",
       "load.pri %2!const.alt %1!",
     #else
-      "\304\262\354\263",
-      "\354\247\265",
+      "\304\260\356\263",
+      "\356\250\264",
     #endif
     4-2, 2-2
   },
@@ -173,8 +173,8 @@ static const SEQUENCE sequences_cmp[] = {
       "load.s.pri %1!push.pri!const.pri %2!pop.alt!",
       "const.pri %2!load.s.alt %1!",
     #else
-      "\317\262\247\242\263",
-      "\247\242\235\265",
+      "\321\260\250\241\263",
+      "\250\241\235\264",
     #endif
     4-2, 2-2
   },
@@ -183,8 +183,8 @@ static const SEQUENCE sequences_cmp[] = {
       "load.pri %1!push.pri!const.pri %2!pop.alt!",
       "const.pri %2!load.alt %1!",
     #else
-      "\326\262\247\242\263",
-      "\247\242\220\265",
+      "\332\260\250\241\263",
+      "\250\241\220\264",
     #endif
     4-2, 2-2
   },
@@ -197,8 +197,8 @@ static const SEQUENCE sequences_cmp[] = {
       "addr.pri %1!push.pri!const.pri %2!pop.alt!",
       "addr.alt %1!const.pri %2!",
     #else
-      "\324\262\247\242\263",
-      "\275\265\247\242",
+      "\325\260\250\241\263",
+      "\275\264\250\241",
     #endif
     4-2, 2-2
   },
@@ -207,10 +207,23 @@ static const SEQUENCE sequences_cmp[] = {
       "addr.pri %1!push.pri!zero.pri!pop.alt!",
       "addr.alt %1!zero.pri!",
     #else
-      "\324\262\347\240\263",
-      "\275\265\347\240",
+      "\325\260\350\240\263",
+      "\275\264\350\240",
     #endif
     4-2, 1-1
+  },
+  /* The same as above, but now with "addr.pri" twice
+   * (array copying/comparison).
+   */
+  {
+    #ifdef SCPACK
+      "addr.pri %1!push.pri!addr.pri %2!pop.alt!",
+      "addr.alt %1!addr.pri %2!",
+    #else
+      "\325\260\275\241\263",
+      "\275\264\275\241",
+    #endif
+    4-2, 2-2
   },
   /* ??? add references */
   /* Chained relational operators can contain sequences like:
@@ -226,8 +239,8 @@ static const SEQUENCE sequences_cmp[] = {
       "xchg!push.pri!load.s.pri %1!pop.alt!",
       "load.s.pri %1!",
     #else
-      "\274\262\317\263",
-      "\317",
+      "\274\260\321\263",
+      "\321",
     #endif
     4-1, 1-1
   },
@@ -236,8 +249,8 @@ static const SEQUENCE sequences_cmp[] = {
       "xchg!push.pri!load.pri %1!pop.alt!",
       "load.pri %1!",
     #else
-      "\274\262\326\263",
-      "\326",
+      "\274\260\332\263",
+      "\332",
     #endif
     4-1, 1-1
   },
@@ -246,7 +259,7 @@ static const SEQUENCE sequences_cmp[] = {
       "xchg!push.pri!const.pri %1!pop.alt!",
       "const.pri %1!",
     #else
-      "\274\262\304\263",
+      "\274\260\304\263",
       "\304",
     #endif
     4-1, 1-1
@@ -273,8 +286,8 @@ static const SEQUENCE sequences_cmp[] = {
       "xchg!sgrtr!swap.alt!and!pop.alt!;$exp!",
       "sless!pop.alt!and!;$exp!",
     #else
-      "\274\333rt\227swap\250\370\263\257",
-      "\334ess!\263\370\257",
+      "\274\336rt\227swap\244\371\263\257",
+      "\337ess!\263\371\257",
     #endif
     5-3, 0-0
   },
@@ -283,8 +296,8 @@ static const SEQUENCE sequences_cmp[] = {
       "xchg!sless!swap.alt!and!pop.alt!;$exp!",
       "sgrtr!pop.alt!and!;$exp!",
     #else
-      "\274\334ess!swap\250\370\263\257",
-      "\333rt\227\263\370\257",
+      "\274\337ess!swap\244\371\263\257",
+      "\336rt\227\263\371\257",
     #endif
     5-3, 0-0
   },
@@ -293,8 +306,8 @@ static const SEQUENCE sequences_cmp[] = {
       "xchg!sgeq!swap.alt!and!pop.alt!;$exp!",
       "sleq!pop.alt!and!;$exp!",
     #else
-      "\274\333\322swap\250\370\263\257",
-      "\334\322\263\370\257",
+      "\274\336\326swap\244\371\263\257",
+      "\337\326\263\371\257",
     #endif
     5-3, 0-0
   },
@@ -303,8 +316,8 @@ static const SEQUENCE sequences_cmp[] = {
       "xchg!sleq!swap.alt!and!pop.alt!;$exp!",
       "sgeq!pop.alt!and!;$exp!",
     #else
-      "\274\334\322swap\250\370\263\257",
-      "\333\322\263\370\257",
+      "\274\337\326swap\244\371\263\257",
+      "\336\326\263\371\257",
     #endif
     5-3, 0-0
   },
@@ -313,8 +326,8 @@ static const SEQUENCE sequences_cmp[] = {
       "xchg!sgrtr!swap.alt!and!pop.alt!jzer %1!",
       "sless!pop.alt!and!jzer %1!",
     #else
-      "\274\333rt\227swap\250\370\263\353",
-      "\334ess!\263\370\353",
+      "\274\336rt\227swap\244\371\263\355",
+      "\337ess!\263\371\355",
     #endif
     5-3, 0-0
   },
@@ -323,8 +336,8 @@ static const SEQUENCE sequences_cmp[] = {
       "xchg!sless!swap.alt!and!pop.alt!jzer %1!",
       "sgrtr!pop.alt!and!jzer %1!",
     #else
-      "\274\334ess!swap\250\370\263\353",
-      "\333rt\227\263\370\353",
+      "\274\337ess!swap\244\371\263\355",
+      "\336rt\227\263\371\355",
     #endif
     5-3, 0-0
   },
@@ -333,8 +346,8 @@ static const SEQUENCE sequences_cmp[] = {
       "xchg!sgeq!swap.alt!and!pop.alt!jzer %1!",
       "sleq!pop.alt!and!jzer %1!",
     #else
-      "\274\333\322swap\250\370\263\353",
-      "\334\322\263\370\353",
+      "\274\336\326swap\244\371\263\355",
+      "\337\326\263\371\355",
     #endif
     5-3, 0-0
   },
@@ -343,8 +356,8 @@ static const SEQUENCE sequences_cmp[] = {
       "xchg!sleq!swap.alt!and!pop.alt!jzer %1!",
       "sgeq!pop.alt!and!jzer %1!",
     #else
-      "\274\334\322swap\250\370\263\353",
-      "\333\322\263\370\353",
+      "\274\337\326swap\244\371\263\355",
+      "\336\326\263\371\355",
     #endif
     5-3, 0-0
   },
@@ -353,8 +366,8 @@ static const SEQUENCE sequences_cmp[] = {
       "xchg!sgrtr!;$exp!",
       "sless!;$exp!",
     #else
-      "\274\333rt\227\257",
-      "\334ess!\257",
+      "\274\336rt\227\257",
+      "\337ess!\257",
     #endif
     2-1, 0-0
   },
@@ -363,8 +376,8 @@ static const SEQUENCE sequences_cmp[] = {
       "xchg!sless!;$exp!",
       "sgrtr!;$exp!",
     #else
-      "\274\334ess!\257",
-      "\333rt\227\257",
+      "\274\337ess!\257",
+      "\336rt\227\257",
     #endif
     2-1, 0-0
   },
@@ -373,8 +386,8 @@ static const SEQUENCE sequences_cmp[] = {
       "xchg!sgeq!;$exp!",
       "sleq!;$exp!",
     #else
-      "\274\333\322\257",
-      "\334\322\257",
+      "\274\336\326\257",
+      "\337\326\257",
     #endif
     2-1, 0-0
   },
@@ -383,8 +396,8 @@ static const SEQUENCE sequences_cmp[] = {
       "xchg!sleq!;$exp!",
       "sgeq!;$exp!",
     #else
-      "\274\334\322\257",
-      "\333\322\257",
+      "\274\337\326\257",
+      "\336\326\257",
     #endif
     2-1, 0-0
   },
@@ -408,8 +421,8 @@ static const SEQUENCE sequences_cmp[] = {
       "load.s.pri %1!load.s.alt %2!xchg!",
       "load.s.pri %2!load.s.alt %1!",
     #else
-      "\317\235\337\274",
-      "\266\235\265",
+      "\321\235\343\274",
+      "\266\235\264",
     #endif
     3-2, 2-2
   },
@@ -418,8 +431,8 @@ static const SEQUENCE sequences_cmp[] = {
       "load.s.pri %1!load.alt %2!xchg!",
       "load.pri %2!load.s.alt %1!",
     #else
-      "\317\220\337\274",
-      "\354\235\265",
+      "\321\220\343\274",
+      "\356\235\264",
     #endif
     3-2, 2-2
   },
@@ -428,8 +441,8 @@ static const SEQUENCE sequences_cmp[] = {
       "load.s.pri %1!const.alt %2!xchg!",
       "const.pri %2!load.s.alt %1!",
     #else
-      "\317\247\337\274",
-      "\247\242\235\265",
+      "\321\250\343\274",
+      "\250\241\235\264",
     #endif
     3-2, 2-2
   },
@@ -438,8 +451,8 @@ static const SEQUENCE sequences_cmp[] = {
       "load.pri %1!load.s.alt %2!xchg!",
       "load.s.pri %2!load.alt %1!",
     #else
-      "\326\235\337\274",
-      "\266\220\265",
+      "\332\235\343\274",
+      "\266\220\264",
     #endif
     3-2, 2-2
   },
@@ -448,8 +461,8 @@ static const SEQUENCE sequences_cmp[] = {
       "load.pri %1!load.alt %2!xchg!",
       "load.pri %2!load.alt %1!",
     #else
-      "\326\220\337\274",
-      "\354\220\265",
+      "\332\220\343\274",
+      "\356\220\264",
     #endif
     3-2, 2-2
   },
@@ -458,8 +471,8 @@ static const SEQUENCE sequences_cmp[] = {
       "load.pri %1!const.alt %2!xchg!",
       "const.pri %2!load.alt %1!",
     #else
-      "\326\247\337\274",
-      "\247\242\220\265",
+      "\332\250\343\274",
+      "\250\241\220\264",
     #endif
     3-2, 2-2
   },
@@ -468,8 +481,8 @@ static const SEQUENCE sequences_cmp[] = {
       "const.pri %1!load.s.alt %2!xchg!",
       "load.s.pri %2!const.alt %1!",
     #else
-      "\304\235\337\274",
-      "\266\247\265",
+      "\304\235\343\274",
+      "\266\250\264",
     #endif
     3-2, 2-2
   },
@@ -478,8 +491,8 @@ static const SEQUENCE sequences_cmp[] = {
       "const.pri %1!load.alt %2!xchg!",
       "load.pri %2!const.alt %1!",
     #else
-      "\304\220\337\274",
-      "\354\247\265",
+      "\304\220\343\274",
+      "\356\250\264",
     #endif
     3-2, 2-2
   },
@@ -501,7 +514,7 @@ static const SEQUENCE sequences_cmp[] = {
       "const.alt %1!",
     #else
       "\274\304\274",
-      "\247\265",
+      "\250\264",
     #endif
     3-1, 1-1
   },
@@ -510,8 +523,8 @@ static const SEQUENCE sequences_cmp[] = {
       "xchg!load.pri %1!xchg!",
       "load.alt %1!",
     #else
-      "\274\326\274",
-      "\220\265",
+      "\274\332\274",
+      "\220\264",
     #endif
     3-1, 1-1
   },
@@ -520,8 +533,8 @@ static const SEQUENCE sequences_cmp[] = {
       "xchg!load.s.pri %1!xchg!",
       "load.s.alt %1!",
     #else
-      "\274\317\274",
-      "\235\265",
+      "\274\321\274",
+      "\235\264",
     #endif
     3-1, 1-1
   },
@@ -531,8 +544,8 @@ static const SEQUENCE sequences_cmp[] = {
       "lref.pri %1!xchg!load.pri %2!",
       "lref.alt %1!load.pri %2!",
     #else
-      "\357\226\274\354",
-      "\357\265\354",
+      "\323\226\274\356",
+      "\323\264\356",
     #endif
     3-2, 2-2
   },
@@ -541,8 +554,8 @@ static const SEQUENCE sequences_cmp[] = {
       "lref.pri %1!xchg!load.s.pri %2!",
       "lref.alt %1!load.s.pri %2!",
     #else
-      "\357\226\274\266",
-      "\357\351",
+      "\323\226\274\266",
+      "\323\352",
     #endif
     3-2, 2-2
   },
@@ -551,8 +564,8 @@ static const SEQUENCE sequences_cmp[] = {
       "lref.pri %1!xchg!const.pri %2!",
       "lref.alt %1!const.pri %2!",
     #else
-      "\357\226\274\247\242",
-      "\357\265\247\242",
+      "\323\226\274\250\241",
+      "\323\264\250\241",
     #endif
     3-2, 2-2
   },
@@ -561,8 +574,8 @@ static const SEQUENCE sequences_cmp[] = {
       "lref.s.pri %1!xchg!load.pri %2!",
       "lref.s.alt %1!load.pri %2!",
     #else
-      "\357\213\226\274\354",
-      "\357\213\265\354",
+      "\354\226\274\356",
+      "\354\264\356",
     #endif
     3-2, 2-2
   },
@@ -571,8 +584,8 @@ static const SEQUENCE sequences_cmp[] = {
       "lref.s.pri %1!xchg!load.s.pri %2!",
       "lref.s.alt %1!load.s.pri %2!",
     #else
-      "\357\213\226\274\266",
-      "\357\213\351",
+      "\354\226\274\266",
+      "\354\352",
     #endif
     3-2, 2-2
   },
@@ -581,11 +594,32 @@ static const SEQUENCE sequences_cmp[] = {
       "lref.s.pri %1!xchg!const.pri %2!",
       "lref.s.alt %1!const.pri %2!",
     #else
-      "\357\213\226\274\247\242",
-      "\357\213\265\247\242",
+      "\354\226\274\250\241",
+      "\354\264\250\241",
     #endif
     3-2, 2-2
   },
+  {
+    #ifdef SCPACK
+      "lref.s.pri %1!push.pri!lref.s.pri %2!pop.alt!",
+      "lref.s.alt %1!lref.s.pri %2!",
+    #else
+      "\354\226\260\354\241\263",
+      "\354\264\354\241",
+    #endif
+    4-2, 2-2
+  },
+  {
+    #ifdef SCPACK
+      "push.pri!lref.s.pri %1!pop.alt!",
+      "xchg!lref.s.pri %1!",
+    #else
+      "\260\354\226\263",
+      "\274\354\226",
+    #endif
+    3-2, 1-1
+  },
+
   /* For packed arrays, array access can be optimized (packed arrays
    * do not take advantage of the LIDX or IDXADDR instructions).
    *    addr.pri %1             addr.alt %1
@@ -605,8 +639,8 @@ static const SEQUENCE sequences_cmp[] = {
       "addr.pri %1!push.pri!load.s.pri %2!bounds %3!pop.alt!",
       "addr.alt %1!load.s.pri %2!bounds %3!",
     #else
-      "\324\340\355\263",
-      "\275\351\355",
+      "\325\344\357\263",
+      "\275\352\357",
     #endif
     5-3, 3-3
   },
@@ -615,8 +649,8 @@ static const SEQUENCE sequences_cmp[] = {
       "const.pri %1!push.pri!load.s.pri %2!bounds %3!pop.alt!",
       "const.alt %1!load.s.pri %2!bounds %3!",
     #else
-      "\304\340\355\263",
-      "\247\351\355",
+      "\304\344\357\263",
+      "\250\352\357",
     #endif
     5-3, 3-3
   },
@@ -634,8 +668,8 @@ static const SEQUENCE sequences_cmp[] = {
       "push.pri!load.s.pri %1!pop.alt!",
       "xchg!load.s.pri %1!",
     #else
-      "\262\317\263",
-      "\274\317",
+      "\260\321\263",
+      "\274\321",
     #endif
     3-2, 1-1
   },
@@ -644,8 +678,8 @@ static const SEQUENCE sequences_cmp[] = {
       "push.pri!load.pri %1!pop.alt!",
       "xchg!load.pri %1!",
     #else
-      "\262\326\263",
-      "\274\326",
+      "\260\332\263",
+      "\274\332",
     #endif
     3-2, 1-1
   },
@@ -654,7 +688,7 @@ static const SEQUENCE sequences_cmp[] = {
       "push.pri!const.pri %1!pop.alt!",
       "xchg!const.pri %1!",
     #else
-      "\262\304\263",
+      "\260\304\263",
       "\274\304",
     #endif
     3-2, 1-1
@@ -664,8 +698,8 @@ static const SEQUENCE sequences_cmp[] = {
       "push.pri!zero.pri!pop.alt!",
       "xchg!zero.pri!",
     #else
-      "\262\347\240\263",
-      "\274\347\240",
+      "\260\350\240\263",
+      "\274\350\240",
     #endif
     3-2, 0-0
   },
@@ -682,7 +716,7 @@ static const SEQUENCE sequences_cmp[] = {
       "push.pri!pop.alt!",
       "xchg!",
     #else
-      "\262\263",
+      "\260\263",
       "\274",
     #endif
     2-1, 0-0
@@ -696,7 +730,7 @@ static const SEQUENCE sequences_cmp[] = {
       "pop.alt!push.alt!",
       ";!",
     #else
-      "\263\212\250",
+      "\263\212\244",
       ";!",
     #endif
     2-0, 0-0
@@ -708,8 +742,8 @@ static const SEQUENCE sequences_cmp[] = {
       "xchg!load.s.pri %1!add!",
       "load.s.alt %1!add!",
     #else
-      "\274\317\321",
-      "\235\265\321",
+      "\274\321\324",
+      "\235\264\324",
     #endif
     3-2, 1-1
   },
@@ -718,8 +752,8 @@ static const SEQUENCE sequences_cmp[] = {
       "xchg!load.pri %1!add!",
       "load.alt %1!add!",
     #else
-      "\274\326\321",
-      "\220\265\321",
+      "\274\332\324",
+      "\220\264\324",
     #endif
     3-2, 1-1
   },
@@ -728,8 +762,8 @@ static const SEQUENCE sequences_cmp[] = {
       "xchg!const.pri %1!add!",
       "const.alt %1!add!",
     #else
-      "\274\304\321",
-      "\247\265\321",
+      "\274\304\324",
+      "\250\264\324",
     #endif
     3-2, 1-1
   },
@@ -743,8 +777,8 @@ static const SEQUENCE sequences_cmp[] = {
       "xchg!push.pri!",
       "push.alt!",
     #else
-      "\274\262",
-      "\212\250",
+      "\274\260",
+      "\212\244",
     #endif
     2-1, 0-0
   },
@@ -768,8 +802,8 @@ static const SEQUENCE sequences_cmp[] = {
       "zero.alt!eq!jnz %1!",
       "jzer %1!",
     #else
-      "\347\250\322jnz\215",
-      "\353",
+      "\350\244\326jnz\214",
+      "\355",
     #endif
     3-1, 1-1
   },
@@ -778,8 +812,8 @@ static const SEQUENCE sequences_cmp[] = {
       "zero.alt!eq!jzer %1!",
       "jnz %1!",
     #else
-      "\347\250\322\353",
-      "jnz\215",
+      "\350\244\326\355",
+      "jnz\214",
     #endif
     3-1, 1-1
   },
@@ -788,8 +822,8 @@ static const SEQUENCE sequences_cmp[] = {
       "zero.alt!neq!jzer %1!",
       "jzer %1!",
     #else
-      "\347\250n\322\353",
-      "\353",
+      "\350\244n\326\355",
+      "\355",
     #endif
     3-1, 1-1
   },
@@ -805,8 +839,8 @@ static const SEQUENCE sequences_cmp[] = {
       "not!jzer %1!",
       "jnz %1!",
     #else
-      "not!\353",
-      "jnz\215",
+      "not!\355",
+      "jnz\214",
     #endif
     2-1, 1-1
   },
@@ -815,8 +849,8 @@ static const SEQUENCE sequences_cmp[] = {
       "not!jnz %1!",
       "jzer %1!",
     #else
-      "not!jnz\215",
-      "\353",
+      "not!jnz\214",
+      "\355",
     #endif
     2-1, 1-1
   },
@@ -855,8 +889,8 @@ static const SEQUENCE sequences_cmp[] = {
       "push.pri!load.s.pri %1!inc.i!pop.pri!lref.s.pri %2!",
       "load.s.pri %1!inc.i!lref.s.pri %2!",
     #else
-      "\262\317\312\305\364\357\213\242",
-      "\317\312\305\357\213\242",
+      "\260\321\312\305\366\354\241",
+      "\321\312\305\354\241",
     #endif
     5-3, 2-2
   },
@@ -865,8 +899,8 @@ static const SEQUENCE sequences_cmp[] = {
       "push.pri!load.s.pri %1!inc.i!pop.pri!;$exp!",
       "load.s.pri %1!inc.i!;$exp!",
     #else
-      "\262\317\312\305\364\257",
-      "\317\312\305\257",
+      "\260\321\312\305\366\257",
+      "\321\312\305\257",
     #endif
     4-2, 1-1
   },
@@ -875,8 +909,8 @@ static const SEQUENCE sequences_cmp[] = {
       "push.pri!addr.pri %1!inc.i!pop.pri!;load.s.pri %2!",
       "addr.pri %1!inc.i!;load.s.pri %2!",
     #else
-      "\262\324\312\305\364;\266",
-      "\324\312\305;\266",
+      "\260\325\312\305\366;\266",
+      "\325\312\305;\266",
     #endif
     5-3, 1-1
   },
@@ -885,8 +919,8 @@ static const SEQUENCE sequences_cmp[] = {
       "push.pri!addr.pri %1!inc.i!pop.pri!;$exp!",
       "addr.pri %1!inc.i!;$exp!",
     #else
-      "\262\324\312\305\364\257",
-      "\324\312\305\257",
+      "\260\325\312\305\366\257",
+      "\325\312\305\257",
     #endif
     4-2, 1-1
   },
@@ -895,8 +929,8 @@ static const SEQUENCE sequences_cmp[] = {
       "push.pri!const.pri %1!inc.i!pop.pri!;load.pri %2!",
       "const.pri %1!inc.i!;load.pri %2!",
     #else
-      "\262\304\312\305\364;\354",
-      "\304\312\305;\354",
+      "\260\304\312\305\366;\356",
+      "\304\312\305;\356",
     #endif
     5-3, 1-1
   },
@@ -905,7 +939,7 @@ static const SEQUENCE sequences_cmp[] = {
       "push.pri!const.pri %1!inc.i!pop.pri!;$exp!",
       "const.pri %1!inc.i!;$exp!",
     #else
-      "\262\304\312\305\364\257",
+      "\260\304\312\305\366\257",
       "\304\312\305\257",
     #endif
     4-2, 1-1
@@ -915,8 +949,8 @@ static const SEQUENCE sequences_cmp[] = {
       "push.pri!load.s.pri %1!dec.i!pop.pri!lref.s.pri %2!",
       "load.s.pri %1!dec.i!lref.s.pri %2!",
     #else
-      "\262\317\314\305\364\357\213\242",
-      "\317\314\305\357\213\242",
+      "\260\321\314\305\366\354\241",
+      "\321\314\305\354\241",
     #endif
     5-3, 2-2
   },
@@ -925,8 +959,8 @@ static const SEQUENCE sequences_cmp[] = {
       "push.pri!load.s.pri %1!dec.i!pop.pri!;$exp!",
       "load.s.pri %1!dec.i!;$exp!",
     #else
-      "\262\317\314\305\364\257",
-      "\317\314\305\257",
+      "\260\321\314\305\366\257",
+      "\321\314\305\257",
     #endif
     4-2, 1-1
   },
@@ -935,8 +969,8 @@ static const SEQUENCE sequences_cmp[] = {
       "push.pri!addr.pri %1!dec.i!pop.pri!;load.s.pri %2!",
       "addr.pri %1!dec.i!;load.s.pri %2!",
     #else
-      "\262\324\314\305\364;\266",
-      "\324\314\305;\266",
+      "\260\325\314\305\366;\266",
+      "\325\314\305;\266",
     #endif
     5-3, 1-1
   },
@@ -945,8 +979,8 @@ static const SEQUENCE sequences_cmp[] = {
       "push.pri!addr.pri %1!dec.i!pop.pri!;$exp!",
       "addr.pri %1!dec.i!;$exp!",
     #else
-      "\262\324\314\305\364\257",
-      "\324\314\305\257",
+      "\260\325\314\305\366\257",
+      "\325\314\305\257",
     #endif
     4-2, 1-1
   },
@@ -955,8 +989,8 @@ static const SEQUENCE sequences_cmp[] = {
       "push.pri!const.pri %1!dec.i!pop.pri!;load.pri %2!",
       "const.pri %1!dec.i!;load.pri %2!",
     #else
-      "\262\304\314\305\364;\354",
-      "\304\314\305;\354",
+      "\260\304\314\305\366;\356",
+      "\304\314\305;\356",
     #endif
     5-3, 1-1
   },
@@ -965,12 +999,22 @@ static const SEQUENCE sequences_cmp[] = {
       "push.pri!const.pri %1!dec.i!pop.pri!;$exp!",
       "const.pri %1!dec.i!;$exp!",
     #else
-      "\262\304\314\305\364\257",
+      "\260\304\314\305\366\257",
       "\304\314\305\257",
     #endif
     4-2, 1-1
   },
-
+  /* there is a special opcode for left-shift by a constant, use it */
+  {
+    #ifdef SCPACK
+      "const.alt %1!shl!",
+      "shl.c.pri %1!",
+    #else
+      "\250\264\327!",
+      "\341\226",
+    #endif
+    2-1, 1-1
+  },
 
   /* ----------------------------------- */
   /* Supplemental and macro instructions */
@@ -1025,8 +1069,8 @@ static const SEQUENCE sequences_cmp[] = {
       "addr.pri %1!push.pri!load.s.pri %2!bounds %3!shl.c.pri 2!pop.alt!add!load.i!",
       "addr.alt %1!load.s.pri %2!bounds %3!lidx!",
     #else
-      "\324\340\355\342\203\217\356\220\305",
-      "\275\351\355l\335!",
+      "\325\344\357\341\203\215\360\220\305",
+      "\275\352\357l\340!",
     #endif
     8-4, 4-3
   },
@@ -1035,8 +1079,8 @@ static const SEQUENCE sequences_cmp[] = {
       "const.pri %1!push.pri!load.s.pri %2!bounds %3!shl.c.pri 2!pop.alt!add!load.i!",
       "const.alt %1!load.s.pri %2!bounds %3!lidx!",
     #else
-      "\304\340\355\342\203\217\356\220\305",
-      "\247\351\355l\335!",
+      "\304\344\357\341\203\215\360\220\305",
+      "\250\352\357l\340!",
     #endif
     8-4, 4-3
   },
@@ -1045,8 +1089,8 @@ static const SEQUENCE sequences_cmp[] = {
       "addr.pri %1!push.pri!load.s.pri %2!shl.c.pri 2!pop.alt!add!load.i!",
       "addr.alt %1!load.s.pri %2!lidx!",
     #else
-      "\324\340\342\203\217\356\220\305",
-      "\275\351l\335!",
+      "\325\344\341\203\215\360\220\305",
+      "\275\352l\340!",
     #endif
     7-3, 3-2
   },
@@ -1055,8 +1099,8 @@ static const SEQUENCE sequences_cmp[] = {
       "const.pri %1!push.pri!load.s.pri %2!shl.c.pri 2!pop.alt!add!load.i!",
       "const.alt %1!load.s.pri %2!lidx!",
     #else
-      "\304\340\342\203\217\356\220\305",
-      "\247\351l\335!",
+      "\304\344\341\203\215\360\220\305",
+      "\250\352l\340!",
     #endif
     7-3, 3-2
   },
@@ -1067,8 +1111,8 @@ static const SEQUENCE sequences_cmp[] = {
       "addr.pri %1!push.pri!load.s.pri %2!bounds %3!shl.c.pri %4!pop.alt!add!load.i!",
       "addr.alt %1!load.s.pri %2!bounds %3!lidx.b %4!",
     #else
-      "\324\340\355\342\230\307\356\220\305",
-      "\275\351\355l\335.b\325",
+      "\325\344\357\341\230\310\360\220\305",
+      "\275\352\357l\340.b\331",
     #endif
     8-4, 4-4
   },
@@ -1077,8 +1121,8 @@ static const SEQUENCE sequences_cmp[] = {
       "const.pri %1!push.pri!load.s.pri %2!bounds %3!shl.c.pri %4!pop.alt!add!load.i!",
       "const.alt %1!load.s.pri %2!bounds %3!lidx.b %4!",
     #else
-      "\304\340\355\342\230\307\356\220\305",
-      "\247\351\355l\335.b\325",
+      "\304\344\357\341\230\310\360\220\305",
+      "\250\352\357l\340.b\331",
     #endif
     8-4, 4-4
   },
@@ -1087,8 +1131,8 @@ static const SEQUENCE sequences_cmp[] = {
       "addr.pri %1!push.pri!load.s.pri %2!shl.c.pri %3!pop.alt!add!load.i!",
       "addr.alt %1!load.s.pri %2!lidx.b %3!",
     #else
-      "\324\340\342\2303!\356\220\305",
-      "\275\351l\335.b\270",
+      "\325\344\341\2303!\360\220\305",
+      "\275\352l\340.b\270",
     #endif
     7-3, 3-3
   },
@@ -1097,8 +1141,8 @@ static const SEQUENCE sequences_cmp[] = {
       "const.pri %1!push.pri!load.s.pri %2!shl.c.pri %3!pop.alt!add!load.i!",
       "const.alt %1!load.s.pri %2!lidx.b %3!",
     #else
-      "\304\340\342\2303!\356\220\305",
-      "\247\351l\335.b\270",
+      "\304\344\341\2303!\360\220\305",
+      "\250\352l\340.b\270",
     #endif
     7-3, 3-3
   },
@@ -1109,8 +1153,8 @@ static const SEQUENCE sequences_cmp[] = {
       "addr.pri %1!push.pri!load.s.pri %2!bounds %3!shl.c.pri 2!pop.alt!add!",
       "addr.alt %1!load.s.pri %2!bounds %3!idxaddr!",
     #else
-      "\324\340\355\342\203\217\356",
-      "\275\351\355\335\244\227",
+      "\325\344\357\341\203\215\360",
+      "\275\352\357\340\243\227",
     #endif
     7-4, 4-3
   },
@@ -1119,8 +1163,8 @@ static const SEQUENCE sequences_cmp[] = {
       "const.pri %1!push.pri!load.s.pri %2!bounds %3!shl.c.pri 2!pop.alt!add!",
       "const.alt %1!load.s.pri %2!bounds %3!idxaddr!",
     #else
-      "\304\340\355\342\203\217\356",
-      "\247\351\355\335\244\227",
+      "\304\344\357\341\203\215\360",
+      "\250\352\357\340\243\227",
     #endif
     7-4, 4-3
   },
@@ -1129,8 +1173,8 @@ static const SEQUENCE sequences_cmp[] = {
       "addr.pri %1!push.pri!load.s.pri %2!shl.c.pri 2!pop.alt!add!",
       "addr.alt %1!load.s.pri %2!idxaddr!",
     #else
-      "\324\340\342\203\217\356",
-      "\275\351\335\244\227",
+      "\325\344\341\203\215\360",
+      "\275\352\340\243\227",
     #endif
     6-3, 3-2
   },
@@ -1139,8 +1183,8 @@ static const SEQUENCE sequences_cmp[] = {
       "const.pri %1!push.pri!load.s.pri %2!shl.c.pri 2!pop.alt!add!",
       "const.alt %1!load.s.pri %2!idxaddr!",
     #else
-      "\304\340\342\203\217\356",
-      "\247\351\335\244\227",
+      "\304\344\341\203\215\360",
+      "\250\352\340\243\227",
     #endif
     6-3, 3-2
   },
@@ -1151,8 +1195,8 @@ static const SEQUENCE sequences_cmp[] = {
       "addr.pri %1!push.pri!load.s.pri %2!bounds %3!shl.c.pri %4!pop.alt!add!",
       "addr.alt %1!load.s.pri %2!bounds %3!idxaddr.b %4!",
     #else
-      "\324\340\355\342\230\307\356",
-      "\275\351\355\335\275.b\325",
+      "\325\344\357\341\230\310\360",
+      "\275\352\357\340\275.b\331",
     #endif
     7-4, 4-4
   },
@@ -1161,8 +1205,8 @@ static const SEQUENCE sequences_cmp[] = {
       "const.pri %1!push.pri!load.s.pri %2!bounds %3!shl.c.pri %4!pop.alt!add!",
       "const.alt %1!load.s.pri %2!bounds %3!idxaddr.b %4!",
     #else
-      "\304\340\355\342\230\307\356",
-      "\247\351\355\335\275.b\325",
+      "\304\344\357\341\230\310\360",
+      "\250\352\357\340\275.b\331",
     #endif
     7-4, 4-4
   },
@@ -1171,8 +1215,8 @@ static const SEQUENCE sequences_cmp[] = {
       "addr.pri %1!push.pri!load.s.pri %2!shl.c.pri %3!pop.alt!add!",
       "addr.alt %1!load.s.pri %2!idxaddr.b %3!",
     #else
-      "\324\340\342\2303!\356",
-      "\275\351\335\275.b\270",
+      "\325\344\341\2303!\360",
+      "\275\352\340\275.b\270",
     #endif
     6-3, 3-3
   },
@@ -1181,8 +1225,8 @@ static const SEQUENCE sequences_cmp[] = {
       "const.pri %1!push.pri!load.s.pri %2!shl.c.pri %3!pop.alt!add!",
       "const.alt %1!load.s.pri %2!idxaddr.b %3!",
     #else
-      "\304\340\342\2303!\356",
-      "\247\351\335\275.b\270",
+      "\304\344\341\2303!\360",
+      "\250\352\340\275.b\270",
     #endif
     6-3, 3-3
   },
@@ -1193,8 +1237,8 @@ static const SEQUENCE sequences_cmp[] = {
       "shl.c.pri 2!pop.alt!add!loadi!",
       "pop.alt!lidx!",
     #else
-      "\342\203\217\356\220\225",
-      "\263l\335!",
+      "\341\203\215\360\220\225",
+      "\263l\340!",
     #endif
     4-2, 1-0
   },
@@ -1203,8 +1247,8 @@ static const SEQUENCE sequences_cmp[] = {
       "shl.c.pri 2!pop.alt!add!",
       "pop.alt!idxaddr!",
     #else
-      "\342\203\217\356",
-      "\263\335\244\227",
+      "\341\203\215\360",
+      "\263\340\243\227",
     #endif
     3-2, 1-0
   },
@@ -1214,8 +1258,8 @@ static const SEQUENCE sequences_cmp[] = {
       "shl.c.pri %1!pop.alt!add!loadi!",
       "pop.alt!lidx.b %1!",
     #else
-      "\342\226\356\220\225",
-      "\263l\335.b\215",
+      "\341\226\360\220\225",
+      "\263l\340.b\214",
     #endif
     4-2, 1-1
   },
@@ -1224,8 +1268,8 @@ static const SEQUENCE sequences_cmp[] = {
       "shl.c.pri %1!pop.alt!add!",
       "pop.alt!idxaddr.b %1!",
     #else
-      "\342\226\356",
-      "\263\335\275.b\215",
+      "\341\226\360",
+      "\263\340\275.b\214",
     #endif
     3-2, 1-1
   },
@@ -1241,8 +1285,8 @@ static const SEQUENCE sequences_cmp[] = {
       ";$lcl %1 %2!stack -4!const.pri %3!stor.s %2!;$exp!",
       ";$lcl %1 %2!push.c %3!;$exp!",
     #else
-      "\214lcl\336\234ack -\307\247\2303!\367\213\243\257",
-      "\214lcl\336\361\270\257",
+      "\216lcl\342\234ack -\310\250\2303!\370\213\245\257",
+      "\216lcl\342\212\236\270\257",
     #endif
     3-1, 3-1
   },
@@ -1251,8 +1295,8 @@ static const SEQUENCE sequences_cmp[] = {
       ";$lcl %1 %2!stack -4!zero.pri!stor.s %2!;$exp!",
       ";$lcl %1 %2!push.c #0!;$exp!",
     #else
-      "\214lcl\336\234ack -\307\347\240\367\213\243\257",
-      "\214lcl\336\361\310\241\257",
+      "\216lcl\342\234ack -\310\350\240\370\213\245\257",
+      "\216lcl\342\212\236\311\242\257",
     #endif
     3-1, 2-1
   },
@@ -1269,8 +1313,8 @@ static const SEQUENCE sequences_cmp[] = {
       ";$lcl %1 %2!stack -4!load.pri %3!stor.s %2!;$exp!",
       ";$lcl %1 %2!stack #-4!load.pri %3!stor.i!;$exp!",
     #else
-      "\214lcl\336\234ack -\307\220\2303!\367\213\243\257",
-      "\214lcl\336\234ack\310-\307\220\2303!\367\305\257",
+      "\216lcl\342\234ack -\310\220\2303!\370\213\245\257",
+      "\216lcl\342\234ack\311-\310\220\2303!\370\305\257",
     #endif
     3-3, 3-2
   },
@@ -1279,8 +1323,8 @@ static const SEQUENCE sequences_cmp[] = {
       ";$lcl %1 %2!stack -4!load.s.pri %3!stor.s %2!;$exp!",
       ";$lcl %1 %2!stack #-4!load.s.pri %3!stor.i!;$exp!",
     #else
-      "\214lcl\336\234ack -\307\235\2303!\367\213\243\257",
-      "\214lcl\336\234ack\310-\307\235\2303!\367\305\257",
+      "\216lcl\342\234ack -\310\235\2303!\370\213\245\257",
+      "\216lcl\342\234ack\311-\310\235\2303!\370\305\257",
     #endif
     3-3, 3-2
   },
@@ -1291,8 +1335,8 @@ static const SEQUENCE sequences_cmp[] = {
       "xchg!load.s.pri %1!sub!",
       "load.s.alt %1!sub.inv!",
     #else
-      "\274\317sub!",
-      "\235\265sub.\311v!",
+      "\274\321sub!",
+      "\235\264sub.\307v!",
     #endif
     3-2, 1-1
   },
@@ -1301,8 +1345,8 @@ static const SEQUENCE sequences_cmp[] = {
       "xchg!load.pri %1!sub!",
       "load.alt %1!sub.inv!",
     #else
-      "\274\326sub!",
-      "\220\265sub.\311v!",
+      "\274\332sub!",
+      "\220\264sub.\307v!",
     #endif
     3-2, 1-1
   },
@@ -1312,7 +1356,17 @@ static const SEQUENCE sequences_cmp[] = {
       "const.alt %1!sub.inv!",
     #else
       "\274\304sub!",
-      "\247\265sub.\311v!",
+      "\250\264sub.\307v!",
+    #endif
+    3-2, 1-1
+  },
+  {
+    #ifdef SCPACK
+      "xchg!lref.s.pri %1!sub!",
+      "lref.s.alt %1!sub.inv!",
+    #else
+      "\274\354\226sub!",
+      "\354\264sub.\307v!",
     #endif
     3-2, 1-1
   },
@@ -1324,8 +1378,8 @@ static const SEQUENCE sequences_cmp[] = {
       "push.c %1!sysreq %2!stack %3!",        //note: %3 == %1 + 4
       "sysreq.n %2 %1!",
     #else
-      "\361\215sysr\302\243\234ack\270",
-      "sysr\302.n\330\215",
+      "\212\362sysr\302\245\234ack\270",
+      "sysr\302.n\333\214",
     #endif
     3-1, 3-2
   },
@@ -1346,8 +1400,8 @@ static const SEQUENCE sequences_cmp[] = {
       "const.pri %1!const.alt %2!push.pri!push.alt!",
       "push.c %1!push.c %2!",
     #else
-      "\304\247\337\262\212\250",
-      "\361\215\361\243",
+      "\304\250\343\260\212\244",
+      "\212\362\212\236\245",
     #endif
     4-2, 2-2
   },
@@ -1356,8 +1410,8 @@ static const SEQUENCE sequences_cmp[] = {
       "const.pri %1!const.alt %2!push.alt!push.pri!",
       "push.c %2!push.c %1!",
     #else
-      "\304\247\337\212\250\262",
-      "\361\243\361\215",
+      "\304\250\343\212\244\260",
+      "\212\236\245\212\362",
     #endif
     4-2, 2-2
   },
@@ -1366,8 +1420,8 @@ static const SEQUENCE sequences_cmp[] = {
       "const.pri %1!load.alt %2!push.pri!push.alt!",
       "push.c %1!push %2!",
     #else
-      "\304\220\337\262\212\250",
-      "\361\215\212\243",
+      "\304\220\343\260\212\244",
+      "\212\362\212\245",
     #endif
     4-2, 2-2
   },
@@ -1376,8 +1430,8 @@ static const SEQUENCE sequences_cmp[] = {
       "const.pri %1!load.alt %2!push.alt!push.pri!",
       "push %2!push.c %1!",
     #else
-      "\304\220\337\212\250\262",
-      "\212\243\361\215",
+      "\304\220\343\212\244\260",
+      "\212\245\212\362",
     #endif
     4-2, 2-2
   },
@@ -1386,8 +1440,8 @@ static const SEQUENCE sequences_cmp[] = {
       "load.pri %1!const.alt %2!push.pri!push.alt!",
       "push %1!push.c %2!",
     #else
-      "\326\247\337\262\212\250",
-      "\212\215\361\243",
+      "\332\250\343\260\212\244",
+      "\212\214\212\236\245",
     #endif
     4-2, 2-2
   },
@@ -1396,8 +1450,8 @@ static const SEQUENCE sequences_cmp[] = {
       "load.pri %1!const.alt %2!push.alt!push.pri!",
       "push.c %2!push %1!",
     #else
-      "\326\247\337\212\250\262",
-      "\361\243\212\215",
+      "\332\250\343\212\244\260",
+      "\212\236\245\212\214",
     #endif
     4-2, 2-2
   },
@@ -1406,8 +1460,8 @@ static const SEQUENCE sequences_cmp[] = {
       "load.pri %1!load.alt %2!push.pri!push.alt!",
       "push %1!push %2!",
     #else
-      "\326\220\337\262\212\250",
-      "\212\215\212\243",
+      "\332\220\343\260\212\244",
+      "\212\214\212\245",
     #endif
     4-2, 2-2
   },
@@ -1416,8 +1470,8 @@ static const SEQUENCE sequences_cmp[] = {
       "load.pri %1!load.alt %2!push.alt!push.pri!",
       "push %2!push %1!",
     #else
-      "\326\220\337\212\250\262",
-      "\212\243\212\215",
+      "\332\220\343\212\244\260",
+      "\212\245\212\214",
     #endif
     4-2, 2-2
   },
@@ -1445,8 +1499,8 @@ static const SEQUENCE sequences_cmp[] = {
       "load.s.pri %1!push.pri!;$par!",
       "push.s %1!;$par!",
     #else
-      "\317\262\233",
-      "\212\360\233",
+      "\321\260\233",
+      "\212\361\233",
     #endif
     2-1, 1-1
   },
@@ -1455,8 +1509,8 @@ static const SEQUENCE sequences_cmp[] = {
       "load.pri %1!push.pri!;$par!",
       "push %1!;$par!",
     #else
-      "\326\262\233",
-      "\212\215\233",
+      "\332\260\233",
+      "\212\214\233",
     #endif
     2-1, 1-1
   },
@@ -1465,8 +1519,8 @@ static const SEQUENCE sequences_cmp[] = {
       "const.pri %1!push.pri!;$par!",
       "push.c %1!;$par!",
     #else
-      "\304\262\233",
-      "\361\215\233",
+      "\304\260\233",
+      "\212\362\233",
     #endif
     2-1, 1-1
   },
@@ -1475,8 +1529,8 @@ static const SEQUENCE sequences_cmp[] = {
       "zero.pri!push.pri!;$par!",
       "push.c #0!;$par!",
     #else
-      "\347\240\262\233",
-      "\361\310\241\233",
+      "\350\240\260\233",
+      "\212\236\311\242\233",
     #endif
     2-1, 0-1
   },
@@ -1485,8 +1539,8 @@ static const SEQUENCE sequences_cmp[] = {
       "addr.pri %1!push.pri!;$par!",
       "push.adr %1!;$par!",
     #else
-      "\324\262\233",
-      "\212\300\215\233",
+      "\325\260\233",
+      "\212\300\214\233",
     #endif
     2-1, 1-1
   },
@@ -1515,8 +1569,8 @@ static const SEQUENCE sequences_cmp[] = {
       "load.s.pri %1!pushr.pri!;$par!",
       "pushr.s %1!;$par!",
     #else
-      "\317\253\240\233",
-      "\253\360\233",
+      "\321\253\240\233",
+      "\253\361\233",
     #endif
     2-1, 1-1
   },
@@ -1526,7 +1580,7 @@ static const SEQUENCE sequences_cmp[] = {
       "pushr.c %1!;$par!",
     #else
       "\304\253\240\233",
-      "\253\236\215\233",
+      "\253\362\233",
     #endif
     2-1, 1-1
   },
@@ -1535,8 +1589,8 @@ static const SEQUENCE sequences_cmp[] = {
       "zero.pri!pushr.pri!;$par!",
       "pushr.c #0!;$par!",
     #else
-      "\347\240\253\240\233",
-      "\253\236\310\241\233",
+      "\350\240\253\240\233",
+      "\253\236\311\242\233",
     #endif
     2-1, 0-1
   },
@@ -1545,8 +1599,8 @@ static const SEQUENCE sequences_cmp[] = {
       "addr.pri %1!pushr.pri!;$par!",
       "pushr.adr %1!;$par!",
     #else
-      "\324\253\240\233",
-      "\253\300\215\233",
+      "\325\253\240\233",
+      "\253\300\214\233",
     #endif
     2-1, 1-1
   },
@@ -1566,8 +1620,8 @@ static const SEQUENCE sequences_cmp[] = {
       "const.alt %1!add!",
       "add.c %1!",
     #else
-      "\247\265\321",
-      "\244\236\215",
+      "\250\264\324",
+      "\243\362",
     #endif
     2-1, 1-1
   },
@@ -1576,8 +1630,8 @@ static const SEQUENCE sequences_cmp[] = {
       "const.alt %1!smul!",
       "smul.c %1!",
     #else
-      "\247\265smul!",
-      "smu\327\215",
+      "\250\264smul!",
+      "smul\362",
     #endif
     2-1, 1-1
   },
@@ -1586,7 +1640,7 @@ static const SEQUENCE sequences_cmp[] = {
       "const.alt %1!eq!",
       "eq.c.pri %1!",
     #else
-      "\247\265\322",
+      "\250\264\326",
       "\302\236\226",
     #endif
     2-1, 1-1
@@ -1606,8 +1660,8 @@ static const SEQUENCE sequences_cmp[] = {
       "const.pri %1!load.s.alt %2!sub!",
       "load.s.pri %2!add.c -%1!",
     #else
-      "\304\235\337sub!",
-      "\266\244\236 -\205",
+      "\304\235\343sub!",
+      "\266\243\236 -\205",
     #endif
     3-2, 2-2
   },
@@ -1616,8 +1670,8 @@ static const SEQUENCE sequences_cmp[] = {
       "const.pri %1!load.alt %2!sub!",
       "load.pri %2!add.c -%1!",
     #else
-      "\304\220\337sub!",
-      "\354\244\236 -\205",
+      "\304\220\343sub!",
+      "\356\243\236 -\205",
     #endif
     3-2, 2-2
   },
@@ -1631,8 +1685,8 @@ static const SEQUENCE sequences_cmp[] = {
       "add.c %1!add.c %2!",
       "add.c %1+%2!",
     #else
-      "\244\236\215\244\236\243",
-      "\244\236\264+%\217",
+      "\243\362\243\236\245",
+      "\243\236\265+%\215",
     #endif
     2-1, 2-1
   },
@@ -1653,8 +1707,8 @@ static const SEQUENCE sequences_cmp[] = {
       "xchg!sgrtr!jzer %1!;$exp!",
       "jsgeq %1!;$exp!",
     #else
-      "\274\333rt\227\331\316",
-      "j\333\302\316",
+      "\274\336rt\227\334\316",
+      "j\336\302\316",
     #endif
     3-1, 1-1
   },
@@ -1663,8 +1717,8 @@ static const SEQUENCE sequences_cmp[] = {
       "xchg!sless!jzer %1!;$exp!",
       "jsleq %1!;$exp!",
     #else
-      "\274\334ess!\331\316",
-      "j\334\302\316",
+      "\274\337ess!\334\316",
+      "j\337\302\316",
     #endif
     3-1, 1-1
   },
@@ -1673,8 +1727,8 @@ static const SEQUENCE sequences_cmp[] = {
       "xchg!sgeq!jzer %1!;$exp!",
       "jsgrtr %1!;$exp!",
     #else
-      "\274\333\322\331\316",
-      "j\333rtr\316",
+      "\274\336\326\334\316",
+      "j\336rtr\316",
     #endif
     3-1, 1-1
   },
@@ -1683,8 +1737,8 @@ static const SEQUENCE sequences_cmp[] = {
       "xchg!sleq!jzer %1!;$exp!",
       "jsless %1!;$exp!",
     #else
-      "\274\334\322\331\316",
-      "j\334ess\316",
+      "\274\337\326\334\316",
+      "j\337ess\316",
     #endif
     3-1, 1-1
   },
@@ -1733,8 +1787,8 @@ static const SEQUENCE sequences_cmp[] = {
       "eq!jzer %1!",
       "jneq %1!",
     #else
-      "\322\353",
-      "jn\302\215",
+      "\326\355",
+      "jn\302\214",
     #endif
     2-1, 1-1
   },
@@ -1743,8 +1797,8 @@ static const SEQUENCE sequences_cmp[] = {
       "eq!jnz %1!",
       "jeq %1!",
     #else
-      "\322jnz\215",
-      "j\302\215",
+      "\326jnz\214",
+      "j\302\214",
     #endif
     2-1, 1-1
   },
@@ -1753,8 +1807,8 @@ static const SEQUENCE sequences_cmp[] = {
       "neq!jzer %1!",
       "jeq %1!",
     #else
-      "n\322\353",
-      "j\302\215",
+      "n\326\355",
+      "j\302\214",
     #endif
     2-1, 1-1
   },
@@ -1763,8 +1817,8 @@ static const SEQUENCE sequences_cmp[] = {
       "neq!jnz %1!",
       "jneq %1!",
     #else
-      "n\322jnz\215",
-      "jn\302\215",
+      "n\326jnz\214",
+      "jn\302\214",
     #endif
     2-1, 1-1
   },
@@ -1773,8 +1827,8 @@ static const SEQUENCE sequences_cmp[] = {
       "sless!jzer %1!",
       "jsgeq %1!",
     #else
-      "\334ess!\353",
-      "j\333\302\215",
+      "\337ess!\355",
+      "j\336\302\214",
     #endif
     2-1, 1-1
   },
@@ -1783,8 +1837,8 @@ static const SEQUENCE sequences_cmp[] = {
       "sless!jnz %1!",
       "jsless %1!",
     #else
-      "\334ess!jnz\215",
-      "j\334ess\215",
+      "\337ess!jnz\214",
+      "j\337ess\214",
     #endif
     2-1, 1-1
   },
@@ -1793,8 +1847,8 @@ static const SEQUENCE sequences_cmp[] = {
       "sleq!jzer %1!",
       "jsgrtr %1!",
     #else
-      "\334\322\353",
-      "j\333rtr\215",
+      "\337\326\355",
+      "j\336rtr\214",
     #endif
     2-1, 1-1
   },
@@ -1803,8 +1857,8 @@ static const SEQUENCE sequences_cmp[] = {
       "sleq!jnz %1!",
       "jsleq %1!",
     #else
-      "\334\322jnz\215",
-      "j\334\302\215",
+      "\337\326jnz\214",
+      "j\337\302\214",
     #endif
     2-1, 1-1
   },
@@ -1813,8 +1867,8 @@ static const SEQUENCE sequences_cmp[] = {
       "sgrtr!jzer %1!",
       "jsleq %1!",
     #else
-      "\333rt\227\353",
-      "j\334\302\215",
+      "\336rt\227\355",
+      "j\337\302\214",
     #endif
     2-1, 1-1
   },
@@ -1823,8 +1877,8 @@ static const SEQUENCE sequences_cmp[] = {
       "sgrtr!jnz %1!",
       "jsgrtr %1!",
     #else
-      "\333rt\227jnz\215",
-      "j\333rtr\215",
+      "\336rt\227jnz\214",
+      "j\336rtr\214",
     #endif
     2-1, 1-1
   },
@@ -1833,8 +1887,8 @@ static const SEQUENCE sequences_cmp[] = {
       "sgeq!jzer %1!",
       "jsless %1!",
     #else
-      "\333\322\353",
-      "j\334ess\215",
+      "\336\326\355",
+      "j\337ess\214",
     #endif
     2-1, 1-1
   },
@@ -1843,8 +1897,8 @@ static const SEQUENCE sequences_cmp[] = {
       "sgeq!jnz %1!",
       "jsgeq %1!",
     #else
-      "\333\322jnz\215",
-      "j\333\302\215",
+      "\336\326jnz\214",
+      "j\336\302\214",
     #endif
     2-1, 1-1
   },
@@ -1861,8 +1915,8 @@ static const SEQUENCE sequences_cmp[] = {
       "addr.pri %1!inc.i!",
       "inc.s %1!",
     #else
-      "\324\312\305",
-      "\312\360",
+      "\325\312\305",
+      "\312\361",
     #endif
     2-1, 1-1
   },
@@ -1872,7 +1926,7 @@ static const SEQUENCE sequences_cmp[] = {
       "inc %1!",
     #else
       "\304\312\305",
-      "\312\215",
+      "\312\214",
     #endif
     2-1, 1-1
   },
@@ -1881,8 +1935,8 @@ static const SEQUENCE sequences_cmp[] = {
       "addr.pri %1!dec.i!",
       "dec.s %1!",
     #else
-      "\324\314\305",
-      "\314\360",
+      "\325\314\305",
+      "\314\361",
     #endif
     2-1, 1-1
   },
@@ -1892,7 +1946,7 @@ static const SEQUENCE sequences_cmp[] = {
       "dec %1!",
     #else
       "\304\314\305",
-      "\314\215",
+      "\314\214",
     #endif
     2-1, 1-1
   },
@@ -1912,8 +1966,8 @@ static const SEQUENCE sequences_cmp[] = {
       "push.pri %1!inc.s %1!pop.pri!",
       "inc.s %1!",
     #else
-      "\212\226\312\360\364",
-      "\312\360",
+      "\212\226\312\361\366",
+      "\312\361",
     #endif
     3-1, 1-1
   },
@@ -1922,8 +1976,8 @@ static const SEQUENCE sequences_cmp[] = {
       "push.pri %1!inc %1!pop.pri!",
       "inc %1!",
     #else
-      "\212\226\312\215\364",
-      "\312\215",
+      "\212\226\312\214\366",
+      "\312\214",
     #endif
     3-1, 1-1
   },
@@ -1932,8 +1986,8 @@ static const SEQUENCE sequences_cmp[] = {
       "push.pri %1!dec.s %1!pop.pri!",
       "dec.s %1!",
     #else
-      "\212\226\314\360\364",
-      "\314\360",
+      "\212\226\314\361\366",
+      "\314\361",
     #endif
     3-1, 1-1
   },
@@ -1942,8 +1996,8 @@ static const SEQUENCE sequences_cmp[] = {
       "push.pri %1!dec %1!pop.pri!",
       "dec %1!",
     #else
-      "\212\226\314\215\364",
-      "\314\215",
+      "\212\226\314\214\366",
+      "\314\214",
     #endif
     3-1, 1-1
   },
@@ -1965,7 +2019,7 @@ static const SEQUENCE sequences_cmp[] = {
       "inc %1!load.pri %1!;$exp!",
       "inc %1!;$exp!",
     #else
-      "\312\215\326\257",
+      "\312\214\332\257",
       "\312\316",
     #endif
     2-1, 2-1
@@ -1975,7 +2029,7 @@ static const SEQUENCE sequences_cmp[] = {
       "load.pri %1!inc %1!;$exp!",
       "inc %1!;$exp!",
     #else
-      "\326\312\316",
+      "\332\312\316",
       "\312\316",
     #endif
     2-1, 2-1
@@ -1985,7 +2039,7 @@ static const SEQUENCE sequences_cmp[] = {
       "inc.s %1!load.s.pri %1!;$exp!",
       "inc.s %1!;$exp!",
     #else
-      "\312\360\317\257",
+      "\312\361\321\257",
       "\312\213\316",
     #endif
     2-1, 2-1
@@ -1995,7 +2049,7 @@ static const SEQUENCE sequences_cmp[] = {
       "load.s.pri %1!inc.s %1!;$exp!",
       "inc.s %1!;$exp!",
     #else
-      "\317\312\213\316",
+      "\321\312\213\316",
       "\312\213\316",
     #endif
     2-1, 2-1
@@ -2005,7 +2059,7 @@ static const SEQUENCE sequences_cmp[] = {
       "dec %1!load.pri %1!;$exp!",
       "dec %1!;$exp!",
     #else
-      "\314\215\326\257",
+      "\314\214\332\257",
       "\314\316",
     #endif
     2-1, 2-1
@@ -2015,7 +2069,7 @@ static const SEQUENCE sequences_cmp[] = {
       "load.pri %1!dec %1!;$exp!",
       "dec %1!;$exp!",
     #else
-      "\326\314\316",
+      "\332\314\316",
       "\314\316",
     #endif
     2-1, 2-1
@@ -2025,7 +2079,7 @@ static const SEQUENCE sequences_cmp[] = {
       "dec.s %1!load.s.pri %1!;$exp!",
       "dec.s %1!;$exp!",
     #else
-      "\314\360\317\257",
+      "\314\361\321\257",
       "\314\213\316",
     #endif
     2-1, 2-1
@@ -2035,7 +2089,7 @@ static const SEQUENCE sequences_cmp[] = {
       "load.s.pri %1!dec.s %1!;$exp!",
       "dec.s %1!;$exp!",
     #else
-      "\317\314\213\316",
+      "\321\314\213\316",
       "\314\213\316",
     #endif
     2-1, 2-1
@@ -2069,8 +2123,8 @@ static const SEQUENCE sequences_cmp[] = {
       "const.pri 0!stor %1!;$exp!",
       "zero %1!;$exp!",
     #else
-      "\247\203\241\367\316",
-      "\347\316",
+      "\250\203\242\370\316",
+      "\350\316",
     #endif
     2-1, 2-1
   },
@@ -2079,8 +2133,8 @@ static const SEQUENCE sequences_cmp[] = {
       "const.pri 0!stor.s %1!;$exp!",
       "zero.s %1!;$exp!",
     #else
-      "\247\203\241\367\213\316",
-      "\347\213\316",
+      "\250\203\242\370\213\316",
+      "\350\213\316",
     #endif
     2-1, 2-1
   },
@@ -2089,8 +2143,8 @@ static const SEQUENCE sequences_cmp[] = {
       "zero.pri!stor %1!;$exp!",
       "zero %1!;$exp!",
     #else
-      "\347\240\367\316",
-      "\347\316",
+      "\350\240\370\316",
+      "\350\316",
     #endif
     2-1, 1-1
   },
@@ -2099,8 +2153,8 @@ static const SEQUENCE sequences_cmp[] = {
       "zero.pri!stor.s %1!;$exp!",
       "zero.s %1!;$exp!",
     #else
-      "\347\240\367\213\316",
-      "\347\213\316",
+      "\350\240\370\213\316",
+      "\350\213\316",
     #endif
     2-1, 1-1
   },
@@ -2109,8 +2163,8 @@ static const SEQUENCE sequences_cmp[] = {
       "const.pri +0!",
       "zero.pri!",
     #else
-      "\247\203+\241",
-      "\347\240",
+      "\250\203+\242",
+      "\350\240",
     #endif
     1-1, 1-0
   },
@@ -2119,8 +2173,8 @@ static const SEQUENCE sequences_cmp[] = {
       "const.alt +0!",
       "zero.alt!",
     #else
-      "\247\223 +\241",
-      "\347\250",
+      "\250\223 +\242",
+      "\350\244",
     #endif
     1-1, 1-0
   },
@@ -2142,8 +2196,8 @@ static const SEQUENCE sequences_cmp[] = {
       "push.c %1!;$par!push.c %2!;$par!push.c %3!;$par!push.c %4!;$par!push.c %5!;$par!",
       "pushm.c #5 %1 %2 %3 %4 %5!",
     #else
-      "\361\215\303\236\243\303\236\270\303\236\325\303\236\206\320\233",
-      "\323\236\3105\376\2064\206\320",
+      "\212\362\303\236\245\303\236\270\303\236\331\303\236\206\322\233",
+      "\330\236\3115\373\2064\206\322",
     #endif
     5-1, 5-6
   },
@@ -2152,8 +2206,8 @@ static const SEQUENCE sequences_cmp[] = {
       "push.c %1!;$par!push.c %2!;$par!push.c %3!;$par!push.c %4!;$par!",
       "pushm.c #4 %1 %2 %3 %4!",
     #else
-      "\361\215\303\236\243\303\236\270\303\236\325\233",
-      "\323\236\3104\376\325",
+      "\212\362\303\236\245\303\236\270\303\236\331\233",
+      "\330\236\3114\373\331",
     #endif
     4-1, 4-5
   },
@@ -2162,8 +2216,8 @@ static const SEQUENCE sequences_cmp[] = {
       "push.c %1!;$par!push.c %2!;$par!push.c %3!;$par!",
       "pushm.c #3 %1 %2 %3!",
     #else
-      "\361\215\303\236\243\303\236\270\233",
-      "\323\236\3103\352\270",
+      "\212\362\303\236\245\303\236\270\233",
+      "\330\236\3113\353\270",
     #endif
     3-1, 3-4
   },
@@ -2172,8 +2226,8 @@ static const SEQUENCE sequences_cmp[] = {
       "push.c %1!;$par!push.c %2!;$par!",
       "pushm.c #2 %1 %2!",
     #else
-      "\361\215\303\236\243\233",
-      "\323\236\3102\336",
+      "\212\362\303\236\245\233",
+      "\330\236\3112\342",
     #endif
     2-1, 2-3
   },
@@ -2183,8 +2237,8 @@ static const SEQUENCE sequences_cmp[] = {
       "push %1!;$par!push %2!;$par!push %3!;$par!push %4!;$par!push %5!;$par!",
       "pushm #5 %1 %2 %3 %4 %5!",
     #else
-      "\212\215\303\243\303\270\303\325\303\206\320\233",
-      "\323\3105\376\2064\206\320",
+      "\212\214\303\245\303\270\303\331\303\206\322\233",
+      "\330\3115\373\2064\206\322",
     #endif
     5-1, 5-6
   },
@@ -2193,8 +2247,8 @@ static const SEQUENCE sequences_cmp[] = {
       "push %1!;$par!push %2!;$par!push %3!;$par!push %4!;$par!",
       "pushm #4 %1 %2 %3 %4!",
     #else
-      "\212\215\303\243\303\270\303\325\233",
-      "\323\3104\376\325",
+      "\212\214\303\245\303\270\303\331\233",
+      "\330\3114\373\331",
     #endif
     4-1, 4-5
   },
@@ -2203,8 +2257,8 @@ static const SEQUENCE sequences_cmp[] = {
       "push %1!;$par!push %2!;$par!push %3!;$par!",
       "pushm #3 %1 %2 %3!",
     #else
-      "\212\215\303\243\303\270\233",
-      "\323\3103\352\270",
+      "\212\214\303\245\303\270\233",
+      "\330\3113\353\270",
     #endif
     3-1, 3-4
   },
@@ -2213,8 +2267,8 @@ static const SEQUENCE sequences_cmp[] = {
       "push %1!;$par!push %2!;$par!",
       "pushm #2 %1 %2!",
     #else
-      "\212\215\303\243\233",
-      "\323\3102\336",
+      "\212\214\303\245\233",
+      "\330\3112\342",
     #endif
     2-1, 2-3
   },
@@ -2224,8 +2278,8 @@ static const SEQUENCE sequences_cmp[] = {
       "push.s %1!;$par!push.s %2!;$par!push.s %3!;$par!push.s %4!;$par!push.s %5!;$par!",
       "pushm.s #5 %1 %2 %3 %4 %5!",
     #else
-      "\212\360\303\213\243\303\213\270\303\213\325\303\213\206\320\233",
-      "\323\213\3105\376\2064\206\320",
+      "\212\361\303\213\245\303\213\270\303\213\331\303\213\206\322\233",
+      "\330\213\3115\373\2064\206\322",
     #endif
     5-1, 5-6
   },
@@ -2234,8 +2288,8 @@ static const SEQUENCE sequences_cmp[] = {
       "push.s %1!;$par!push.s %2!;$par!push.s %3!;$par!push.s %4!;$par!",
       "pushm.s #4 %1 %2 %3 %4!",
     #else
-      "\212\360\303\213\243\303\213\270\303\213\325\233",
-      "\323\213\3104\376\325",
+      "\212\361\303\213\245\303\213\270\303\213\331\233",
+      "\330\213\3114\373\331",
     #endif
     4-1, 4-5
   },
@@ -2244,8 +2298,8 @@ static const SEQUENCE sequences_cmp[] = {
       "push.s %1!;$par!push.s %2!;$par!push.s %3!;$par!",
       "pushm.s #3 %1 %2 %3!",
     #else
-      "\212\360\303\213\243\303\213\270\233",
-      "\323\213\3103\352\270",
+      "\212\361\303\213\245\303\213\270\233",
+      "\330\213\3113\353\270",
     #endif
     3-1, 3-4
   },
@@ -2254,8 +2308,8 @@ static const SEQUENCE sequences_cmp[] = {
       "push.s %1!;$par!push.s %2!;$par!",
       "pushm.s #2 %1 %2!",
     #else
-      "\212\360\303\213\243\233",
-      "\323\213\3102\336",
+      "\212\361\303\213\245\233",
+      "\330\213\3112\342",
     #endif
     2-1, 2-3
   },
@@ -2265,8 +2319,8 @@ static const SEQUENCE sequences_cmp[] = {
       "push.adr %1!;$par!push.adr %2!;$par!push.adr %3!;$par!push.adr %4!;$par!push.adr %5!;$par!",
       "pushm.adr #5 %1 %2 %3 %4 %5!",
     #else
-      "\212\300\215\303\300\243\303\300\270\303\300\325\303\300\206\320\233",
-      "\323\300\3105\376\2064\206\320",
+      "\212\300\214\303\300\245\303\300\270\303\300\331\303\300\206\322\233",
+      "\330\300\3115\373\2064\206\322",
     #endif
     5-1, 5-6
   },
@@ -2275,8 +2329,8 @@ static const SEQUENCE sequences_cmp[] = {
       "push.adr %1!;$par!push.adr %2!;$par!push.adr %3!;$par!push.adr %4!;$par!",
       "pushm.adr #4 %1 %2 %3 %4!",
     #else
-      "\212\300\215\303\300\243\303\300\270\303\300\325\233",
-      "\323\300\3104\376\325",
+      "\212\300\214\303\300\245\303\300\270\303\300\331\233",
+      "\330\300\3114\373\331",
     #endif
     4-1, 4-5
   },
@@ -2285,8 +2339,8 @@ static const SEQUENCE sequences_cmp[] = {
       "push.adr %1!;$par!push.adr %2!;$par!push.adr %3!;$par!",
       "pushm.adr #3 %1 %2 %3!",
     #else
-      "\212\300\215\303\300\243\303\300\270\233",
-      "\323\300\3103\352\270",
+      "\212\300\214\303\300\245\303\300\270\233",
+      "\330\300\3113\353\270",
     #endif
     3-1, 3-4
   },
@@ -2295,8 +2349,8 @@ static const SEQUENCE sequences_cmp[] = {
       "push.adr %1!;$par!push.adr %2!;$par!",
       "pushm.adr #2 %1 %2!",
     #else
-      "\212\300\215\303\300\243\233",
-      "\323\300\3102\336",
+      "\212\300\214\303\300\245\233",
+      "\330\300\3112\342",
     #endif
     2-1, 2-3
   },
@@ -2306,8 +2360,8 @@ static const SEQUENCE sequences_cmp[] = {
       "pushr.c %1!;$par!pushr.c %2!;$par!pushr.c %3!;$par!pushr.c %4!;$par!pushr.c %5!;$par!",
       "pushrm.c #5 %1 %2 %3 %4 %5!",
     #else
-      "\253\236\215\315\236\243\315\236\270\315\236\325\315\236\206\320\233",
-      "\362\236\3105\376\2064\206\320",
+      "\253\362\315\236\245\315\236\270\315\236\331\315\236\206\322\233",
+      "\363\236\3115\373\2064\206\322",
     #endif
     5-1, 5-6
   },
@@ -2316,8 +2370,8 @@ static const SEQUENCE sequences_cmp[] = {
       "pushr.c %1!;$par!pushr.c %2!;$par!pushr.c %3!;$par!pushr.c %4!;$par!",
       "pushrm.c #4 %1 %2 %3 %4!",
     #else
-      "\253\236\215\315\236\243\315\236\270\315\236\325\233",
-      "\362\236\3104\376\325",
+      "\253\362\315\236\245\315\236\270\315\236\331\233",
+      "\363\236\3114\373\331",
     #endif
     4-1, 4-5
   },
@@ -2326,8 +2380,8 @@ static const SEQUENCE sequences_cmp[] = {
       "pushr.c %1!;$par!pushr.c %2!;$par!pushr.c %3!;$par!",
       "pushrm.c #3 %1 %2 %3!",
     #else
-      "\253\236\215\315\236\243\315\236\270\233",
-      "\362\236\3103\352\270",
+      "\253\362\315\236\245\315\236\270\233",
+      "\363\236\3113\353\270",
     #endif
     3-1, 3-4
   },
@@ -2336,8 +2390,8 @@ static const SEQUENCE sequences_cmp[] = {
       "pushr.c %1!;$par!pushr.c %2!;$par!",
       "pushrm.c #2 %1 %2!",
     #else
-      "\253\236\215\315\236\243\233",
-      "\362\236\3102\336",
+      "\253\362\315\236\245\233",
+      "\363\236\3112\342",
     #endif
     2-1, 2-3
   },
@@ -2347,8 +2401,8 @@ static const SEQUENCE sequences_cmp[] = {
       "pushr.s %1!;$par!pushr.s %2!;$par!pushr.s %3!;$par!pushr.s %4!;$par!pushr.s %5!;$par!",
       "pushrm.s #5 %1 %2 %3 %4 %5!",
     #else
-      "\253\360\315\213\243\315\213\270\315\213\325\315\213\206\320\233",
-      "\362\213\3105\376\2064\206\320",
+      "\253\361\315\213\245\315\213\270\315\213\331\315\213\206\322\233",
+      "\363\213\3115\373\2064\206\322",
     #endif
     5-1, 5-6
   },
@@ -2357,8 +2411,8 @@ static const SEQUENCE sequences_cmp[] = {
       "pushr.s %1!;$par!pushr.s %2!;$par!pushr.s %3!;$par!pushr.s %4!;$par!",
       "pushrm.s #4 %1 %2 %3 %4!",
     #else
-      "\253\360\315\213\243\315\213\270\315\213\325\233",
-      "\362\213\3104\376\325",
+      "\253\361\315\213\245\315\213\270\315\213\331\233",
+      "\363\213\3114\373\331",
     #endif
     4-1, 4-5
   },
@@ -2367,8 +2421,8 @@ static const SEQUENCE sequences_cmp[] = {
       "pushr.s %1!;$par!pushr.s %2!;$par!pushr.s %3!;$par!",
       "pushrm.s #3 %1 %2 %3!",
     #else
-      "\253\360\315\213\243\315\213\270\233",
-      "\362\213\3103\352\270",
+      "\253\361\315\213\245\315\213\270\233",
+      "\363\213\3113\353\270",
     #endif
     3-1, 3-4
   },
@@ -2377,8 +2431,8 @@ static const SEQUENCE sequences_cmp[] = {
       "pushr.s %1!;$par!pushr.s %2!;$par!",
       "pushrm.s #2 %1 %2!",
     #else
-      "\253\360\315\213\243\233",
-      "\362\213\3102\336",
+      "\253\361\315\213\245\233",
+      "\363\213\3112\342",
     #endif
     2-1, 2-3
   },
@@ -2388,8 +2442,8 @@ static const SEQUENCE sequences_cmp[] = {
       "pushr.adr %1!;$par!pushr.adr %2!;$par!pushr.adr %3!;$par!pushr.adr %4!;$par!pushr.adr %5!;$par!",
       "pushrm.adr #5 %1 %2 %3 %4 %5!",
     #else
-      "\253\300\215\315\300\243\315\300\270\315\300\325\315\300\206\320\233",
-      "\362\300\3105\376\2064\206\320",
+      "\253\300\214\315\300\245\315\300\270\315\300\331\315\300\206\322\233",
+      "\363\300\3115\373\2064\206\322",
     #endif
     5-1, 5-6
   },
@@ -2398,8 +2452,8 @@ static const SEQUENCE sequences_cmp[] = {
       "pushr.adr %1!;$par!pushr.adr %2!;$par!pushr.adr %3!;$par!pushr.adr %4!;$par!",
       "pushrm.adr #4 %1 %2 %3 %4!",
     #else
-      "\253\300\215\315\300\243\315\300\270\315\300\325\233",
-      "\362\300\3104\376\325",
+      "\253\300\214\315\300\245\315\300\270\315\300\331\233",
+      "\363\300\3114\373\331",
     #endif
     4-1, 4-5
   },
@@ -2408,8 +2462,8 @@ static const SEQUENCE sequences_cmp[] = {
       "pushr.adr %1!;$par!pushr.adr %2!;$par!pushr.adr %3!;$par!",
       "pushrm.adr #3 %1 %2 %3!",
     #else
-      "\253\300\215\315\300\243\315\300\270\233",
-      "\362\300\3103\352\270",
+      "\253\300\214\315\300\245\315\300\270\233",
+      "\363\300\3113\353\270",
     #endif
     3-1, 3-4
   },
@@ -2418,8 +2472,8 @@ static const SEQUENCE sequences_cmp[] = {
       "pushr.adr %1!;$par!pushr.adr %2!;$par!",
       "pushrm.adr #2 %1 %2!",
     #else
-      "\253\300\215\315\300\243\233",
-      "\362\300\3102\336",
+      "\253\300\214\315\300\245\233",
+      "\363\300\3112\342",
     #endif
     2-1, 2-3
   },
@@ -2441,8 +2495,8 @@ static const SEQUENCE sequences_cmp[] = {
       "load.pri %1!load.alt %2!",
       "load2 %1 %2!",
     #else
-      "\326\220\337",
-      "\2202\336",
+      "\332\220\343",
+      "\2202\342",
     #endif
     2-1, 2-2
   },
@@ -2451,8 +2505,8 @@ static const SEQUENCE sequences_cmp[] = {
       "load.alt %2!load.pri %1!",
       "load2 %1 %2!",
     #else
-      "\220\337\326",
-      "\2202\336",
+      "\220\343\332",
+      "\2202\342",
     #endif
     2-1, 2-2
   },
@@ -2461,8 +2515,8 @@ static const SEQUENCE sequences_cmp[] = {
       "load.s.pri %1!load.s.alt %2!",
       "load2.s %1 %2!",
     #else
-      "\317\235\337",
-      "\2202\213\336",
+      "\321\235\343",
+      "\2202\213\342",
     #endif
     2-1, 2-2
   },
@@ -2471,8 +2525,8 @@ static const SEQUENCE sequences_cmp[] = {
       "load.s.alt %2!load.s.pri %1!",
       "load2.s %1 %2!",
     #else
-      "\235\337\317",
-      "\2202\213\336",
+      "\235\343\321",
+      "\2202\213\342",
     #endif
     2-1, 2-2
   },
@@ -2490,8 +2544,8 @@ static const SEQUENCE sequences_cmp[] = {
       "load2 %1 %2!push.pri!push.alt!",
       "pushm #2 %1 %2!",
     #else
-      "\2202\336\262\212\250",
-      "\323\3102\336",
+      "\2202\342\260\212\244",
+      "\330\3112\342",
     #endif
     3-1, 2-3
   },
@@ -2500,8 +2554,8 @@ static const SEQUENCE sequences_cmp[] = {
       "load2.s %1 %2!push.pri!push.alt!",
       "pushm.s #2 %1 %2!",
     #else
-      "\2202\213\336\262\212\250",
-      "\323\213\3102\336",
+      "\2202\213\342\260\212\244",
+      "\330\213\3112\342",
     #endif
     3-1, 2-3
   },
@@ -2519,8 +2573,8 @@ static const SEQUENCE sequences_cmp[] = {
       "const.pri %1!stor %2!;$exp!",
       "const %2 %1!;$exp!",
     #else
-      "\304\367\243\257",
-      "\247\330\316",
+      "\304\370\245\257",
+      "\250\333\316",
     #endif
     2-1, 2-2
   },
@@ -2529,8 +2583,8 @@ static const SEQUENCE sequences_cmp[] = {
       "const.pri %1!stor.s %2!;$exp!",
       "const.s %2 %1!;$exp!",
     #else
-      "\304\367\213\243\257",
-      "\247\213\330\316",
+      "\304\370\213\245\257",
+      "\250\213\333\316",
     #endif
     2-1, 2-2
   },
@@ -2556,8 +2610,8 @@ static const SEQUENCE sequences_cmp[] = {
       "load.pri %0!",
       "load.p.pri %0!",
     #else
-      "\220\365",
-      "\220\224\365",
+      "\220\364",
+      "\220\224\364",
     #endif
     1-1, 1-0
   },
@@ -2566,8 +2620,8 @@ static const SEQUENCE sequences_cmp[] = {
       "load.alt %0!",
       "load.p.alt %0!",
     #else
-      "\220\375",
-      "\220\224\375",
+      "\220\223\261",
+      "\220\224\223\261",
     #endif
     1-1, 1-0
   },
@@ -2576,8 +2630,8 @@ static const SEQUENCE sequences_cmp[] = {
       "load.s.pri %0!",
       "load.p.s.pri %0!",
     #else
-      "\235\365",
-      "\220\224\213\365",
+      "\235\364",
+      "\220\224\213\364",
     #endif
     1-1, 1-0
   },
@@ -2586,8 +2640,8 @@ static const SEQUENCE sequences_cmp[] = {
       "load.s.alt %0!",
       "load.p.s.alt %0!",
     #else
-      "\235\375",
-      "\220\224\213\375",
+      "\235\223\261",
+      "\220\224\213\223\261",
     #endif
     1-1, 1-0
   },
@@ -2596,8 +2650,8 @@ static const SEQUENCE sequences_cmp[] = {
       "lref.s.pri %0!",
       "lref.p.s.pri %0!",
     #else
-      "\357\213\365",
-      "\357\224\213\365",
+      "\354\364",
+      "\323\224\213\364",
     #endif
     1-1, 1-0
   },
@@ -2606,8 +2660,8 @@ static const SEQUENCE sequences_cmp[] = {
       "lref.s.alt %0!",
       "lref.p.s.alt %0!",
     #else
-      "\357\213\375",
-      "\357\224\213\375",
+      "\354\223\261",
+      "\323\224\213\223\261",
     #endif
     1-1, 1-0
   },
@@ -2616,8 +2670,8 @@ static const SEQUENCE sequences_cmp[] = {
       "lodb.i %0!",
       "lodb.p.i %0!",
     #else
-      "\216db.\200%\241",
-      "\216db\224.\200%\241",
+      "\217db.\200%\242",
+      "\217db\224.\200%\242",
     #endif
     1-1, 1-0
   },
@@ -2626,8 +2680,8 @@ static const SEQUENCE sequences_cmp[] = {
       "const.pri %0!",
       "const.p.pri %0!",
     #else
-      "\247\365",
-      "\247\224\365",
+      "\250\364",
+      "\250\224\364",
     #endif
     1-1, 1-0
   },
@@ -2636,8 +2690,8 @@ static const SEQUENCE sequences_cmp[] = {
       "const.alt %0!",
       "const.p.alt %0!",
     #else
-      "\247\375",
-      "\247\224\375",
+      "\250\223\261",
+      "\250\224\223\261",
     #endif
     1-1, 1-0
   },
@@ -2646,8 +2700,8 @@ static const SEQUENCE sequences_cmp[] = {
       "addr.pri %0!",
       "addr.p.pri %0!",
     #else
-      "\275\365",
-      "\275\224\365",
+      "\275\364",
+      "\275\224\364",
     #endif
     1-1, 1-0
   },
@@ -2656,8 +2710,8 @@ static const SEQUENCE sequences_cmp[] = {
       "addr.alt %0!",
       "addr.p.alt %0!",
     #else
-      "\275\375",
-      "\275\224\375",
+      "\275\223\261",
+      "\275\224\223\261",
     #endif
     1-1, 1-0
   },
@@ -2666,8 +2720,8 @@ static const SEQUENCE sequences_cmp[] = {
       "stor %0!",
       "stor.p %0!",
     #else
-      "\367\260",
-      "\367\224\260",
+      "\370\261",
+      "\370\224\261",
     #endif
     1-1, 1-0
   },
@@ -2676,8 +2730,8 @@ static const SEQUENCE sequences_cmp[] = {
       "stor.s %0!",
       "stor.p.s %0!",
     #else
-      "\367\374",
-      "\367\224\374",
+      "\370\376",
+      "\370\224\376",
     #endif
     1-1, 1-0
   },
@@ -2686,8 +2740,8 @@ static const SEQUENCE sequences_cmp[] = {
       "sref.s %0!",
       "sref.p.s %0!",
     #else
-      "s\346\374",
-      "s\346\224\374",
+      "s\320\376",
+      "s\320\224\376",
     #endif
     1-1, 1-0
   },
@@ -2696,8 +2750,8 @@ static const SEQUENCE sequences_cmp[] = {
       "strb.i %0!",
       "strb.p.i %0!",
     #else
-      "\234rb.\200%\241",
-      "\234rb\224.\200%\241",
+      "\234rb.\200%\242",
+      "\234rb\224.\200%\242",
     #endif
     1-1, 1-0
   },
@@ -2706,8 +2760,8 @@ static const SEQUENCE sequences_cmp[] = {
       "lidx.b %0!",
       "lidx.p.b %0!",
     #else
-      "l\335.b\260",
-      "l\335\224.b\260",
+      "l\340.b\261",
+      "l\340\224.b\261",
     #endif
     1-1, 1-0
   },
@@ -2716,8 +2770,8 @@ static const SEQUENCE sequences_cmp[] = {
       "idxaddr.b %0!",
       "idxaddr.p.b %0!",
     #else
-      "\335\275.b\260",
-      "\335\275\224.b\260",
+      "\340\275.b\261",
+      "\340\275\224.b\261",
     #endif
     1-1, 1-0
   },
@@ -2726,8 +2780,8 @@ static const SEQUENCE sequences_cmp[] = {
       "align.pri %0!",
       "align.p.pri %0!",
     #else
-      "\221ign\365",
-      "\221ign\224\365",
+      "\221ign\364",
+      "\221ign\224\364",
     #endif
     1-1, 1-0
   },
@@ -2736,8 +2790,8 @@ static const SEQUENCE sequences_cmp[] = {
       "push.c %0!",
       "push.p.c %0!",
     #else
-      "\361\260",
-      "\212\224\236\260",
+      "\212\236\261",
+      "\212\224\236\261",
     #endif
     1-1, 1-0
   },
@@ -2746,8 +2800,8 @@ static const SEQUENCE sequences_cmp[] = {
       "push %0!",
       "push.p %0!",
     #else
-      "\212\260",
-      "\212\224\260",
+      "\212\261",
+      "\212\224\261",
     #endif
     1-1, 1-0
   },
@@ -2756,8 +2810,8 @@ static const SEQUENCE sequences_cmp[] = {
       "push.s %0!",
       "push.p.s %0!",
     #else
-      "\212\374",
-      "\212\224\374",
+      "\212\376",
+      "\212\224\376",
     #endif
     1-1, 1-0
   },
@@ -2766,8 +2820,8 @@ static const SEQUENCE sequences_cmp[] = {
       "push.adr %0!",
       "push.p.adr %0!",
     #else
-      "\212\300\260",
-      "\212\224\300\260",
+      "\212\300\261",
+      "\212\224\300\261",
     #endif
     1-1, 1-0
   },
@@ -2776,8 +2830,8 @@ static const SEQUENCE sequences_cmp[] = {
       "pushr.c %0!",
       "pushr.p.c %0!",
     #else
-      "\253\236\260",
-      "\253\224\236\260",
+      "\253\236\261",
+      "\253\224\236\261",
     #endif
     1-1, 1-0
   },
@@ -2786,8 +2840,8 @@ static const SEQUENCE sequences_cmp[] = {
       "pushr.s %0!",
       "pushr.p.s %0!",
     #else
-      "\253\374",
-      "\253\224\374",
+      "\253\376",
+      "\253\224\376",
     #endif
     1-1, 1-0
   },
@@ -2796,8 +2850,8 @@ static const SEQUENCE sequences_cmp[] = {
       "pushr.adr %0!",
       "pushr.p.adr %0!",
     #else
-      "\253\300\260",
-      "\253\224\300\260",
+      "\253\300\261",
+      "\253\224\300\261",
     #endif
     1-1, 1-0
   },
@@ -2806,8 +2860,8 @@ static const SEQUENCE sequences_cmp[] = {
       "pushm.c %0 %1~%2~%3~%4~%5!",
       "pushm.p.c %0 %1~%2~%3~%4~%5!",
     #else
-      "\323\236\373\264\371\372\2674\267\320",
-      "\323\224\236\373\264\371\372\2674\267\320",
+      "\330\236\375\265\372\374\2674\267\322",
+      "\330\224\236\375\265\372\374\2674\267\322",
     #endif
     1-1, 1-0
   },
@@ -2816,8 +2870,8 @@ static const SEQUENCE sequences_cmp[] = {
       "pushm %0 %1~%2~%3~%4~%5!",
       "pushm.p %0 %1~%2~%3~%4~%5!",
     #else
-      "\323\373\264\371\372\2674\267\320",
-      "\323\224\373\264\371\372\2674\267\320",
+      "\330\375\265\372\374\2674\267\322",
+      "\330\224\375\265\372\374\2674\267\322",
     #endif
     1-1, 1-0
   },
@@ -2826,8 +2880,8 @@ static const SEQUENCE sequences_cmp[] = {
       "pushm.s %0 %1~%2~%3~%4~%5!",
       "pushm.p.s %0 %1~%2~%3~%4~%5!",
     #else
-      "\323\213\373\264\371\372\2674\267\320",
-      "\323\224\213\373\264\371\372\2674\267\320",
+      "\330\213\375\265\372\374\2674\267\322",
+      "\330\224\213\375\265\372\374\2674\267\322",
     #endif
     1-1, 1-0
   },
@@ -2836,8 +2890,8 @@ static const SEQUENCE sequences_cmp[] = {
       "pushm.adr %0 %1~%2~%3~%4~%5!",
       "pushm.p.adr %0 %1~%2~%3~%4~%5!",
     #else
-      "\323\300\373\264\371\372\2674\267\320",
-      "\323\224\300\373\264\371\372\2674\267\320",
+      "\330\300\375\265\372\374\2674\267\322",
+      "\330\224\300\375\265\372\374\2674\267\322",
     #endif
     1-1, 1-0
   },
@@ -2846,8 +2900,8 @@ static const SEQUENCE sequences_cmp[] = {
       "pushrm.c %0 %1~%2~%3~%4~%5!",
       "pushrm.p.c %0 %1~%2~%3~%4~%5!",
     #else
-      "\362\236\373\264\371\372\2674\267\320",
-      "\362\224\236\373\264\371\372\2674\267\320",
+      "\363\236\375\265\372\374\2674\267\322",
+      "\363\224\236\375\265\372\374\2674\267\322",
     #endif
     1-1, 1-0
   },
@@ -2856,8 +2910,8 @@ static const SEQUENCE sequences_cmp[] = {
       "pushrm.s %0 %1~%2~%3~%4~%5!",
       "pushrm.p.s %0 %1~%2~%3~%4~%5!",
     #else
-      "\362\213\373\264\371\372\2674\267\320",
-      "\362\224\213\373\264\371\372\2674\267\320",
+      "\363\213\375\265\372\374\2674\267\322",
+      "\363\224\213\375\265\372\374\2674\267\322",
     #endif
     1-1, 1-0
   },
@@ -2866,8 +2920,8 @@ static const SEQUENCE sequences_cmp[] = {
       "pushrm.adr %0 %1~%2~%3~%4~%5!",
       "pushrm.p.adr %0 %1~%2~%3~%4~%5!",
     #else
-      "\362\300\373\264\371\372\2674\267\320",
-      "\362\224\300\373\264\371\372\2674\267\320",
+      "\363\300\375\265\372\374\2674\267\322",
+      "\363\224\300\375\265\372\374\2674\267\322",
     #endif
     1-1, 1-0
   },
@@ -2876,8 +2930,8 @@ static const SEQUENCE sequences_cmp[] = {
       "stack %0!",
       "stack.p %0!",
     #else
-      "\234ack\260",
-      "\234ack\224\260",
+      "\234ack\261",
+      "\234ack\224\261",
     #endif
     1-1, 1-0
   },
@@ -2886,8 +2940,8 @@ static const SEQUENCE sequences_cmp[] = {
       "heap %0!",
       "heap.p %0!",
     #else
-      "heap\260",
-      "heap\224\260",
+      "heap\261",
+      "heap\224\261",
     #endif
     1-1, 1-0
   },
@@ -2896,8 +2950,8 @@ static const SEQUENCE sequences_cmp[] = {
       "shl.c.pri %0!",
       "shl.p.c.pri %0!",
     #else
-      "\342\365",
-      "\210l\224\236\365",
+      "\341\364",
+      "\327\224\236\364",
     #endif
     1-1, 1-0
   },
@@ -2906,8 +2960,8 @@ static const SEQUENCE sequences_cmp[] = {
       "shl.c.alt %0!",
       "shl.p.c.alt %0!",
     #else
-      "\342\375",
-      "\210l\224\236\375",
+      "\341\223\261",
+      "\327\224\236\223\261",
     #endif
     1-1, 1-0
   },
@@ -2916,8 +2970,8 @@ static const SEQUENCE sequences_cmp[] = {
       "add.c %0!",
       "add.p.c %0!",
     #else
-      "\244\236\260",
-      "\244\224\236\260",
+      "\243\236\261",
+      "\243\224\236\261",
     #endif
     1-1, 1-0
   },
@@ -2926,8 +2980,8 @@ static const SEQUENCE sequences_cmp[] = {
       "smul.c %0!",
       "smul.p.c %0!",
     #else
-      "smu\327\260",
-      "smul\224\236\260",
+      "smul\236\261",
+      "smul\224\236\261",
     #endif
     1-1, 1-0
   },
@@ -2936,8 +2990,8 @@ static const SEQUENCE sequences_cmp[] = {
       "zero %0!",
       "zero.p %0!",
     #else
-      "\347\260",
-      "\347\224\260",
+      "\350\261",
+      "\350\224\261",
     #endif
     1-1, 1-0
   },
@@ -2946,8 +3000,8 @@ static const SEQUENCE sequences_cmp[] = {
       "zero.s %0!",
       "zero.p.s %0!",
     #else
-      "\347\374",
-      "\347\224\374",
+      "\350\376",
+      "\350\224\376",
     #endif
     1-1, 1-0
   },
@@ -2956,8 +3010,8 @@ static const SEQUENCE sequences_cmp[] = {
       "eq.c.pri %0!",
       "eq.p.c.pri %0!",
     #else
-      "\302\236\365",
-      "\302\224\236\365",
+      "\302\236\364",
+      "\302\224\236\364",
     #endif
     1-1, 1-0
   },
@@ -2966,8 +3020,8 @@ static const SEQUENCE sequences_cmp[] = {
       "eq.c.alt %0!",
       "eq.p.c.alt %0!",
     #else
-      "\302\236\375",
-      "\302\224\236\375",
+      "\302\236\223\261",
+      "\302\224\236\223\261",
     #endif
     1-1, 1-0
   },
@@ -2976,8 +3030,8 @@ static const SEQUENCE sequences_cmp[] = {
       "inc %0!",
       "inc.p %0!",
     #else
-      "\312\260",
-      "\312\224\260",
+      "\312\261",
+      "\312\224\261",
     #endif
     1-1, 1-0
   },
@@ -2986,8 +3040,8 @@ static const SEQUENCE sequences_cmp[] = {
       "inc.s %0!",
       "inc.p.s %0!",
     #else
-      "\312\374",
-      "\312\224\374",
+      "\312\376",
+      "\312\224\376",
     #endif
     1-1, 1-0
   },
@@ -2996,8 +3050,8 @@ static const SEQUENCE sequences_cmp[] = {
       "dec %0!",
       "dec.p %0!",
     #else
-      "\314\260",
-      "\314\224\260",
+      "\314\261",
+      "\314\224\261",
     #endif
     1-1, 1-0
   },
@@ -3006,8 +3060,8 @@ static const SEQUENCE sequences_cmp[] = {
       "dec.s %0!",
       "dec.p.s %0!",
     #else
-      "\314\374",
-      "\314\224\374",
+      "\314\376",
+      "\314\224\376",
     #endif
     1-1, 1-0
   },
@@ -3016,8 +3070,8 @@ static const SEQUENCE sequences_cmp[] = {
       "movs %0!",
       "movs.p %0!",
     #else
-      "movs\260",
-      "movs\224\260",
+      "movs\261",
+      "movs\224\261",
     #endif
     1-1, 1-0
   },
@@ -3026,8 +3080,8 @@ static const SEQUENCE sequences_cmp[] = {
       "cmps %0!",
       "cmps.p %0!",
     #else
-      "cmps\260",
-      "cmps\224\260",
+      "cmps\261",
+      "cmps\224\261",
     #endif
     1-1, 1-0
   },
@@ -3036,8 +3090,8 @@ static const SEQUENCE sequences_cmp[] = {
       "fill %0!",
       "fill.p %0!",
     #else
-      "fill\260",
-      "fill\224\260",
+      "fill\261",
+      "fill\224\261",
     #endif
     1-1, 1-0
   },
@@ -3046,8 +3100,8 @@ static const SEQUENCE sequences_cmp[] = {
       "halt %0!",
       "halt.p %0!",
     #else
-      "h\222\260",
-      "h\222\224\260",
+      "h\222\261",
+      "h\222\224\261",
     #endif
     1-1, 1-0
   },
@@ -3056,8 +3110,8 @@ static const SEQUENCE sequences_cmp[] = {
       "bounds %0!",
       "bounds.p %0!",
     #else
-      "\350\260",
-      "\350\224\260",
+      "\351\261",
+      "\351\224\261",
     #endif
     1-1, 1-0
   },
