@@ -23,7 +23,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: sc.h 6932 2023-04-03 13:56:19Z thiadmer $
+ *  Version: $Id: sc.h 7108 2024-02-19 22:02:45Z thiadmer $
  */
 #ifndef SC_H_INCLUDED
 #define SC_H_INCLUDED
@@ -349,7 +349,7 @@ typedef struct s_arraymerge {
  */
 #define tFIRST      256 /* value of first multi-character operator */
 #define tMIDDLE     280 /* value of last multi-character operator */
-#define tLAST       324 /* value of last multi-character match-able token */
+#define tLAST       325 /* value of last multi-character match-able token */
 /* multi-character operators */
 #define taMULT      256 /* *= */
 #define taDIV       257 /* /= */
@@ -403,39 +403,40 @@ typedef struct s_arraymerge {
 #define tSTOCK      304
 #define tSWITCH     305
 #define tTAGOF      306
-#define tWHILE      307
+#define tVAR        307
+#define tWHILE      308
 /* compiler directives */
-#define tpASSERT    308 /* #assert */
-#define tpDEFINE    309
-#define tpELSE      310 /* #else */
-#define tpELSEIF    311 /* #elseif */
-#define tpENDIF     312
-#define tpENDINPUT  313
-#define tpERROR     314
-#define tpFILE      315
-#define tpIF        316 /* #if */
-#define tpIFDEF     317
-#define tpIFNDEF    318
-#define tpINCLUDE   319
-#define tpLINE      320
-#define tpPRAGMA    321
-#define tpTRYINCLUDE 322
-#define tpUNDEF     323
-#define tpWARNING   324
+#define tpASSERT    309 /* #assert */
+#define tpDEFINE    310
+#define tpELSE      311 /* #else */
+#define tpELSEIF    312 /* #elseif */
+#define tpENDIF     313
+#define tpENDINPUT  314
+#define tpERROR     315
+#define tpFILE      316
+#define tpIF        317 /* #if */
+#define tpIFDEF     318
+#define tpIFNDEF    319
+#define tpINCLUDE   320
+#define tpLINE      321
+#define tpPRAGMA    322
+#define tpTRYINCLUDE 323
+#define tpUNDEF     324
+#define tpWARNING   325
 /* semicolon and comma are special cases, because they can be optional */
-#define tTERM       325 /* semicolon or newline */
-#define tSEPARATOR  326 /* comma or newline */
-#define tENDEXPR    327 /* forced end of expression */
+#define tTERM       326 /* semicolon or newline */
+#define tSEPARATOR  327 /* comma or newline */
+#define tENDEXPR    328 /* forced end of expression */
 /* other recognized tokens */
-#define tNUMBER     328 /* integer number */
-#define tRATIONAL   329 /* rational number */
-#define tSYMBOL     330
-#define tLABEL      331
-#define tSYMLABEL   332 /* ".name" syntax for named parameters and symbolic array indices */
-#define tSTRING     333
-#define tPACKSTRING 334
-#define tEXPR       335 /* for assigment to "lastst" only (see SC1.C) */
-#define tENDLESS    336 /* endless loop, for assigment to "lastst" only */
+#define tNUMBER     329 /* integer number */
+#define tRATIONAL   330 /* rational number */
+#define tSYMBOL     331
+#define tLABEL      332
+#define tSYMLABEL   333 /* ".name" syntax for named parameters and symbolic array indices */
+#define tSTRING     334
+#define tPACKSTRING 335
+#define tEXPR       336 /* for assigment to "lastst" only (see SC1.C) */
+#define tENDLESS    337 /* endless loop, for assigment to "lastst" only */
 
 /* (reversed) evaluation of staging buffer */
 #define sSTARTREORDER 0x01
@@ -734,6 +735,7 @@ SC_FUNC void outval(cell val,int fullcell,int newline);
 
 /* function prototypes in SC5.C */
 SC_FUNC int error(long number,...);
+SC_FUNC int error_symbolname(int number,const char *name);
 SC_FUNC int error_suggest(int error,const char *name,int ident);
 SC_FUNC int error_suggest_list(int number,const char *name,constvalue *list);
 SC_FUNC void errorset(int code,int line);

@@ -27,7 +27,7 @@
  * across function parameter boundaries.
  *
  *
- *  Copyright (c) CompuPhase, 1997-2016
+ *  Copyright (c) CompuPhase, 1997-2024
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not
  *  use this file except in compliance with the License. You may obtain a copy
@@ -41,7 +41,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: sc7.c 7006 2023-10-09 08:09:26Z thiadmer $
+ *  Version: $Id: sc7.c 7113 2024-02-25 21:29:31Z thiadmer $
  */
 #include <assert.h>
 #include <stdio.h>
@@ -397,7 +397,7 @@ SC_FUNC void stgset(int onoff)
 
 /* phopt_init
  * Initialize all sequence strings of the peehole optimizer. The strings
- * are embedded in the .EXE file in compressed format, here we expand
+ * are embedded in the executable in compressed format, here we expand
  * them (and allocate memory for the sequences).
  */
 static SEQUENCE *sequences;
@@ -649,9 +649,9 @@ static char *replacesequence(const char *pattern,char symbols[MAX_OPT_VARS+1][MA
       var=atoi(sptr+2);
       assert(var>=0 && var<=MAX_OPT_VARS);
       if (symbols[var][0]!='\0')
-        *repl_length+=1;  /* copy space if following symbol is valid */
+        *repl_length+=1;/* copy space if following symbol is valid */
       else
-        optsym=TRUE;      /* don't copy space, and symbol is optional */
+        optsym=TRUE;    /* don't copy space, and symbol is optional */
       break;
     case '#':
       sptr++;           /* skip '#' */
@@ -663,7 +663,15 @@ static char *replacesequence(const char *pattern,char symbols[MAX_OPT_VARS+1][MA
       *repl_length+=pc_cellsize*2;
       break;
     case '!':
-      *repl_length+=3;  /* '\t', '\n' & '\0' */
+      *repl_length+=3;  /* '\n', '\0' & '\t' */
+      break;
+    case ';':
+      if (*(sptr+1)=='!') {
+        sptr++;         /* skip ';' and skip '!' at the bottom of the loop */
+        *repl_length+=1;/* add '\0' */
+      } else {
+        *repl_length+=1;/* keep ';' as a literal */
+      }
       break;
     default:
       *repl_length+=1;
@@ -673,14 +681,15 @@ static char *replacesequence(const char *pattern,char symbols[MAX_OPT_VARS+1][MA
 
   /* allocate a buffer to replace the sequence in */
   if ((buffer=(char*)malloc(*repl_length))==NULL) {
-	error(103);
+    error(103);
     return NULL;
   } /* if */
 
   /* replace the pattern into this temporary buffer */
   optsym=FALSE;
   sptr=buffer;
-  *sptr++='\t';         /* the "replace" patterns do not have tabs */
+  if (!(*pattern==';' && *(pattern+1)=='!'))
+    *sptr++='\t';       /* the "replace" patterns do not have tabs (but there is no \t for an empty replacement */
   while (*pattern) {
     assert((int)(sptr-buffer)<*repl_length);
     switch (*pattern) {
@@ -718,6 +727,14 @@ static char *replacesequence(const char *pattern,char symbols[MAX_OPT_VARS+1][MA
         pattern++;
       break;
     } /* case */
+    case ';':
+      if (*(pattern+1)=='!') {
+        *sptr++='\0';
+        pattern++;        /* skip ';' and skip '!' at the bottom of the loop */
+      } else {
+        *sptr++=*pattern; /* keep ';' as a literal */
+      }
+      break;
     case '!':
       /* finish the line, optionally start the next line with an indent */
       *sptr++='\n';

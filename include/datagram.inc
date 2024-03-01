@@ -1,6 +1,6 @@
 /* Datagram sending/receiving
  *
- * (c) Copyright 2005-2011, ITB CompuPhase
+ * (c) Copyright 2005-2011, CompuPhase
  * This file is provided as is (no warranties).
  */
 #pragma library DGram

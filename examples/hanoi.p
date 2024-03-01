@@ -1,9 +1,9 @@
 /* The Towers of Hanoi, a game solved through recursion */
 
-main()
+@start()
     {
     print "How many disks: "
-    new disks = getvalue()
+    var disks = getvalue()
     move 1, 3, 2, disks
     }
 

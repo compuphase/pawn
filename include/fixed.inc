@@ -1,6 +1,6 @@
 /* Fixed point arithmetic
  *
- * (c) Copyright 1998-2011, ITB CompuPhase
+ * (c) Copyright 1998-2011, CompuPhase
  * This file is provided as is (no warranties).
  */
 #pragma library Fixed

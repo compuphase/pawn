@@ -1,7 +1,7 @@
 /* traffic light synchronizer, using states in an event-driven model */
 #include <time>
 
-main()                                state green_wait
+@start()                              state green_wait
 
 @keypressed(key) <green_wait>         state yellow_wait
 @keypressed(key) <red_walk, red_wait> state red_walk

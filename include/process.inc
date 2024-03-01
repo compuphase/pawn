@@ -1,7 +1,7 @@
 /* Process control and Foreign Function Interface (calling functions
  * in DLLs or shared libraries)
  *
- * (c) Copyright 2006-2011, ITB CompuPhase
+ * (c) Copyright 2006-2011, CompuPhase
  * This file is provided as is (no warranties).
  */
 #pragma library Process

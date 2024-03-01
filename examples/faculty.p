@@ -1,10 +1,10 @@
 /* Calculation of the faculty of a value */
 
-main()
+@start()
     {
     print "Enter a value: "
-    new v = getvalue()
-    new f = faculty(v)
+    var v = getvalue()
+    var f = faculty(v)
     printf "The faculty of %d is %d\n", v, f
     }
 
@@ -12,7 +12,7 @@ faculty(n)
     {
     assert n >= 0
 
-    new result = 1
+    var result = 1
     while (n > 0)
         result *= n--
 

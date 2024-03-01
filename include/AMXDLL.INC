@@ -1,7 +1,7 @@
 /* An assortment of additional functions in the DLL version of the
  * Abstract Machine.
  *
- * (c) Copyright 2000-2011, ITB CompuPhase
+ * (c) Copyright 2000-2011, CompuPhase
  * This file is provided as is (no warranties).
  */
 

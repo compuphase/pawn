@@ -10,9 +10,9 @@ const
       G = 0b1000000
     }
 
-main()
+@start()
     {
-    new nextstep[] =
+    var nextstep[] =
         [ C | E,     /* A can reach C and E */
           D | E,     /* B  "    "   D and E */
           G,         /* C  "    "   G */
@@ -23,30 +23,30 @@ main()
         ]
 
     print "The departure point: "
-    new start = clamp( .value = toupper(getchar()) - 'A',
+    var start = clamp( .value = toupper(getchar()) - 'A',
                        .min = 0,
                        .max = sizeof nextstep - 1
                      )
 
     print "\nThe number of steps: "
-    new steps = getvalue()
+    var steps = getvalue()
 
     /* make the set */
-    new result = findtargets(start, steps, nextstep)
+    var result = findtargets(start, steps, nextstep)
     printf "The points in range of %c in %d steps: ", start + 'A', steps
-    for (new i = 0; i < sizeof nextstep; i++)
+    for (var i = 0; i < sizeof nextstep; i++)
         if (result & 1 << i)
             printf "%c ", i + 'A'
     }
 
 findtargets(start, steps, nextstep[], numpoints = sizeof nextstep)
     {
-    new result = 0
-    new addedpoints = nextstep[start]
+    var result = 0
+    var addedpoints = nextstep[start]
     while (steps-- > 0 && result != addedpoints)
         {
         result = addedpoints
-        for (new i = 0; i < numpoints; i++)
+        for (var i = 0; i < numpoints; i++)
             if (result & 1 << i)
                 addedpoints |= nextstep[i]
         }

@@ -15,7 +15,7 @@
 @   machine.
 @
 @
-@   Copyright (c) CompuPhase, 2015-2023
+@   Copyright (c) CompuPhase, 2015-2024
 @
 @   Licensed under the Apache License, Version 2.0 (the "License"); you may not
 @   use this file except in compliance with the License. You may obtain a copy
@@ -29,7 +29,7 @@
 @   License for the specific language governing permissions and limitations
 @   under the License.
 @
-@   $Id: amxexec_cortexm0_gas.S 7009 2023-10-10 19:30:59Z thiadmer $
+@   $Id: amxexec_cortexm0_gas.S 7115 2024-02-26 21:45:03Z thiadmer $
 
     .file   "amxexec_cortexm0_gas.S"
     .syntax unified
@@ -348,7 +348,7 @@ amx_opcodelist:
 .endm
 
 .macro GETPARAM_P rx            @ the opcode/parameter pack should be in r3
-    lsrs \rx, r3, #16           @ \rx = r3 >> 16 (signed)
+    asrs \rx, r3, #16           @ \rx = r3 >> 16 (signed shift)
 .endm
 
 .macro JUMPREL rtmp, cc=al      @ \rtmp = temp register to use, \cc = condition
@@ -907,12 +907,11 @@ amx_opcodelist_size:
     NEXT
 
 .OP_NOT:            @ tested
-    movs r2, #0                 @ preset r2 = 0
-    cmp r0, #0
-    bne 1f                      @ originally r0 != 0 -> done (r0 == 0 now)
-    movs r2, #1                 @ r0 was 0 -> set to 1
-  1:
-    mov r0, r2
+    @ see Hacker's Delight, ch. 2.12    x == 0 -> ~(x | -x)
+    rsbs r2, r0, #0             @ r2 = #0 - PRI
+    orrs r0, r0, r2             @ r0 = PRI | -PRI       -- sign bit set if PRI != 0
+    mvns r0, r0                 @ r0 = ~(PRI | -PRI)    -- sign bit set if PRI == 0
+    lsrs r0, r0, #31            @ shift sign bit to bit 0
     NEXT
 
 .OP_NEG:            @ tested
@@ -924,57 +923,46 @@ amx_opcodelist_size:
     NEXT
 
 .OP_EQ:             @ tested
-    movs r2, #1                 @ preset r2 = 1
-    cmp r0, r1
-    beq 1f                      @ r0 == r1 -> done
-    movs r2, #0                 @ r0 != r1 -> set r2 = 0
-  1:
-    mov r0, r2
+    @ see Hacker's Delight, ch. 2.12    x == y -> ~(x - y | y - x)
+    subs r2, r0, r1             @ r2 = PRI - ALT                    -- sign bit set if PRI < ALT
+    subs r0, r1, r0             @ r0 = ALT - PRI                    -- sign bit set if PRI > ALT
+    orrs r0, r0, r2             @ r0 = (PRI - ALT) | (ALT - PRI)    -- sign bit set if PRI != ALT
+    mvns r0, r0                 @ r0 = ~r0                          -- sign bit set if PRI == ALT
+    lsrs r0, r0, #31            @ shift sign bit to bit 0
     NEXT
 
 .OP_NEQ:            @ tested
-    movs r2, #1                 @ preset r2 = 1
-    cmp r0, r1
-    bne 1f                      @ r0 != r1 -> done
-    movs r2, #0                 @ r0 == r1 -> set r2 = 0
-  1:
-    mov r0, r2
+    @ see Hacker's Delight, ch. 2.12    x != y -> x - y | y - x
+    subs r2, r0, r1             @ r2 = PRI - ALT                    -- sign bit set if PRI < ALT
+    subs r0, r1, r0             @ r0 = ALT - PRI                    -- sign bit set if PRI > ALT
+    orrs r0, r0, r2             @ r0 = (PRI - ALT) | (ALT - PRI)    -- sign bit set if PRI != ALT
+    lsrs r0, r0, #31            @ shift sign bit to bit 0
     NEXT
 
 .OP_SLESS:          @ tested
-    movs r2, #1                 @ preset r2 = 1
-    cmp r0, r1
-    blt 1f                      @ r0 < r1 -> done
-    movs r2, #0                 @ r0 >= r1 -> set r2 = 0
-  1:
-    mov r0, r2
+    @ see Hacker's Delight, ch. 2.12
+    subs r2, r0, r1             @ r2 = PRI - ALT            -- sign bit set if PRI < ALT
+    lsrs r0, r2, #31            @ shift sign bit to bit 0
     NEXT
 
 .OP_SLEQ:           @ tested
-    movs r2, #1                 @ preset r2 = 1
-    cmp r0, r1
-    ble 1f                      @ r0 <= r1 -> done
-    movs r2, #0                 @ r0 > r1 -> set r2 = 0
-  1:
-    mov r0, r2
+    @ see Hacker's Delight, ch. 2.12    x <= 0 -> x | (x - 1)
+    subs r2, r0, r1             @ r2 = PRI - ALT            -- sign bit set if PRI < ALT
+    subs r0, r2, #1             @ r0 = (PRI - ALT) - 1      -- sign bit set if PRI == ALT
+    orrs r0, r0, r2
+    lsrs r0, r0, #31            @ shift sign bit to bit 0
     NEXT
 
 .OP_SGRTR:          @ tested
-    movs r2, #1                 @ preset r2 = 1
-    cmp r0, r1
-    bgt 1f                      @ r0 > r1 -> done
-    movs r2, #0                 @ r0 <= r1 -> set r2 = 0
-  1:
-    mov r0, r2
+    subs r2, r1, r0             @ r2 = ALT - PRI            -- sign bit set if PRI > ALT
+    lsrs r0, r2, #31            @ shift sign bit to bit 0
     NEXT
 
 .OP_SGEQ:           @ tested
-    movs r2, #1                 @ preset r2 = 1
-    cmp r0, r1
-    bge 1f                      @ r0 >= r1 -> done
-    movs r2, #0                 @ r0 < r1 -> set r2 = 0
-  1:
-    mov r0, r2
+    subs r2, r1, r0             @ r2 = ALT - PRI            -- sign bit set if PRI > ALT
+    subs r0, r2, #1             @ r0 = (ALT - PRI) - 1      -- sign bit set if PRI == ALT
+    orrs r0, r0, r2
+    lsrs r0, r0, #31            @ shift sign bit to bit 0
     NEXT
 
 .OP_INC_PRI:        @ tested
@@ -1125,8 +1113,8 @@ amx_opcodelist_size:
     cmp r2, #0                  @ pointer == NULL ?
     beq 1f                      @ yes, skip storing it
     str r0, [r2]                @ no, store PRI at pointer address
-    GETPARAM r2                 @ parameter = return code from function
   1:
+    GETPARAM r2                 @ parameter = return code from function
     bl .amx_exit                @ use BL instruction for longer jump range, r14 is unused by exit code
 
 .OP_BOUNDS:
@@ -1586,23 +1574,23 @@ amx_opcodelist_size:
     NEXT
 
 .OP_EQ_C_PRI:       @ tested
+    @ see Hacker's Delight, ch. 2.12    x == y -> ~(x - y | y - x)
     GETPARAM r2
-    movs r3, #1                 @ preset to "true"
-    cmp r0, r2
-    beq 1f
-    movs r3, #0
-  1:
-    mov r0, r3
+    subs r3, r0, r2             @ r3 = PRI - param                      -- sign bit set if PRI < param
+    subs r0, r2, r0             @ r0 = param - PRI                      -- sign bit set if PRI > param
+    orrs r0, r0, r3             @ r0 = (PRI - param) | (param - PRI)    -- sign bit set if PRI != param
+    mvns r0, r0                 @ r0 = ~r0                              -- sign bit set if PRI == param
+    lsrs r0, r0, #31            @ shift sign bit to bit 0
     NEXT
 
 .OP_EQ_C_ALT:
+    @ see Hacker's Delight, ch. 2.12    x == y -> ~(x - y | y - x)
     GETPARAM r2
-    movs r3, #1                 @ preset to "true"
-    cmp r1, r2
-    beq 1f
-    movs r3, #0
-  1:
-    mov r0, r3
+    subs r3, r1, r2             @ r3 = ALT - param                      -- sign bit set if ALT < param
+    subs r0, r2, r1             @ r0 = param - ALT                      -- sign bit set if ALT > param
+    orrs r0, r0, r3             @ r0 = (ALT - param) | (param - ALT)    -- sign bit set if ALT != param
+    mvns r0, r0                 @ r0 = ~r0                              -- sign bit set if ALT == param
+    lsrs r0, r0, #31            @ shift sign bit to bit 0
     NEXT
 
 .OP_INC:            @ tested
@@ -1781,7 +1769,7 @@ amx_opcodelist_size:
     @ packed opcodes
 .ifndef _NO_PACKED_OPC
 
-.OP_LOAD_P_PRI:
+.OP_LOAD_P_PRI:     @ tested
     GETPARAM_P r2
     ldr r0, [r5, r2]
     NEXT
@@ -1791,7 +1779,7 @@ amx_opcodelist_size:
     ldr r1, [r5, r2]
     NEXT
 
-.OP_LOAD_P_S_PRI:
+.OP_LOAD_P_S_PRI:   @ tested
     GETPARAM_P r2
     ldr r0, [r7, r2]
     NEXT
@@ -1853,12 +1841,12 @@ amx_opcodelist_size:
     subs r1, r1, r5             @ reverse relocate
     NEXT
 
-.OP_STOR_P:
+.OP_STOR_P:         @ tested
     GETPARAM_P r2
     str r0, [r5, r2]
     NEXT
 
-.OP_STOR_P_S:
+.OP_STOR_P_S:       @ tested
     GETPARAM_P r2
     str r0, [r7, r2]
     NEXT
@@ -2031,7 +2019,7 @@ amx_opcodelist_size:
     bgt 1b
     NEXT
 
-.OP_STACK_P:
+.OP_STACK_P:        @ tested
     GETPARAM_P r2
     adds r6, r6, r2             @ STK += param
     subs r1, r6, r5             @ ALT = STK, reverse-relocated
@@ -2059,7 +2047,7 @@ amx_opcodelist_size:
     lsls r1, r1, r2             @ ALT = ALT << param
     NEXT
 
-.OP_ADD_P_C:
+.OP_ADD_P_C:        @ tested
     GETPARAM_P r2
     adds r0, r0, r2             @ PRI += param
     NEXT
@@ -2081,24 +2069,24 @@ amx_opcodelist_size:
     str r3, [r7, r2]
     NEXT
 
-.OP_EQ_P_C_PRI:
+.OP_EQ_P_C_PRI:     @ tested
+    @ see Hacker's Delight, ch. 2.12    x == y -> ~(x - y | y - x)
     GETPARAM_P r2
-    movs r3, #1                 @ preset to "true"
-    cmp r0, r2
-    beq 1f
-    movs r3, #0
-  1:
-    mov r0, r3
+    subs r3, r0, r2             @ r3 = PRI - param                      -- sign bit set if PRI < param
+    subs r0, r2, r0             @ r0 = param - PRI                      -- sign bit set if PRI > param
+    orrs r0, r0, r3             @ r0 = (PRI - param) | (param - PRI)    -- sign bit set if PRI != param
+    mvns r0, r0                 @ r0 = ~r0                              -- sign bit set if PRI == param
+    lsrs r0, r0, #31            @ shift sign bit to bit 0
     NEXT
 
 .OP_EQ_P_C_ALT:
+    @ see Hacker's Delight, ch. 2.12    x == y -> ~(x - y | y - x)
     GETPARAM_P r2
-    movs r3, #1                 @ preset to "true"
-    cmp r1, r2
-    beq 1f
-    movs r3, #0
-  1:
-    mov r0, r3
+    subs r3, r1, r2             @ r3 = ALT - param                      -- sign bit set if ALT < param
+    subs r0, r2, r1             @ r0 = param - ALT                      -- sign bit set if ALT > param
+    orrs r0, r0, r3             @ r0 = (ALT - param) | (param - ALT)    -- sign bit set if ALT != param
+    mvns r0, r0                 @ r0 = ~r0                              -- sign bit set if ALT == param
+    lsrs r0, r0, #31            @ shift sign bit to bit 0
     NEXT
 
 .OP_INC_P:
@@ -2141,8 +2129,8 @@ amx_opcodelist_size:
     cmp r2, #0                  @ pointer == NULL ?
     beq 1f                      @ yes, skip storing it
     str r0, [r2]                @ no, store PRI at pointer address
-    GETPARAM_P r2               @ parameter = return code from function
   1:
+    GETPARAM_P r2               @ parameter = return code from function
     bl .amx_exit                @ use BL instruction for longer jump range, r14 is unused by exit code
 
 .OP_BOUNDS_P:

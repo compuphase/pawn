@@ -1,6 +1,6 @@
 /* File input/output functions
  *
- * (c) Copyright 2004-2011, ITB CompuPhase
+ * (c) Copyright 2004-2011, CompuPhase
  * This file is provided as is (no warranties).
  */
 #pragma library File

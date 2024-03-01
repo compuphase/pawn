@@ -2,12 +2,12 @@ forward ones: operator+(ones: a, ones: b)
 forward ones: operator-(ones: a, ones: b)
 forward ones: operator-(ones: a)
 
-main()
+@start()
     {
-    new ones: chksum = ones: 0xffffffff
+    var ones: chksum = ones: 0xffffffff
     print "Input values in hexadecimal, zero to exit\n"
 
-    new ones: value
+    var ones: value
     do
         {
         print ">> "
@@ -24,10 +24,10 @@ stock ones: operator+(ones: a, ones: b)
     const ones: shift = ones: 16        /* word shift */
 
     /* add low words and high words separately */
-    new ones: r1 = (a & mask) + (b & mask)
-    new ones: r2 = (a >>> shift) + (b >>> shift)
+    var ones: r1 = (a & mask) + (b & mask)
+    var ones: r2 = (a >>> shift) + (b >>> shift)
 
-    new ones: carry
+    var ones: carry
     restart:            /* code label (goto target) */
 
     /* add carry of the new low word to the high word, then

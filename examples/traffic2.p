@@ -3,10 +3,10 @@
  */
 #include <time>
 
-main()
+@start()
     state green_wait_interim
 
-new bool: button_memo <red_wait, green_wait_interim>
+var bool: button_memo <red_wait, green_wait_interim>
 
 @keypressed(key)
     {

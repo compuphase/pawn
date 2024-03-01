@@ -1,8 +1,8 @@
 /* calculate Julian Day number from a date, and vice versa */
 
-main()
+@start()
     {
-    new d, m, y, jdn
+    var d, m, y, jdn
 
     print "Give a date (dd-mm-yyyy): "
     d = getvalue(_, '-', '/')
@@ -28,7 +28,7 @@ DateToJulian(day, month, year)
     /* move January and February to the end of the previous year */
     if (month <= 2)
         year--, month += 12
-    new jdn = 365*year + year/4 - year/100 + year/400
+    var jdn = 365*year + year/4 - year/100 + year/400
               + (153*month - 457) / 5
               + day + 1721119
     return jdn

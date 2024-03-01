@@ -1,6 +1,6 @@
 /*  Pawn compiler - File input, preprocessing and lexical analysis functions
  *
- *  Copyright (c) CompuPhase, 1997-2023
+ *  Copyright (c) CompuPhase, 1997-2024
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not
  *  use this file except in compliance with the License. You may obtain a copy
@@ -14,7 +14,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: sc2.c 6973 2023-08-05 20:07:04Z thiadmer $
+ *  Version: $Id: sc2.c 7113 2024-02-25 21:29:31Z thiadmer $
  */
 #include <assert.h>
 #include <stdio.h>
@@ -1433,9 +1433,9 @@ static int command(void)
           } /* if */
         } /* if */
         if (!ret)
-          error(17,str);        /* undefined symbol */
+          error(17,str);          /* undefined symbol */
       } else {
-        error(20,str);          /* invalid symbol name */
+        error_symbolname(20,str); /* invalid symbol name */
       } /* if */
       check_empty(lptr);
     } /* if */
@@ -1893,19 +1893,19 @@ static void packedstring(const unsigned char *str,int flags)
   while (*str!='\0') {
     ucell c=litchar(&str,flags);      /* litchar() alters "str" */
     if (c>=(ucell)(1 << sCHARBITS))
-      error(43,(long)c);        /* character constant exceeds range */
+      error(43,(long)c);    /* character constant exceeds range */
     val |= (c << 8*i);
     if (i==0) {
       litadd(val);
       val=0;
-    } /* if */
+    }
     i=(i+pc_cellsize-(sCHARBITS/8)) % pc_cellsize;
-  } /* if */
+  }
   /* save last code; make sure there is at least one terminating zero character */
   if (i!=(int)(pc_cellsize-(sCHARBITS/8)))
-    litadd(val);        /* at least one zero character in "val" */
+    litadd(val);            /* at least one zero character in "val" */
   else
-    litadd(0);          /* add full cell of zeros */
+    litadd(0);              /* add full cell of zeros */
 }
 
 static unsigned long pc_indentmask=0;   /* tab/space interval to make up the current indent */
@@ -2069,7 +2069,7 @@ char *sc_tokens[] = {
          "assert", "break", "case", "const", "continue", "default", "defined",
          "do", "else", "exit", "for", "forward", "goto", "if", "native", "new",
          "operator", "public", "return", "sizeof", "sleep", "state", "static",
-         "stock", "switch", "tagof", "while",
+         "stock", "switch", "tagof", "var", "while",
          "#assert", "#define", "#else", "#elseif", "#endif", "#endinput",
          "#error", "#file", "#if", "#ifdef", "#ifndef", "#include", "#line",
          "#pragma", "#tryinclude", "#undef", "#warning",
@@ -2124,6 +2124,7 @@ SC_FUNC int lex(cell *lexvalue,char **lexsym)
   while (i<=tMIDDLE) {  /* match multi-character operators */
     if (*lptr==**tokptr && match(*tokptr,FALSE)) {
       _lextok=i;
+      strcpy(_lexstr,*tokptr);
       if (pc_docexpr)   /* optionally concatenate to documentation string */
         insert_autolist(*tokptr);
       return _lextok;
@@ -2134,6 +2135,7 @@ SC_FUNC int lex(cell *lexvalue,char **lexsym)
   while (i<=tLAST) {    /* match reserved words and compiler directives */
     if (*lptr==**tokptr && match(*tokptr,TRUE)) {
       _lextok=i;
+      strcpy(_lexstr,*tokptr);
       errorset(sRESET,0); /* reset error flag (clear the "panic mode")*/
       if (pc_docexpr)   /* optionally concatenate to documentation string */
         insert_autolist(*tokptr);

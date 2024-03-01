@@ -3,11 +3,11 @@
   using Euclides' algorithm.
 */
 
-main()
+@start()
     {
     print "Input two values\n"
-    new a = getvalue()
-    new b = getvalue()
+    var a = getvalue()
+    var b = getvalue()
     while (a != b)
         if (a > b)
             a = a - b

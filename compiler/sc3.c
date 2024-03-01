@@ -1,6 +1,6 @@
 /*  Pawn compiler - Recursive descend expresion parser
  *
- *  Copyright (c) CompuPhase, 1997-2023
+ *  Copyright (c) CompuPhase, 1997-2024
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not
  *  use this file except in compliance with the License. You may obtain a copy
@@ -14,7 +14,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: sc3.c 6965 2023-07-20 15:44:35Z thiadmer $
+ *  Version: $Id: sc3.c 7115 2024-02-26 21:45:03Z thiadmer $
  */
 #include <assert.h>
 #include <stdio.h>
@@ -604,6 +604,7 @@ static int plnge(const int *opstr,int opoff,int (*hier)(value *lval),value *lval
   int count;
   value lval2 = {0};
 
+  assert(lval!=NULL);
   lvalue=plnge1(hier,lval);
   if (nextop(&opidx,opstr)==0)
     return lvalue;              /* no operator in "opstr" found */
@@ -677,6 +678,7 @@ static int plnge1(int (*hier)(value *lval),value *lval)
   int lvalue,index;
   cell cidx;
 
+  assert(lval!=NULL);
   stgget(&index,&cidx); /* mark position in code generator */
   lvalue=(*hier)(lval);
   if (lval->ident==iCONSTEXPR)
@@ -779,7 +781,15 @@ static void plnge2(void (*oper)(void),void (*arrayoper)(cell),
         error(213);             /* tagname mismatch */
       lval1->constval=calc(lval1->constval,oper,lval2->constval,&lval1->boolresult);
     } else {
-      if (!matchtag(lval1->tag,lval2->tag,FALSE))
+      /* we allow tag equivalence for '==' and '!=' if one tag is default and
+         the the other is bool */
+      int allow_coerce=FALSE;
+      if (oper==ob_eq || oper==ob_ne) {
+        int bool_tag=pc_addtag("bool");
+        allow_coerce= (lval1->tag==0 || lval1->tag==bool_tag)
+                      && (lval2->tag==0 || lval2->tag==bool_tag);
+      }
+      if (!allow_coerce && !matchtag(lval1->tag,lval2->tag,allow_coerce))
         error(213);             /* tagname mismatch */
       if (arraylength>0)
         arrayoper(arraylength*pc_cellsize); /* do the array operation */
@@ -890,8 +900,9 @@ SC_FUNC int sc_getstateid(constvalue **automaton,constvalue **state,char *staten
   char *str;
   int fsa,islabel;
 
-  assert(automaton!=NULL);
   assert(state!=NULL);
+  assert(automaton!=NULL);
+  *automaton=NULL;
   if ((islabel=matchtoken(tLABEL))==0 && !needtoken(tSYMBOL))
     return 0;
 
@@ -1397,7 +1408,7 @@ static int hier2(value *lval)
   tok=lex(&val,&st);
   switch (tok) {
   case tINC:                    /* ++lval */
-    if (matchtoken(tNEW)) {
+    if (matchtoken(tNEW) || matchtoken(tVAR)) {
       lexpush();                /* to avoid subsequent "shadowing" warnings */
       return error(22);         /* must be lvalue */
     } /* if */

@@ -29,7 +29,7 @@
 @   License for the specific language governing permissions and limitations
 @   under the License.
 @
-@   $Id: amxexec_arm7_gas.S 6979 2023-08-24 19:59:29Z thiadmer $
+@   $Id: amxexec_arm7_gas.S 7106 2024-02-14 21:02:03Z thiadmer $
 
     .file   "amxexec_arm7_gas.s"
     .syntax unified
@@ -344,7 +344,7 @@ amx_opcodelist:
 .endm
 
 .macro GETPARAM_P rx            @ the opcode/parameter pack should be in r12
-    mov \rx, r12, ASR #16       @ \rx = r12 >> 16 (signed)
+    mov \rx, r12, ASR #16       @ \rx = r12 >> 16 (signed shift)
 .endm
 
 .macro JUMPREL cc, rtmp         @ \cc = condition code, \rtmp = temp register to use

@@ -1,16 +1,16 @@
 /* word count: count words on a string that the user types */
 #include <string>
 
-main()
+@start()
     {
     print "Please type a string: "
-    new string[100]
+    var string[100]
     getstring string, sizeof string, false
 
-    new count = 0
+    var count = 0
 
-    new word[20]
-    new index
+    var word[20]
+    var index
     for ( ;; )
         {
         word = strtok(string, index)
@@ -25,15 +25,15 @@ main()
 
 strtok(const string[], &index)
     {
-    new length = strlen(string)
+    var length = strlen(string)
 
     /* skip leading white space */
     while (index < length && string[index] <= ' ')
         index++
 
     /* store the word letter for letter */
-    new offset = index                /* save start position of token */
-    new result[20]                    /* string to store the word in */
+    var offset = index                /* save start position of token */
+    var result[20]                    /* string to store the word in */
     while (index < length
            && string[index] > ' '
            && index - offset < sizeof result - 1)

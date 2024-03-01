@@ -16,7 +16,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: sc5.c 6965 2023-07-20 15:44:35Z thiadmer $
+ *  Version: $Id: sc5.c 7108 2024-02-19 22:02:45Z thiadmer $
  */
 #include <assert.h>
 #if defined	__WIN32__ || defined _WIN32 || defined __MSDOS__
@@ -212,14 +212,21 @@ static short lastfile;
   return 0;
 }
 
+SC_FUNC int error_symbolname(int number,const char *name)
+{
+  cell val;
+  char *str;
+  int tok=tokeninfo(&val,&str);
+  long errnum= (tok>tMIDDLE && tok<=tLAST) ? makelong(number,4) : number;
+  return error(errnum,name);
+}
+
 SC_FUNC int error_suggest(int number,const char *name,int ident)
 {
   symbol *closestsym=find_closestsymbol(name,ident);
   if (closestsym!=NULL && strcmp(name,closestsym->name)!=0)
-    error(makelong(number,1),name,closestsym->name);
-  else
-    error(number,name);
-  return 0;
+    return error(makelong(number,1),name,closestsym->name);
+  return error(number,name);
 }
 
 SC_FUNC int error_suggest_list(int number,const char *name,constvalue *list)
@@ -241,9 +248,8 @@ SC_FUNC int error_suggest_list(int number,const char *name,constvalue *list)
       } /* while */
     } /* if */
     if (closest!=NULL && strcmp(name,closest->name)!=0)
-      error(makelong(number,1),name,closest->name);
-    else
-      error(number,name);
+      return error(makelong(number,1),name,closest->name);
+    return error(number,name);
   } /* if */
   return 0;
 }

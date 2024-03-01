@@ -1,6 +1,6 @@
 /* parse C comments interactively, using events and a state machine */
 
-main()
+@start()
     state plain
 
 @keypressed(key) <plain>

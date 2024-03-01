@@ -1,6 +1,6 @@
 /* Minimalistic wrapper for the "Better String library" by Paul Hsieh
  *
- * (c) Copyright 2004-2011, ITB CompuPhase
+ * (c) Copyright 2004-2011, CompuPhase
  * This file is provided as is (no warranties).
  */
 #pragma library BString

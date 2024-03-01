@@ -29,7 +29,7 @@
 ;   License for the specific language governing permissions and limitations
 ;   under the License.
 ;
-;   $Id: amxexec_arm7.s 6974 2023-08-08 12:47:41Z thiadmer $
+;   $Id: amxexec_arm7.s 7106 2024-02-14 21:02:03Z thiadmer $
 
 
     AREA    amxexec_data, DATA, READONLY
@@ -299,7 +299,7 @@ opcodelist_size EQU .-amx_opcodelist
 
     MACRO
     GETPARAM_P $rx              ; the opcode/parameter pack should be in r12
-    mov $rx, r12, ASR #16       ; $rx = r12 >> 16 (signed)
+    mov $rx, r12, ASR #16       ; $rx = r12 >> 16 (signed shift)
     MEND
 
     MACRO

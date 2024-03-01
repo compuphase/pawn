@@ -1,7 +1,7 @@
 @keypressed(key)
     {
     /* get current position */
-    new x, y
+    var x, y
     wherexy x, y
 
     /* determine how the update the current position */

@@ -1,2 +1,2 @@
-main()
+@start()
     printf "Hello world\n"

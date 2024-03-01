@@ -37,7 +37,7 @@ static Btn:pending_op
 
 adddigit(digit, bool:reset = false)
     {
-    new command{80}, charstr{2}
+    var command{80}, charstr{2}
     charstr{0} = (0 <= digit <= 9) ? digit + '0' : digit
     if (reset)
         numberstring = ""
@@ -48,7 +48,7 @@ adddigit(digit, bool:reset = false)
 
 displayresult(value)
     {
-    new command{80}
+    var command{80}
     valstr numberstring, value, true
     strformat command, _, true, "gtk_entry_set_text %d %s", entry, numberstring
     GTK(command)
@@ -122,7 +122,7 @@ event_minus() <>
 performoperation()
     {
     /* get the other operand, perform the operation */
-    new val = strval(numberstring)
+    var val = strval(numberstring)
     switch (pending_op)
         {
         case BtnPlus:   accum += val
@@ -177,19 +177,19 @@ event_CE()
     }
 
 
-main()
+@start()
     {
     if (!procexec("gtk-server -stdin") && !procexec("gtk-server.exe -stdin"))
         fatal "unable to launch gtk-server"
 
     /* make a window */
     GTK("gtk_init NULL NULL")
-    new win = GTK("gtk_window_new 0")
+    var win = GTK("gtk_window_new 0")
     GTK("gtk_window_set_title %d \"Pawn calculator\"", win)
     GTK("gtk_widget_set_usize %d 200 200", win)
 
     /* add a table (align the other controls) */
-    new table = GTK("gtk_table_new 50 50 1")
+    var table = GTK("gtk_table_new 50 50 1")
     GTK("gtk_container_add %d %d", win, table)
 
     /* the number entry */
@@ -197,7 +197,7 @@ main()
     GTK("gtk_table_attach_defaults %d %d 1 49 1 9", table, entry)
 
     /* the key pad */
-    new buttons[BtnCount]
+    var buttons[BtnCount]
     buttons[BtnDot] = GTK("gtk_button_new_with_label .")
     GTK("gtk_table_attach_defaults %d %d 21 29 41 49", table, buttons[BtnDot])
     buttons[Btn0] = GTK("gtk_button_new_with_label 0")
@@ -244,8 +244,8 @@ main()
     GTK("gtk_widget_show_all %d", win)
 
     resetentry 0
-    new event
-    new Btn:idx
+    var event
+    var Btn:idx
     do
         {
         event = GTK("gtk_server_callback wait")
@@ -281,7 +281,7 @@ main()
 
 GTK(const format[], ...)
     {
-    new command{256}
+    var command{256}
     switch (numargs())
         {
         case 1:
@@ -297,7 +297,7 @@ GTK(const format[], ...)
         }
     procwrite command, true
 
-    new reply[30]
+    var reply[30]
     procread reply, .striplf=true
     if (strcmp(reply, "ok") == 0)
         return true

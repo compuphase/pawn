@@ -1,9 +1,9 @@
 #include <rational>
 
-main()
+@start()
     {
-    new Rational: Celsius
-    new Rational: Fahrenheit
+    var Rational: Celsius
+    var Rational: Fahrenheit
 
     print "Celsius\t Fahrenheit\n"
     for (Celsius = 5; Celsius <= 25; Celsius++)

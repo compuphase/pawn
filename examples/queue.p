@@ -1,9 +1,9 @@
 /* Priority queue (for simple text strings) */
 #include <string>
 
-main()
+@start()
     {
-    new msg[.text{40}, .priority]
+    var msg[.text{40}, .priority]
 
     /* insert a few items (read from console input) */
     printf "Please insert a few messages and their priorities; " ...
@@ -30,8 +30,8 @@ main()
     }
 
 const queuesize = 10
-new queue[queuesize][.text{40}, .priority]
-new queueitems = 0
+var queue[queuesize][.text{40}, .priority]
+var queueitems = 0
 
 insert(const item[.text{40}, .priority])
     {
@@ -40,12 +40,12 @@ insert(const item[.text{40}, .priority])
         return false            /* queue is full */
 
     /* find the position to insert it to */
-    new pos = queueitems        /* start at the bottom */
+    var pos = queueitems        /* start at the bottom */
     while (pos > 0 && item.priority > queue[pos-1].priority)
         --pos                   /* higher priority: move up a slot */
 
     /* make place for the item at the insertion spot */
-    for (new i = queueitems; i > pos; --i)
+    for (var i = queueitems; i > pos; --i)
         queue[i] = queue[i-1]
 
     /* add the message to the correct slot */
@@ -66,7 +66,7 @@ extract(item[.text{40}, .priority])
     --queueitems
 
     /* move the queue one position up */
-    for (new i = 0; i < queueitems; ++i)
+    for (var i = 0; i < queueitems; ++i)
         queue[i] = queue[i+1]
 
     return true

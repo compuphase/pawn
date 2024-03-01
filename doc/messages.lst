@@ -23,8 +23,8 @@ been "forwardly" declared ---or prototyped--- but the full function definition
 including a statement, or statement block, is missing.
 
 #005
-The function <b>main()</b> is the program entry point. It may not have
-arguments.
+The the program entry point (function <b>@start()</b> or <b>main()</b>) may not
+have arguments.
 
 #006
 String literals or arrays must be assigned to an array. This error message may

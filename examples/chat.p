@@ -27,7 +27,7 @@ const cellchars	= cellbits / charbits
 
 echo(key)
     {
-    new string{2} = { 0 }
+    var string{2} = { 0 }
     string{0} = key == '\r' ? '\n' : key
     printf string
     }

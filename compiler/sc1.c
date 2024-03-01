@@ -7,7 +7,7 @@
  *  originally created by Ron Cain, july 1980, and enhanced by James E. Hendrix.
  *  The modifications in Pawn come close to a complete rewrite, though.
  *
- *  Copyright CompuPhase, 1997-2023
+ *  Copyright CompuPhase, 1997-2024
  *  Copyright J.E. Hendrix, 1982, 1983
  *  Copyright R. Cain, 1980
  *
@@ -23,7 +23,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: sc1.c 7009 2023-10-10 19:30:59Z thiadmer $
+ *  Version: $Id: sc1.c 7113 2024-02-25 21:29:31Z thiadmer $
  */
 #include <assert.h>
 #include <ctype.h>
@@ -81,8 +81,8 @@
 #endif
 
 #include "svnrev.h"
-#define VERSION_STR "4.0." SVNREV_STR
-#define VERSION_INT 0x0400
+#define VERSION_STR "4.1." SVNREV_STR
+#define VERSION_INT 0x0401
 
 
 static void resetglobals(void);
@@ -1623,7 +1623,7 @@ static void setconfig(char *root)
 
 static void setcaption(void)
 {
-  pc_printf("Pawn compiler %-25s Copyright (c) 1997-2023, CompuPhase\n\n",VERSION_STR);
+  pc_printf("Pawn compiler %-25s Copyright (c) 1997-2024, CompuPhase\n\n",VERSION_STR);
 }
 
 static void about(void)
@@ -1968,6 +1968,7 @@ static void parse(void)
       /* ignore zero's */
       break;
     case tNEW:
+    case tVAR:
       if (getclassspec(tok,&fpublic,&fstatic,&fstock,&fconst))
         declglb(NULL,0,fpublic,fstatic,fstock,fconst);
       break;
@@ -2205,7 +2206,7 @@ static void declglb(char *firstname,int firsttag,int fpublic,int fstatic,int fst
     } else {
       tag=pc_addtag(NULL);
       if (lex(&val,&str)!=tSYMBOL) {    /* read in (new) token */
-        error(20,str);                  /* invalid symbol name */
+        error_symbolname(20,str);       /* invalid symbol name */
         litidx=0;                       /* clear literal pool (in case there is a string constant instead of a symbol name) */
       } /* if */
       assert(strlen(str)<=sNAMEMAX);
@@ -2929,8 +2930,9 @@ static cell initarray(int ident,int usage,int tag,int dim[],int numdim,int cur,
   return totalsize+dim[cur];    /* size of sub-arrays + indirection vector */
 }
 
-/*  initvector
- *  Initialize a single dimensional array
+/** initvector() initializeS a single dimensional array.
+ *  \return The size in elements (cells for standard arrays, bytes for byte
+ *          arrays).
  */
 static cell initvector(int ident,int usage,int tag,cell size,int fillzero,
                        constvalue *dimnames,int *errorfound)
@@ -3082,7 +3084,7 @@ static cell initvector(int ident,int usage,int tag,cell size,int fillzero,
   } /* if */
   if (size==0) {
     size=litidx-curlit;                 /* number of elements defined */
-  } else if (litidx-curlit>(int)size) { /* e.g. "myvar[3]={1,2,3,4};" */
+  } else if (litidx-curlit>(int)size) { /* e.g. "myvar[3]=[1,2,3,4];" */
     error(18);                  /* initialisation data exceeds declared size */
     litidx=(int)size+curlit;    /* avoid overflow in memory moves */
   } /* if */
@@ -3273,7 +3275,7 @@ static void decl_const(int scope)
       if (enumerate==0 || (tag=pc_addtag(NULL))==0)
         tag=defaulttag;
       if (lex(&val,&str)!=tSYMBOL)      /* read in (new) token */
-        error(20,str);                  /* invalid symbol name */
+        error_symbolname(20,str);       /* invalid symbol name */
       symbolline=pc_curline;            /* save line where symbol was found */
       strcpy(constname,str);            /* save symbol name */
       val=defaultval+1;                 /* set default value and tag for next enumeration field */
@@ -5798,9 +5800,10 @@ static void statement(int *lastindent,int allow_decl)
     /* nothing */
     break;
   case tNEW:
+  case tVAR:
     if (allow_decl) {
       declloc(FALSE);
-      lastst=tNEW;
+      lastst=tVAR;
     } else {
       error(3);                 /* declaration only valid in a block */
     } /* if */
@@ -5808,7 +5811,7 @@ static void statement(int *lastindent,int allow_decl)
   case tSTATIC:
     if (allow_decl) {
       declloc(TRUE);
-      lastst=tNEW;
+      lastst=tVAR;
     } else {
       error(3);                 /* declaration only valid in a block */
     } /* if */
@@ -6198,7 +6201,7 @@ static int dofor(void)
   //emptyexpr=matchtoken(')');    /* "for ()" is the same as "for ( ;; )" */
   if (/*!emptyexpr &&*/ !matchtoken(';')) {
     /* new variable declarations are allowed here */
-    if (matchtoken(tNEW)) {
+    if (matchtoken(tNEW) || matchtoken(tVAR)) {
       /* The variable in expr1 of the for loop is at a
        * 'compound statement' level of it own.
        */

@@ -8,10 +8,10 @@ public Float: CalculateMean(Float: values[], items)
      */
     assert items >= 3    /* should receive at least three elements */
 
-    new Float: minimum = values[0]
-    new Float: maximum = values[0]
-    new Float: sum = 0.0
-    for (new i = 0; i < items; i++)
+    var Float: minimum = values[0]
+    var Float: maximum = values[0]
+    var Float: sum = 0.0
+    for (var i = 0; i < items; i++)
         {
         if (minimum > values[i])
             minimum = values[i]
