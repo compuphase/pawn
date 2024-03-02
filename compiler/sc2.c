@@ -121,7 +121,7 @@ SC_FUNC void clearstk(void)
 
 SC_FUNC int plungequalifiedfile(char *name)
 {
-static char *extensions[] = { ".i", ".inc", ".p", ".pawn" };
+static char *extensions[] = { ".i", ".inc", ".p", ".pawn", ".pwn" };
   FILE *fp;
   char *ext;
   int ext_idx;
