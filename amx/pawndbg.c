@@ -28,7 +28,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: pawndbg.c 6131 2020-04-29 19:47:15Z thiadmer $
+ *  Version: $Id: pawndbg.c 7133 2024-03-05 10:31:12Z thiadmer $
  *
  *
  *  Command line options:
@@ -1228,12 +1228,12 @@ static void remote_write_rs232(AMX *amx,cell vaddr,int number)
   while (number>0) {
     num=(number>10) ? 10 : number;
     number-=num;
-    sprintf(buffer,"?W%lx",(long)vaddr);
+    sprintf(buffer,"?W%lx",(unsigned long)vaddr);
     while (num>0) {
       cptr=VirtAddressToPhys(amx,vaddr);
       assert(cptr!=NULL);
       strcat(buffer,",");
-      sprintf(buffer+strlen(buffer),"%x",*cptr);
+      sprintf(buffer+strlen(buffer),"%lx",(unsigned long)*cptr);
       num--;
       vaddr+=sizeof(cell);
     } /* while */

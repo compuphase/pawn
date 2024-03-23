@@ -1,12 +1,12 @@
 
 proccall_func(dummy)
     {
-    new var = 0
-    return var + dummy
+    new test = 0
+    return test + dummy
     }
 
 main()
     {
-    proccall_func var
+    proccall_func test
     }
 

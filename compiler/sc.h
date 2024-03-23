@@ -7,7 +7,7 @@
  *
  *  This version comes close to a complete rewrite.
  *
- *  Copyright CompuPhase, 1997-2020
+ *  Copyright CompuPhase, 1997-2024
  *  Copyright J.E. Hendrix, 1982, 1983
  *  Copyright R. Cain, 1980
  *
@@ -23,7 +23,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: sc.h 7108 2024-02-19 22:02:45Z thiadmer $
+ *  Version: $Id: sc.h 7152 2024-03-23 20:47:23Z thiadmer $
  */
 #ifndef SC_H_INCLUDED
 #define SC_H_INCLUDED
@@ -545,14 +545,14 @@ void pc_resetsrc(void *handle,void *position);    /* reset to a position marked 
 int  pc_eofsrc(void *handle);
 
 /* output to intermediate (.ASM) file */
-void *pc_openasm(char *filename); /* read/write */
+void *pc_openasm(const char *filename); /* read/write */
 void pc_closeasm(void *handle,int deletefile);
 void pc_resetasm(void *handle);
 int  pc_writeasm(void *handle,const char *str);
 char *pc_readasm(void *handle,char *target,int maxchars);
 
 /* output to binary (.AMX) file */
-void *pc_openbin(char *filename);
+void *pc_openbin(const char *filename);
 void pc_closebin(void *handle,int deletefile);
 void pc_resetbin(void *handle,long offset);
 int  pc_writebin(void *handle,const void *buffer,int size);
@@ -577,13 +577,13 @@ long pc_lengthbin(void *handle); /* return the length of the file */
 #endif
 
 /* function prototypes in SC1.C */
-SC_FUNC void set_extension(char *filename,char *extension,int force);
+SC_FUNC void set_extension(char *filename,const char *extension,int force);
 SC_FUNC symbol *fetchfunc(const char *name,int tag);
 SC_FUNC char *operator_symname(char *symname,char *opername,int tag1,int tag2,int numtags,int resulttag);
 SC_FUNC char *funcdisplayname(char *dest,const char *funcname);
 SC_FUNC int constexpr(cell *val,int *tag,symbol **symptr);
 SC_FUNC constvalue *append_constval(constvalue *table,const char *name,cell val,int index);
-SC_FUNC constvalue *find_constval(constvalue *table,char *name,int index);
+SC_FUNC constvalue *find_constval(constvalue *table,const char *name,int index);
 SC_FUNC void delete_consttable(constvalue *table);
 SC_FUNC int compare_consttable(constvalue *table1, constvalue *table2);
 SC_FUNC symbol *add_constant(const char *name,cell val,int scope,int tag);
@@ -598,17 +598,17 @@ SC_FUNC void sc_attachdocumentation(symbol *sym,int onlylastblock);
 SC_FUNC void pushstk(stkitem val);
 SC_FUNC stkitem popstk(void);
 SC_FUNC void clearstk(void);
-SC_FUNC int plungequalifiedfile(char *name);  /* explicit path included */
+SC_FUNC int plungequalifiedfile(const char *name);  /* explicit path included */
 SC_FUNC int plungefile(char *name,int try_currentpath,int try_includepaths);   /* search through "include" paths */
 SC_FUNC char *strdel(char *str,size_t len);
-SC_FUNC char *strins(char *dest,char *src,size_t srclen);
+SC_FUNC char *strins(char *dest,const char *src,size_t srclen);
 SC_FUNC void preprocess(void);
 SC_FUNC void lex_fetchindent(const unsigned char *string,const unsigned char *pos);
 SC_FUNC int lex_adjusttabsize(int matchindent);
 SC_FUNC int lexinit(int releaseall);
 SC_FUNC int lex(cell *lexvalue,char **lexsym);
 SC_FUNC void lexpush(void);
-SC_FUNC int lexsettoken(int token,char *str);
+SC_FUNC int lexsettoken(int token,const char *str);
 SC_FUNC void lexclr(int clreol);
 SC_FUNC int lexpeek(void);
 SC_FUNC int matchtoken(int token);
@@ -650,7 +650,7 @@ SC_FUNC void writestatetables(symbol *root,int lbl_nostate,int lbl_ignorestate);
 SC_FUNC void begcseg(void);
 SC_FUNC void begdseg(void);
 SC_FUNC void setline(int chkbounds);
-SC_FUNC void setfiledirect(char *name);
+SC_FUNC void setfiledirect(const char *name);
 SC_FUNC void setlinedirect(int line);
 SC_FUNC void setlabel(int index);
 SC_FUNC void markexpr(optmark type,const char *name,cell offset);
@@ -664,7 +664,7 @@ SC_FUNC void loadreg(cell address,regid reg);
 SC_FUNC void storereg(cell address,regid reg);
 SC_FUNC void memcopy(cell size);
 SC_FUNC void copyarray2d(int majordim,int minordim);
-SC_FUNC void fillarray(symbol *sym,cell size,cell value);
+SC_FUNC void fillarray(const symbol *sym,cell size,cell value);
 SC_FUNC void ldconst(cell val,regid reg);
 SC_FUNC void swapregs(void);
 SC_FUNC void pushreg(regid reg);
@@ -833,7 +833,7 @@ SC_FUNC constvalue *state_add(const char *name,int fsa_id);
 SC_FUNC constvalue *state_find(const char *name,int fsa_id,char *closestmatch);
 SC_FUNC constvalue *state_findid(int id,int fsa_id);
 SC_FUNC void state_buildlist(int **list,int *listsize,int *count,int stateid);
-SC_FUNC int state_addlist(int *list,int count,int fsa_id);
+SC_FUNC int state_addlist(const int *list,int count,int fsa_id);
 SC_FUNC void state_deletetable(void);
 SC_FUNC int state_getfsa(int listid);
 SC_FUNC int state_count(int listid);
@@ -850,7 +850,7 @@ SC_VDECL symbol loctab;       /* local symbol table */
 SC_VDECL symbol glbtab;       /* global symbol table */
 SC_VDECL cell *litq;          /* the literal queue */
 SC_VDECL unsigned char *srcline;/* the line read from the input file */
-SC_VDECL const unsigned char *lptr;/* points to the current position in "srcline" */
+SC_VDECL const unsigned char *lexptr;/* points to the current position in "srcline" */
 SC_VDECL constvalue tagname_tab;/* tagname table */
 SC_VDECL constvalue libname_tab;/* library table (#pragma library "..." syntax) */
 SC_VDECL constvalue *curlibrary;/* current library */

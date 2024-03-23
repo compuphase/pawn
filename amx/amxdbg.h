@@ -17,7 +17,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: amxdbg.h 6131 2020-04-29 19:47:15Z thiadmer $
+ *  Version: $Id: amxdbg.h 7152 2024-03-23 20:47:23Z thiadmer $
  */
 
 #ifndef AMXDBG_H_INCLUDED
@@ -52,7 +52,7 @@ extern  "C" {
   #else
     #pragma pack(push)
     #pragma pack(1)         /* structures must be packed (byte-aligned) */
-    #if defined __TURBOC__
+    #if defined __BORLANDC__
       #pragma option -a-    /* "pack" pragma for older Borland compilers */
     #endif
   #endif

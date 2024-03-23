@@ -14,7 +14,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: sc6.c 6932 2023-04-03 13:56:19Z thiadmer $
+ *  Version: $Id: sc6.c 7152 2024-03-23 20:47:23Z thiadmer $
  */
 #include <assert.h>
 #include <stdio.h>
@@ -332,7 +332,7 @@ static cell do_call(FILE *fbin,const char *params,cell opcode,cell cip)
 {
   char name[sNAMEMAX+1];
   int i;
-  symbol *sym;
+  const symbol *sym;
   ucell p;
 
   for (i=0; !isspace(*params); i++,params++) {
@@ -619,7 +619,7 @@ static OPCODE opcodelist[] = {
 };
 
 #define MAX_INSTR_LEN   30
-static int findopcode(char *instr,int maxlen)
+static int findopcode(const char *instr,int maxlen)
 {
   int low,high;
   char str[MAX_INSTR_LEN];

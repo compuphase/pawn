@@ -14,7 +14,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: sc2.c 7113 2024-02-25 21:29:31Z thiadmer $
+ *  Version: $Id: sc2.c 7152 2024-03-23 20:47:23Z thiadmer $
  */
 #include <assert.h>
 #include <stdio.h>
@@ -119,13 +119,14 @@ SC_FUNC void clearstk(void)
   assert(stktop==0);
 }
 
-SC_FUNC int plungequalifiedfile(char *name)
+SC_FUNC int plungequalifiedfile(const char *name)
 {
-static char *extensions[] = { ".i", ".inc", ".p", ".pawn" };
+static const char *extensions[] = { ".i", ".inc", ".p", ".pawn" };
   FILE *fp;
   char *ext;
   int ext_idx;
 
+  assert(name!=NULL);
   ext_idx=0;
   do {
     fp=(FILE*)pc_opensrc(name);
@@ -178,7 +179,7 @@ SC_FUNC int plungefile(char *name,int try_currentpath,int try_includepaths)
     /* try to open the file in the same directory as the current file --but
      * first check whether there is a (relative) path for the current file
      */
-    char *ptr;
+    const char *ptr;
     if ((ptr=strrchr(inpfname,DIRSEP_CHAR))!=0) {
       int len=(int)(ptr-inpfname)+1;
       if (len+strlen(name)<_MAX_PATH) {
@@ -227,7 +228,7 @@ static void check_empty(const unsigned char *lptr)
  *
  *  Global references: inpf     (altered)
  *                     inpfname (altered)
- *                     lptr     (altered)
+ *                     lexptr   (altered)
  */
 static void doinclude(int silent)
 {
@@ -237,31 +238,31 @@ static void doinclude(int silent)
   char c;
   int i, result;
 
-  while (*lptr<=' ' && *lptr!='\0')         /* skip leading whitespace */
-    lptr++;
-  if (*lptr=='<' || *lptr=='\"') {
-    c=(char)((*lptr=='\"') ? '\"' : '>');   /* termination character */
-    lptr++;
-    while (*lptr<=' ' && *lptr!='\0')       /* skip whitespace after quote */
-      lptr++;
+  while (*lexptr<=' ' && *lexptr!='\0')     /* skip leading whitespace */
+    lexptr++;
+  if (*lexptr=='<' || *lexptr=='\"') {
+    c=(char)((*lexptr=='\"') ? '\"' : '>'); /* termination character */
+    lexptr++;
+    while (*lexptr<=' ' && *lexptr!='\0')   /* skip whitespace after quote */
+      lexptr++;
   } else {
     c='\0';
   } /* if */
 
   i=0;
-  while (*lptr!=c && *lptr!='\0' && i<sizearray(name)-1)  /* find the end of the string */
-    name[i++]=*lptr++;
+  while (*lexptr!=c && *lexptr!='\0' && i<sizearray(name)-1)  /* find the end of the string */
+    name[i++]=*lexptr++;
   while (i>0 && name[i-1]<=' ')
     i--;                        /* strip trailing whitespace */
   assert(i>=0 && i<sizearray(name));
   name[i]='\0';                 /* zero-terminate the string */
 
-  if (*lptr!=c) {               /* verify correct string termination */
+  if (*lexptr!=c) {             /* verify correct string termination */
     error(37);                  /* invalid string */
     return;
   } /* if */
   if (c!='\0')
-    check_empty(lptr+1);        /* verify that the rest of the line is whitespace */
+    check_empty(lexptr+1);      /* verify that the rest of the line is whitespace */
 
   /* create a symbol from the name of the include file; this allows the system
    * to test for multiple inclusions
@@ -314,7 +315,7 @@ static void readline(unsigned char *line,int append)
   unsigned char *ptr;
   size_t num;
 
-  if (lptr==term_expr)
+  if (lexptr==term_expr)
     return;
   num=sLINEMAX;
   if (append) {
@@ -371,11 +372,11 @@ static void readline(unsigned char *line,int append)
     } else {
       /* check whether to erase leading spaces */
       if (cont) {
-        unsigned char *ptr=line;
-        while (*ptr<=' ' && *ptr!='\0')
-          ptr++;
-        if (ptr!=line)
-          memmove(line,ptr,strlen((char*)ptr)+1);
+        unsigned char *ptr2=line;
+        while (*ptr2<=' ' && *ptr2!='\0')
+          ptr2++;
+        if (ptr2!=line)
+          memmove(line,ptr2,strlen((char*)ptr2)+1);
       } /* if */
       cont=FALSE;
       /* check whether a full line was read */
@@ -554,11 +555,11 @@ static void stripcom(unsigned char *line)
 static int btoi(cell *val,const unsigned char *curptr)
 {
   const unsigned char *ptr;
-  unsigned digitsep=UINT_MAX;
 
   *val=0;
   ptr=curptr;
   if (*ptr=='0' && *(ptr+1)=='b') {
+    unsigned digitsep=UINT_MAX;
     ptr+=2;
     while (*ptr=='0' || *ptr=='1' || *ptr=='\'') {
       if (*ptr=='\'') {
@@ -630,13 +631,13 @@ static int dtoi(cell *val,const unsigned char *curptr)
 static int htoi(cell *val,const unsigned char *curptr)
 {
   const unsigned char *ptr;
-  unsigned digitsep=UINT_MAX;
 
   *val=0;
   ptr=curptr;
   if (!isdigit(*ptr))   /* should start with digit */
     return 0;
   if (*ptr=='0' && *(ptr+1)=='x') {     /* C style hexadecimal notation */
+    unsigned digitsep=UINT_MAX;
     ptr+=2;
     while (ishex(*ptr) || *ptr=='\'') {
       if (*ptr=='\'') {
@@ -859,11 +860,11 @@ static int preproc_expr(cell *val,int *tag)
   } /* if */
   /* save the position in the literal queue too */
   cur_lit=litidx;
-  assert(lptr>=srcline && (lptr-srcline)<(int)strlen((char*)srcline));   /* lptr must point inside the string */
+  assert(lexptr>=srcline && (lexptr-srcline)<(int)strlen((char*)srcline));   /* lexptr must point inside the string */
   #if !defined NO_DEFINE
     /* preprocess the string */
     substallpatterns(srcline,sLINEMAX);
-    assert(lptr>=srcline && (lptr-srcline)<(int)strlen((char*)srcline)); /* lptr must STILL point inside the string */
+    assert(lexptr>=srcline && (lexptr-srcline)<(int)strlen((char*)srcline)); /* lexptr must STILL point inside the string */
   #endif
   /* append a special symbol to the string, so the expression
    * analyzer won't try to read a next line when it encounters
@@ -934,7 +935,7 @@ enum {
  *     CMD_DIRECTIVE    the line contains some other compiler directive
  *
  *  Global variables: iflevel, ifstack (altered)
- *                    lptr      (altered)
+ *                    lexptr    (altered)
  */
 static int command(void)
 {
@@ -944,11 +945,11 @@ static int command(void)
   int index;
   cell code_index;
 
-  while (*lptr<=' ' && *lptr!='\0')
-    lptr+=1;
-  if (*lptr=='\0')
+  while (*lexptr<=' ' && *lexptr!='\0')
+    lexptr+=1;
+  if (*lexptr=='\0')
     return CMD_EMPTYLINE;       /* empty line */
-  if (*lptr!='#')
+  if (*lexptr!='#')
     return SKIPPING ? CMD_CONDFALSE : CMD_NONE; /* it is not a compiler directive */
   /* compiler directive found */
   indent_nowarn=TRUE;           /* allow loose indentation" */
@@ -957,7 +958,7 @@ static int command(void)
    * re-read the line
    */
   if (!sc_needsemicolon && stgget(&index,&code_index)) {
-    lptr=term_expr;
+    lexptr=term_expr;
     return CMD_TERM;
   } /* if */
   tok=lex(&val,&str);
@@ -981,7 +982,7 @@ static int command(void)
       int symtok=lex(&val,&str);
       val=0;
       if (symtok==tSYMBOL) {
-        symbol *sym=findloc(str);
+        const symbol *sym=findloc(str);
         if (sym==NULL)
           sym=findglb(str,sGLOBAL);
         if (sym!=NULL
@@ -999,7 +1000,7 @@ static int command(void)
       }
       ifstack[iflevel-1]=(char)(val ? PARSEMODE : SKIPMODE);
     }
-    check_empty(lptr);
+    check_empty(lexptr);
     break;
   case tpELSE:
   case tpELSEIF:
@@ -1031,7 +1032,7 @@ static int command(void)
             if (skiplevel==iflevel)
               preproc_expr(&val,NULL);  /* get, but ignore the expression */
             else
-              lptr=(const unsigned char *)strchr((const char *)lptr,'\0');
+              lexptr=(const unsigned char*)strchr((const char*)lexptr,'\0');
           } /* if */
         } else {
           /* previous conditions were all FALSE */
@@ -1042,7 +1043,7 @@ static int command(void)
             if (skiplevel==iflevel) {
               preproc_expr(&val,NULL);  /* get value (or 0 on error) */
             } else {
-              lptr=(const unsigned char *)strchr((const char *)lptr,'\0');
+              lexptr=(const unsigned char*)strchr((const char *)lexptr,'\0');
               val=0;
             } /* if */
             ifstack[iflevel-1]=(char)(val ? PARSEMODE : SKIPMODE);
@@ -1053,7 +1054,7 @@ static int command(void)
         } /* if */
       } /* if */
     } /* if */
-    check_empty(lptr);
+    check_empty(lexptr);
     break;
   case tpENDIF:
     ret=CMD_IF;
@@ -1065,7 +1066,7 @@ static int command(void)
       if (iflevel<skiplevel)
         skiplevel=iflevel;
     } /* if */
-    check_empty(lptr);
+    check_empty(lexptr);
     break;
   case tpINCLUDE:               /* #include directive */
   case tpTRYINCLUDE:
@@ -1076,7 +1077,7 @@ static int command(void)
   case tpFILE:
     if (!SKIPPING) {
       char pathname[_MAX_PATH];
-      lptr=getstring((unsigned char*)pathname,sizearray(pathname),lptr);
+      lexptr=getstring((unsigned char*)pathname,sizearray(pathname),lexptr);
       if (strlen(pathname)>0) {
         free(inpfname);
         inpfname=duplicatestring(pathname);
@@ -1092,7 +1093,7 @@ static int command(void)
 
       } /* if */
     } /* if */
-    check_empty(lptr);
+    check_empty(lexptr);
     break;
   case tpLINE:
     if (!SKIPPING) {
@@ -1100,16 +1101,16 @@ static int command(void)
         error(8);               /* invalid/non-constant expression */
       pc_curline=(int)val;
     } /* if */
-    check_empty(lptr);
+    check_empty(lexptr);
     break;
   case tpASSERT:
     if (!SKIPPING && (sc_debug & sCHKBOUNDS)!=0) {
-      for (str=(char*)lptr; *str<=' ' && *str!='\0'; str++)
+      for (str=(char*)lexptr; *str<=' ' && *str!='\0'; str++)
         /* nothing */;          /* save start of expression */
       preproc_expr(&val,NULL);  /* get constant expression (or 0 on error) */
       if (!val)
         error(110,str);         /* assertion failed */
-      check_empty(lptr);
+      check_empty(lexptr);
     } /* if */
     break;
   case tpPRAGMA:
@@ -1123,23 +1124,23 @@ static int command(void)
 #if !defined PAWN_NO_CODEPAGE
         } else if (strcmp(str,"codepage")==0) {
           char name[sNAMEMAX+1];
-          while (*lptr<=' ' && *lptr!='\0')
-            lptr++;
-          if (*lptr=='"') {
-            lptr=getstring((unsigned char*)name,sizearray(name),lptr);
+          while (*lexptr<=' ' && *lexptr!='\0')
+            lexptr++;
+          if (*lexptr=='"') {
+            lexptr=getstring((unsigned char*)name,sizearray(name),lexptr);
           } else {
             int i;
-            for (i=0; i<sizearray(name) && alphanum(*lptr); i++,lptr++)
-              name[i]=*lptr;
+            for (i=0; i<sizearray(name) && alphanum(*lexptr); i++,lexptr++)
+              name[i]=*lexptr;
             name[i]='\0';
           } /* if */
           if (!cp_set(name))
             error(108);         /* codepage mapping file not found */
 #endif
         } else if (strcmp(str,"ctrlchar")==0) {
-          while (*lptr<=' ' && *lptr!='\0')
-            lptr++;
-          if (*lptr=='\0') {
+          while (*lexptr<=' ' && *lexptr!='\0')
+            lexptr++;
+          if (*lexptr=='\0') {
             sc_ctrlchar=sc_ctrlchar_org;
           } else {
             if (lex(&val,&str)!=tNUMBER)
@@ -1147,24 +1148,24 @@ static int command(void)
             sc_ctrlchar=(char)val;
           } /* if */
         } else if (strcmp(str,"deprecated")==0) {
-          while (*lptr<=' ' && *lptr!='\0')
-            lptr++;
-          pc_deprecate=(char*)malloc(strlen((char*)lptr)+1);
+          while (*lexptr<=' ' && *lexptr!='\0')
+            lexptr++;
+          pc_deprecate=(char*)malloc(strlen((char*)lexptr)+1);
           if (pc_deprecate!=NULL)
-            strcpy(pc_deprecate,(char*)lptr);
-          lptr=(unsigned char*)strchr((char*)lptr,'\0'); /* skip to end (ignore "extra characters on line") */
+            strcpy(pc_deprecate,(char*)lexptr);
+          lexptr=(unsigned char*)strchr((char*)lexptr,'\0'); /* skip to end (ignore "extra characters on line") */
         } else if (strcmp(str,"dynamic")==0) {
           preproc_expr(&pc_stksize,NULL);
         } else if (strcmp(str,"library")==0) {
           char name[sNAMEMAX+1];
-          while (*lptr<=' ' && *lptr!='\0')
-            lptr++;
-          if (*lptr=='"') {
-            lptr=getstring((unsigned char*)name,sizearray(name),lptr);
+          while (*lexptr<=' ' && *lexptr!='\0')
+            lexptr++;
+          if (*lexptr=='"') {
+            lexptr=getstring((unsigned char*)name,sizearray(name),lexptr);
           } else {
             int i;
-            for (i=0; i<sizearray(name) && (alphanum(*lptr) || *lptr=='-'); i++,lptr++)
-              name[i]=*lptr;
+            for (i=0; i<sizearray(name) && (alphanum(*lexptr) || *lexptr=='-'); i++,lexptr++)
+              name[i]=*lexptr;
             name[i]='\0';
           } /* if */
           if (strlen(name)==0) {
@@ -1195,22 +1196,22 @@ static int command(void)
           cell digits=0;
           int i;
           /* first gather all information, start with the tag name */
-          while (*lptr<=' ' && *lptr!='\0')
-            lptr++;
-          for (i=0; i<sizearray(name) && alphanum(*lptr); i++,lptr++)
-            name[i]=*lptr;
+          while (*lexptr<=' ' && *lexptr!='\0')
+            lexptr++;
+          for (i=0; i<sizearray(name) && alphanum(*lexptr); i++,lexptr++)
+            name[i]=*lexptr;
           name[i]='\0';
           /* then the precision (for fixed point arithmetic) */
-          while (*lptr<=' ' && *lptr!='\0')
-            lptr++;
-          if (*lptr=='(') {
+          while (*lexptr<=' ' && *lexptr!='\0')
+            lexptr++;
+          if (*lexptr=='(') {
             preproc_expr(&digits,NULL);
             if (digits<=0 || digits>9) {
               error(68);        /* invalid rational number precision */
               digits=0;
             } /* if */
-            if (*lptr==')')
-              lptr++;
+            if (*lexptr==')')
+              lexptr++;
           } /* if */
           if (pc_cellsize<4) {
             error(68);          /* rational numbers not supported on 16-bit cells */
@@ -1242,10 +1243,10 @@ static int command(void)
           do {
             symbol *sym;
             /* get the name */
-            while (*lptr<=' ' && *lptr!='\0')
-              lptr++;
-            for (i=0; i<sizearray(name) && alphanum(*lptr); i++,lptr++)
-              name[i]=*lptr;
+            while (*lexptr<=' ' && *lexptr!='\0')
+              lexptr++;
+            for (i=0; i<sizearray(name) && alphanum(*lexptr); i++,lexptr++)
+              name[i]=*lexptr;
             name[i]='\0';
             /* get the symbol */
             sym=findloc(name);
@@ -1260,11 +1261,11 @@ static int command(void)
               error(17,name);     /* undefined symbol */
             } /* if */
             /* see if a comma follows the name */
-            while (*lptr<=' ' && *lptr!='\0')
-              lptr++;
-            comma= (*lptr==',');
+            while (*lexptr<=' ' && *lexptr!='\0')
+              lexptr++;
+            comma= (*lexptr==',');
             if (comma)
-              lptr++;
+              lexptr++;
           } while (comma);
         } else if (strcmp(str,"warning")==0) {
           ok= (lex(&val,&str)==tSYMBOL);
@@ -1289,12 +1290,12 @@ static int command(void)
       } /* if */
       if (!ok)
         error(207);             /* unknown #pragma */
-      check_empty(lptr);
+      check_empty(lexptr);
     } /* if */
     break;
   case tpENDINPUT:
     if (!SKIPPING) {
-      check_empty(lptr);
+      check_empty(lexptr);
       assert(inpf!=NULL);
       if (inpf!=inpf_org)
         pc_closesrc(inpf);
@@ -1310,15 +1311,15 @@ static int command(void)
       int count,prefixlen,matchbracket,nest;
       const stringpair *def;
       /* find the pattern to match */
-      while (*lptr<=' ' && *lptr!='\0')
-        lptr++;
-      start=lptr;       /* save starting point of the match pattern */
+      while (*lexptr<=' ' && *lexptr!='\0')
+        lexptr++;
+      start=lexptr;       /* save starting point of the match pattern */
       count=0;
-      while (*lptr>' ' && *lptr!='[') {
-        litchar(&lptr,0); /* litchar() advances "lptr" and handles escape characters */
+      while (*lexptr>' ' && *lexptr!='[') {
+        litchar(&lexptr,0); /* litchar() advances "lexptr" and handles escape characters */
         count++;
       } /* while */
-      end=lptr;
+      end=lexptr;
       /* check pattern to match */
       if (!alpha(*start)) {
         error(74);      /* pattern must start with an alphabetic character */
@@ -1328,72 +1329,72 @@ static int command(void)
       pattern=(char*)malloc(count+1);
       if (pattern==NULL)
         error(103);     /* insufficient memory */
-      lptr=start;
+      lexptr=start;
       count=0;
-      while (lptr!=end) {
-        assert(lptr<end);
-        assert(*lptr!='\0');
-        pattern[count++]=(char)litchar(&lptr,0);
+      while (lexptr!=end) {
+        assert(lexptr<end);
+        assert(*lexptr!='\0');
+        pattern[count++]=(char)litchar(&lexptr,0);
       } /* while */
       pattern[count]='\0';
       /* special case, erase trailing variable, because it could match anything */
       if (count>=2 && isdigit(pattern[count-1]) && pattern[count-2]=='%')
         pattern[count-2]='\0';
       /* find substitution string */
-      while (*lptr<=' ' && *lptr!='\0')
-        lptr++;
-      matchbracket=(*lptr=='[');
+      while (*lexptr<=' ' && *lexptr!='\0')
+        lexptr++;
+      matchbracket=(*lexptr=='[');
       if (matchbracket)
-        lptr++;         /* skip '[' */
+        lexptr++;         /* skip '[' */
       nest=0;
-      start=lptr;       /* save starting point of the match pattern */
+      start=lexptr;       /* save starting point of the match pattern */
       count=0;
       end=NULL;
       if (matchbracket) {
         /* allow the substitution text to be split over multiple lines */
-        while (*lptr!=']' || nest>0) {
-          if (*lptr=='\0') {
+        while (*lexptr!=']' || nest>0) {
+          if (*lexptr=='\0') {
             readline(srcline,TRUE);
             stripcom(srcline);
-            if (*lptr=='\0')
+            if (*lexptr=='\0')
               break;    /* no next line */
-            if (*lptr==']')
+            if (*lexptr==']')
               continue;
           } /* if */
-          if (*lptr=='[')
+          if (*lexptr=='[')
             nest++;
-          else if (*lptr==']')
+          else if (*lexptr==']')
             nest--;
           count++;
-          lptr++;
+          lexptr++;
         } /* while */
-        end=lptr;
+        end=lexptr;
       } else {
         /* the complete definition should appear on a single (logical) line */
-        while (*lptr!='\0') {
+        while (*lexptr!='\0') {
           /* keep position of the start of trailing whitespace */
-          if (*lptr<=' ') {
+          if (*lexptr<=' ') {
             if (end==NULL)
-              end=lptr;
+              end=lexptr;
           } else {
             end=NULL;
           } /* if */
           count++;
-          lptr++;
+          lexptr++;
         } /* while */
         if (end==NULL)
-          end=lptr;
+          end=lexptr;
       } /* if */
       /* store matched substitution */
       substitution=(char*)malloc(count+1);  /* +1 for '\0' */
       if (substitution==NULL)
         error(103);             /* insufficient memory */
-      lptr=start;
+      lexptr=start;
       count=0;
-      while (lptr!=end) {
-        assert(lptr<end);
-        assert(*lptr!='\0');
-        substitution[count++]=*lptr++;
+      while (lexptr!=end) {
+        assert(lexptr<end);
+        assert(*lexptr!='\0');
+        substitution[count++]=*lexptr++;
       } /* while */
       substitution[count]='\0';
       /* check whether the definition already exists */
@@ -1412,10 +1413,10 @@ static int command(void)
       free(substitution);
       /* check rest of the line (should be empty) */
       if (matchbracket) {
-        if (*lptr!=']')
+        if (*lexptr!=']')
           error(1,"]","-end of line-");
         else
-          check_empty(lptr+1);  /* skip ']' */
+          check_empty(lexptr+1);  /* skip ']' */
       } /* if */
     } /* if */
     break;
@@ -1437,17 +1438,17 @@ static int command(void)
       } else {
         error_symbolname(20,str); /* invalid symbol name */
       } /* if */
-      check_empty(lptr);
+      check_empty(lexptr);
     } /* if */
     break;
 #endif
   case tpERROR:
   case tpWARNING:
-    while (*lptr<=' ' && *lptr!='\0')
-      lptr++;
+    while (*lexptr<=' ' && *lexptr!='\0')
+      lexptr++;
     if (!SKIPPING) {
       int errcode=(tok==tpERROR) ? 111 : 220;
-      error(errcode,lptr);  /* user error or user warning */
+      error(errcode,lexptr);  /* user error or user warning */
     } /* if */
     break;
   default:
@@ -1539,7 +1540,7 @@ SC_FUNC char *strdel(char *str,size_t len)
   return str;
 }
 
-SC_FUNC char *strins(char *dest,char *src,size_t srclen)
+SC_FUNC char *strins(char *dest,const char *src,size_t srclen)
 {
   size_t destlen=strlen(dest);
   assert(srclen<=strlen(src));
@@ -1839,8 +1840,8 @@ static int scanellipsis(const unsigned char *lptr)
  *  preprocess() if a new line must be read, preprocess() calls command(),
  *  which at his turn calls lex() to identify the token.
  *
- *  Global references: lptr     (altered)
- *                     srcline   (altered)
+ *  Global references: lexptr   (altered)
+ *                     srcline  (altered)
  *                     freading (referred to only)
  */
 SC_FUNC void preprocess(void)
@@ -1852,15 +1853,15 @@ SC_FUNC void preprocess(void)
   do {
     readline(srcline,FALSE);
     stripcom(srcline);
-    lptr=srcline;       /* set "line pointer" to start of the parsing buffer */
+    lexptr=srcline;       /* set "line pointer" to start of the parsing buffer */
     iscommand=command();
     if (iscommand!=CMD_NONE)
       errorset(sRESET,0); /* reset error flag ("panic mode") on empty line or directive */
     #if !defined NO_DEFINE
       if (iscommand==CMD_NONE) {
-        assert(lptr!=term_expr);
+        assert(lexptr!=term_expr);
         substallpatterns(srcline,sLINEMAX);
-        lptr=srcline;   /* reset "line pointer" to start of the parsing buffer */
+        lexptr=srcline;   /* reset "line pointer" to start of the parsing buffer */
       } /* if */
     #endif
     if (sc_status==statBROWSE && sc_listing && freading
@@ -1935,8 +1936,7 @@ SC_FUNC void lex_fetchindent(const unsigned char *string,const unsigned char *po
 
 SC_FUNC int lex_adjusttabsize(int matchindent)
 {
-  int indent, tabsize,i;
-  unsigned long mask;
+  int tabsize,i;
 
   if (sc_status!=statBROWSE || pc_stmtindent==matchindent || pc_matchedtabsize!=1
       || pc_indentbits>32)
@@ -1968,8 +1968,8 @@ SC_FUNC int lex_adjusttabsize(int matchindent)
   } /* if */
 
   for (tabsize=2; tabsize<=8; tabsize++) {
-    mask=pc_indentmask;
-    indent=0;
+    int indent=0;
+    unsigned long mask=pc_indentmask;
     for (i=0; i<pc_indentbits; i++) {
       if ((mask & 1)!=0)
         indent += (int)(tabsize - (indent+tabsize) % tabsize);
@@ -2018,7 +2018,7 @@ SC_FUNC int lex_adjusttabsize(int matchindent)
  *  in global variables. This allows a token to be examined twice. If "_pushed"
  *  is true, this information is returned.
  *
- *  Global references: lptr          (altered)
+ *  Global references: lexptr        (altered)
  *                     litidx        (referred to only)
  *                     _lextok, _lexval, _lexstr
  *                     _pushed
@@ -2101,28 +2101,28 @@ SC_FUNC int lex(cell *lexvalue,char **lexsym)
   if (!freading)
     return 0;
 
-  newline= (lptr==srcline);     /* does lptr point to start of line buffer? */
-  while (*lptr<=' ') {          /* delete leading white space */
-    if (*lptr=='\0') {
-      preprocess();             /* preprocess resets "lptr" */
+  newline= (lexptr==srcline);   /* does lexptr point to start of line buffer? */
+  while (*lexptr<=' ') {        /* delete leading white space */
+    if (*lexptr=='\0') {
+      preprocess();             /* preprocess resets "lexptr" */
       if (!freading)
         return 0;
-      if (lptr==term_expr)      /* special sequence to terminate a pending expression */
+      if (lexptr==term_expr)    /* special sequence to terminate a pending expression */
         return (_lextok=tENDEXPR);
       _lexnewline=TRUE;         /* set this after preprocess(), because
                                  * preprocess() calls lex() recursively */
       newline=TRUE;
     } else {
-      lptr+=1;
+      lexptr+=1;
     } /* if */
   } /* while */
   if (newline)
-    lex_fetchindent(srcline,lptr);
+    lex_fetchindent(srcline,lexptr);
 
   i=tFIRST;
   tokptr=sc_tokens;
   while (i<=tMIDDLE) {  /* match multi-character operators */
-    if (*lptr==**tokptr && match(*tokptr,FALSE)) {
+    if (*lexptr==**tokptr && match(*tokptr,FALSE)) {
       _lextok=i;
       strcpy(_lexstr,*tokptr);
       if (pc_docexpr)   /* optionally concatenate to documentation string */
@@ -2133,7 +2133,7 @@ SC_FUNC int lex(cell *lexvalue,char **lexsym)
     tokptr+=1;
   } /* while */
   while (i<=tLAST) {    /* match reserved words and compiler directives */
-    if (*lptr==**tokptr && match(*tokptr,TRUE)) {
+    if (*lexptr==**tokptr && match(*tokptr,TRUE)) {
       _lextok=i;
       strcpy(_lexstr,*tokptr);
       errorset(sRESET,0); /* reset error flag (clear the "panic mode")*/
@@ -2145,38 +2145,38 @@ SC_FUNC int lex(cell *lexvalue,char **lexsym)
     tokptr+=1;
   } /* while */
 
-  starttoken=lptr;      /* save start pointer (for concatenating to documentation string) */
-  if ((i=number(&_lexval,lptr))!=0) {   /* number (non-floating point) */
+  starttoken=lexptr;    /* save start pointer (for concatenating to documentation string) */
+  if ((i=number(&_lexval,lexptr))!=0) {   /* number (non-floating point) */
     _lextok=tNUMBER;
     *lexvalue=_lexval;
-    lptr+=i;
-  } else if ((i=ftoi(&_lexval,lptr))!=0) {
+    lexptr+=i;
+  } else if ((i=ftoi(&_lexval,lexptr))!=0) {
     _lextok=tRATIONAL;
     *lexvalue=_lexval;
-    lptr+=i;
-  } else if (isdigit(*lptr)) {
+    lexptr+=i;
+  } else if (isdigit(*lexptr)) {
     /* so this symbol starts with a digit, but it is not a valid number; flag
      * this and skip the entire symbol
      */
     error(92);          /* invalid number format */
-    while (alphanum(*lptr))
-      lptr++;
+    while (alphanum(*lexptr))
+      lexptr++;
     _lextok=tNUMBER;
     *lexvalue=_lexval=0;
-  } else if (alpha(*lptr) || *lptr=='.' && alpha(*(lptr+1))) {  /* symbol, label or symbol-label */
+  } else if (alpha(*lexptr) || *lexptr=='.' && alpha(*(lexptr+1))) {  /* symbol, label or symbol-label */
     /*  Note: only sNAMEMAX characters are significant. The compiler
      *        generates a warning if a symbol exceeds this length.
      */
-    if (*lptr=='.') {
+    if (*lexptr=='.') {
       _lextok=tSYMLABEL;
-      lptr++; /* skip the '.' (it is not stored in the name) */
+      lexptr++; /* skip the '.' (it is not stored in the name) */
     } else {
       _lextok=tSYMBOL;
     } /* if */
     i=0;
     toolong=0;
-    while (alphanum(*lptr)){
-      _lexstr[i]=(char)*lptr++;
+    while (alphanum(*lexptr)){
+      _lexstr[i]=(char)*lexptr++;
       if (i<sNAMEMAX)
         i+=1;
       else
@@ -2189,10 +2189,10 @@ SC_FUNC int lex(cell *lexvalue,char **lexsym)
       _lextok=PUBLIC_CHAR;      /* '@' all alone is not a symbol, it is an operator */
     else if (_lexstr[0]=='_' && _lexstr[1]=='\0')
       _lextok='_';              /* '_' by itself is not a symbol, it is a placeholder */
-    if (*lptr==':' && *(lptr+1)!=':' && (_lextok!=PUBLIC_CHAR && _lextok!=tSYMLABEL)) {
+    if (*lexptr==':' && *(lexptr+1)!=':' && (_lextok!=PUBLIC_CHAR && _lextok!=tSYMLABEL)) {
       if (sc_allowtags) {
         _lextok=tLABEL; /* it wasn't a normal symbol, it was a label/tagname */
-        lptr+=1;        /* skip colon */
+        lexptr+=1;        /* skip colon */
       } else if (find_constval(&tagname_tab,_lexstr,-1)!=NULL) {
         /* this looks like a tag override (because a tag with this name
          * exists), but tags are not allowed right now, so it is probably an
@@ -2201,91 +2201,91 @@ SC_FUNC int lex(cell *lexvalue,char **lexsym)
         error(81);
       } /* if */
     } /* if */
-  } else if (*lptr=='\"'                              /* packed string literal */
-             || *lptr==sc_ctrlchar && *(lptr+1)=='\"' /* packed raw string */
-             || *lptr=='\'' && *(lptr+1)=='\''        /* unpacked string */
-             || *lptr=='`' && *(lptr+1)=='`'          /* unpacked string (alternative syntax) */
-             || *lptr==sc_ctrlchar && *(lptr+1)=='\'' && *(lptr+2)=='\''  /* unpacked raw string */
-             || *lptr==sc_ctrlchar && *(lptr+1)=='`' && *(lptr+2)=='`')   /* unpacked raw string */
+  } else if (*lexptr=='\"'                                /* packed string literal */
+             || *lexptr==sc_ctrlchar && *(lexptr+1)=='\"' /* packed raw string */
+             || *lexptr=='\'' && *(lexptr+1)=='\''        /* unpacked string */
+             || *lexptr=='`' && *(lexptr+1)=='`'          /* unpacked string (alternative syntax) */
+             || *lexptr==sc_ctrlchar && *(lexptr+1)=='\'' && *(lexptr+2)=='\''  /* unpacked raw string */
+             || *lexptr==sc_ctrlchar && *(lexptr+1)=='`' && *(lexptr+2)=='`')   /* unpacked raw string */
   {
-    int stringflags,segmentflags;
-    char *cat;
-    _lextok=(*lptr=='\"') ? tPACKSTRING : tSTRING;
+    int stringflags;
+    _lextok=(*lexptr=='\"') ? tPACKSTRING : tSTRING;
     *lexvalue=_lexval=litidx;
     _lexstr[0]='\0';
     stringflags=-1;     /* to mark the first segment */
     for ( ;; ) {
-      segmentflags=0;
-      if (*lptr==sc_ctrlchar) {
+      char *cat;
+      int segmentflags=0;
+      if (*lexptr==sc_ctrlchar) {
         segmentflags|=RAWMODE;
-        lptr+=1;
+        lexptr+=1;
       } /* if */
-      if (*lptr=='\"') {
+      if (*lexptr=='\"') {
         segmentflags|=ISPACKED;
-        lptr+=1;
+        lexptr+=1;
       } else {
-        assert(*lptr=='\'' && *(lptr+1)=='\'' || *lptr=='`' && *(lptr+1)=='`');
-        lptr+=2;    /* skip '' */
+        assert(*lexptr=='\'' && *(lexptr+1)=='\'' || *lexptr=='`' && *(lexptr+1)=='`');
+        lexptr+=2;    /* skip '' */
       } /* if */
       if (stringflags==-1)
         stringflags=segmentflags;
       else if (stringflags!=segmentflags)
-        error(238);       /* mixing packed/unpacked/raw strings in concatenation */
+        error(238);         /* mixing packed/unpacked/raw strings in concatenation */
       cat=strchr(_lexstr,'\0');
       assert(cat!=NULL);
-      while ((*lptr!='"' || (segmentflags & ISPACKED)==0)
-             && (*lptr!='\'' || *(lptr+1)!='\'' || (segmentflags & ISPACKED)!=0)
-             && *lptr!='\0' && (cat-_lexstr)<sLINEMAX)
+      while ((*lexptr!='"' || (segmentflags & ISPACKED)==0)
+             && (*lexptr!='\'' || *(lexptr+1)!='\'' || (segmentflags & ISPACKED)!=0)
+             && *lexptr!='\0' && (cat-_lexstr)<sLINEMAX)
       {
-        if (*lptr!='\a') {/* ignore '\a' (which was inserted at a line concatenation) */
-          *cat++=*lptr;
-          if (*lptr==sc_ctrlchar && *(lptr+1)!='\0')
-            *cat++=*++lptr; /* skip escape character plus the escaped character */
+        if (*lexptr!='\a') {  /* ignore '\a' (which was inserted at a line concatenation) */
+          *cat++=*lexptr;
+          if (*lexptr==sc_ctrlchar && *(lexptr+1)!='\0')
+            *cat++=*++lexptr; /* skip escape character plus the escaped character */
         } /* if */
-        lptr++;
+        lexptr++;
       } /* while */
-      *cat='\0';          /* terminate string */
-      if (*lptr=='\"') {
-        lptr+=1;          /* skip final quote */
+      *cat='\0';            /* terminate string */
+      if (*lexptr=='\"') {
+        lexptr+=1;          /* skip final quote */
           if ((segmentflags & ISPACKED)==0)
-          error(37);      /* wrong string termination */
-      } else if (*lptr=='\'') {
-        lptr+=1;          /* skip first of two final quotes (skip the other after error checking */
-          if ((segmentflags & ISPACKED)!=0 || *lptr!='\'')
-          error(37);      /* wrong string termination */
-        if (*lptr=='\'')
-          lptr+=1;
+          error(37);        /* wrong string termination */
+      } else if (*lexptr=='\'') {
+        lexptr+=1;          /* skip first of two final quotes (skip the other after error checking */
+          if ((segmentflags & ISPACKED)!=0 || *lexptr!='\'')
+          error(37);        /* wrong string termination */
+        if (*lexptr=='\'')
+          lexptr+=1;
       } else {
-        error(37);        /* invalid (non-terminated) string */
+        error(37);          /* invalid (non-terminated) string */
       } /* if */
       /* see whether an ellipsis is following the string */
-      if (!scanellipsis(lptr))
-        break;            /* no concatenation of string literals */
+      if (!scanellipsis(lexptr))
+        break;              /* no concatenation of string literals */
       /* there is an ellipses, go on parsing (this time with full preprocessing) */
-      while (*lptr<=' ') {
-        if (*lptr=='\0') {
-          preprocess();             /* preprocess resets "lptr" */
-          assert(freading && lptr!=term_expr);
+      while (*lexptr<=' ') {
+        if (*lexptr=='\0') {
+          preprocess();     /* preprocess resets "lexptr" */
+          assert(freading && lexptr!=term_expr);
         } else {
-          lptr++;
+          lexptr++;
         } /* if */
       } /* while */
-      assert(freading && lptr[0]=='.' && lptr[1]=='.' && lptr[2]=='.');
-      lptr+=3;
-      while (*lptr<=' ') {
-        if (*lptr=='\0') {
-          preprocess();             /* preprocess resets "lptr" */
-          assert(freading && lptr!=term_expr);
+      assert(freading && lexptr[0]=='.' && lexptr[1]=='.' && lexptr[2]=='.');
+      lexptr+=3;
+      while (*lexptr<=' ') {
+        if (*lexptr=='\0') {
+          preprocess();     /* preprocess resets "lexptr" */
+          assert(freading && lexptr!=term_expr);
         } else {
-          lptr++;
+          lexptr++;
         } /* if */
       } /* while */
-      if (!freading || !(*lptr=='\"'
-                         || *lptr==sc_ctrlchar && *(lptr+1)=='\"'
-                         || *lptr=='\'' && *(lptr+1)=='\''
-                         || *lptr=='`' && *(lptr+1)=='`'
-                         || *lptr==sc_ctrlchar && *(lptr+1)=='\'' && *(lptr+2)=='\''
-                         || *lptr==sc_ctrlchar && *(lptr+1)=='`' && *(lptr+2)=='`'))
+      if (!freading || !(*lexptr=='\"'
+                         || *lexptr==sc_ctrlchar && *(lexptr+1)=='\"'
+                         || *lexptr=='\'' && *(lexptr+1)=='\''
+                         || *lexptr=='`' && *(lexptr+1)=='`'
+                         || *lexptr==sc_ctrlchar && *(lexptr+1)=='\'' && *(lexptr+2)=='\''
+                         || *lexptr==sc_ctrlchar && *(lexptr+1)=='`' && *(lexptr+2)=='`'))
       {
         error(37);                /* invalid string concatenation */
         break;
@@ -2295,39 +2295,39 @@ SC_FUNC int lex(cell *lexvalue,char **lexsym)
       packedstring((unsigned char*)_lexstr,stringflags);
     else
       unpackedstring((unsigned char*)_lexstr,stringflags);
-  } else if (*lptr=='\'' || *lptr=='`') {       /* character literal */
-    lptr+=1;            /* skip quote */
+  } else if (*lexptr=='\'' || *lexptr=='`') {       /* character literal */
+    lexptr+=1;            /* skip quote */
     _lextok=tNUMBER;
-    *lexvalue=_lexval=litchar(&lptr,UTF8MODE);
-    if (*lptr=='\'') {
-      lptr+=1;          /* skip final quote */
+    *lexvalue=_lexval=litchar(&lexptr,UTF8MODE);
+    if (*lexptr=='\'') {
+      lexptr+=1;          /* skip final quote */
     } else {
       /* try to skip up to the next quote (this may be a user mixing up
        * single and double quotes)
        */
-      const unsigned char *ptr=lptr;
+      const unsigned char *ptr=lexptr;
       while (*ptr!='\0' && *ptr!='\'')
         ptr++;
       if (*ptr=='\'') {
         error(makelong(27,2));  /* invalid character constant (or use double quotes) */
-        lptr=ptr+1;     /* skip entire lot */
+        lexptr=ptr+1;     /* skip entire lot */
       } else {
-        error(27);      /* invalid character constant (must be one character) */
+        error(27);        /* invalid character constant (must be one character) */
       } /* if */
     } /* if */
-  } else if (*lptr==';') {      /* semicolon resets "error" flag */
+  } else if (*lexptr==';') {      /* semicolon resets "error" flag */
     _lextok=';';
-    lptr+=1;
-    errorset(sRESET,0); /* reset error flag (clear the "panic mode")*/
+    lexptr+=1;
+    errorset(sRESET,0);   /* reset error flag (clear the "panic mode")*/
   } else {
-    _lextok=*lptr;      /* if every match fails, return the character */
-    lptr+=1;            /* increase the "lptr" pointer */
+    _lextok=*lexptr;      /* if every match fails, return the character */
+    lexptr+=1;            /* advance the "lexptr" pointer */
   } /* if */
 
   if (pc_docexpr) {     /* optionally concatenate to documentation string */
-    char *docstr=(char*)malloc(((int)(lptr-starttoken)+1)*sizeof(char));
+    char *docstr=(char*)malloc(((int)(lexptr-starttoken)+1)*sizeof(char));
     if (docstr!=NULL) {
-      strlcpy(docstr,(char*)starttoken,(int)(lptr-starttoken)+1);
+      strlcpy(docstr,(char*)starttoken,(int)(lexptr-starttoken)+1);
       insert_autolist(docstr);
       free(docstr);
     } /* if */
@@ -2363,8 +2363,8 @@ SC_FUNC void lexclr(int clreol)
 {
   _pushed=FALSE;
   if (clreol) {
-    lptr=(unsigned char*)strchr((char*)srcline,'\0');
-    assert(lptr!=NULL);
+    lexptr=(unsigned char*)strchr((char*)srcline,'\0');
+    assert(lexptr!=NULL);
   } /* if */
 }
 
@@ -2385,7 +2385,7 @@ SC_FUNC int lexpeek(void)
 /* changes the current token, this is sometimes convenient when a
  * reserved word must be re-interpreted as a symbol
  */
-SC_FUNC int lexsettoken(int token,char *lexsym)
+SC_FUNC int lexsettoken(int token,const char *lexsym)
 {
   assert(_pushed==FALSE);
   _lextok=token;
@@ -2465,41 +2465,39 @@ SC_FUNC int needtoken(int token)
   char s1[20],s2[20];
   int t;
 
-  if ((t=matchtoken(token))!=0) {
+  if ((t=matchtoken(token))!=0)
     return t;
-  } else {
-    assert(_pushed);                    /* token already pushed back */
-    litidx=0;                           /* force clear literal pool on error */
-    if (token<256)
-      sprintf(s1,"%c",(char)token);     /* single character token */
-    else
-      strcpy(s1,sc_tokens[token-tFIRST]);/* multi-character symbol */
-    if (!freading)
-      strcpy(s2,"-end of file-");
-    else if (_lextok<256)
-      sprintf(s2,"%c",(char)_lextok);
-    else if (_lextok==tNUMBER)
-      sprintf(s2,"%d",(int)_lexval);
-    else if (_lextok==tSYMBOL)
-      strcpy(s2,_lexstr);
-    else
-      strcpy(s2,sc_tokens[_lextok-tFIRST]);
-    error(1,s1,s2);     /* expected ..., but found ... */
-    return FALSE;
-  } /* if */
+  assert(_pushed);                      /* token already pushed back */
+  litidx=0;                             /* force clear literal pool on error */
+  if (token<256)
+    sprintf(s1,"%c",(char)token);       /* single character token */
+  else
+    strcpy(s1,sc_tokens[token-tFIRST]); /* multi-character symbol */
+  if (!freading)
+    strcpy(s2,"-end of file-");
+  else if (_lextok<256)
+    sprintf(s2,"%c",(char)_lextok);
+  else if (_lextok==tNUMBER)
+    sprintf(s2,"%d",(int)_lexval);
+  else if (_lextok==tSYMBOL)
+    strcpy(s2,_lexstr);
+  else
+    strcpy(s2,sc_tokens[_lextok-tFIRST]);
+  error(1,s1,s2);     /* expected ..., but found ... */
+  return FALSE;
 }
 
 /*  match
  *
  *  Compares a series of characters from the input file with the characters
  *  in "st" (that contains a token). If the token on the input file matches
- *  "st", the input file pointer "lptr" is adjusted to point to the next
- *  token, otherwise "lptr" remains unaltered.
+ *  "st", the input file pointer "lexptr" is adjusted to point to the next
+ *  token, otherwise "lexptr" remains unaltered.
  *
  *  If the parameter "end: is true, match() requires that the first character
  *  behind the recognized token is non-alphanumeric.
  *
- *  Global references: lptr   (altered)
+ *  Global references: lexptr (altered)
  */
 static int match(char *st,int end)
 {
@@ -2507,18 +2505,18 @@ static int match(char *st,int end)
   const unsigned char *ptr;
 
   k=0;
-  ptr=lptr;
+  ptr=lexptr;
   while (st[k]) {
     if ((unsigned char)st[k]!=*ptr)
       return 0;
     k+=1;
     ptr+=1;
   } /* while */
-  if (end) {            /* symbol must terminate with non-alphanumeric char */
+  if (end) {        /* symbol must terminate with non-alphanumeric char */
     if (alphanum(*ptr))
       return 0;
   } /* if */
-  lptr=ptr;     /* match found, skip symbol */
+  lexptr=ptr;       /* match found, skip symbol */
   return 1;
 }
 
@@ -2721,7 +2719,7 @@ SC_FUNC int ishex(char c)
  * In the global list, the symbols are kept in sorted order, so that the
  * public functions are written in sorted order.
  */
-static symbol *add_symbol(symbol *root,symbol *entry,int sort)
+static symbol *add_symbol(symbol *root,const symbol *entry,int sort)
 {
   symbol *newsym;
 
@@ -2741,14 +2739,13 @@ static symbol *add_symbol(symbol *root,symbol *entry,int sort)
 
 static void free_symbol(symbol *sym)
 {
-  arginfo *arg;
-  int idx;
-
   /* free all sub-symbol allocated memory blocks, depending on the
    * kind of the symbol
    */
   assert(sym!=NULL);
   if (sym->ident==iFUNCTN) {
+    arginfo *arg;
+    int idx;
     /* run through the argument list; "default array" arguments
      * must be freed explicitly; the tag list must also be freed
      */

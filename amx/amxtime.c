@@ -14,7 +14,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: amxtime.c 6965 2023-07-20 15:44:35Z thiadmer $
+ *  Version: $Id: amxtime.c 6969 2023-07-26 12:26:41Z thiadmer $
  */
 #include <time.h>
 #include <assert.h>

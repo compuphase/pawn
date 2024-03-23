@@ -14,7 +14,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: amx.c 6973 2023-08-05 20:07:04Z thiadmer $
+ *  Version: $Id: amx.c 7151 2024-03-23 16:08:18Z thiadmer $
  */
 
 #define WIN32_LEAN_AND_MEAN
@@ -93,7 +93,7 @@
   #define AMX_EXPLIT_FUNCTIONS
 #endif
 #if !defined AMX_EXPLIT_FUNCTIONS
-  /* no constant set, set them all */
+  /* no constant set, set them all (except amx_InitJIT() and other JIT support) */
   #define AMX_ALIGN             /* amx_Align16(), amx_Align32() and amx_Align64() */
   #define AMX_ALLOT             /* amx_Allot() and amx_Release() */
   #define AMX_DEFCALLBACK       /* amx_Callback() */
@@ -102,7 +102,6 @@
   #define AMX_EXEC              /* amx_Exec() */
   #define AMX_FLAGS             /* amx_Flags() */
   #define AMX_INIT              /* amx_Init() */
-  #define AMX_JIT               /* amx_InitJIT() and other JIT support */
   #define AMX_MEMINFO           /* amx_MemInfo() */
   #define AMX_NAMELENGTH        /* amx_NameLength() */
   #define AMX_NATIVEINFO        /* amx_NativeInfo() */

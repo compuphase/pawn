@@ -41,7 +41,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: sc7.c 7113 2024-02-25 21:29:31Z thiadmer $
+ *  Version: $Id: sc7.c 7152 2024-03-23 20:47:23Z thiadmer $
  */
 #include <assert.h>
 #include <stdio.h>
@@ -717,7 +717,7 @@ static char *replacesequence(const char *pattern,char symbols[MAX_OPT_VARS+1][MA
       break;
     case '#': {
       ucell v=hex2ucell(pattern+1,NULL);
-      char *ptr=itoh(v);
+      const char *ptr=itoh(v);
       strcpy(sptr,ptr);
       sptr+=strlen(ptr);
       assert(alphanum(pattern[1]) || pattern[1]=='-');
@@ -752,7 +752,7 @@ static char *replacesequence(const char *pattern,char symbols[MAX_OPT_VARS+1][MA
   return buffer;
 }
 
-static void strreplace(char *dest,char *replace,int sub_length,int repl_length,int dest_length)
+static void strreplace(char *dest,const char *replace,int sub_length,int repl_length,int dest_length)
 {
   int offset=sub_length-repl_length;
   if (offset>0) {               /* delete a section */

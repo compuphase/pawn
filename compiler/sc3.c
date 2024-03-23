@@ -14,7 +14,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: sc3.c 7115 2024-02-26 21:45:03Z thiadmer $
+ *  Version: $Id: sc3.c 7152 2024-03-23 20:47:23Z thiadmer $
  */
 #include <assert.h>
 #include <stdio.h>
@@ -29,7 +29,7 @@ static int skim(const int *opstr,void (*testfunc)(int),int dropval,int endval,
                 int (*hier)(value*),value *lval);
 static void dropout(int lvalue,void (*testfunc)(int val),int exit1,value *lval);
 static int plnge(const int *opstr,int opoff,int (*hier)(value *lval),value *lval,
-                 char *forcetag,int chkbitwise);
+                 const char *forcetag,int chkbitwise);
 static int plnge1(int (*hier)(value *lval),value *lval);
 static void plnge2(void (*oper)(void),void (*arrayoper)(cell),
                    int (*hier)(value *lval),
@@ -53,7 +53,7 @@ static int primary(value *lval,int *symtok);
 static void clear_value(value *lval);
 static void callfunction(symbol *sym,value *lval_result,int matchparanthesis);
 static int skiptotoken(int token);
-static int dbltest(const void (*oper)(),value *lval1,value *lval2);
+static int dbltest(const void (*oper)(),const value *lval1,const value *lval2);
 static int commutative(const void (*oper)());
 static int constant(value *lval);
 
@@ -598,7 +598,7 @@ static void checkfunction(value *lval)
  *  Plunge to a lower level
  */
 static int plnge(const int *opstr,int opoff,int (*hier)(value *lval),value *lval,
-                 char *forcetag,int chkbitwise)
+                 const char *forcetag,int chkbitwise)
 {
   int lvalue,opidx;
   int count;
@@ -890,7 +890,7 @@ SC_FUNC int expression(cell *val,int *tag,symbol **symptr,int chkfuncresult)
 static int inside_preproc(void)
 {
   /* a preprocessor expression has a special symbol at the end of the string */
-  return (strchr((char *)lptr,PREPROC_TERM)!=NULL);
+  return (strchr((char*)lexptr,PREPROC_TERM)!=NULL);
 }
 
 SC_FUNC int sc_getstateid(constvalue **automaton,constvalue **state,char *statename)
@@ -1014,7 +1014,7 @@ static int hier14(value *lval1)
     arrayidx1[i]=arrayidx2[i]=(cell)((ucell)~0UL << (pc_cellsize*8-1));
   org_arrayidx=lval1->arrayidx; /* save current pointer, to reset later */
   if (lval1->arrayidx==NULL)
-    lval1->arrayidx=arrayidx1;
+    lval1->arrayidx=arrayidx1;  /* ok, because lval1->arrayidx is only used in deeper functions, not by the caller of hier14() */
   lvalue=plnge1(hier13,lval1);
   if (lval1->ident!=iARRAYCELL && lval1->ident!=iARRAYCHAR)
     lval1->arrayidx=NULL;
@@ -1175,7 +1175,7 @@ static int hier14(value *lval1)
     {
       memcopy(val*pc_cellsize);
     } else {
-      symbol *subsym=finddepend(lval3.sym);
+      const symbol *subsym=finddepend(lval3.sym);
       assert(subsym!=NULL);
       copyarray2d((int)lval3.sym->dim.array.length,(int)subsym->dim.array.length);
       #if sDIMEN_MAX > 3
@@ -1633,7 +1633,7 @@ static int hier2(value *lval)
       if (level>sym->dim.array.level+1) {
         error(28,sym->name);  /* invalid subscript */
       } else if (level==sym->dim.array.level+1 && namelist!=NULL) {
-        constvalue *item=find_constval(namelist,idxname,-1);
+        const constvalue *item=find_constval(namelist,idxname,-1);
         if (item==NULL)
           error_suggest_list(80,idxname,namelist);
         else if (item->index!=0)
@@ -2135,7 +2135,7 @@ static void clear_value(value *lval)
   /* do not clear lval->arrayidx, it is preset in hier14() */
 }
 
-static void setdefarray(cell *string,cell size,cell array_sz,cell *dataaddr,int fconst)
+static void setdefarray(const cell *string,cell size,cell array_sz,cell *dataaddr,int fconst)
 {
   /* The routine must copy the default array data onto the heap, as to avoid
    * that a function can change the default value. An optimization is that
@@ -2202,7 +2202,7 @@ static int findnamedarg(const arginfo *arg,const char *name, char *closestarg)
   return -1;
 }
 
-static int checktag(int tags[],int numtags,int exprtag)
+static int checktag(const int tags[],int numtags,int exprtag)
 {
   int i;
 
@@ -2636,7 +2636,7 @@ static int nesting=0;
    * the "sizeof" or "tagof" of other arguments
    */
   for (argidx=0; arg[argidx].ident!=0 && arg[argidx].ident!=iVARARGS; argidx++) {
-    constvalue *asz;
+    const constvalue *asz;
     cell array_sz;
     if (arglist[argidx]==ARG_DONE)
       continue;                 /* already seen and handled this argument */
@@ -2752,7 +2752,7 @@ static int skiptotoken(int token)
  *  byte offsets. In all other cases, the function returns 1. The result of this
  *  function can therefore be used to multiple the array index.
  */
-static int dbltest(const void (*oper)(),value *lval1,value *lval2)
+static int dbltest(const void (*oper)(),const value *lval1,const value *lval2)
 {
   if ((oper!=ob_add) && (oper!=ob_sub))
     return 1;

@@ -1,6 +1,6 @@
 /*  Pawn compiler - code generation (unoptimized "assembler" code)
  *
- *  Copyright (c) CompuPhase, 1997-2017
+ *  Copyright (c) CompuPhase, 1997-2024
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not
  *  use this file except in compliance with the License. You may obtain a copy
@@ -14,7 +14,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: sc4.c 6131 2020-04-29 19:47:15Z thiadmer $
+ *  Version: $Id: sc4.c 7152 2024-03-23 20:47:23Z thiadmer $
  */
 #include <assert.h>
 #include <ctype.h>
@@ -351,7 +351,7 @@ SC_FUNC void setline(int chkbounds)
   } /* if */
 }
 
-SC_FUNC void setfiledirect(char *name)
+SC_FUNC void setfiledirect(const char *name)
 {
   if (sc_status==statBROWSE && sc_listing) {
     assert(name!=NULL);
@@ -703,7 +703,7 @@ SC_FUNC void copyarray2d(int majordim,int minordim)
   code_idx+=opcodes(3)+opargs(1);
 }
 
-SC_FUNC void fillarray(symbol *sym,cell size,cell value)
+SC_FUNC void fillarray(const symbol *sym,cell size,cell value)
 {
   ldconst(value,sPRI);  /* load value in PRI */
 
@@ -1426,9 +1426,7 @@ SC_FUNC void nooperation(void)
  */
 SC_FUNC void inc(value *lval)
 {
-  symbol *sym;
-
-  sym=lval->sym;
+  const symbol *sym=lval->sym;
   if (lval->ident==iARRAYCELL) {
     /* indirect increment, address already in PRI */
     stgwrite("\tinc.i\n");
@@ -1476,9 +1474,7 @@ SC_FUNC void inc(value *lval)
  */
 SC_FUNC void dec(value *lval)
 {
-  symbol *sym;
-
-  sym=lval->sym;
+  const symbol *sym=lval->sym;
   if (lval->ident==iARRAYCELL) {
     /* indirect decrement, address already in PRI */
     stgwrite("\tdec.i\n");

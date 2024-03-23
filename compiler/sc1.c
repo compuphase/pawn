@@ -23,7 +23,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: sc1.c 7113 2024-02-25 21:29:31Z thiadmer $
+ *  Version: $Id: sc1.c 7152 2024-03-23 20:47:23Z thiadmer $
  */
 #include <assert.h>
 #include <ctype.h>
@@ -87,10 +87,10 @@
 
 static void resetglobals(void);
 static void initglobals(void);
-static char *get_extension(char *filename);
+static char *get_extension(const char *filename);
 static void setopt(int argc,char **argv,char *oname,char *ename,char *pname,
                    char *rname,char *codepage);
-static void setconfig(char *root);
+static void setconfig(const char *root);
 static void setcaption(void);
 static void about(void);
 static void setconstants(void);
@@ -99,7 +99,7 @@ static void parse(void);
 static void dumplits(void);
 static void dumpzero(int count);
 static void declfuncvar(int fpublic,int fstatic,int fstock,int fconst);
-static void declglb(char *firstname,int firsttag,int fpublic,int fstatic,
+static void declglb(const char *firstname,int firsttag,int fpublic,int fstatic,
                     int stock,int fconst);
 static int declloc(int fstatic);
 static void decl_const(int table);
@@ -116,9 +116,9 @@ static cell init(int ident,int usage,int *tag,int *errorfound,int *packcount,cel
 static int getstates(const char *funcname);
 static statelist *attachstatelist(symbol *sym,int state_id);
 static void funcstub(int fnative);
-static int newfunc(char *firstname,int firsttag,int fpublic,int fstatic,int stock);
+static int newfunc(const char *firstname,int firsttag,int fpublic,int fstatic,int stock);
 static int declargs(symbol *sym,int chkshadow);
-static void doarg(char *name,int ident,int offset,int tags[],int numtags,
+static void doarg(char *name,int ident,int offset,const int tags[],int numtags,
                   int fpublic,int fconst,int chkshadow,arginfo *arg);
 static void make_report(symbol *root,FILE *log,const char *sourcefile,int *makestategraph);
 static void reduce_referrers(symbol *root);
@@ -131,7 +131,7 @@ static int test_skippedundef(void);
 static void destructsymbols(symbol *root,int level);
 static constvalue *find_constval_byval(constvalue *table,cell val);
 static constvalue *clone_consttable(const constvalue *table);
-static symbol *fetchlab(char *name);
+static symbol *fetchlab(const char *name);
 static void statement(int *lastindent,int allow_decl);
 static void compound(int stmt_sameline);
 static int test(int label,int parens,int invert);
@@ -166,8 +166,8 @@ static int sc_reparse =0;       /* needs 3th parse because of changed prototypes
 static int sc_parsenum=0;       /* number of the extra parses */
 static int undefined_vars=FALSE;/* if TRUE, undefined symbols were found */
 static int pc_enumsequence=0;   /* sequence number of enumerated constant lists, for reporting these lists */
-static int wq[wqTABSZ];         /* "while queue", internal stack for nested loops */
-static int *wqptr;              /* pointer to next entry */
+static int wq_glb[wqTABSZ];     /* "while queue", internal stack for nested loops */
+static int *wq_ptr;             /* pointer to next entry */
 #if !defined PAWN_LIGHT
   static char sc_rootpath[_MAX_PATH]; /* base path of the installation */
   static char sc_binpath[_MAX_PATH];  /* path for the binaries, often sc_rootpath + /bin */
@@ -224,7 +224,7 @@ int pc_error(int number,const char *message,const char *filename,int firstline,i
 static char *prefix[3]={ "error", "fatal error", "warning" };
 
   if (number!=0) {
-    char *pre;
+    const char *pre;
 
     pre=prefix[number/100];
     if (firstline>=0)
@@ -350,7 +350,7 @@ int pc_eofsrc(void *handle)
 /* should return a pointer, which is used as a "magic cookie" to all I/O
  * functions; return NULL for failure
  */
-void *pc_openasm(char *filename)
+void *pc_openasm(const char *filename)
 {
   #if defined __MSDOS__ || defined PAWN_LIGHT
     return fopen(filename,"w+");
@@ -407,7 +407,7 @@ char *pc_readasm(void *handle, char *string, int maxchars)
 /* Should return a pointer, which is used as a "magic cookie" to all I/O
  * functions; return NULL for failure.
  */
-void *pc_openbin(char *filename)
+void *pc_openbin(const char *filename)
 {
   return fopen(filename,"wb");
 }
@@ -688,7 +688,7 @@ int pc_compile(int argc, char *argv[])
             spawnl(P_WAIT,pgmname,pgmname,reportname,dotname,NULL);
           #else
             snprintf(pgmname,sizearray(pgmname),"%s%cstategraph",sc_binpath,DIRSEP_CHAR);
-            posix_spawnl(pgmname,reportname,dotname,NULL);
+            posix_spawnl(pgmname,reportname,dotname,(void*)0);
           #endif
         }
       } /* if */
@@ -1037,11 +1037,11 @@ static void initglobals(void)
   libname_tab.next=NULL;/* library table (#pragma library "..." syntax) */
   ntvindex_tab.next=NULL;
 
-  lptr=NULL;            /* points to the current position in "srcline" */
+  lexptr=NULL;          /* points to the current position in "srcline" */
   curlibrary=NULL;      /* current library */
   inpf_org=NULL;        /* main source file */
 
-  wqptr=wq;             /* initialize while queue pointer */
+  wq_ptr=wq_glb;        /* initialize while queue pointer */
 
 #if !defined PAWN_LIGHT
   pc_globaldoc=NULL;
@@ -1051,7 +1051,7 @@ static void initglobals(void)
 #endif
 }
 
-static char *get_extension(char *filename)
+static char *get_extension(const char *filename)
 {
   char *ptr;
 
@@ -1069,7 +1069,7 @@ static char *get_extension(char *filename)
  * Set the default extension, or force an extension. To erase the
  * extension of a filename, set "extension" to an empty string.
  */
-SC_FUNC void set_extension(char *filename,char *extension,int force)
+SC_FUNC void set_extension(char *filename,const char *extension,int force)
 {
   char *ptr;
 
@@ -1524,7 +1524,7 @@ static void setopt(int argc,char **argv,char *oname,char *ename,char *pname,
 #if defined __BORLANDC__ || defined __WATCOMC__
   #pragma argsused
 #endif
-static void setconfig(char *root)
+static void setconfig(const char *root)
 {
   char path[_MAX_PATH]="";
   char *ptr,*base;
@@ -1747,11 +1747,12 @@ void sc_attachdocumentation(symbol *sym,int onlylastblock)
      * append it to the global documentation
      */
     int wrap=0;
-    char *str,*end;
+    char *str;
     length=strlen(pc_recentdoc);
     if (onlylastblock) {
       assert(sym!=NULL);
       str=sym->documentation;
+      wrap=1;
     } else {
       str=pc_globaldoc;
     } /* if */
@@ -1760,6 +1761,7 @@ void sc_attachdocumentation(symbol *sym,int onlylastblock)
       length+=strlen(str)+1+4;   /* plus 4 for "<p/>" */
     doc=(char*)malloc((length+1)*sizeof(char));
     if (doc!=NULL) {
+      char *end;
       if (str!=NULL) {
         strcpy(doc,str);
         free(str);
@@ -1852,7 +1854,7 @@ void sc_attachdocumentation(symbol *sym,int onlylastblock)
 
 static void insert_docstring_separator(void)
 {
-  char sep[2]={sDOCSEP,'\0'};
+  const char sep[2]={sDOCSEP,'\0'};
   insert_docstring(sep,1);
 }
 #else
@@ -2171,7 +2173,7 @@ static void declfuncvar(int fpublic,int fstatic,int fstock,int fconst)
  *
  *  global references: glb_declared     (altered)
  */
-static void declglb(char *firstname,int firsttag,int fpublic,int fstatic,int fstock,int fconst)
+static void declglb(const char *firstname,int firsttag,int fpublic,int fstatic,int fstock,int fconst)
 {
   int ident,tag,ispublic,usage;
   char name[sNAMEMAX+1];
@@ -2755,9 +2757,9 @@ static void initials(int ident,int usage,int tag,cell *size,int dim[],int numdim
   int curlit=litidx;
 
   if (!matchtoken('=')) {
-    cell tablesize;
     assert(ident!=iARRAY || numdim>0);
     if (ident==iARRAY) {
+      cell tablesize;
       int i;
       assert(numdim>0 && numdim<=sDIMEN_MAX);
       for (i=0; i<numdim; i++) {
@@ -3315,7 +3317,7 @@ static int getstates(const char *funcname)
   char fsaname[sNAMEMAX+1],statename[sNAMEMAX+1];
   cell val;
   char *str;
-  constvalue *automaton;
+  const constvalue *automaton;
   int fsa;
   int *list;
   int count,listsize,state_id;
@@ -3332,7 +3334,7 @@ static int getstates(const char *funcname)
   fsa=-1;
 
   do {
-    constvalue *state;
+    const constvalue *state;
     int islabel;
     if ((islabel=matchtoken(tLABEL))==0 && !needtoken(tSYMBOL))
       break;
@@ -3933,7 +3935,7 @@ static void funcstub(int fnative)
  *                     glb_declared (altered)
  *                     sc_alignnext (altered)
  */
-static int newfunc(char *firstname,int firsttag,int fpublic,int fstatic,int stock)
+static int newfunc(const char *firstname,int firsttag,int fpublic,int fstatic,int stock)
 {
   symbol *sym;
   int argcnt,tok,tag,funcline;
@@ -4161,11 +4163,11 @@ static int newfunc(char *firstname,int firsttag,int fpublic,int fstatic,int stoc
            document this with pseudo-transitions */
         count=state_count(stlist->id);
         for (idx=0; idx<count; idx++) {
-          int state_id=state_listitem(stlist->id,idx);
-          int fsa=state_getfsa(stlist->id);
+          int state_id_local=state_listitem(stlist->id,idx);
+          int fsa_local=state_getfsa(stlist->id);
           size_t len;
           char *doc;
-          constvalue *state=state_findid(state_id,fsa);
+          const constvalue *state=state_findid(state_id_local,fsa_local);
           assert(state!=NULL);
           len=strlen(state->name)+50; /* +50 for the fixed part of "<transition ..." */
           if ((doc=(char*)malloc(len*sizeof(char)))!=NULL) {
@@ -4468,7 +4470,7 @@ static int declargs(symbol *sym,int chkshadow)
  *  "fpublic" indicates whether the function for this argument list is public.
  *  The arguments themselves are never public.
  */
-static void doarg(char *name,int ident,int offset,int tags[],int numtags,
+static void doarg(char *name,int ident,int offset,const int tags[],int numtags,
                   int fpublic,int fconst,int chkshadow,arginfo *arg)
 {
   symbol *argsym;
@@ -4566,10 +4568,10 @@ static void doarg(char *name,int ident,int offset,int tags[],int numtags,
           paranthese++;
         if (needtoken(tSYMBOL)) {
           /* save the name of the argument whose size id to take */
-          char *name;
+          char *symname;
           cell val;
-          tokeninfo(&val,&name);
-          if ((arg->defvalue.size.symname=duplicatestring(name)) == NULL)
+          tokeninfo(&val,&symname);
+          if ((arg->defvalue.size.symname=duplicatestring(symname)) == NULL)
             error(103);         /* insufficient memory */
           arg->defvalue.size.level=0;
           if (size_tag_token==uSIZEOF) {
@@ -4619,7 +4621,7 @@ static void doarg(char *name,int ident,int offset,int tags[],int numtags,
   } /* if */
 }
 
-static int count_referrers(symbol *entry)
+static int count_referrers(const symbol *entry)
 {
   int i,count;
 
@@ -4631,13 +4633,14 @@ static int count_referrers(symbol *entry)
 }
 
 #if !defined PAWN_LIGHT
-static int find_xmltag(char *source,char *xmltag,char *xmlparam,char *xmlvalue,
+static int find_xmltag(char *source,
+                       const char *xmltag,const char *xmlparam,const char *xmlvalue,
                        char **outer_start,int *outer_length,
                        char **inner_start,int *inner_length)
 {
-  char *ptr,*inner_end;
+  char *ptr;
+  const char *inner_end;
   size_t xmltag_len,xmlparam_len,xmlvalue_len;
-  int match;
 
   assert(source!=NULL);
   assert(xmltag!=NULL);
@@ -4655,6 +4658,7 @@ static int find_xmltag(char *source,char *xmltag,char *xmlparam,char *xmlvalue,
   ptr=source;
   /* find an opening '<' */
   while ((ptr=strchr(ptr,'<'))!=NULL) {
+    int match;
     *outer_start=ptr;           /* be optimistic... */
     match=FALSE;                /* ...and pessimistic at the same time */
     ptr++;                      /* skip '<' */
@@ -4764,9 +4768,6 @@ static char *xmlencode(char *dest,char *source)
 
 static void write_docstring(FILE *log,const char *string)
 {
-  int len;
-  const char *ptr;
-
   if (string==NULL)
     return;
   while (*string<=' ' && *string!='\0')
@@ -4777,7 +4778,8 @@ static void write_docstring(FILE *log,const char *string)
   assert(strchr(string,sDOCSEP)==NULL);
   /* optionally wrap in "<summary>...</summary>", check whether this must happen */
   if (*string!='<') {       /* wrap in "summary" */
-    len=0;
+    const char *ptr;
+    int len=0;
     for (ptr=string; *ptr!='\0' && *ptr!='<' && *ptr!='.'; ptr++)
       len++;
     if (*ptr=='.')
@@ -4787,8 +4789,6 @@ static void write_docstring(FILE *log,const char *string)
     string+=len;
     while (*string<=' ' && *string!='\0')
       string++;             /* skip white space */
-  } else {
-    len=0;
   } /* if */
 
   if (*string!='\0')
@@ -4800,7 +4800,7 @@ static void make_report(symbol *root,FILE *log,const char *sourcefile,int *makes
   char symname[_MAX_PATH];
   int i,arg,dim,count,tag;
   symbol *sym,*ref;
-  constvalue *tagsym;
+  const constvalue *tagsym;
   char *ptr;
 
   /* adapt the installation directory */
@@ -5028,7 +5028,7 @@ static void make_report(symbol *root,FILE *log,const char *sourcefile,int *makes
     //  fprintf(log,"\t\t\t<codesize value=\"%ld\"/>\n",(long)sym->codeaddr - sym->addr);
     if (sym->states!=NULL) {
       statelist *stlist=sym->states->next;
-      constvalue *fsa;
+      const constvalue *fsa;
       assert(stlist!=NULL);     /* there should be at least one state item */
       while (stlist!=NULL && stlist->id==FALLBACK)
         stlist=stlist->next;
@@ -5196,11 +5196,10 @@ static void reduce_referrers(symbol *root)
  */
 static void gen_ovlinfo(symbol *root)
 {
-  int idx=0;
-  symbol *sym;
-  int i;
-
   if (pc_overlays>0) {
+    int idx=0;
+    symbol *sym;
+    int i;
     assert(pc_ovl0size[ovlEXIT][1]!=0); /* if this fails, writeleader() was not called */
     for (i=0; i<ovlFIRST; i++)
       if (pc_ovl0size[i][1]!=0)
@@ -5627,7 +5626,7 @@ SC_FUNC constvalue *append_constval(constvalue *table,const char *name,cell val,
   return insert_constval(prev,NULL,name,val,index);
 }
 
-SC_FUNC constvalue *find_constval(constvalue *table,char *name,int index)
+SC_FUNC constvalue *find_constval(constvalue *table,const char *name,int index)
 {
   constvalue *ptr = table->next;
 
@@ -5906,7 +5905,7 @@ static void compound(int stmt_sameline)
 
   /* if there is more text on this line, we should adjust the statement indent */
   if (stmt_sameline) {
-    const unsigned char *p=lptr-1;
+    const unsigned char *p=lexptr-1;
     /* go back to the opening brace */
     while (*p!='{') {
       assert(p>srcline);
@@ -6514,7 +6513,7 @@ static void dolabel(void)
  *  Note: The "_usage" bit is set to zero. The routines that call "fetchlab()"
  *        must set this bit accordingly.
  */
-static symbol *fetchlab(char *name)
+static symbol *fetchlab(const char *name)
 {
   symbol *sym;
 
@@ -6681,7 +6680,7 @@ static void doreturn(void)
 
 static void dobreak(void)
 {
-  int *ptr;
+  const int *ptr;
 
   endlessloop=0;      /* if we were inside an endless loop, we just jumped out */
   ptr=readwhile();      /* readwhile() gives an error if not in loop */
@@ -6695,7 +6694,7 @@ static void dobreak(void)
 
 static void docont(void)
 {
-  int *ptr;
+  const int *ptr;
 
   ptr=readwhile();      /* readwhile() gives an error if not in loop */
   needtoken(tTERM);
@@ -6913,7 +6912,6 @@ static void dostate(void)
   delete_autolisttable();
 }
 
-
 static void addwhile(int *ptr)
 {
   int k;
@@ -6922,12 +6920,12 @@ static void addwhile(int *ptr)
   ptr[wqCONT]=(int)declared;    /* for "continue", possibly adjusted later */
   ptr[wqLOOP]=getlabel();
   ptr[wqEXIT]=getlabel();
-  if (wqptr>=(wq+wqTABSZ-wqSIZE))
+  if (wq_ptr>=(wq_glb+wqTABSZ-wqSIZE))
     error(102,"loop table");    /* loop table overflow (too many active loops)*/
   k=0;
   while (k<wqSIZE){     /* copy "ptr" to while queue table */
-    *wqptr=*ptr;
-    wqptr+=1;
+    *wq_ptr=*ptr;
+    wq_ptr+=1;
     ptr+=1;
     k+=1;
   } /* while */
@@ -6935,17 +6933,17 @@ static void addwhile(int *ptr)
 
 static void delwhile(void)
 {
-  if (wqptr>wq)
-    wqptr-=wqSIZE;
+  if (wq_ptr>wq_glb)
+    wq_ptr-=wqSIZE;
 }
 
 static int *readwhile(void)
 {
-  if (wqptr<=wq){
+  if (wq_ptr<=wq_glb){
     error(24);          /* out of context */
     return NULL;
   } else {
-    return (wqptr-wqSIZE);
+    return (wq_ptr-wqSIZE);
   } /* if */
 }
 

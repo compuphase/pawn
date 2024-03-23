@@ -1163,7 +1163,7 @@ test87:
 test88:
   say '88. The following test should issue error 001 (followed by more errors).'
   say ''
-  say '    A multi-dimensional array in initialized with {...} syntax for the major'
+  say '    A multi-dimensional array is initialized with {...} syntax for the major'
   say '    dimension.'
   say '-----'
   pawncc ' -p ARRAY_VARDIM_WRONGBRACKETS= test1'
@@ -1337,7 +1337,7 @@ test102:
 test103:
   say '103. The following test should compile successfully (NO warnings 213).'
   say ''
-  say '		Symbolic array indices with tag overrides.'
+  say '     Symbolic array indices with tag overrides.'
   say '-----'
   pawncc ' TAGGED_SYMBOLIC_INDEX= rational'
   return
@@ -1750,7 +1750,7 @@ test136:
   return
 
 test137:
-  say '137. The following test should issue error 010 (followed by others).'
+  say '137. The following test should issue error 008.'
   say ''
   say '     A global variable initialized by a function call.'
   say ''

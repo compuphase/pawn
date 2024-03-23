@@ -39,7 +39,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: scstate.c 6932 2023-04-03 13:56:19Z thiadmer $
+ *  Version: $Id: scstate.c 7152 2024-03-23 20:47:23Z thiadmer $
  */
 #include <assert.h>
 #include <limits.h>
@@ -243,7 +243,7 @@ static statepool *state_getlist_ptr(int listid)
   return ptr;
 }
 
-SC_FUNC int state_addlist(int *list,int count,int fsa)
+SC_FUNC int state_addlist(const int *list,int count,int fsa)
 {
   statepool *ptr;
   int last;
@@ -298,7 +298,7 @@ SC_FUNC int state_getfsa(int listid)
 
 SC_FUNC int state_count(int listid)
 {
-  statepool *ptr=state_getlist_ptr(listid);
+  const statepool *ptr=state_getlist_ptr(listid);
   if (ptr==NULL)
     return 0;           /* unknown list, no states in it */
   return ptr->numstates;
@@ -306,7 +306,7 @@ SC_FUNC int state_count(int listid)
 
 SC_FUNC int state_inlist(int listid,int state)
 {
-  statepool *ptr;
+  const statepool *ptr;
   int i;
 
   ptr=state_getlist_ptr(listid);
@@ -328,7 +328,7 @@ SC_FUNC int state_listitem(int listid,int index)
   return ptr->states[index];
 }
 
-static int checkconflict(statepool *psrc,statepool *ptgt)
+static int checkconflict(const statepool *psrc,const statepool *ptgt)
 {
   int s,t;
 

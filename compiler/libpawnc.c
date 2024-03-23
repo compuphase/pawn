@@ -16,7 +16,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: libpawnc.c 6131 2020-04-29 19:47:15Z thiadmer $
+ *  Version: $Id: libpawnc.c 7152 2024-03-23 20:47:23Z thiadmer $
  */
 #include <assert.h>
 #include <stdio.h>
@@ -124,12 +124,10 @@ int pc_printf(const char *message,...)
  */
 int pc_error(int number,const char *message,const char *filename,int firstline,int lastline,va_list argptr)
 {
-static char *prefix[3]={ "error", "fatal error", "warning" };
+static const char *prefix[3]={ "error", "fatal error", "warning" };
 
   if (number!=0) {
-    char *pre;
-
-    pre=prefix[number/100];
+    const char *pre=prefix[number/100];
     if (firstline>=0)
       fprintf(stderr,"%s(%d -- %d) : %s %03d: ",filename,firstline,lastline,pre,number);
     else
@@ -252,7 +250,7 @@ int pc_eofsrc(void *handle)
 /* should return a pointer, which is used as a "magic cookie" to all I/O
  * functions; return NULL for failure
  */
-void *pc_openasm(char *filename)
+void *pc_openasm(const char *filename)
 {
   #if defined __MSDOS__ || defined PAWN_LIGHT
     return fopen(filename,"w+t");
@@ -309,7 +307,7 @@ char *pc_readasm(void *handle, char *string, int maxchars)
 /* Should return a pointer, which is used as a "magic cookie" to all I/O
  * functions; return NULL for failure.
  */
-void *pc_openbin(char *filename)
+void *pc_openbin(const char *filename)
 {
   return fopen(filename,"wb");
 }

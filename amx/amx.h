@@ -14,7 +14,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: amx.h 6965 2023-07-20 15:44:35Z thiadmer $
+ *  Version: $Id: amx.h 7152 2024-03-23 20:47:23Z thiadmer $
  */
 
 #ifndef AMX_H_INCLUDED
@@ -158,7 +158,7 @@ extern  "C" {
     #define AMXAPI      __stdcall
   #elif defined CDECL
     #define AMXAPI      __cdecl
-  #elif defined GCC_HASCLASSVISIBILITY
+  #elif defined GCC_HASCLASSVISIBILITY && defined __cplusplus
     #define AMXAPI      __attribute__((visibility("default")))
   #else
     #define AMXAPI
@@ -263,7 +263,7 @@ typedef int (AMXAPI *AMX_IDLE)(struct tagAMX *amx, int AMXAPI Exec(struct tagAMX
   #else
     #pragma pack(push)
     #pragma pack(1)         /* structures must be packed (byte-aligned) */
-    #if defined __TURBOC__
+    #if defined __BORLANDC__
       #pragma option -a-    /* "pack" pragma for older Borland compilers */
     #endif
   #endif

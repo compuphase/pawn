@@ -206,7 +206,8 @@ new Filenames[6]{} =
 #endif
 
 #if defined INVALID_GLOBAL_DECL
-    new port = readcfgvalue(.key = "proxy-port", .filename = config_network)
+    #include file
+    new port = readcfgvalue(.key = "proxy-port", .filename = "abc")
 #endif
 
 #if defined ZERO_ARRAY_TWO_DIMS
@@ -338,16 +339,16 @@ main()
     #endif
 
     #if defined SELF_ASSIGNMENT
-        new var = 0
-        var = var
+        new test = 0
+        test = test
 
         new array[4] = [ 1, 2, ... ]
         array[2] = array[2]
     #endif
 
     #if defined NO_SELF_ASSIGNMENT
-        new var = 0
-        var = !var
+        new test = 0
+        test = !test
     #endif
 
     #if defined USELESS_DECLARE1
@@ -574,6 +575,10 @@ main()
 
     #if defined ZERO_ARRAY_TWO_DIMS
         array[0][0]=0
+    #endif
+
+    #if defined INVALID_GLOBAL_DECL
+        port = port + 1 /* to avoid global variable being optimized out */
     #endif
     }
 
