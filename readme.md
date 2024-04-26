@@ -12,28 +12,11 @@ to diverse environments. Detailed instructions how to port, build and/or
 embed Pawn can be found in a separate document entitled "The Pawn booklet:
 Implementer's Guide". To get the Pawn toolkit working on your system, please
 (also) consult that document. To learn about the Pawn language, read the
-document "The Pawn booklet: The Language". If you installed Pawn via the
-Setup utility (for Microsoft Windows) or the autopackage (for Linux), you
-probably have these documents already. Otherwise, you can obtain both these
-documents from the web page devoted to Pawn:
-        http://www.compuphase.com/pawn/
-
-Below is a list of topics that this README covers, in this order:
-
-*  Getting started
-   How to get your first Pawn program running
-
-*  Building with CMake
-   For a portable way to (re-)build the software
-
-*  Using the AMX DLL
-   How to create a program that uses the pre-built DLL.
-
-*  Building the AMX DLL
-   Notes on how the DLL must be built itself.
-
-*  Building extension modules for the AMX DLL
-
+document "The Pawn booklet: The Language". If you grabbed the "zip" or "tgz" 
+file from the [Releases](https://github.com/compuphase/pawn/releases), you
+have these documents already. Otherwise, you can obtain both these documents
+from the "doc" folder in the code archive, or on the web page devoted to Pawn:
+https://www.compuphase.com/pawn/
 
 ## Acknowledgements
 See the "NOTICES" file for acknowledgments for parts of Pawn not written by
@@ -42,8 +25,8 @@ CompuPhase.
 
 # Getting started
 The first question is: what do you need? If you are using Microsoft Windows,
-download the Pawn toolkit as a self-extracting setup file; this gives
-everything that you need to get started:
+download the Pawn toolkit as a self-extracting setup file (see https://www.compuphase.com/pawn/); 
+this gives everything that you need to get started:
 *  binaries for Win32
 *  full source of all tools/libraries
 *  documentation (Adobe Acrobat format)
@@ -57,21 +40,21 @@ has Unix line endings (LF only). When "unpacking" these archives, make sure
 that the directory structure in the ZIP/TGZ files is retained. Otherwise, the
 Pawn compiler will not be able to find its "include" files, for example.
 
-You should also download the two documentation files "pawn-lang.pdf" and
-"pawn-imp.pdf" --the "Language guide" and the "Implementer's guide"
+You should also download the two documentation files "Pawn_Language_Guide.pdf" and
+"Pawn_Implementor_Guide.pdf" &mdash; the "Language guide" and the "Implementer's guide"
 respectively. You may need to build the compiler and abstract machine, and
 the "Implementer's guide" is likely to give you precise guidelines (or at
 least, it will point you in the right direction). There are a few guidelines
 for building the system with CMake in the section "Building with CMake", below.
 
-Assuming that you have obtained (somehow) an executable version of the Pawn
-compiler and the Pawn run-time, you should put it in a directory. However,
-the Pawn compiler also needs to locate "include files". On many operating
-systems, the Pawn compiler is able to automatically read these header files
-from the directory "include" that is below the directory that the compiler is
-in itself. Thus, if the Pawn compiler (the executable file) is in directory
-"C:\WhatEver\Pawn\bin", I suggest that you create either the directory
-"C:\WhatEver\Pawn\include" or "C:\WhatEver\Pawn\bin\include" and copy the
+Assuming that you have obtained an executable version of the Pawn compiler 
+and the Pawn run-time (by building it, or by downloading a pre-built release),
+you should put it in a directory. However, the Pawn compiler also needs to locate 
+"include files". On many operating systems, the Pawn compiler is able to automatically
+read these header files from the directory "include" that is below the directory
+that the compiler is in itself. Thus, if the Pawn compiler (the executable file) is 
+in directory "`C:\WhatEver\Pawn\bin`", I suggest that you create either the directory
+"`C:\WhatEver\Pawn\include`" or "`C:\WhatEver\Pawn\bin\include`" and copy the
 ".inc" files there. If your operating system is not compatible with Win32 or
 Linux, the Pawn compiler may not know how to locate the "include" directory
 and you have to specify it yourself with the "`-i`" command line option (when
@@ -98,7 +81,7 @@ show you what you should do at a minimum to embed Pawn into a program.
 
 # Building with CMake
 CMake is a cross-platform, open-source make system, which generates "makefile's"
-or project files for diverse compilers and platforms. See http://www.cmake.org/
+or project files for diverse compilers and platforms. See https://www.cmake.org/
 for more information on CMake plus a freely downloadable copy.
 
 The Pawn toolkit comes with a CMake project file that builds the compiler, a
