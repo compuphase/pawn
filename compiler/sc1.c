@@ -23,7 +23,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: sc1.c 7152 2024-03-23 20:47:23Z thiadmer $
+ *  Version: $Id: sc1.c 7222 2024-09-14 12:26:01Z thiadmer $
  */
 #include <assert.h>
 #include <ctype.h>
@@ -557,7 +557,8 @@ int pc_compile(int argc, char *argv[])
       tmpname=NULL;
       sname=NULL;
     #else
-      int tmpfd = mkstemp("pawn.XXXXXX");
+      char mask[] = "pawn.XXXXXX";
+      int tmpfd = mkstemp(mask);
       char *procname = alloca(64);
       tmpname = alloca(PATH_MAX);
       sprintf(procname, "/proc/self/fd/%d", tmpfd);
@@ -579,8 +580,8 @@ int pc_compile(int argc, char *argv[])
       pc_writesrc(ftmp,(unsigned char*)"\"\n#line 0\n");
       while (pc_readsrc(fsrc,tstring,sizeof tstring))
         pc_writesrc(ftmp,tstring);
-      if (strchr(tstring,'\n')==NULL) /* force newline on last line of each input file */
-        pc_writesrc(ftmp,"\n");
+      if (strchr((char*)tstring,'\n')==NULL) /* force newline on last line of each input file */
+        pc_writesrc(ftmp,(const unsigned char*)"\n");
       pc_closesrc(fsrc);
     } /* for */
     pc_closesrc(ftmp);

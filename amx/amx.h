@@ -14,7 +14,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: amx.h 7152 2024-03-23 20:47:23Z thiadmer $
+ *  Version: $Id: amx.h 7222 2024-09-14 12:26:01Z thiadmer $
  */
 
 #ifndef AMX_H_INCLUDED
@@ -99,7 +99,9 @@
 #endif
 
 #if !defined HAVE_ALLOCA_H
-  #if defined __GNUC__ || defined __LCC__ || defined __DMC__ || defined __ARMCC_VERSION
+  #if defined __MINGW32__
+    #define HAVE_ALLOCA_H 0
+  #elif defined __GNUC__ || defined __LCC__ || defined __DMC__ || defined __ARMCC_VERSION
     #define HAVE_ALLOCA_H 1
   #elif defined __WATCOMC__ && __WATCOMC__ >= 1200
     #define HAVE_ALLOCA_H 1

@@ -15,8 +15,8 @@ AppIcon ICON "../bin/pawn.ico"
  */
 #define VERSION              4
 #define REVISION             0
-#define BUILD                SVN_REV
-#define VERSIONSTR           "4.0." SVN_REVSTR "\0"
+#define BUILD                SVNREV_NUM
+#define VERSIONSTR           "4.1." SVNREV_STR "\0"
 #if defined PAWNCC
 #define VERSIONNAME          "pawncc.exe\0"
 #define VERSIONDESCRIPTION   "Pawn Compiler\0"

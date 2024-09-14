@@ -1,3 +1,36 @@
+Version 4.1, Build 7152
+-----------------------
+* Optimized assembler core for ARMv6-M architecture (ARM Cortex M0/M0+). Further
+  (minor) optimizations in the other ARM assembler cores.
+
+* New function amx_VerifyAddress(), to test whether an address is valid in the
+  sandbox of the abstract machine.
+
+* Added "#pragma opcodeset" in the compiler, so that the instruction set that a
+  target supports, can be set in the target's configuration file.
+
+* Adjust the assembler cores such that they can be built with either GNU GCC or
+  GNU AS (both use a different syntax for assembly macros).
+
+* A few more cases were added to the peephole optimizer in the compiler.
+
+* The compiler allows the "var" keyword as the equivalent of the "new" keyword.
+  That is, "var" creates a new variable.
+
+* The Implementer Guide is expanded with a section (plus an example) on running
+  scripts from ROM, and minimizing the footprint of the abstract machine.
+
+* Fixes in support for 64-bit code, both in the Pawn compiler and in the abstract
+  machine.
+
+* Fixes in the garbage collector (this is an optional module for the abstract machine).
+
+* BUG fix: the compiler applied an incorrect high bound for packed strings.
+
+* BUG fix: the compiler did not handle progressive initiallers correctly in
+  packed arrays.
+
+
 Version 4.0, Build 5691
 -----------------------
 * The STACK opcode has different semantics: it now sets the ALT register to the

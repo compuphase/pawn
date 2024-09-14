@@ -16,7 +16,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: sc5.c 7108 2024-02-19 22:02:45Z thiadmer $
+ *  Version: $Id: sc5.c 7222 2024-09-14 12:26:01Z thiadmer $
  */
 #include <assert.h>
 #if defined	__WIN32__ || defined _WIN32 || defined __MSDOS__
@@ -84,7 +84,7 @@ SC_FUNC int error(long number,...)
 static const char *prefix[3]={ "error", "fatal error", "warning" };
 static int lastline,errorcount;
 static short lastfile;
-  const unsigned char *msg,*pre;
+  const char *msg,*pre;
   const char *filename;
   va_list argptr;
   char string[256];
@@ -134,7 +134,7 @@ static short lastfile;
     warnnum++;
   } /* if */
 
-  strexpand(string,msg,sizeof string-2,SCPACK_TABLE);
+  strexpand(string,(const unsigned char*)msg,sizeof string-2,SCPACK_TABLE);
   if (notice>0) {
     int len;
     assert(notice<sizearray(noticemsg));

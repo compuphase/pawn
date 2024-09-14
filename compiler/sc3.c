@@ -14,7 +14,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: sc3.c 7152 2024-03-23 20:47:23Z thiadmer $
+ *  Version: $Id: sc3.c 7222 2024-09-14 12:26:01Z thiadmer $
  */
 #include <assert.h>
 #include <stdio.h>
@@ -1117,8 +1117,8 @@ static int hier14(value *lval1)
       assert(lval2.arrayidx==arrayidx2);
       for (i=0; i<sDIMEN_MAX; i++)
         same=same && (lval3.arrayidx[i]==lval2.arrayidx[i]);
-        if (same)
-          error(226,lval3.sym->name);   /* self-assignment */
+      if (same)
+        error(226,lval3.sym->name);   /* self-assignment */
     } /* if */
   } else {
     if (oper){
