@@ -33,7 +33,7 @@
 #include <stdlib.h>     /* for getenv() */
 #include <string.h>
 #include "osdefs.h"
-#if defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__ || defined __APPLE__
+#if defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__ || defined __APPLE__ || defined(__NetBSD__)
   #include <sclinux.h>
   #if !defined AMX_NODYNALOAD
     #include <dlfcn.h>
@@ -48,7 +48,7 @@
     #include <libproc.h>
   #endif
 #endif
-#if !defined AMX_ANSIONLY && (defined __LCC__ || defined __LINUX__ || defined __APPLE__)
+#if !defined AMX_ANSIONLY && (defined __LCC__ || defined __LINUX__ || defined __APPLE__ || defined(__NetBSD__))
   #include <wchar.h>    /* for wcslen() */
 #endif
 

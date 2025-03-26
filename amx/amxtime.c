@@ -157,7 +157,7 @@ static void settime(cell hour,cell minute,cell second)
      */
     time_t sec1970;
     struct tm gtm;
-    #if defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__ || defined __APPLE__
+    #if defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__ || defined __APPLE__ || defined __NetBSD__
       struct timeval tv;
     #endif
 
@@ -170,7 +170,7 @@ static void settime(cell hour,cell minute,cell second)
     if (second!=CELLMIN)
       gtm.tm_sec=wrap((int)second,0,59);
     sec1970=mktime(&gtm);
-    #if defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__ || defined __APPLE__
+    #if defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__ || defined __APPLE__ || defined __NetBSD__
       tv.tv_sec = sec1970;
       tv.tv_usec = 0;
       settimeofday(&tv, 0);
@@ -205,7 +205,7 @@ static void setdate(cell year,cell month,cell day)
      */
     time_t sec1970;
     struct tm gtm;
-    #if defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__ || defined __APPLE__
+    #if defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__ || defined __APPLE__ || defined __NetBSD__
       struct timeval tv;
     #endif
 
@@ -218,7 +218,7 @@ static void setdate(cell year,cell month,cell day)
     if (day!=CELLMIN)
       gtm.tm_mday=day;
     sec1970=mktime(&gtm);
-    #if defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__ || defined __APPLE__
+    #if defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__ || defined __APPLE__ || defined __NetBSD__
       tv.tv_sec = sec1970;
       tv.tv_usec = 0;
       settimeofday(&tv, 0);
@@ -390,7 +390,7 @@ static cell AMX_NATIVE_CALL n_settimestamp(AMX *amx, const cell *params)
      * must have "root" permission to call stime(); many POSIX systems will
      * have settimeofday() instead
      */
-    #if defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__ || defined __APPLE__
+    #if defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__ || defined __APPLE__ || defined __NetBSD__
       struct timeval tv;
       tv.tv_sec = params[1];
       tv.tv_usec = 0;
