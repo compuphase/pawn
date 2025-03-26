@@ -187,6 +187,10 @@ int main(int argc, char *argv[])
   return pc_compile(argc,argv);
 }
 
+#endif
+
+#if 0
+
 /* pc_printf()
  * Called for general purpose "console" output. This function prints general
  * purpose messages; errors go through pc_error(). The function is modelled

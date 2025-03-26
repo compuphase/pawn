@@ -48,10 +48,13 @@
 #if defined __WATCOMC__ || defined _MSC_VER
   #include <direct.h>
 #endif
-#if defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__ || defined MACOS || defined __APPLE__ || defined(__NetBSD__)
+#if defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__ || defined MACOS || defined __APPLE__ || defined __NetBSD__ || defined __MINGW32__
   #include <dirent.h>
 #else
   #include <io.h>
+#endif
+#if defined __MINGW32__
+#include <direct.h>
 #endif
 #if defined __GNUC__ || defined __clang__
   #include <unistd.h>
