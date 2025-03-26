@@ -113,6 +113,8 @@
   #elif defined __WIN32__
     #if defined __WATCOMC__
       #define t_stat    _stat
+    #elif defined __MINGW32__
+      #define t_stat    _stat
     #else
       #define t_stat    __stat
     #endif

@@ -1,4 +1,4 @@
 EXPORTS
-    amx_ArgsCleanup @1
-    amx_ArgsInit @2
-    amx_ArgsSetCmdLine @3
+    amx_ArgsCleanup@4 @1
+    amx_ArgsInit@4 @2
+    amx_ArgsSetCmdLine@4 @3

@@ -1,3 +1,3 @@
 EXPORTS
-    amx_FileCleanup @1
-    amx_FileInit @2
+    amx_FileCleanup@4 @1
+    amx_FileInit@4 @2
