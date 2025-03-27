@@ -269,8 +269,8 @@ void pc_closeasm(void *handle, int deletefile)
   #else
     if (handle!=NULL) {
       if (!deletefile)
-        mfdump((MEMFILE*)handle);
-      mfclose((MEMFILE*)handle);
+        mfdump((memfile_t*)handle);
+      mfclose((memfile_t*)handle);
     } /* if */
   #endif
 }
@@ -282,7 +282,7 @@ void pc_resetasm(void *handle)
     fflush((FILE*)handle);
     fseek((FILE*)handle,0,SEEK_SET);
   #else
-    mfseek((MEMFILE*)handle,0,SEEK_SET);
+    mfseek((memfile_t*)handle,0,SEEK_SET);
   #endif
 }
 
@@ -291,7 +291,7 @@ int pc_writeasm(void *handle,const char *string)
   #if defined __MSDOS__ || defined PAWN_LIGHT
     return fputs(string,(FILE*)handle) >= 0;
   #else
-    return mfputs((MEMFILE*)handle,string);
+    return mfputs((memfile_t*)handle,string);
   #endif
 }
 
@@ -300,7 +300,7 @@ char *pc_readasm(void *handle, char *string, int maxchars)
   #if defined __MSDOS__ || defined PAWN_LIGHT
     return fgets(string,maxchars,(FILE*)handle);
   #else
-    return mfgets((MEMFILE*)handle,string,maxchars);
+    return mfgets((memfile_t*)handle,string,maxchars);
   #endif
 }
 

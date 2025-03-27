@@ -73,7 +73,7 @@
 
 #include "lstring.h"
 #include "sc.h"
-#if defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__ || defined __APPLE__
+#if defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__ || defined __APPLE__ || defined __NetBSD__
   #include <sys/wait.h>
   #include <sclinux.h>
   #include <binreloc.h> /* from BinReloc, see www.autopackage.org */
@@ -186,6 +186,10 @@ int main(int argc, char *argv[])
 {
   return pc_compile(argc,argv);
 }
+
+#endif
+
+#if 0
 
 /* pc_printf()
  * Called for general purpose "console" output. This function prints general
@@ -1536,7 +1540,7 @@ static void setconfig(const char *root)
     getcwd(path,sizeof path);
   #elif defined __WIN32__ || defined _WIN32
     GetModuleFileName(NULL,path,_MAX_PATH);
-  #elif defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__
+  #elif defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__ || defined __NetBSD__
     /* see www.autopackage.org (now Listaller) for the BinReloc module */
     br_init(NULL);
     ptr=br_find_exe("/opt/Pawn/bin/pawncc");
