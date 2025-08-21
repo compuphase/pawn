@@ -601,11 +601,11 @@ static const void * const amx_opcodelist[] = {
     #if defined _R_DEFAULT
       pri=memcmp(data+(int)alt, data+(int)pri, (int)offs);
     #else
-      pri=0;
-      for (i=0; i+4<offs && pri==0; i+=4)
-        pri=_R32(data,alt+i)-_R32(data,pri+i);
-      for ( ; i<offs && pri==0; i++)
-        pri=_R8(data,alt+i)-_R8(data,pri+i);
+      val=0;
+      for (i=0; i+4<offs && val==0; i+=4)
+        val=_R32(data,alt+i)-_R32(data,pri+i);
+      for ( ; i<offs && val==0; i++)
+        val=_R8(data,alt+i)-_R8(data,pri+i);
     #endif
     NEXT(cip,op);
   op_fill:
