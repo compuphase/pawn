@@ -3120,7 +3120,7 @@ static cell init(int ident,int usage,int *tag,int *errorfound,int *packcount,cel
     if (tok==tSTRING && (usage & uPACKED)!=0 || tok==tPACKSTRING && (usage & uPACKED)==0)
       error(229);
     *tag=0;
-  } else if (constexpr(&i,tag,NULL)) {
+  } else if (const_expr(&i,tag,NULL)) {
     if (packcount!=NULL && *packcount>=0) {
       assert(packitem!=NULL);
       assert(*packcount<pc_cellsize);
@@ -3215,7 +3215,7 @@ static cell needsub(char match,constvalue **namelist)
   } else {
     symbol *sym;
     int exprtag;
-    constexpr(&val,&exprtag,&sym);/* get value (must be constant expression) */
+    const_expr(&val,&exprtag,&sym);/* get value (must be constant expression) */
     if (tag==0)
       tag=exprtag;            /* copy expression tag */
     if (val<0 || sc_rationaltag!=0 && tag==sc_rationaltag) {
@@ -3286,12 +3286,12 @@ static void decl_const(int scope)
       assert(enumerate!=0 || first);    /* when not enumerating, each constant is the "first" of the list */
       if (enumerate) {
         if (matchtoken('='))
-          constexpr(&val,&exprtag,NULL);/* get value (optional, except for the first) */
+          const_expr(&val,&exprtag,NULL);/* get value (optional, except for the first) */
         else if (first)
           error(91,constname);          /* first constant in a list must be initialized */
       } else {
         needtoken('=');
-        constexpr(&val,&exprtag,NULL);  /* get value */
+        const_expr(&val,&exprtag,NULL);  /* get value */
       }
       first=0;
       defaultval=val;
@@ -3885,7 +3885,7 @@ static void funcstub(int fnative)
           sym->index=(int)ntvidx->value;
         } /* if */
       } else {
-        constexpr(&val,NULL,NULL);
+        const_expr(&val,NULL,NULL);
         sym->index=(int)val;
         /* At the moment, I have assumed that this syntax is only valid if
          * val < 0. To properly mix "normal" native functions and indexed
@@ -4587,7 +4587,7 @@ static void doarg(char *name,int ident,int offset,const int tags[],int numtags,
         while (paranthese--)
           needtoken(')');
       } else {
-        constexpr(&arg->defvalue.val,&arg->defvalue_tag,NULL);
+        const_expr(&arg->defvalue.val,&arg->defvalue_tag,NULL);
         assert(numtags>0);
         if (!matchtag(tags[0],arg->defvalue_tag,TRUE))
           error(213);           /* tagname mismatch */
@@ -5990,9 +5990,9 @@ static int doexpr(int comma,int chkeffect,int allowarray,int mark_endexpr,
   return ident;
 }
 
-/*  constexpr
+/*  const_expr
  */
-SC_FUNC int constexpr(cell *val,int *tag,symbol **symptr)
+SC_FUNC int const_expr(cell *val,int *tag,symbol **symptr)
 {
   int ident,index;
   cell cidx;
@@ -6337,7 +6337,7 @@ static void doswitch(void)
          *     parse all expressions until that special token.
          */
 
-        constexpr(&val,NULL,NULL);
+        const_expr(&val,NULL,NULL);
         /* Search the insertion point (the table is kept in sorted order, so
          * that advanced abstract machines can sift the case table with a
          * binary search). Check for duplicate case values at the same time.
@@ -6360,7 +6360,7 @@ static void doswitch(void)
         insert_constval(csp,cse,itoh(lbl_case),val,0);
         if (matchtoken(tDBLDOT)) {
           cell end;
-          constexpr(&end,NULL,NULL);
+          const_expr(&end,NULL,NULL);
           if (end<=val)
             error(50);                  /* invalid range */
           while (++val<=end) {
