@@ -2842,7 +2842,7 @@ static int constant(value *lval)
     packitem=0;
     packcount=0;
     do {
-      /* cannot call constexpr() here, because "staging" is already turned
+      /* cannot call const_expr() here, because "staging" is already turned
        * on at this point */
       assert(staging);
       stgget(&index,&cidx);     /* mark position in code generator */

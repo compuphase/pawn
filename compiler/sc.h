@@ -581,7 +581,7 @@ SC_FUNC void set_extension(char *filename,const char *extension,int force);
 SC_FUNC symbol *fetchfunc(const char *name,int tag);
 SC_FUNC char *operator_symname(char *symname,char *opername,int tag1,int tag2,int numtags,int resulttag);
 SC_FUNC char *funcdisplayname(char *dest,const char *funcname);
-SC_FUNC int constexpr(cell *val,int *tag,symbol **symptr);
+SC_FUNC int const_expr(cell *val,int *tag,symbol **symptr);
 SC_FUNC constvalue *append_constval(constvalue *table,const char *name,cell val,int index);
 SC_FUNC constvalue *find_constval(constvalue *table,const char *name,int index);
 SC_FUNC void delete_consttable(constvalue *table);
