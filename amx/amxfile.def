@@ -1,6 +1,3 @@
-NAME          amxFile
-DESCRIPTION   'File I/O support library'
-
 EXPORTS
-        amx_FileInit
-        amx_FileCleanup
+    amx_FileCleanup @1
+    amx_FileInit @2

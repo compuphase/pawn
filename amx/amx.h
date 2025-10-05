@@ -29,7 +29,7 @@
 #if defined FREEBSD && !defined __FreeBSD__
   #define __FreeBSD__
 #endif
-#if defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__ || defined __APPLE__
+#if defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__ || defined __APPLE__ || defined(__NetBSD__)
   #include <sclinux.h>
 #endif
 
@@ -106,6 +106,9 @@
   #elif defined __WATCOMC__ && __WATCOMC__ >= 1200
     #define HAVE_ALLOCA_H 1
   #endif
+#endif
+#ifdef __NetBSD__
+#undef HAVE_ALLOCA_H
 #endif
 #if defined HAVE_ALLOCA_H && HAVE_ALLOCA_H
   #include <alloca.h>

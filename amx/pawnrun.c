@@ -30,7 +30,7 @@
   #define CLOCKS_PER_SEC CLK_TCK
 #endif
 
-#if !defined AMX_NODYNALOAD && defined ENABLE_BINRELOC && (defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__ || defined __APPLE__)
+#if !defined AMX_NODYNALOAD && defined ENABLE_BINRELOC && (defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__ || defined __APPLE__ || defined __NetBSD__)
   #include <binreloc.h> /* from BinReloc, see www.autopackage.org */
 #endif
 
@@ -203,7 +203,7 @@ int AMXAPI aux_LoadProgram(AMX *amx, char *filename)
   result = amx_Init(amx, datablock);
 
   /* free the memory block on error, if it was allocated here */
-  if (result != AMX_ERR_NONE) {
+  if (result != AMX_ERR_NONE) {printf("%d\n", result);
     free(datablock);
     amx->base = NULL;                   /* avoid a double free */
   } /* if */
@@ -320,7 +320,7 @@ int main(int argc,char *argv[])
   if (argc < 2)
     PrintUsage(argv[0]);        /* function "usage" aborts the program */
 
-  #if !defined AMX_NODYNALOAD && defined ENABLE_BINRELOC && (defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__ || defined __APPLE__)
+  #if !defined AMX_NODYNALOAD && defined ENABLE_BINRELOC && (defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__ || defined __APPLE__ || defined __NetBSD__)
     /* see www.autopackage.org (now Listaller) for the BinReloc module */
     if (br_init(NULL)) {
       char *libroot=br_find_exe_dir("");

@@ -278,7 +278,7 @@ static cell AMX_NATIVE_CALL n_fmul(AMX *amx,const cell *params)
   cell sign=1;
 
   (void)amx;
-  assert(MULTIPLIER<=(1L<<WORDSHIFT));
+  assert(MULTIPLIER<=((cell)1<<WORDSHIFT));
 
   /* make both operands positive values, but keep the sign of the result */
   if (params[1]<0) {
@@ -423,7 +423,7 @@ static cell AMX_NATIVE_CALL n_fdiv(AMX *amx,const cell *params)
 
   /* pre-scale the dividend into a 64-bit/128-bit number */
   b[0]=dividend*MULTIPLIER;
-  b[1]=(HIWORD(dividend)*MULTIPLIER) >> WORDSHIFT;
+  b[1]=(ucell)(HIWORD(dividend)*MULTIPLIER) >> WORDSHIFT;
 
   /* add half of the divisor, to round the data */
   b[0]+=(ucell)divisor/2;

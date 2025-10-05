@@ -37,7 +37,7 @@
 #endif
 #if defined __WIN32__ || defined _Windows
   #include <windows.h>
-#elif defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__ || defined __APPLE__
+#elif defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__ || defined __APPLE__ || defined __NetBSD__
   #include <unistd.h>
   #include <dlfcn.h>
   #include <sys/types.h>
@@ -653,7 +653,7 @@ static cell AMX_NATIVE_CALL n_libfree(AMX *amx, const cell *params)
 /* pipes for I/O redirection */
 #if defined __WIN32__ || defined _WIN32 || defined WIN32
   static HANDLE newstdin,newstdout,read_stdout,write_stdin;
-#elif defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__ || defined __APPLE__
+#elif defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__ || defined __APPLE__ || defined __NetBSD__
   static int pipe_to[2]={-1,-1};
   static int pipe_from[2]={-1,-1};
 #endif
@@ -677,7 +677,7 @@ static void closepipe(void)
       CloseHandle(write_stdin);
       write_stdin=NULL;
     } /* if */
-  #elif defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__ || defined __APPLE__
+  #elif defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__ || defined __APPLE__ || defined __NetBSD__
     if (pipe_to[0]>=0) {
       close(pipe_to[0]);
       pipe_to[0]=-1;
@@ -713,7 +713,7 @@ static cell AMX_NATIVE_CALL n_procexec(AMX *amx, const cell *params)
     PROCESS_INFORMATION pi;
   #elif defined _Windows
     HINSTANCE hinst;
-  #elif defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__ || defined __APPLE__
+  #elif defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__ || defined __APPLE__ || defined __NetBSD__
   	pid_t pid;
   #endif
 
@@ -770,7 +770,7 @@ static cell AMX_NATIVE_CALL n_procexec(AMX *amx, const cell *params)
     if (hinst<=32)
       hinst=0;
     return (cell)hinst;
-  #elif defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__ || defined __APPLE__
+  #elif defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__ || defined __APPLE__ || defined __NetBSD__
     /* set up communication pipes first */
     closepipe();
     if (pipe(pipe_to)!=0 || pipe(pipe_from)!=0) {
@@ -840,7 +840,7 @@ static cell AMX_NATIVE_CALL n_procwrite(AMX *amx, const cell *params)
     WriteFile(write_stdin,line,(DWORD)_tcslen(line),&num,NULL); //send it to stdin
     if (params[2])
       WriteFile(write_stdin,__T("\n"),1,&num,NULL);
-  #elif defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__ || defined __APPLE__
+  #elif defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__ || defined __APPLE__ || defined __NetBSD__
     if (pipe_to[1]<0)
       return 0;
     write(pipe_to[1],line,_tcslen(line));
@@ -868,7 +868,7 @@ static cell AMX_NATIVE_CALL n_procread(AMX *amx, const cell *params)
         break;
       index++;
     } while (index<sizeof(line)/sizeof(line[0])-1 && line[index-1]!=__T('\n'));
-  #elif defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__ || defined __APPLE__
+  #elif defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__ || defined __APPLE__ || defined __NetBSD__
     if (pipe_from[0]<0)
       return 0;
     do {
@@ -906,7 +906,7 @@ static cell AMX_NATIVE_CALL n_procwait(AMX *amx, const cell *params)
         Sleep(100);
       CloseHandle(hProcess);
     } /* if */
-  #elif defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__ || defined __APPLE__
+  #elif defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__ || defined __APPLE__ || defined __NetBSD__
     waitpid((pid_t)params[1],NULL,WNOHANG);
   #endif
   return 0;

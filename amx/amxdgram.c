@@ -23,7 +23,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "osdefs.h"
-#if defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__ || defined __APPLE__
+#if defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__ || defined __APPLE__ || defined __NetBSD__
   #include <arpa/inet.h>
   #include <netinet/in.h>
   #include <sys/ioctl.h>
@@ -31,6 +31,7 @@
   #include <sys/socket.h>
   #include <netdb.h>
   #include <unistd.h>
+#include <time.h>
 #else
   #include <malloc.h>
   #include <winsock.h>
