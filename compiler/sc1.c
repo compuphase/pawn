@@ -516,7 +516,7 @@ int pc_compile(int argc, char *argv[])
 
   setconfig(argv[0]);   /* the path to the include and codepage files, plus the root path */
   setopt(argc,argv,outfname,errfname,incfname,reportname,codepage);
-  strcpy(binfname,outfname);
+  sprintf(binfname, "%s/%s", argv[0], outfname);
   ptr=get_extension(binfname);
   if (ptr!=NULL && stricmp(ptr,".asm")==0)
     set_extension(binfname,".amx",TRUE);
