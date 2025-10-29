@@ -160,7 +160,7 @@ extern  "C" {
     #define AMXAPI      __stdcall
   #elif defined CDECL
     #define AMXAPI      __cdecl
-  #elif defined GCC_HASCLASSVISIBILITY && defined __cplusplus
+  #elif defined GCC_HASCLASSVISIBILITY
     #define AMXAPI      __attribute__((visibility("default")))
   #else
     #define AMXAPI
