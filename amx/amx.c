@@ -35,12 +35,9 @@
 #include "osdefs.h"
 #if defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__ || defined __APPLE__
   #include <sclinux.h>
+  #include <unistd.h>
   #if !defined AMX_NODYNALOAD
     #include <dlfcn.h>
-  #endif
-  #if defined AMX_JIT
-    #include <sys/types.h>
-    #include <sys/mman.h>
   #endif
   #if defined __APPLE__
     #include <zconf.h>
@@ -50,13 +47,6 @@
 #endif
 #if !defined AMX_ANSIONLY && (defined __LCC__ || defined __LINUX__ || defined __APPLE__)
   #include <wchar.h>    /* for wcslen() */
-#endif
-
-#if defined __ECOS__
-  /* eCos puts include files in cyg/package_name */
-  #include <cyg/pawn/amx.h>
-#else
-  #include "amx.h"
 #endif
 
 #if (defined _Windows && !defined AMX_NODYNALOAD) || (defined AMX_JIT && __WIN32__)
@@ -126,9 +116,6 @@
 #if defined AMX_NO_NATIVEINFO
   #undef AMX_NATIVEINFO
 #endif
-#if AMX_USERNUM <= 0
-  #undef AMX_XXXUSERDATA
-#endif
 #if defined AMX_JIT
   /* JIT is incompatible with macro instructions, packed opcodes and overlays */
   #if !defined AMX_NO_MACRO_INSTR
@@ -156,6 +143,24 @@
   #define NATIVEADDR(addr,high)  (AMX_NATIVE)((intptr_t)(addr) | ((intptr_t)((uint64_t)high<<32)))
 #else
   #define NATIVEADDR(addr,high)  (AMX_NATIVE)(intptr_t)(addr)
+#endif
+
+#if defined __LINUX__ || defined __FreeBSD__ || defined __OpenBSD__ || defined __APPLE__
+  #if defined AMX_JIT
+    #include <sys/types.h>
+    #include <sys/mman.h>
+  #endif
+#endif
+
+#if defined __ECOS__
+  /* eCos puts include files in cyg/package_name */
+  #include <cyg/pawn/amx.h>
+#else
+  #include "amx.h"
+#endif
+
+#if AMX_USERNUM <= 0
+  #undef AMX_XXXUSERDATA
 #endif
 
 #if defined AMX_ALTCORE
